@@ -4,14 +4,14 @@
 
 Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de cuotas fijas e intereses asfixiantes: quienes aportan capital reciben una participación contractual en las ventas, de modo que la obligación acompaña el desempeño del negocio.
 
-**Misión de largo plazo:** democratizar la inversión en Latinoamérica conectando pequeños inversores con PyMEs tradicionales mediante financiamiento colectivo por revenue share, con Stellar para aportar transparencia, eficiencia y autocustodia. El producto y el PoC actuales se acotan exclusivamente a Argentina.  
+**Misión de largo plazo:** democratizar la inversión en Latinoamérica conectando pequeños inversores con PyMEs tradicionales mediante financiamiento colectivo por revenue share, con Stellar para aportar transparencia, eficiencia y autocustodia. El producto y la demo actuales se acotan exclusivamente a Argentina.  
 **Lema:** _«Juntos podemos hacernos grandes»._
 
-> **Estado actual:** repositorio en etapa de documentación y planificación de un **PoC**. La implementación prevista usa **Stellar Testnet**; los datos y varios servicios son total o parcialmente simulados, y no existe operación con dinero real.
+> **Estado actual:** repositorio en etapa de documentación y planificación de una **demo**, desarrollada como Trabajo Fin de Máster (TFM) del Máster en Desarrollo con IA. La implementación prevista usa **Stellar Testnet**; los datos y varios servicios son total o parcialmente simulados, y no existe operación con dinero real.
 
 ## Aviso de confianza
 
-> **Vaqcrow no es hoy una oferta, recomendación ni producto de inversión.** El KYC/KYB, las ventas y el corredor ARS/activo Stellar están **SIMULADOS**. La IA es consultiva y requiere aprobación humana. Freighter se usa de forma no custodial: cada persona conserva sus claves y Vaqcrow nunca recibe su seed. Los activos y transacciones de Stellar Testnet no tienen valor económico. El PoC no acredita autorización regulatoria, legalidad, rentabilidad, solvencia ni disponibilidad en producción.
+> **Vaqcrow no es hoy una oferta, recomendación ni producto de inversión.** El KYC/KYB, las ventas y el corredor ARS/activo Stellar están **SIMULADOS**. La IA es consultiva y requiere aprobación humana. Freighter se usa de forma no custodial: cada persona conserva sus claves y Vaqcrow nunca recibe su seed. Los activos y transacciones de Stellar Testnet no tienen valor económico. La demo no acredita autorización regulatoria, legalidad, rentabilidad, solvencia ni disponibilidad en producción.
 
 ## Qué demuestra la demo
 
@@ -30,7 +30,7 @@ El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es rea
 
 ## Real versus simulado
 
-| Capacidad | PoC previsto |
+| Capacidad | Demo prevista |
 |---|---|
 | Empresa, identidad y perfiles | Datos sintéticos, rotulados `SIMULADO` |
 | KYC/KYB | Simulado detrás de un adaptador reemplazable |
@@ -56,7 +56,7 @@ Guardrails obligatorios:
 - no construir decisiones finales, firmar ni transferir fondos;
 - ante timeout o salida inválida, derivar el caso a revisión manual.
 
-## Stack recomendado para el PoC
+## Stack recomendado para la demo
 
 | Tecnología | Responsabilidad prevista |
 |---|---|
@@ -111,16 +111,16 @@ packages/
 
 ## Alcance de interfaz
 
-El PoC propone seis pantallas reutilizables para un solo recorrido, no un marketplace completo:
+La demo propone seis pantallas reutilizables para un solo recorrido, no un marketplace completo:
 
-1. oportunidad y límites del PoC;
+1. oportunidad y límites de la demo;
 2. solicitud y evidencia de la PyME;
 3. evaluación de IA y decisión humana;
 4. fondeo, Freighter y revisión de transacción;
 5. procesamiento y estado asíncrono;
 6. panel, cálculo y distribución.
 
-La especificación completa de flujos, estados, accesibilidad, componentes y prompts está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/poc-ui.md). Las pantallas de Stitch **todavía no fueron generadas**.
+La especificación completa de flujos, estados, accesibilidad, componentes y prompts está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Las pantallas de Stitch **todavía no fueron generadas**.
 
 ## Desarrollo y calidad
 
@@ -140,23 +140,23 @@ La especificación completa de flujos, estados, accesibilidad, componentes y pro
 | Camino Stellar | Freighter, XDR verificado, pago Testnet y confirmación asíncrona con Horizon |
 | Revenue share | Feed mensual simulado, cálculo determinístico y distribución firmada en Testnet |
 | Integración y resiliencia | Recorrido completo, fallbacks de IA/red, telemetría y paquete de evidencia |
-| Ensayo y Demo Day | Tres ejecuciones estables de hasta siete minutos, freeze, video y hashes de respaldo |
+| Ensayo y presentación final | Tres ejecuciones estables de hasta siete minutos, freeze, video y hashes de respaldo |
 
-El detalle diario, la línea de corte, los criterios de aceptación y el guion viven en el plan del hackathon.
+El detalle diario, la línea de corte, los criterios de aceptación y el guion viven en el plan de la demo.
 
 ## Estado del repositorio
 
-Actualmente este repositorio contiene documentación de producto, planificación del PoC y especificación de diseño. **Todavía no hay implementación, aplicaciones arrancables, pruebas automatizadas, despliegues, capturas ni pantallas generadas.** Por eso este README no publica comandos de instalación o ejecución.
+Actualmente este repositorio contiene documentación de producto, planificación de la demo y especificación de diseño. **Todavía no hay implementación, aplicaciones arrancables, pruebas automatizadas, despliegues, capturas ni pantallas generadas.** Por eso este README no publica comandos de instalación o ejecución.
 
 ## Documentación
 
-- [Plan del hackathon](./docs/planning/hackathon.md) — fuente de verdad del PoC de dos semanas, su arquitectura, pruebas, demo y límites.
+- [Plan de la demo](./docs/planning/DEMO.md) — fuente de verdad de la demo de dos semanas (TFM del Máster en Desarrollo con IA), su arquitectura, pruebas, demo y límites.
 - [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
-- [Diseño UI/UX y runbook de Google Stitch](./docs/design/poc-ui.md) — seis pantallas, sistema visual, estados y ejecución pendiente de Stitch.
+- [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md) — seis pantallas, sistema visual, estados y ejecución pendiente de Stitch.
 
 ## Próximo paso
 
-Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente la implementación acotada del hackathon: monorepo mínimo, shell de demo y gates de calidad. No se debe asumir que las pantallas de Stitch existen ni ampliar el alcance hacia operación real.
+Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente la implementación acotada de la demo: monorepo mínimo, shell de demo y gates de calidad. No se debe asumir que las pantallas de Stitch existen ni ampliar el alcance hacia operación real.
 
 ## Licencia
 

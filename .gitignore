@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Next.js / build output
+.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+
+# Env files and secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+*.pem
+*.key
+*.p12
+*.pfx
+!**/fixtures/**/*.pem
+secrets.json
+credentials.json
+*.secret
+
+# Stellar / wallet-related local artifacts — never commit keys or seeds
+*keypair*.json
+*seed*.json
+*.stellar
+freighter-*.json
+
+# Supabase local dev
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Testing artifacts
+coverage/
+playwright-report/
+test-results/
+.nyc_output/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+
+# Claude Code local settings (machine-specific, not for sharing)
+.claude/settings.local.json
+
+# Local tooling cache
+.atl/
