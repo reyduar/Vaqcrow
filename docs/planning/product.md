@@ -26,11 +26,11 @@ La tesis conecta PyMEs formales con ventas verificables que necesitan capital fl
 
 Se puede construir y probar con datos sintéticos, sandboxes y Testnet. No se habilita un marketplace con dinero real hasta contar con dictámenes específicos para Argentina, roles y entidades responsables, corredor/activo aprobados, KYC/AML, contratos, contabilidad, seguridad y operación conciliada. Este documento orienta producto y tecnología; **no es asesoramiento legal, contable ni financiero**.
 
-## 2. Relación con el plan de hackathon
+## 2. Relación con el plan de la demo
 
-El [plan del hackathon](./hackathon.md) define el PoC de dos semanas para Argentina Builder Challenge. Ese trabajo valida la experiencia, la evaluación de IA, la firma no custodial, pagos clásicos en Testnet, confirmación asíncrona y distribución demostrativa.
+El [plan de la demo](./DEMO.md) define la demo de dos semanas construida como Trabajo Fin de Máster (TFM) del Máster en Desarrollo con IA. Ese trabajo valida la experiencia, la evaluación de IA, la firma no custodial, pagos clásicos en Testnet, confirmación asíncrona y distribución demostrativa.
 
-El PoC **no prueba**:
+La demo **no prueba**:
 
 - legalidad del instrumento o autorización para ofrecerlo en Argentina;
 - cumplimiento regulatorio o de custodia por el solo uso de Freighter;
@@ -38,7 +38,7 @@ El PoC **no prueba**:
 - economía unitaria, calidad real de ventas, mora, cobranza o recupero;
 - controles, seguridad, conciliación y soporte suficientes para producción.
 
-Los hallazgos del hackathon alimentan decisiones de producto y slices técnicos. Los mocks no se aceptan como evidencia de proveedores ni sustituyen due diligence, sandbox contractual, pruebas de recuperación o aprobación legal.
+Los hallazgos de la demo alimentan decisiones de producto y slices técnicos. Los mocks no se aceptan como evidencia de proveedores ni sustituyen due diligence, sandbox contractual, pruebas de recuperación o aprobación legal.
 
 ## 3. Modelo de negocio
 
@@ -413,7 +413,7 @@ Identificadores internos son opacos; referencias externas quedan separadas y ún
 
 ## 11. De simuladores a proveedores de producción
 
-El hackathon establece contratos para `KycProvider`, `FundingRailProvider` y `SalesDataProvider`. Migrarlos no consiste en cambiar una URL: cada proveedor debe demostrar contrato semántico, seguridad, regulación, SLA y recuperación.
+La demo establece contratos para `KycProvider`, `FundingRailProvider` y `SalesDataProvider`. Migrarlos no consiste en cambiar una URL: cada proveedor debe demostrar contrato semántico, seguridad, regulación, SLA y recuperación.
 
 | Interfaz | Simulación | Reemplazo requerido | Evidencia de aceptación |
 |---|---|---|---|
@@ -529,7 +529,7 @@ La suite normal usa dobles determinísticos. Una suite separada valida sandbox/T
 | D-008 | Pagos clásicos antes que Soroban | Menos complejidad hasta justificar contratos |
 | D-009 | IA explicable con revisión humana | No hay base para decisiones autónomas ni transferencias por LLM |
 | D-010 | SDD por capacidad acotada | Mantiene cambios revisables y reemplazables |
-| D-011 | PoC separado del plan de producto | La demo valida slices, no preparación productiva |
+| D-011 | Demo separada del plan de producto | La demo valida slices, no preparación productiva |
 
 ## 17. Preguntas abiertas priorizadas
 

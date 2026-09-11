@@ -1,6 +1,6 @@
-# Vaqcrow — Plan del PoC para Argentina Builder Challenge
+# Vaqcrow — Plan de la demo para el Trabajo Fin de Máster (TFM)
 
-> **Objetivo inmediato:** demostrar en dos semanas una experiencia completa de financiamiento con revenue share sobre Stellar Testnet. Es un PoC para evaluación y aprendizaje; no es un producto financiero habilitado para operar con dinero real.
+> **Objetivo inmediato:** demostrar en dos semanas una experiencia completa de financiamiento con revenue share sobre Stellar Testnet. Es la demo del TFM del Máster en Desarrollo con IA, para evaluación y aprendizaje; no es un producto financiero habilitado para operar con dinero real.
 
 ## 1. Tesis del producto y de la demostración
 
@@ -8,24 +8,24 @@ Vaqcrow permite que una PyME argentina presente evidencia de ventas, reciba una 
 
 ## 2. Definición de éxito y posicionamiento
 
-La propuesta se presenta como candidata al **Argentina Builder Challenge**, un desafío de dos semanas con kickoff el **12 de septiembre** y Demo Day el **26 de septiembre**. El evento ofrece tracks **Genesis** y **Scale**; por su madurez de PoC, Vaqcrow se orienta principalmente a Genesis, sin afirmar aceptación, elegibilidad definitiva ni criterios de premiación no publicados. Su encaje temático está en **DeFi & Real-World Assets** y herramientas financieras locales.
+La propuesta se presenta como el proyecto final del **Trabajo Fin de Máster (TFM)** del **Máster en Desarrollo con IA**, construido en un sprint acotado de dos semanas. Su encaje temático está en **DeFi & Real-World Assets** y herramientas financieras locales, con la evaluación asistida por IA como capacidad diferencial del trabajo.
 
-### Qué debe quedar probado ante los jueces
+### Qué debe quedar probado ante el tribunal evaluador
 
 - Una historia de usuario completa funciona en vivo en menos de siete minutos.
 - La IA es una capacidad central y real, no una etiqueta: produce evaluación estructurada, evidencia, incertidumbre y alertas accionables.
 - Freighter actúa como interfaz de wallet y firma; el usuario conserva sus claves y Vaqcrow nunca recibe su seed.
 - Al menos un fondeo y una distribución de revenue share quedan confirmados en Stellar Testnet y vinculados a evidencia en el explorador.
 - Cada simulación está identificada y tiene una interfaz que corresponde a una integración de producción creíble.
-- El equipo puede explicar con precisión qué se validó y qué sigue abierto para Argentina.
+- Quien presenta el trabajo puede explicar con precisión qué se validó y qué sigue abierto para Argentina.
 
 ### Bloques Stellar utilizados
 
-El PoC puede identificar como bloques de construcción a Stellar Testnet, `@stellar/stellar-sdk`, Horizon, Freighter mediante `@stellar/freighter-api` y, solo como extensión acotada, Soroban mediante Stellar RPC. La aplicación del evento también permite describir anchors, activos locales, SDKs, wallets del ecosistema y protocolos DeFi como alternativas evaluadas, sin afirmar que todos estén integrados.
+La demo puede identificar como bloques de construcción a Stellar Testnet, `@stellar/stellar-sdk`, Horizon, Freighter mediante `@stellar/freighter-api` y, solo como extensión acotada, Soroban mediante Stellar RPC. También pueden describirse anchors, activos locales, SDKs, wallets del ecosistema y protocolos DeFi como alternativas evaluadas, sin afirmar que todos estén integrados.
 
 ### Posición de la IA
 
-Las páginas públicas reconocen roles AI/Data y herramientas AI/LLM, pero no establecen que la IA sea obligatoria. En Vaqcrow, la IA se presenta como **diferenciador estratégico propio**, no como requisito oficial del evento.
+En Vaqcrow, la IA se presenta como **diferenciador estratégico propio** del trabajo, coherente con el eje del máster cursado.
 
 ## 3. Historia vertical única
 
@@ -45,7 +45,7 @@ La demostración debe seguir una sola PyME sintética y evitar journeys paralelo
 
 ## 4. Matriz real versus simulado
 
-| Capacidad | En el PoC | Evidencia visible | Reemplazo de producción |
+| Capacidad | En la demo | Evidencia visible | Reemplazo de producción |
 |---|---|---|---|
 | Perfiles y PyME | Datos sintéticos | Banner y fixtures versionados | Supabase Auth + modelo de identidad autorizado |
 | KYC/KYB | **Simulado** por `KycProvider` | Resultado, timestamp y etiqueta `SIMULATED` | Proveedor KYC/KYB aprobado para Argentina; eventualmente SEP-12 con el anchor |
@@ -107,7 +107,7 @@ No se replica la arquitectura completa de producción. Se construyen dos aplicac
 
 ### Stack tecnológico recomendado
 
-| Tecnología | Responsabilidad | Por qué es apropiada para este PoC de dos semanas |
+| Tecnología | Responsabilidad | Por qué es apropiada para esta demo de dos semanas |
 |---|---|---|
 | Next.js | Aplicación web, experiencia de demo y BFF solo para necesidades propias de la UI | Permite construir y desplegar rápidamente el journey sin trasladar comandos de dominio al navegador |
 | Node.js + Fastify | Servidor HTTP/API de larga ejecución, desplegable por separado; orquesta dominio, verifica XDR y coordina solicitudes de IA | Mantiene un límite backend explícito con bajo costo de implementación y buen soporte TypeScript |
@@ -247,7 +247,7 @@ El camino base usa pagos clásicos y **debe funcionar sin Soroban**. Un contrato
 
 | Día | Objetivo | Salida verificable | Dependencia |
 |---|---|---|---|
-| 1 — 12 sep | Congelar historia, claims y dataset | Guion, wireflow, matriz real/simulado y datos sintéticos | Ninguna |
+| 1 | Congelar historia, claims y dataset | Guion, wireflow, matriz real/simulado y datos sintéticos | Ninguna |
 | 2 | Shell de demo y estados | Navegación completa con fixtures y banners | Día 1 |
 | 3 | Dominio y persistencia mínima | Estados, cálculo monetario, IDs correlacionados | Día 1 |
 | 4 | Contrato de IA | Esquema, prompt, evidencia y casos golden | Dataset |
@@ -260,7 +260,7 @@ El camino base usa pagos clásicos y **debe funcionar sin Soroban**. Un contrato
 | 11 | Integración vertical | Journey completo con correlation ID único | Días 2–10 |
 | 12 | Resiliencia y evidencias | Fallbacks, telemetría y dataset congelado | Día 11 |
 | 13 | Ensayo con público interno | Demo ≤7 min, tres repeticiones y defectos críticos cerrados | Día 12 |
-| 14 — 26 sep | Freeze y Demo Day | Build etiquetado, video y hashes de respaldo | Día 13 |
+| 14 | Freeze y presentación final | Build etiquetado, video y hashes de respaldo | Día 13 |
 
 ### Frentes de trabajo
 
@@ -289,7 +289,7 @@ Nunca se recortan la evaluación real de IA, la aprobación humana, la firma rea
 
 | Tiempo | Acción | Mensaje clave |
 |---|---|---|
-| 0:00–0:40 | Presentar problema, tesis y límites | Capital flexible para PyMEs argentinas; PoC en Testnet, no oferta real |
+| 0:00–0:40 | Presentar problema, tesis y límites | Capital flexible para PyMEs argentinas; demo en Testnet, no oferta real |
 | 0:40–1:30 | Abrir la solicitud sintética | KYC y ventas están simulados y claramente identificados |
 | 1:30–2:30 | Ejecutar evaluación de IA | La IA cita evidencia, detecta anomalía/faltante y expresa incertidumbre |
 | 2:30–3:00 | Aprobar como operador | Una persona decide; el modelo no autoriza fondos |
@@ -348,7 +348,7 @@ Estos textos deben aparecer en la aplicación y en la presentación, sin eufemis
 
 > **IA con supervisión humana.** La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.
 
-> **No apto para producción.** Este PoC no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.
+> **No apto para producción.** Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.
 
 ## 13. SDD-lite por capacidad
 
@@ -377,11 +377,6 @@ Flujo reducido: `proposal breve -> scenarios/design notes -> tasks -> implementa
 Argentina y el modelo no custodial con Freighter están resueltos y **no se reabren** durante el sprint. El corredor ARS/activo Stellar, el anchor y la clasificación legal continúan como decisiones de producción, no como bloqueantes de Testnet.
 
 ## 15. Fuentes
-
-### Evento
-
-- Argentina Builder Challenge: <https://luma.com/starmaker-zrb2>
-- Aplicación del hackathon: <https://stellarhackathonapp.netlify.app/>
 
 ### Stellar
 
