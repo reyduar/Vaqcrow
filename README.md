@@ -1,236 +1,163 @@
-# Vaqcrow 🐮
+# Vaqcrow
 
-**Misión:** Democratizar la inversión en Latam conectando pequeños inversores con PyMEs tradicionales mediante *Revenue Share Crowdfunding*, utilizando tecnología blockchain (Stellar) para garantizar transparencia, eficiencia y custodia descentralizada. 
-**Lema:** *"Juntos podemos hacernos grandes"*.
+**Financiamiento flexible para PyMEs argentinas mediante revenue share, con evaluación asistida por IA, control humano y liquidación verificable en Stellar.**
 
----
+Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de cuotas fijas e intereses asfixiantes: quienes aportan capital reciben una participación contractual en las ventas, de modo que la obligación acompaña el desempeño del negocio.
 
-## 1. Resumen Ejecutivo y Reglas de Negocio
-Vaqcrow es una plataforma Fintech web (desarrollada en Next.js) que permite a comercios de barrio y PyMEs financiarse sin los intereses asfixiantes de los bancos. 
+**Misión de largo plazo:** democratizar la inversión en Latinoamérica conectando pequeños inversores con PyMEs tradicionales mediante financiamiento colectivo por revenue share, con Stellar para aportar transparencia, eficiencia y autocustodia. El producto y el PoC actuales se acotan exclusivamente a Argentina.  
+**Lema:** _«Juntos podemos hacernos grandes»._
 
-* **Modelo de Inversión (Revenue Share):** Los inversores fondean un proyecto a cambio de un porcentaje de las ventas mensuales de la PyME, mitigando el riesgo de quiebra por cuotas fijas (si venden más, pagan más; si venden menos, pagan menos).
-* **Modelo de Confianza Híbrido:** Para asegurar el cumplimiento, se combinan dos capas:
-  1. *Capa Tecnológica:* Reporte de ventas mensual (manual en V1, automatizado en el futuro) que calcula automáticamente el monto a pagar.
-  2. *Capa Legal/Penalización:* Contrato de financiamiento participativo firmado. En caso de no reportar o quebrar injustificadamente, se activa un bloqueo de reputación (Score) y sanciones sobre garantías prendarias previas.
-* **Flujo de Capital:** Inversión en pesos (Fiat) ➔ Conversión vía Anchor a `USDC` ➔ Bloqueo en contrato inteligente (Stellar) ➔ Liberación a PyME ➔ Repago en Fiat ➔ Distribución automática de `USDC` a inversores.
-* **Monetización:** 
-  * *Success Fee:* Comisión (3% al 5%) cobrada a la PyME sobre el capital total levantado al cumplir la meta.
-  * *Spread de Cash-out:* Pequeño margen en la rampa de conversión de cripto a fiat.
+> **Estado actual:** repositorio en etapa de documentación y planificación de un **PoC**. La implementación prevista usa **Stellar Testnet**; los datos y varios servicios son total o parcialmente simulados, y no existe operación con dinero real.
 
----
+## Aviso de confianza
 
-## 2. Stack Tecnológico
-* **Frontend:** Next.js (Web-first, Mobile-responsive), Tailwind CSS, componentes unificados para futura app React Native.
-* **Backend & Base de Datos:** Supabase (PostgreSQL, Auth, Storage para documentos).
-* **Lógica Serverless:** Supabase Edge Functions (para orquestación y firmas seguras).
-* **Infraestructura Blockchain:** Stellar Network SDK (Cuentas multifirma, Assets personalizados, Path Payments).
-* **Inteligencia Artificial:** Modelo de recomendación de IA (AI Score) para clasificar el riesgo de cada PyME.
+> **Vaqcrow no es hoy una oferta, recomendación ni producto de inversión.** El KYC/KYB, las ventas y el corredor ARS/activo Stellar están **SIMULADOS**. La IA es consultiva y requiere aprobación humana. Freighter se usa de forma no custodial: cada persona conserva sus claves y Vaqcrow nunca recibe su seed. Los activos y transacciones de Stellar Testnet no tienen valor económico. El PoC no acredita autorización regulatoria, legalidad, rentabilidad, solvencia ni disponibilidad en producción.
 
----
+## Qué demuestra la demo
 
-## 3. Identidad Visual y UI/UX (Estilo Nubank)
-* **Concepto:** Minimalista, tipografías Sans-Serif audaces, uso estratégico de espacios en blanco y bordes redondeados.
-* **Colores Core:**
-  * **Brand/Accent:** Morado Vibrante (`#8A05BE`) para botones, CTAs y barras de progreso.
-  * **Light Mode:** Fondo Blanco Nieve (`#FFFFFF`), Cards Gris Suave (`#F5F5F5`), Texto Principal Negro Mate (`#111111`), Texto Secundario Gris (`#666666`).
-  * **Dark Mode:** Fondo Negro (`#111111`), Cards Carbón (`#1F1F1F` / `#272727`), Texto Principal Blanco (`#FFFFFF`), Texto Secundario Gris Claro (`#A0A0A0`).
+La historia vertical prevista sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
 
----
+1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
+2. Una IA real analiza solo la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
+3. Un operador revisa esa evidencia y registra la aprobación humana; la IA no autoriza el financiamiento.
+4. Un inversor conecta Freighter, revisa la intención y firma el fondeo de forma no custodial en Stellar Testnet.
+5. La API verifica el XDR y lo envía; la interfaz muestra primero `submitted` y espera la confirmación asíncrona de Horizon antes de informar `confirmed` o `failed`.
+6. El sistema incorpora el período siguiente de ventas simuladas y calcula la obligación de revenue share con reglas determinísticas, versionadas y unidades monetarias mínimas.
+7. La PyME revisa y firma con Freighter la distribución en Testnet.
+8. El panel final muestra decisiones, estados, montos, hashes y enlaces al explorador como evidencia del fondeo y de la distribución.
 
-## 4. Módulos y Sub-sistemas (Monorepo)
+El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina.
 
-1. **SignIn y SignUp:** Login unificado permitiendo registro con Google Account o Email/Password. Seguridad obligatoria con 2FA para validación y operaciones.
-2. **Hero Page (Landing):** Motor de marketing. Explicación del sistema dual (Inversor/Emprendedor), los beneficios del Revenue Share, la transparencia de Stellar, y el CTA principal para registrarse. 
-3. **Onboarding y Tokenización:** Flujo de KYC. El emprendedor carga sus datos, documentos legales y la ficha de su proyecto. Se emite el token representante en la red Stellar.
-4. **Marketplace (Explorar):** Buscador principal y grilla de PyMEs. Incluye filtros y ordenamiento basado en el **AI Score** de riesgo. Tarjetas con fotos, meta de recaudación y retorno estimado.
-5. **Detalle de PyME:** Pantalla de conversión. Toda la historia, justificación de los fondos, proyecciones y el botón primario de "Invertir".
-6. **Billetera de Inversores (Dashboard):** Visualización del portafolio, saldo en Fiat/USDC, tokens adquiridos, gráficos de rendimiento, notificaciones y carga/retiro de saldo.
-7. **Panel de Administración (Backoffice):** Pantalla exclusiva para dueños de Vaqcrow. Gestión de KYC manual, auditoría de reportes de ventas, configuración de la Landing Page y visualización de métricas de la plataforma.
+## Real versus simulado
 
----
+| Capacidad | PoC previsto |
+|---|---|
+| Empresa, identidad y perfiles | Datos sintéticos, rotulados `SIMULADO` |
+| KYC/KYB | Simulado detrás de un adaptador reemplazable |
+| Historial y feed mensual de ventas | Simulados, reproducibles y con una anomalía/faltante intencionales |
+| Evaluación de riesgo por IA | Real, estructurada, validada y respaldada por evidencia |
+| Decisión de financiamiento | Real y humana sobre el caso sintético |
+| Entrada/cotización ARS | Simulada; el corredor de producción continúa sin resolver |
+| Wallet y firma | Reales con Freighter, de forma no custodial |
+| Fondeo y distribución | Transacciones reales en Stellar Testnet, sin valor económico |
+| Confirmación | Real y asíncrona mediante Horizon |
+| Cálculo de revenue share | Real, determinístico y ajeno al LLM |
 
-## 5. Modelo de Datos (Esquema SQL en Supabase)
+## IA: función y límites
 
-```sql
--- TABLA USUARIOS (Gestionado en gran parte por auth.users de Supabase)
-CREATE TABLE perfiles (
-  id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
-  email TEXT NOT NULL,
-  rol TEXT CHECK (rol IN ('INVERSOR', 'PYME', 'ADMIN')),
-  stellar_wallet_id TEXT,
-  es_2fa_activo BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+La IA normaliza y organiza evidencia, cita sus fuentes, identifica anomalías y datos faltantes, expresa incertidumbre y propone preguntas para revisión. Su salida debe cumplir un esquema estricto y quedar asociada a versión de modelo/prompt, timestamp y aprobación o rechazo humano.
 
--- TABLA PERFIL PYME
-CREATE TABLE perfiles_pyme (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  usuario_id UUID REFERENCES perfiles(id),
-  nombre_comercio TEXT NOT NULL,
-  descripcion TEXT,
-  estado_kyc TEXT CHECK (estado_kyc IN ('PENDIENTE', 'APROBADO', 'RECHAZADO')),
-  ai_score_riesgo INTEGER
-);
+Guardrails obligatorios:
 
--- TABLA PROYECTOS
-CREATE TABLE proyectos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  pyme_id UUID REFERENCES perfiles_pyme(id),
-  titulo TEXT NOT NULL,
-  meta_recaudacion DECIMAL NOT NULL,
-  porcentaje_retorno_ventas DECIMAL NOT NULL,
-  stellar_asset_code TEXT UNIQUE,
-  estado TEXT CHECK (estado IN ('RECAUDANDO', 'ACTIVO', 'FINALIZADO'))
-);
+- no inventar datos ni completar faltantes;
+- no presentar inferencias como hechos;
+- no aprobar casos ni sustituir la decisión humana;
+- no calcular montos, porcentajes, redondeos u obligaciones financieras;
+- no construir decisiones finales, firmar ni transferir fondos;
+- ante timeout o salida inválida, derivar el caso a revisión manual.
 
--- TABLA INVERSIONES
-CREATE TABLE inversiones (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  usuario_id UUID REFERENCES perfiles(id),
-  proyecto_id UUID REFERENCES proyectos(id),
-  monto_invertido DECIMAL NOT NULL,
-  tx_hash_stellar TEXT,
-  fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+## Stack recomendado para el PoC
 
--- TABLA REPORTES DE VENTA (MVP)
-CREATE TABLE reportes_venta (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  proyecto_id UUID REFERENCES proyectos(id),
-  monto_declarado DECIMAL NOT NULL,
-  monto_a_pagar DECIMAL NOT NULL,
-  comprobante_url TEXT,
-  estado_pago TEXT CHECK (estado_pago IN ('PENDIENTE', 'PAGADO')),
-  mes_reportado TIMESTAMP WITH TIME ZONE
-);
-```
+| Tecnología | Responsabilidad prevista |
+|---|---|
+| Next.js | Aplicación web y BFF solo para necesidades de presentación |
+| Node.js + Fastify | API de larga ejecución, dominio, verificación XDR y coordinación de IA |
+| Worker opcional | Confirmaciones asíncronas y jobs acotados si no caben con seguridad en la API |
+| GitHub Actions | Gates de pull requests y flujo de preview/demo |
+| Vitest | Pruebas unitarias, de dominio y funcionales de API |
+| Testing Library | Pruebas de comportamiento visible de componentes |
+| Playwright | Smoke tests y E2E del recorrido crítico |
+| Supabase | PostgreSQL gestionado, Auth opcional y Storage acotado |
+| PostgreSQL | Estados, decisiones, intenciones, trazabilidad e idempotencia |
+| Stellar SDK, Freighter, Horizon y Testnet | XDR, firma no custodial, envío, consulta y liquidación de prueba |
+| Proveedor LLM — TBD | Evaluación estructurada detrás de un adaptador reemplazable |
 
----
+## Arquitectura de despliegue propuesta
 
-## 6. Diagramas UML de Arquitectura
+**Vercel es el destino recomendado, todavía no desplegado, para el frontend Next.js.** La API Fastify debe ejecutarse como un servicio Node.js de larga duración, separado del frontend y con proveedor de hosting **TBD y reemplazable**. Supabase aportaría sus servicios gestionados. El worker solo se desplegaría si las confirmaciones o jobs requieren un proceso independiente.
 
-### A. Diagrama de Casos de Uso
 ```mermaid
 flowchart LR
-    Inversor([Inversor])
-    PyME([Usuario PyME])
-    Admin([Administrador Vaqcrow])
-
-    subgraph Plataforma Vaqcrow Web
-        auth[Registro / Login 2FA]
-        explorar[Explorar Marketplace / AI Score]
-        invertir[Invertir en Proyecto]
-        billetera[Ver Portafolio y Ganancias]
-        
-        kyc[Completar KYC y Crear Proyecto]
-        reportar[Reportar Ventas Mensuales]
-        pagar[Pagar Cuota Fiat]
-        
-        aprobarKYC[Aprobar KYC y Proyectos]
-        gestionar[Gestionar Usuarios y Plataforma]
-    end
-
-    Inversor --> auth
-    Inversor --> explorar
-    Inversor --> invertir
-    Inversor --> billetera
-
-    PyME --> auth
-    PyME --> kyc
-    PyME --> reportar
-    PyME --> pagar
-
-    Admin --> aprobarKYC
-    Admin --> gestionar
+    U[Personas usuarias] --> WEB[Next.js web<br/>Vercel propuesto]
+    U <-->|firma no custodial| F[Freighter]
+    WEB --> API[Fastify API<br/>hosting TBD]
+    API --> DB[(Supabase PostgreSQL)]
+    API --> AI[Proveedor LLM<br/>TBD]
+    API --> H[Horizon]
+    API -. jobs opcionales .-> W[Worker<br/>hosting TBD]
+    W --> DB
+    W --> H
+    H --> T[Stellar Testnet]
 ```
 
-### B. Diagrama de Procesos (Flujo de Vida del Proyecto)
-```mermaid
-stateDiagram-v2
-    [*] --> PublicacionProyecto: PyME aprobada por Admin
-    PublicacionProyecto --> Recaudacion: Marketplace Activo
-    
-    Recaudacion --> MetaAlcanzada: 100% Fondeado
-    Recaudacion --> MetaNoAlcanzada: Tiempo Expirado
-    
-    MetaNoAlcanzada --> DevolucionFondos: Reembolso USDC
-    DevolucionFondos --> [*]
-    
-    MetaAlcanzada --> EmisionTokens: Stellar crea Asset (VaqToken)
-    EmisionTokens --> TransferenciaPyME: Capital a la PyME
-    
-    TransferenciaPyME --> OperacionMensual: PyME trabaja
-    OperacionMensual --> ReporteVentas: Fin de mes (PyME declara ventas)
-    
-    ReporteVentas --> DepositoFiat: PyME transfiere a Vaqcrow
-    DepositoFiat --> RepartoGanancias: Stellar distribuye USDC a inversores
-    
-    RepartoGanancias --> OperacionMensual: Repite hasta cancelar deuda
-    RepartoGanancias --> [*]: Deuda Cancelada (Exit)
+## Estructura objetivo del monorepo
+
+Esta estructura está **planificada**; el repositorio todavía no contiene estas aplicaciones ni paquetes:
+
+```text
+apps/
+  web/                 # Next.js
+  api/                 # Node.js + Fastify
+  worker/              # Opcional
+packages/
+  domain/              # Estados y cálculos determinísticos
+  stellar/             # Freighter, XDR y Horizon
+  ai/                  # Esquemas, evidencia y adaptador LLM
+  simulators/          # KYC, ventas y corredor ARS
+  db/                  # PostgreSQL, migraciones e idempotencia
+  ui/                  # Componentes realmente compartidos
+  testing/             # Fixtures y contratos de prueba
 ```
 
-### C. Diagrama de Secuencia (Flujo de Inversión)
-```mermaid
-sequenceDiagram
-    actor Inversor
-    participant NextJS as Frontend (Next.js)
-    participant Supabase as Backend (Auth/DB)
-    participant Edge as Edge Functions
-    participant Stellar as Blockchain Stellar
+## Alcance de interfaz
 
-    Inversor->>NextJS: Clic en "Invertir $1000" (PyME X)
-    NextJS->>Supabase: Valida sesión, 2FA y balance Fiat
-    Supabase-->>NextJS: Validación Exitosa
-    NextJS->>Edge: Trigger de Inversión
-    Edge->>Stellar: Convierte Fiat a USDC vía Anchor
-    Stellar-->>Edge: USDC Disponible
-    Edge->>Stellar: Ejecuta Smart Contract (Compra Token X)
-    Stellar-->>Edge: Tx Hash Confirmado
-    Edge->>Supabase: Registra inversión en BD
-    Supabase-->>Edge: Registro OK
-    Edge-->>NextJS: Retorna Éxito
-    NextJS-->>Inversor: Notificación de Éxito / Actualiza Billetera
-```
+El PoC propone seis pantallas reutilizables para un solo recorrido, no un marketplace completo:
 
-### D. Diagrama de Componentes (Arquitectura General)
-```mermaid
-flowchart TB
-    Inversor[Navegador Inversor]
-    PyME[Navegador PyME]
-    Admin[Navegador Admin]
+1. oportunidad y límites del PoC;
+2. solicitud y evidencia de la PyME;
+3. evaluación de IA y decisión humana;
+4. fondeo, Freighter y revisión de transacción;
+5. procesamiento y estado asíncrono;
+6. panel, cálculo y distribución.
 
-    subgraph Vercel [Vercel - Frontend Hosting]
-        NextApp[Next.js App Web]
-        NextAdmin[Next.js Admin Panel]
-    end
+La especificación completa de flujos, estados, accesibilidad, componentes y prompts está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/poc-ui.md). Las pantallas de Stitch **todavía no fueron generadas**.
 
-    subgraph Supabase [Supabase - BaaS]
-        Auth[Auth Service + 2FA]
-        DB[(PostgreSQL)]
-        Storage[Storage KYC / Imágenes]
-        Edge[Edge Functions]
-    end
+## Desarrollo y calidad
 
-    subgraph Externos [Servicios Externos]
-        Stellar[Stellar Network / Soroban]
-        FiatRamp[API Anchor / Banco Local]
-        AI[API de IA]
-    end
+- GitHub Actions debe exigir en cada pull request instalación con lockfile congelado, lint, typecheck, Vitest, Testing Library, build y contratos con dobles locales.
+- La CI debe ser determinística: no depender de Testnet, Horizon ni del proveedor LLM.
+- Las comprobaciones externas de Testnet/LLM deben ejecutarse por separado y de forma acotada en preview/demo o antes del ensayo.
+- Playwright debe proteger el recorrido crítico y sus fallbacks esenciales.
+- El frontend y la API deben tener artefactos y despliegues independientes; una preview/demo solo se promueve después de superar los gates.
+- Los secretos deben inyectarse desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
-    Inversor <--> NextApp
-    PyME <--> NextApp
-    Admin <--> NextAdmin
+## Hoja de ruta de dos semanas
 
-    NextApp <--> Auth
-    NextApp <--> DB
-    NextApp <--> Storage
-    NextApp <--> Edge
+| Hito | Resultado verificable |
+|---|---|
+| Alcance y shell de demo | Historia única, dataset sintético congelado, navegación y rótulos real/simulado |
+| Dominio e IA | Estados, persistencia mínima, cálculo monetario y evaluación estructurada con revisión humana |
+| Camino Stellar | Freighter, XDR verificado, pago Testnet y confirmación asíncrona con Horizon |
+| Revenue share | Feed mensual simulado, cálculo determinístico y distribución firmada en Testnet |
+| Integración y resiliencia | Recorrido completo, fallbacks de IA/red, telemetría y paquete de evidencia |
+| Ensayo y Demo Day | Tres ejecuciones estables de hasta siete minutos, freeze, video y hashes de respaldo |
 
-    NextAdmin <--> DB
-    NextAdmin <--> Auth
-    NextAdmin <--> Storage
+El detalle diario, la línea de corte, los criterios de aceptación y el guion viven en el plan del hackathon.
 
-    Edge <--> Stellar
-    Edge <--> FiatRamp
-    Edge <--> AI
-```
+## Estado del repositorio
+
+Actualmente este repositorio contiene documentación de producto, planificación del PoC y especificación de diseño. **Todavía no hay implementación, aplicaciones arrancables, pruebas automatizadas, despliegues, capturas ni pantallas generadas.** Por eso este README no publica comandos de instalación o ejecución.
+
+## Documentación
+
+- [Plan del hackathon](./docs/planning/hackathon.md) — fuente de verdad del PoC de dos semanas, su arquitectura, pruebas, demo y límites.
+- [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
+- [Diseño UI/UX y runbook de Google Stitch](./docs/design/poc-ui.md) — seis pantallas, sistema visual, estados y ejecución pendiente de Stitch.
+
+## Próximo paso
+
+Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente la implementación acotada del hackathon: monorepo mínimo, shell de demo y gates de calidad. No se debe asumir que las pantallas de Stitch existen ni ampliar el alcance hacia operación real.
+
+## Licencia
+
+Este repositorio se distribuye bajo la [licencia MIT](./LICENSE).
