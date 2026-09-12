@@ -1,0 +1,103 @@
+name: Backlog item
+description: Structured Epic, Feature, Task, or foundation work for the Vaqcrow TFM demo
+title: "[Backlog] "
+body:
+  - type: dropdown
+    id: work-type
+    attributes:
+      label: Work type
+      description: Select the backlog level.
+      options:
+        - Epic
+        - Feature
+        - Task
+        - Technical/Foundation
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the primary technical or product area.
+      options:
+        - Frontend
+        - Backend
+        - Database
+        - AI
+        - Stellar
+        - Testing
+        - Infrastructure
+        - Documentation
+        - Security
+        - Demo
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Select the priority for the demo milestone.
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: State the outcome this work must achieve.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Explain how this work relates to DEMO.md and the implementation sequence.
+    validations:
+      required: true
+  - type: textarea
+    id: functional-requirements
+    attributes:
+      label: Functional requirements
+      description: Describe observable behavior, or state that the item is technical-only.
+    validations:
+      required: true
+  - type: textarea
+    id: technical-requirements
+    attributes:
+      label: Technical requirements
+      description: Describe architecture, boundaries, constraints, and implementation decisions.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List clear, testable completion conditions as checkboxes.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Reference prerequisite issue numbers or state that there are none.
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing strategy
+      description: Define RED, GREEN, REFACTOR scenarios and the appropriate test level.
+    validations:
+      required: true
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of Done
+      description: Define evidence required before closing the issue.
+    validations:
+      required: true
