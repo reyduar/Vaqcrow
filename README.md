@@ -4,10 +4,15 @@
 
 Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de cuotas fijas e intereses asfixiantes: quienes aportan capital reciben una participación contractual en las ventas, de modo que la obligación acompaña el desempeño del negocio.
 
-**Misión de largo plazo:** democratizar la inversión en Latinoamérica conectando pequeños inversores con PyMEs tradicionales mediante financiamiento colectivo por revenue share, con Stellar para aportar transparencia, eficiencia y autocustodia. El producto y la demo actuales se acotan exclusivamente a Argentina.  
+**Misión de largo plazo:** democratizar la inversión en Latinoamérica conectando pequeños inversores con PyMEs tradicionales mediante financiamiento colectivo por revenue share, con Stellar para aportar transparencia, eficiencia y autocustodia. El producto y la demo actuales se acotan exclusivamente a Argentina.
+
 **Lema:** _«Juntos podemos hacernos grandes»._
 
-> **Estado actual:** repositorio en etapa de documentación y planificación de una **demo**, desarrollada como Trabajo Fin de Máster (TFM) del Máster en Desarrollo con IA. La implementación prevista usa **Stellar Testnet**; los datos y varios servicios son total o parcialmente simulados, y no existe operación con dinero real.
+## Estado actual
+
+- **Repositorio:** documentación y planificación de una demo para el Trabajo Fin de Máster (TFM) del Máster en Desarrollo con IA. No existe implementación ejecutable, aplicaciones arrancables, pruebas automatizadas ni despliegues en este repositorio.
+- **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
+- **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
 
 ## Aviso de confianza
 
@@ -18,13 +23,11 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 La historia vertical prevista sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
 
 1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
-2. Una IA real analiza solo la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
-3. Un operador revisa esa evidencia y registra la aprobación humana; la IA no autoriza el financiamiento.
+2. Una IA real analiza la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
+3. Un operador revisa la evidencia y registra la decisión humana; la IA no autoriza el financiamiento.
 4. Un inversor conecta Freighter, revisa la intención y firma el fondeo de forma no custodial en Stellar Testnet.
-5. La API verifica el XDR y lo envía; la interfaz muestra primero `submitted` y espera la confirmación asíncrona de Horizon antes de informar `confirmed` o `failed`.
-6. El sistema incorpora el período siguiente de ventas simuladas y calcula la obligación de revenue share con reglas determinísticas, versionadas y unidades monetarias mínimas.
-7. La PyME revisa y firma con Freighter la distribución en Testnet.
-8. El panel final muestra decisiones, estados, montos, hashes y enlaces al explorador como evidencia del fondeo y de la distribución.
+5. La API verifica el XDR y la interfaz distingue `submitted` de la confirmación asíncrona de Horizon.
+6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución firmada, los estados y los hashes de Testnet.
 
 El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina.
 
@@ -56,107 +59,98 @@ Guardrails obligatorios:
 - no construir decisiones finales, firmar ni transferir fondos;
 - ante timeout o salida inválida, derivar el caso a revisión manual.
 
-## Stack recomendado para la demo
+## Decisión de arquitectura
 
-| Tecnología | Responsabilidad prevista |
-|---|---|
-| Next.js | Aplicación web y BFF solo para necesidades de presentación |
-| Node.js + Fastify | API de larga ejecución, dominio, verificación XDR y coordinación de IA |
-| Worker opcional | Confirmaciones asíncronas y jobs acotados si no caben con seguridad en la API |
-| GitHub Actions | Gates de pull requests y flujo de preview/demo |
-| Vitest | Pruebas unitarias, de dominio y funcionales de API |
-| Testing Library | Pruebas de comportamiento visible de componentes |
-| Playwright | Smoke tests y E2E del recorrido crítico |
-| Supabase | PostgreSQL gestionado, Auth opcional y Storage acotado |
-| PostgreSQL | Estados, decisiones, intenciones, trazabilidad e idempotencia |
-| Stellar SDK, Freighter, Horizon y Testnet | XDR, firma no custodial, envío, consulta y liquidación de prueba |
-| Proveedor LLM — TBD | Evaluación estructurada detrás de un adaptador reemplazable |
+Vaqcrow debe continuar como **monorepo**. Un monorepo es una estrategia de organización del código, no un monolito de despliegue: `web`, `api` y `worker` pueden compilarse, desplegarse y revertirse por separado. La decisión responde al dominio compartido, los contratos y fixtures comunes, los paquetes reutilizables, el journey vertical, la CI coordinada y el tamaño actual del equipo y del proyecto.
 
-## Arquitectura de despliegue propuesta
+Los límites para evitar un monorepo caótico son explícitos: dependencias dirigidas, dominio independiente de frameworks, ninguna importación de internals entre aplicaciones, un paquete por capacidad cohesionada y despliegues separados. La estructura completa y sus reglas están en [Arquitectura del monorepo](./docs/architecture/monorepo.md).
 
-**Vercel es el destino recomendado, todavía no desplegado, para el frontend Next.js.** La API Fastify debe ejecutarse como un servicio Node.js de larga duración, separado del frontend y con proveedor de hosting **TBD y reemplazable**. Supabase aportaría sus servicios gestionados. El worker solo se desplegaría si las confirmaciones o jobs requieren un proceso independiente.
-
-```mermaid
-flowchart LR
-    U[Personas usuarias] --> WEB[Next.js web<br/>Vercel propuesto]
-    U <-->|firma no custodial| F[Freighter]
-    WEB --> API[Fastify API<br/>hosting TBD]
-    API --> DB[(Supabase PostgreSQL)]
-    API --> AI[Proveedor LLM<br/>TBD]
-    API --> H[Horizon]
-    API -. jobs opcionales .-> W[Worker<br/>hosting TBD]
-    W --> DB
-    W --> H
-    H --> T[Stellar Testnet]
-```
-
-## Estructura objetivo del monorepo
-
-Esta estructura está **planificada**; el repositorio todavía no contiene estas aplicaciones ni paquetes:
+Resumen planificado:
 
 ```text
-apps/
-  web/                 # Next.js
-  api/                 # Node.js + Fastify
-  worker/              # Opcional
-packages/
-  domain/              # Estados y cálculos determinísticos
-  stellar/             # Freighter, XDR y Horizon
-  ai/                  # Esquemas, evidencia y adaptador LLM
-  simulators/          # KYC, ventas y corredor ARS
-  db/                  # PostgreSQL, migraciones e idempotencia
-  ui/                  # Componentes realmente compartidos
-  testing/             # Fixtures y contratos de prueba
+apps/web · apps/api · apps/worker (opcional)
+packages/domain · contracts · ai · stellar · simulators · db · config · testing · ui
 ```
 
-## Alcance de interfaz
+Esta estructura todavía no está implementada.
 
-La demo propone seis pantallas reutilizables para un solo recorrido, no un marketplace completo:
+## Stack previsto para la demo
 
-1. oportunidad y límites de la demo;
-2. solicitud y evidencia de la PyME;
-3. evaluación de IA y decisión humana;
-4. fondeo, Freighter y revisión de transacción;
-5. procesamiento y estado asíncrono;
-6. panel, cálculo y distribución.
+| Capa | Tecnología y responsabilidad |
+|---|---|
+| Web | Next.js + React para la interfaz y un BFF limitado a necesidades de presentación |
+| API | Node.js + TypeScript + Fastify para comandos, dominio, verificación XDR y coordinación |
+| Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
+| Stellar | Stellar SDK, Freighter, Horizon y Testnet para XDR, firma no custodial, envío y confirmación |
+| IA | Proveedor LLM por definir, detrás de un adaptador reemplazable y con salida estructurada |
+| Pruebas | Vitest, Testing Library y Playwright |
+| Workspace y CI | pnpm, Turborepo y GitHub Actions |
 
-La especificación completa de flujos, estados, accesibilidad, componentes y prompts está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Las pantallas de Stitch **todavía no fueron generadas**.
+## Despliegue propuesto
+
+- `apps/web` y `apps/api` tendrán artefactos y despliegues independientes. Vercel es el destino recomendado para el frontend, todavía no desplegado; el hosting de la API Fastify continúa **TBD y reemplazable**.
+- `apps/worker` solo se desplegará como proceso independiente si las confirmaciones asíncronas o los jobs acotados no caben de forma segura en la API.
+- Supabase aportará servicios gestionados, sin convertir al cliente web en dueño de la autorización ni de los estados críticos.
+
+No existen despliegues productivos actualmente.
 
 ## Desarrollo y calidad
 
-- GitHub Actions debe exigir en cada pull request instalación con lockfile congelado, lint, typecheck, Vitest, Testing Library, build y contratos con dobles locales.
-- La CI debe ser determinística: no depender de Testnet, Horizon ni del proveedor LLM.
-- Las comprobaciones externas de Testnet/LLM deben ejecutarse por separado y de forma acotada en preview/demo o antes del ensayo.
-- Playwright debe proteger el recorrido crítico y sus fallbacks esenciales.
-- El frontend y la API deben tener artefactos y despliegues independientes; una preview/demo solo se promueve después de superar los gates.
-- Los secretos deben inyectarse desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
+- La CI debe ser determinística: las pruebas normales usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
+- Cada pull request debe ejecutar instalación con lockfile congelado, lint, typecheck, pruebas, contratos y builds.
+- Playwright debe proteger el journey crítico y sus fallbacks esenciales.
+- Las comprobaciones externas de Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
+- Los secretos se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
-## Hoja de ruta de dos semanas
+## Planificación y gestión del desarrollo
 
-| Hito | Resultado verificable |
-|---|---|
-| Alcance y shell de demo | Historia única, dataset sintético congelado, navegación y rótulos real/simulado |
-| Dominio e IA | Estados, persistencia mínima, cálculo monetario y evaluación estructurada con revisión humana |
-| Camino Stellar | Freighter, XDR verificado, pago Testnet y confirmación asíncrona con Horizon |
-| Revenue share | Feed mensual simulado, cálculo determinístico y distribución firmada en Testnet |
-| Integración y resiliencia | Recorrido completo, fallbacks de IA/red, telemetría y paquete de evidencia |
-| Ensayo y presentación final | Tres ejecuciones estables de hasta siete minutos, freeze, video y hashes de respaldo |
+La fuente de alcance para implementar la demo es el [plan de la demo](./docs/planning/DEMO.md). La planificación y la implementación se mantienen deliberadamente separadas: el plan define el resultado esperado y el backlog de GitHub organiza el trabajo ejecutable; ninguna de las dos cosas implica que la aplicación ya esté implementada.
 
-El detalle diario, la línea de corte, los criterios de aceptación y el guion viven en el plan de la demo.
+El backlog previsto se gestionará en un GitHub Project Kanban llamado **Vaqcrow-TFM**. El flujo de trabajo debe permitir distinguir el estado de cada unidad sin confundir planificación con entrega:
 
-## Estado del repositorio
+```text
+docs/planning/DEMO.md
+          │
+          ▼
+       OpenCode
+          │
+          ▼
+   GitHub Project: Vaqcrow-TFM
+          │
+          ├── Epic
+          │    ├── Feature
+          │    │    ├── Task
+          │    │    └── Task
+          │    └── Feature
+          │
+          ├── Epic
+          │    └── ...
+          │
+          └── Technical/Foundation work
+               ├── Frontend setup
+               ├── Backend setup
+               ├── Database
+               ├── Testing
+               ├── CI/CD
+               └── Deployment
+```
 
-Actualmente este repositorio contiene documentación de producto, planificación de la demo y especificación de diseño. **Todavía no hay implementación, aplicaciones arrancables, pruebas automatizadas, despliegues, capturas ni pantallas generadas.** Por eso este README no publica comandos de instalación o ejecución.
+El tablero debe contemplar, como mínimo, estados equivalentes a **Backlog**, **Ready**, **In Progress**, **Testing**, **Review**, **Blocked** y **Done**. La taxonomía final de estados, labels y campos se decidirá al analizar el plan completo, evitando crear categorías que no respondan a una necesidad real del proyecto.
+
+Cada Feature o Task de implementación debe incluir contexto, objetivo, requisitos funcionales y técnicos, criterios de aceptación verificables, dependencias, estrategia de pruebas TDD y Definition of Done. El backlog debe cubrir tanto funcionalidades visibles como trabajo fundacional: monorepo, frontend, API, Supabase/PostgreSQL, contratos, IA, Stellar, datos sintéticos, testing, seguridad, CI/CD, despliegue, observabilidad y preparación de la demo.
+
+La creación y organización del Project, sus issues, labels, campos y dependencias será una actividad de planificación independiente. No se deben marcar issues como completados sin evidencia en el repositorio, y la implementación solo comenzará después de seleccionar una unidad de trabajo con sus dependencias satisfechas.
 
 ## Documentación
 
-- [Plan de la demo](./docs/planning/DEMO.md) — fuente de verdad de la demo de dos semanas (TFM del Máster en Desarrollo con IA), su arquitectura, pruebas, demo y límites.
+- [Arquitectura del monorepo](./docs/architecture/monorepo.md) — decisión, árbol propuesto, dependencias, despliegue, testing y límites de crecimiento.
+- [Plan de la demo](./docs/planning/DEMO.md) — historia de dos semanas, arquitectura, pruebas, demo y límites.
 - [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
-- [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md) — seis pantallas, sistema visual, estados y ejecución pendiente de Stitch.
+- [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md) — inventario visual, flujos, estados, accesibilidad y pendientes de diseño.
 
 ## Próximo paso
 
-Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente la implementación acotada de la demo: monorepo mínimo, shell de demo y gates de calidad. No se debe asumir que las pantallas de Stitch existen ni ampliar el alcance hacia operación real.
+Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente el monorepo mínimo, el shell de demo y los gates de calidad descritos en la arquitectura. Este README y el documento de arquitectura no implican que esa implementación ya exista ni amplían el alcance hacia operación real.
 
 ## Licencia
 
