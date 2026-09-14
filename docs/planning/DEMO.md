@@ -122,22 +122,38 @@ No se replica la arquitectura completa de producción. Se construyen dos aplicac
 
 ```text
 apps/
-  web/                 # Next.js: UI, revisión, dashboard y BFF solo donde corresponda
-  api/                 # Node.js + Fastify: comandos, dominio, XDR y coordinación de IA
+  web/                 # Next.js: presentación, aplicación frontend, estado y adaptadores HTTP/Freighter
+  api/                 # Fastify: casos de uso backend, puertos, XDR y orquestación de proveedores
   worker/              # Opcional: confirmaciones asíncronas y jobs acotados
 packages/
-  domain/              # Estados y cálculos determinísticos de revenue share
-  stellar/             # Freighter, XDR, Horizon, envío y confirmación
-  ai/                  # Prompt, esquema, evidencia y adaptador de modelo
-  simulators/          # KYC, cotización/depósito y feed de ventas
-  db/                  # Acceso a PostgreSQL, migraciones e idempotencia mínima
-  ui/                  # Componentes compartidos que realmente tengan más de un uso
-  testing/             # Fixtures, builders y contratos compartidos para pruebas
+  contracts/           # Contratos web/API: esquemas validables, DTOs, eventos e identificadores
+  domain/              # Reglas autoritativas puras y cálculos; uso backend y pruebas de dominio
+  stellar/             # Solo backend: XDR, Horizon, envío y confirmación
+  ai/                  # Solo backend: prompt, evidencia y adaptador de modelo
+  simulators/          # Solo backend: KYC, cotización/depósito y feed de ventas
+  db/                  # Solo backend: PostgreSQL, migraciones e idempotencia mínima
+  ui/                  # Solo web: componentes con más de un uso real
+  testing/             # Fixtures de contratos y utilidades de prueba sin reglas de aplicación
 ```
 
 `apps/web` no sustituye al backend: contiene Next.js, la UI y un BFF únicamente cuando simplifica una necesidad propia de presentación. `apps/api` es un servicio Node.js con Fastify de larga ejecución y despliegue independiente; allí viven la autorización, los comandos de dominio, la verificación del XDR y la coordinación con IA y adaptadores externos. `apps/worker` se agrega únicamente si las confirmaciones o jobs acotados no caben de forma segura en el proceso de la API. No se crean `apps/admin`, microservicios, Kubernetes, un ledger de producción ni una jerarquía de paquetes por tabla durante el sprint.
 
 Supabase aporta **PostgreSQL gestionado**. Supabase Auth se usa solo si la demo necesita identidades reales, y Supabase Storage se limita a fixtures sintéticos o evidencia de la demostración. Fastify valida la identidad y es dueño de la autorización y de los comandos de dominio: el navegador no escribe directamente estados críticos ni recibe credenciales de servicio de Supabase.
+
+### Clean Architecture pragmática
+
+`apps/web` y `apps/api` son proyectos independientes: cada uno aplica Clean Architecture según su propio comportamiento y runtime. La estructura del frontend no copia ni refleja las carpetas o capas del backend. El despliegue independiente tampoco obliga a duplicar código, pero cualquier código compartido debe evitar el acoplamiento entre runtimes y capas.
+
+| Unidad | Límite requerido |
+|---|---|
+| `apps/api` | Es dueño del comportamiento de dominio autoritativo, los casos de uso de aplicación del backend, los puertos de persistencia y la orquestación de proveedores. Sus adaptadores conectan Fastify, PostgreSQL/Supabase, LLM y Stellar/Horizon; dominio y aplicación no importan frameworks ni SDKs de proveedores. |
+| `apps/web` | Es dueño de la presentación, la orquestación de casos de uso de aplicación del frontend, el estado de cliente, los modelos y políticas propios del frontend, y los adaptadores hacia HTTP/API y Freighter. Su estructura nace del comportamiento de la interfaz; la UI no contiene reglas de negocio autoritativas ni usa SDKs de proveedores fuera de adaptadores explícitos. |
+| `packages/contracts` | Es el límite compartido entre aplicaciones y contiene solo esquemas de solicitudes, respuestas y eventos validables en runtime, sus DTOs, identificadores de correlación y primitivas inmutables realmente universales. Ningún contrato expone tipos de SDKs o detalles internos de una aplicación. |
+| `packages/domain` | Conserva reglas y cálculos de negocio autoritativos, puros y sin frameworks, usados por la API y por pruebas de backend/dominio. `apps/web` consume contratos y proyecciones de la API en lugar de importar casos de uso del backend. Una primitiva universal solo pasa a `packages/contracts` cuando es inmutable, no depende de frameworks y su comportamiento compartido está justificado. |
+
+No se comparten casos de uso del backend, interfaces de repositorio, modelos de persistencia, tipos de SDKs de proveedores, estado o view models de UI ni reglas de aplicación del frontend. Los paquetes de integración permanecen del lado que los opera; en particular, el adaptador de Freighter pertenece a `apps/web`, mientras que XDR, Horizon y el envío pertenecen al backend.
+
+Se implementan únicamente las capas y los puertos que mejoran la testabilidad o permiten sustituir un proveedor dentro del alcance de dos semanas. Se rechazan la ceremonia arquitectónica, las abstracciones genéricas de repositorio, una carpeta por entidad y las carpetas o clases sin un límite de comportamiento verificable; esta decisión no amplía el alcance funcional ni operativo de la demo.
 
 ```mermaid
 flowchart LR
@@ -181,7 +197,7 @@ Las flechas continuas representan relaciones de ejecución; las flechas punteada
 **En cada pull request:**
 
 1. Instalar dependencias con lockfile congelado.
-2. Ejecutar lint y typecheck.
+2. Ejecutar lint, typecheck y comprobaciones automatizadas de límites de importación.
 3. Ejecutar Vitest para pruebas unitarias, funcionales y de componentes con Testing Library.
 4. Construir las aplicaciones y ejecutar las pruebas determinísticas, incluidos los contratos de adaptadores con dobles locales.
 
@@ -310,6 +326,7 @@ Nunca se recortan la evaluación real de IA, la aprobación humana, la firma rea
 - [ ] Fondeo y distribución pasan por `submitted` antes de un estado terminal confirmado por Horizon.
 - [ ] Ambos movimientos muestran hash, operaciones y enlace de explorador Testnet.
 - [ ] El cálculo de revenue share usa unidades mínimas, regla versionada y política explícita de redondeo.
+- [ ] Las comprobaciones de arquitectura rechazan dependencias contrarias a los límites definidos, y las pruebas cubren casos de uso mediante puertos y adaptadores mediante sus contratos.
 - [ ] LLM y red pueden fallar sin dejar la interfaz bloqueada ni afirmar éxito.
 - [ ] No hay secretos, seeds, PII ni fondos reales en repositorio, logs o fixtures.
 
@@ -322,6 +339,7 @@ Nunca se recortan la evaluación real de IA, la aprobación humana, la firma rea
 | Vitest — golden/IA | Caso esperado, faltante, anomalía, alucinación/referencia inválida y respuesta mal formada |
 | Testing Library + Vitest — componentes | Comportamiento visible de formularios, revisión humana, estados pendientes/terminales, errores y rótulos `SIMULADO` |
 | Contrato de adaptadores | KYC, ventas, funding rail, LLM, Freighter y Horizon contra fixtures versionados y dobles determinísticos |
+| Arquitectura y límites de importación | Dirección de dependencias de web, API, dominio, aplicación e infraestructura; ausencia de imports directos desde UI/dominio hacia frameworks o SDKs de proveedores no autorizados |
 | Playwright — smoke/E2E | Journey crítico completo en navegador: solicitud, evaluación, aprobación, Freighter, fondeo, confirmación y distribución; fallbacks esenciales de LLM/red |
 | Testnet — comprobación operativa | Fondeo y distribución con cuentas aisladas y passphrase explícita, ejecutados fuera de la suite CI determinística |
 
