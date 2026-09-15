@@ -1,0 +1,24 @@
+{
+  "name": "@vaqcrow/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vaqcrow/contracts": "workspace:*",
+    "@vaqcrow/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "eslint": "catalog:",
+    "@eslint/js": "catalog:",
+    "typescript-eslint": "catalog:",
+    "globals": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -11,11 +11,14 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "boundaries": "depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries",
     "install:verify": "pnpm install --frozen-lockfile",
     "workspaces:list": "pnpm -r list --depth -1"
   },
   "devDependencies": {
     "turbo": "^2.10.13",
+    "dependency-cruiser": "^16.0.0",
     "typescript": "catalog:",
     "eslint": "catalog:",
     "@eslint/js": "catalog:",
