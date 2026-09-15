@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { WorkspaceStatus } from "./workspace-status";
 
@@ -13,5 +13,15 @@ describe("WorkspaceStatus", () => {
     render(<WorkspaceStatus />);
 
     expect(screen.getByText("Status: not connected")).toBeInTheDocument();
+  });
+
+  it("shows connection failed after clicking connect, since the wallet adapter is a stub", async () => {
+    render(<WorkspaceStatus />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect wallet" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Status: connection failed")).toBeInTheDocument();
+    });
   });
 });
