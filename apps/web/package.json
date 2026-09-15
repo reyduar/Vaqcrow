@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
-    "@vaqcrow/contracts": "workspace:*"
+    "@vaqcrow/contracts": "workspace:*",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "typescript": "catalog:",
@@ -18,6 +23,12 @@
     "@eslint/js": "catalog:",
     "typescript-eslint": "catalog:",
     "globals": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "eslint-config-next": "^16.3.5",
+    "jsdom": "^30.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
   }
 }
