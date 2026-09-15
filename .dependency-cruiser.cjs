@@ -38,6 +38,14 @@ module.exports = {
         path: "(^|/)node_modules/(fastify|@fastify/|@supabase/|@stellar/|stellar-sdk|@anthropic-ai/|openai)(/|$)",
         dependencyTypesNot: ["type-only"]
       }
+    },
+    {
+      name: "web-presentation-stays-contracts-free",
+      comment:
+        "apps/web/src/presentation renders; contracts cross the boundary in infrastructure/ and state/. type-only imports stay legal so components can name contract types.",
+      severity: "error",
+      from: { path: "^apps/web/src/presentation/" },
+      to: { path: "(^packages/contracts/|/@vaqcrow/contracts/)", dependencyTypesNot: ["type-only"] }
     }
   ],
   options: {
