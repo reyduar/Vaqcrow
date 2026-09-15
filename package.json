@@ -1,0 +1,26 @@
+{
+  "name": "vaqcrow",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.27.0",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "install:verify": "pnpm install --frozen-lockfile",
+    "workspaces:list": "pnpm -r list --depth -1"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.13",
+    "typescript": "catalog:",
+    "eslint": "catalog:",
+    "@eslint/js": "catalog:",
+    "typescript-eslint": "catalog:",
+    "globals": "catalog:",
+    "vitest": "catalog:"
+  }
+}
