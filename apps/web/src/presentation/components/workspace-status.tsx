@@ -1,8 +1,20 @@
+"use client";
+
+import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
+import { useWorkspaceViewModel } from "@/state/workspace-view-model";
+
+const wallet = new FreighterWallet();
+
 export function WorkspaceStatus() {
+  const { status, connect } = useWorkspaceViewModel(wallet);
+
   return (
     <section>
       <h1>Vaqcrow Workspace</h1>
-      <p>Status: not connected</p>
+      <p>Status: {status}</p>
+      <button type="button" onClick={connect}>
+        Connect wallet
+      </button>
     </section>
   );
 }
