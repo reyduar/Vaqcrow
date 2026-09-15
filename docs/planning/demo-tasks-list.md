@@ -1,17 +1,17 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye los 7 Epics de seguimiento, los 24 Features y las 74 Tasks activas del alcance de la demo; el estado y las relaciones se verificaron en `reyduar/Vaqcrow` y en el Project `Vaqcrow-TFM` #3 el 14 de septiembre de 2026.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 15 de septiembre de 2026; 102 issues están en `Backlog`, 2 en `Ready` y 3 en `Done`.
 
 ## Comenzar aquí
 
-> **Primera unidad ejecutable actualmente Ready: [#35 — Configurar el workspace raíz pnpm/Turborepo](#issue-35).**
+> **Unidades actualmente `Ready`, en orden de ejecución: [#36 — Probar el workspace y los límites de Clean Architecture](#issue-36) y [#116 — Agregar una utilidad de identificador de correlación a `packages/contracts`](#issue-116).**
 >
-> El Project también marca el Feature contenedor [#11](#issue-11) como `Ready`, pero un Feature no es una unidad de implementación. La primera rama de trabajo propuesta corresponde a la Task #35.
+> [#36](#issue-36) es la siguiente unidad del flujo principal después de [#110](#issue-110) y [#111](#issue-111), ambas en `Done`. [#116](#issue-116) es un follow-up independiente ya listo después de [#110](#issue-110) y debe coordinar con [#38](#issue-38) la elección de la biblioteca de validación.
 
 ## Política de orden
 
 1. Respetar primero el orden topológico de las dependencias nativas de GitHub. Una prioridad **nunca** permite adelantar trabajo bloqueado.
-2. Entre unidades simultáneamente listas, ejecutar `Critical` antes que `High`.
+2. Entre unidades simultáneamente listas, ejecutar `Critical` antes que `High`, y `High` antes que `Medium`.
 3. Si la prioridad coincide, preferir la unidad que desbloquea más dependientes directos.
 4. Si todavía hay empate, usar el número de issue ascendente para obtener un orden determinístico.
 
@@ -32,6 +32,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Epic | Features contenidos |
 |---|---|
+| [#3 Fundamentos de la demo y monorepo (duplicado sin descomposición)](#issue-3) | Ninguno; duplica el alcance de #4 |
 | [#4 Fundamentos de la demo y monorepo](#issue-4) | #11–#15 |
 | [#5 Estructura de la demo y experiencia de confianza](#issue-5) | #16–#19 |
 | [#6 Evaluación explicable con IA](#issue-6) | #20–#22 |
@@ -44,10 +45,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Ola | Features, en orden dentro de la ola | Tasks del Feature |
 |---:|---|---|
-| 0 | [#11 Inicializar workspace pnpm/Turborepo](#issue-11) | [#35 Configurar workspace raíz](#issue-35) → ([#110 Scaffold de API](#issue-110) y [#111 Scaffold web](#issue-111) en paralelo) → [#36 Probar límites](#issue-36) → [#37 Documentar evidencia](#issue-37) |
+| 0 | [#11 Inicializar workspace pnpm/Turborepo](#issue-11) | [~~#35 Configurar workspace raíz~~](#issue-35) → ([~~#110 Scaffold de API~~](#issue-110) y [~~#111 Scaffold web~~](#issue-111) en paralelo) → [#36 Probar límites](#issue-36) → [#37 Documentar evidencia](#issue-37) |
 | 1 | [#12 Definir estados y contratos](#issue-12) | [#38 Implementar](#issue-38) → [#39 Probar](#issue-39) → [#40 Documentar](#issue-40) |
 | 1 | [#15 Configurar pruebas y CI](#issue-15) | [#47 Implementar](#issue-47) → [#48 Probar](#issue-48) → [#49 Documentar](#issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#issue-14) | [#44 Implementar](#issue-44) → [#45 Probar](#issue-45) → [#46 Documentar](#issue-46) |
+| 1 | Task sin padre | [#116 Agregar una utilidad de identificador de correlación a `packages/contracts`](#issue-116), después de #110 y coordinada con #38 |
 | 2 | [#16 Construir shell y navegación](#issue-16) | [#50 Implementar](#issue-50) → [#51 Probar](#issue-51) → [#52 Documentar](#issue-52) |
 | 2 | [#20 Definir esquema y guardrails de IA](#issue-20) | [#65 Implementar](#issue-65) → [#66 Probar](#issue-66) → [#67 Documentar](#issue-67) |
 | 2 | [#23 Encapsular Stellar y Freighter](#issue-23) | [#74 Implementar](#issue-74) → [#75 Probar](#issue-75) → [#76 Documentar](#issue-76) |
@@ -70,6 +72,17 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 9 | [#34 Congelar build y presentación](#issue-34) | [#107 Implementar](#issue-107) → [#108 Probar](#issue-108) → [#109 Documentar](#issue-109) |
 
 ## Contenedores de planificación
+
+<a id="issue-3"></a>
+### #3 — Fundamentos de la demo y monorepo (duplicado sin descomposición)
+
+- **Título original:** `Epic: Demo foundation and monorepo`
+- **GitHub y estado:** [issue #3](https://github.com/reyduar/Vaqcrow/issues/3) · Tipo `Epic` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre, sin Features hijas y sin bloqueos nativos.
+- **Objetivo:** establecer workspace, dominio, persistencia, configuración, seguridad, pruebas y CI para la demo.
+- **Orden:** repite el título, el objetivo y el alcance de [#4](#issue-4), pero no contiene su descomposición. Se incluye en el inventario porque permanece como Issue en el Project #4, aunque no constituye una unidad ejecutable.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic no tiene trabajo hijo y duplica el contenedor canónico [#4](#issue-4).
 
 <a id="issue-4"></a>
 ### #4 — Fundamentos de la demo y monorepo
@@ -154,7 +167,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ### #11 — Inicializar el workspace pnpm/Turborepo
 
 - **Título original:** `Feature: Bootstrap pnpm/Turborepo workspace`
-- **GitHub y estado:** [issue #11](https://github.com/reyduar/Vaqcrow/issues/11) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #11](https://github.com/reyduar/Vaqcrow/issues/11) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
 - **Jerarquía y bloqueos:** padre [#4](#issue-4); sin bloqueos nativos.
 - **Objetivo:** establecer un workspace raíz reproducible con `apps/api` y `apps/web` independientes, Clean Architecture pragmática y un modelo deliberadamente estrecho de código compartido.
 - **Orden:** abre el grafo y desbloquea [#12](#issue-12), [#14](#issue-14), [#15](#issue-15) y [#16](#issue-16).
@@ -162,35 +175,35 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 **Rama propuesta.** `Vaqcrow#11_Feat_Bootstrap_pnpm_Turborepo_workspace` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
 <a id="issue-35"></a>
-### #35 — Configurar el workspace raíz pnpm/Turborepo
+### ~~#35 — Configurar el workspace raíz pnpm/Turborepo~~
 
 - **Título original:** `Task: Configure the root pnpm/Turborepo workspace`
-- **GitHub y estado:** [issue #35](https://github.com/reyduar/Vaqcrow/issues/35) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #35](https://github.com/reyduar/Vaqcrow/issues/35) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#11](#issue-11), cuyo Feature no tiene prerrequisitos; sin bloqueos nativos.
 - **Objetivo:** configurar solo la base raíz de pnpm/Turborepo, los límites de paquetes, el tooling compartido y los manifests necesarios para crear después API y web de forma independiente.
-- **Orden:** es la primera unidad ejecutable y desbloquea en paralelo [#110](#issue-110) y [#111](#issue-111).
+- **Orden:** fue la primera unidad ejecutable y desbloqueó en paralelo [#110](#issue-110) y [#111](#issue-111).
 
 **Rama propuesta.** `Vaqcrow#35_Task_Configure_the_root_pnpm_Turborepo_workspace` es una unidad de implementación revisable.
 
 <a id="issue-110"></a>
-### #110 — Crear la estructura base de la API Fastify con Clean Architecture
+### ~~#110 — Crear la estructura base de la API Fastify con Clean Architecture~~
 
 - **Título original:** `Task: Scaffold the Fastify API with Clean Architecture`
-- **GitHub y estado:** [issue #110](https://github.com/reyduar/Vaqcrow/issues/110) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #110](https://github.com/reyduar/Vaqcrow/issues/110) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#11](#issue-11), cuyo Feature no tiene prerrequisitos; bloqueada nativamente por [#35](#issue-35).
 - **Objetivo:** crear `apps/api` como aplicación Fastify independiente con límites de dominio y aplicación orientados hacia dentro y adaptadores de infraestructura hacia fuera.
-- **Orden:** puede avanzar en paralelo con [#111](#issue-111); ambas desbloquean [#36](#issue-36).
+- **Orden:** se completó en paralelo con [#111](#issue-111); ambas dejan a [#36](#issue-36) como siguiente unidad por dependencias.
 
 **Rama propuesta.** `Vaqcrow#110_Task_Scaffold_the_Fastify_API_with_Clean_Architecture` es una unidad de implementación revisable.
 
 <a id="issue-111"></a>
-### #111 — Crear la estructura base de la web Next.js con Clean Architecture
+### ~~#111 — Crear la estructura base de la web Next.js con Clean Architecture~~
 
 - **Título original:** `Task: Scaffold the Next.js web app with Clean Architecture`
-- **GitHub y estado:** [issue #111](https://github.com/reyduar/Vaqcrow/issues/111) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #111](https://github.com/reyduar/Vaqcrow/issues/111) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#11](#issue-11), cuyo Feature no tiene prerrequisitos; bloqueada nativamente por [#35](#issue-35).
 - **Objetivo:** crear `apps/web` como aplicación Next.js independiente, organizada para presentación, orquestación frontend, estado de cliente y adaptadores de navegador sin copiar las capas del backend.
-- **Orden:** puede avanzar en paralelo con [#110](#issue-110); ambas desbloquean [#36](#issue-36).
+- **Orden:** se completó en paralelo con [#110](#issue-110); ambas dejan a [#36](#issue-36) como siguiente unidad por dependencias.
 
 **Rama propuesta.** `Vaqcrow#111_Task_Scaffold_the_Next_js_web_app_with_Clean_Architecture` es una unidad de implementación revisable.
 
@@ -198,7 +211,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ### #36 — Probar el workspace y los límites de Clean Architecture
 
 - **Título original:** `Task: Test workspace and Clean Architecture boundaries`
-- **GitHub y estado:** [issue #36](https://github.com/reyduar/Vaqcrow/issues/36) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #36](https://github.com/reyduar/Vaqcrow/issues/36) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#11](#issue-11), cuyo Feature no tiene prerrequisitos; bloqueada nativamente por [#110](#issue-110) y [#111](#issue-111).
 - **Objetivo:** verificar la reproducibilidad del workspace y los límites independientes de Clean Architecture de la API Fastify y la web Next.js una vez presentes ambos scaffolds.
 - **Orden:** consolida las dos ramas paralelas y desbloquea [#37](#issue-37).
@@ -349,6 +362,17 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **Orden:** cierra [#14](#issue-14) y habilita [#23](#issue-23).
 
 **Rama propuesta.** `Vaqcrow#46_Task_Document_evidence_establish_typed_configuration_and_secret_boundaries` es una unidad de documentación revisable.
+
+<a id="issue-116"></a>
+### #116 — Agregar una utilidad de identificador de correlación a `packages/contracts`
+
+- **Título original:** `Task: Add correlation-id helper to packages/contracts`
+- **GitHub y estado:** [issue #116](https://github.com/reyduar/Vaqcrow/issues/116) · Tipo `Task` · Área `backend` · Prioridad `Medium` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos. Su sección `Dependencies` declara una dependencia textual de [#110](#issue-110) y una relación funcional con [#12](#issue-12) y [#38](#issue-38); no se inventa una relación padre.
+- **Objetivo:** agregar a `packages/contracts` un tipo de identificador de correlación, un generador y un esquema o parser validable en runtime, y demostrar que `apps/api` puede propagar el identificador sin introducir dependencias de framework o proveedor en las capas internas.
+- **Orden:** se ubica en esta ola como follow-up independiente ya listo porque [#110](#issue-110) está `Done`; debe coordinar con [#38](#issue-38) la elección de la biblioteca de validación para evitar dos soluciones competidoras.
+
+**Rama propuesta.** `Vaqcrow#116_Task_Add_correlation_id_helper_to_packages_contracts` es una unidad de implementación revisable.
 
 ## Ola 2 — Shell, IA, Stellar y persistencia
 
@@ -1252,14 +1276,14 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - En [#24](#issue-24), la sección textual `Dependencies` menciona `#12`, `#13` y `#23`, mientras que la relación nativa `blocked by` contiene solo `#13` y `#23`. Este documento usa las relaciones nativas para ordenar, como fuente autoritativa solicitada. No se pierde la precedencia efectiva de #12 porque [#13](#issue-13) ya está bloqueado nativamente por [#12](#issue-12).
 
-### Issues no canónicas
+### Issues fuera del flujo canónico
 
-- [Epic #3](https://github.com/reyduar/Vaqcrow/issues/3) continúa abierto, pero es un duplicado no canónico de [#4](#issue-4); no forma parte del orden de ejecución.
+- [Epic #3](#issue-3) continúa en el Project #4 y por eso se incluye en el inventario con ancla propia, pero no forma parte del orden ejecutable: no tiene trabajo hijo y repite el alcance de [#4](#issue-4).
 - [Tasks #59](https://github.com/reyduar/Vaqcrow/issues/59), [#60](https://github.com/reyduar/Vaqcrow/issues/60) y [#61](https://github.com/reyduar/Vaqcrow/issues/61) están cerradas como duplicados de [#56](#issue-56), [#57](#issue-57) y [#58](#issue-58), respectivamente; no son ejecutables ni aparecen en el índice canónico.
 
 ## Fuentes verificadas
 
 - Repositorio e issues: <https://github.com/reyduar/Vaqcrow/issues>.
-- Project `Vaqcrow-TFM` #3: <https://github.com/users/reyduar/projects/3>.
+- Project canónico `Vaqcrow-TFM` #4: <https://github.com/users/reyduar/projects/4>.
 - [Plan de la demo](./DEMO.md).
 - [Arquitectura del monorepo](../architecture/monorepo.md).
