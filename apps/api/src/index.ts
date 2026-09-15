@@ -1,7 +1,4 @@
-import { describeWorkspace } from "@vaqcrow/contracts";
-import { isWorkspaceBootstrapped } from "@vaqcrow/domain";
+import { buildApp } from "./infrastructure/http/build-app.js";
 
-export function apiBootstrapProbe(): string {
-  const probe = describeWorkspace("api");
-  return isWorkspaceBootstrapped([probe.name]) ? `${probe.name}:ready` : `${probe.name}:empty`;
-}
+const app = buildApp();
+await app.listen({ port: Number(process.env["PORT"] ?? 3000), host: "0.0.0.0" });

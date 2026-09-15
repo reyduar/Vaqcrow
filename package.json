@@ -12,7 +12,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "boundaries": "depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries",
+    "test:boundaries": "vitest run",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",
     "install:verify": "pnpm install --frozen-lockfile",
     "workspaces:list": "pnpm -r list --depth -1"
   },
