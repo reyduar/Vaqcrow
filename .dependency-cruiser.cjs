@@ -27,6 +27,17 @@ module.exports = {
       severity: "error",
       from: { path: "^packages/domain/src/", pathNot: "\\.test\\.ts$" },
       to: { dependencyTypes: ["npm", "npm-dev", "npm-peer", "npm-optional"] }
+    },
+    {
+      name: "api-application-stays-provider-free",
+      comment:
+        "apps/api/src/application holds use cases and ports; Fastify and provider SDKs belong in infrastructure/. type-only imports stay legal so ports can name SDK types.",
+      severity: "error",
+      from: { path: "^apps/api/src/application/" },
+      to: {
+        path: "(^|/)node_modules/(fastify|@fastify/|@supabase/|@stellar/|stellar-sdk|@anthropic-ai/|openai)(/|$)",
+        dependencyTypesNot: ["type-only"]
+      }
     }
   ],
   options: {

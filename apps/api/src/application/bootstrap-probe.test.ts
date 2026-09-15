@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiBootstrapProbe } from "./index.js";
+import { apiBootstrapProbe } from "./bootstrap-probe.js";
 
 describe("apiBootstrapProbe", () => {
   it("resolves the workspace graph across @vaqcrow/contracts and @vaqcrow/domain", () => {

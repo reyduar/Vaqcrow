@@ -7,18 +7,22 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --watch dist/index.js)",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@vaqcrow/contracts": "workspace:*",
-    "@vaqcrow/domain": "workspace:*"
+    "@vaqcrow/domain": "workspace:*",
+    "fastify": "^5.12.4"
   },
   "devDependencies": {
-    "typescript": "catalog:",
-    "eslint": "catalog:",
     "@eslint/js": "catalog:",
-    "typescript-eslint": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
     "globals": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   }
 }
