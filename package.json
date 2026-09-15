@@ -25,6 +25,7 @@
     "@eslint/js": "catalog:",
     "typescript-eslint": "catalog:",
     "globals": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "eslint-config-next": "^16.3.5"
   }
 }
