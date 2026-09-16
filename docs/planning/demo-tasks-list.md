@@ -4,7 +4,7 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#39 — Probar estados de dominio y contratos compartidos](#^issue-39), [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
+> **Unidades actualmente `Ready`: [#39 — Probar exhaustivamente el ciclo de revisión de solicitudes y su contrato compartido](#^issue-39), [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
 >
 > [#38](#^issue-38) quedó en `Done` (PR [#125](https://github.com/reyduar/Vaqcrow/pull/125) mergeado), completando el ciclo SDD del ciclo mínimo de revisión de solicitudes y su contrato compartido. Eso desbloqueó su única dependiente nativa, [#39](#^issue-39), que pasó a `Ready`. Por la política de orden, [#12](#^issue-12) tiene prioridad `Critical` (las otras dos Features en juego son `High`), así que [#39](#^issue-39) sigue siendo la siguiente unidad recomendada del flujo principal; [#44](#^issue-44) y [#47](#^issue-47) quedan disponibles para trabajo en paralelo si hay capacidad. [#16](#^issue-16) sigue bloqueada porque además requiere que [#12](#^issue-12) esté completa.
 
@@ -269,15 +269,15 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#38_Task_Implement_the_minimal_application_review_lifecycle_and_shared_contract`, mergeada vía [PR #125](https://github.com/reyduar/Vaqcrow/pull/125). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive) con `sdd-verify` independiente en PASS (0 crítico/0 warning). Evidencia completa en [`application-review-lifecycle-evidence.md`](./application-review-lifecycle-evidence.md).
 
-### #39 — Probar estados de dominio y contratos compartidos
+### #39 — Probar exhaustivamente el ciclo de revisión de solicitudes y su contrato compartido
 
 ^issue-39
 
-- **Título original:** `Task: Test domain states and shared contracts`
+- **Título original:** `Task: Exhaustively test the application-review lifecycle and shared contract`
 - **GitHub y estado:** [issue #39](https://github.com/reyduar/Vaqcrow/issues/39) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
-- **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); bloqueada nativamente por [#38](#^issue-38).
-- **Objetivo:** añadir pruebas determinísticas focalizadas para caminos de éxito, rechazo y recuperación del Feature.
-- **Orden:** valida la implementación y desbloquea [#40](#^issue-40).
+- **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); depende de [#38](#^issue-38), completada.
+- **Objetivo:** probar la matriz exhaustiva de las 36 combinaciones `(from, to)` de estados, la equivalencia de vocabulario entre `packages/domain` y `packages/contracts`, y un round-trip realista (`contracts` parsea → `domain` transiciona → `contracts` revalida) — alcance que #38 dejó explícitamente diferido a esta unidad.
+- **Orden:** valida la implementación de [#38](#^issue-38) y desbloquea [#40](#^issue-40).
 
 **Rama propuesta.** `Vaqcrow#39_Task_Test_domain_states_and_shared_contracts` es una unidad de pruebas revisable.
 
