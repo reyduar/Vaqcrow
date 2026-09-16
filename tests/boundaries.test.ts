@@ -1,6 +1,8 @@
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cruise } from "dependency-cruiser";
 import type { ICruiseResult } from "dependency-cruiser";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import config from "../.dependency-cruiser.cjs";
 
@@ -10,6 +12,11 @@ const WEB_MODULES = fileURLToPath(new URL("../apps/web/node_modules", import.met
 const RULE_NAME = "api-application-stays-provider-free";
 const WEB_RULE_NAME = "web-presentation-stays-contracts-free";
 const WEB_DOMAIN_RULE_NAME = "web-never-imports-domain";
+const CONTRACTS_NODE_RULE_NAME = "contracts-never-import-node-core";
+const CONTRACTS_FRAMEWORK_RULE_NAME = "contracts-never-import-frameworks";
+const WEB_CONSUMER_CONFIG = fileURLToPath(
+  new URL("./fixtures/boundaries/apps/web/tsconfig.json", import.meta.url)
+);
 
 async function cruiseFixture(target: string, extraModules: readonly string[] = []): Promise<ICruiseResult> {
   const { output } = await cruise(
@@ -45,6 +52,44 @@ function violationsFor(result: ICruiseResult, ruleName: string) {
     .flatMap((dependency) => dependency.rules ?? [])
     .filter((rule) => rule.name === ruleName);
 }
+
+function compileFixture(configPath: string): readonly string[] {
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath));
+  const program = ts.createProgram(parsed.fileNames, parsed.options);
+  const configErrors = config.error === undefined ? [] : [config.error];
+
+  return [...configErrors, ...parsed.errors, ...ts.getPreEmitDiagnostics(program)].map((diagnostic) =>
+    ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")
+  );
+}
+
+async function expectFixtureViolation(target: string, ruleName: string): Promise<void> {
+  const result = await cruiseFixture(target);
+
+  expect(result.summary.error).toBeGreaterThanOrEqual(1);
+  expect(violationsFor(result, ruleName).length).toBeGreaterThanOrEqual(1);
+}
+
+describe("packages/contracts boundary rules", () => {
+  it("flags a node:crypto import from contracts source", async () => {
+    await expectFixtureViolation(
+      "packages/contracts/src/imports-node-crypto.fixture.ts",
+      CONTRACTS_NODE_RULE_NAME
+    );
+  });
+
+  it("flags a Fastify import from contracts source", async () => {
+    await expectFixtureViolation(
+      "packages/contracts/src/imports-fastify.fixture.ts",
+      CONTRACTS_FRAMEWORK_RULE_NAME
+    );
+  });
+
+  it("compiles the contracts runtime barrel for a DOM-only consumer", () => {
+    expect(compileFixture(WEB_CONSUMER_CONFIG)).toEqual([]);
+  });
+});
 
 describe("apps/api/src/application boundary rule", () => {
   it("flags a runtime fastify import from application/ with the named forbidden rule", async () => {
