@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 101 issues están en `Backlog`, 1 en `Ready` y 5 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 100 issues están en `Backlog`, 1 en `Ready` y 6 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidad actualmente `Ready`: [#37 — Documentar evidencia del workspace pnpm/Turborepo](#issue-37).**
+> **Unidad actualmente `Ready`: [#38 — Implementar estados de dominio y contratos compartidos](#issue-38).**
 >
-> [#37](#issue-37) es la siguiente unidad del flujo principal después de [#36](#issue-36), ya en `Done`. Ninguna Task adicional de `Backlog` está desbloqueada: el resto permanece bloqueado por la jerarquía de Features (Feature [#11](#issue-11) solo se completa cuando #37 también esté `Done`) o por sus propias dependencias.
+> [#37](#issue-37) quedó en `Done`, cerrando el trabajo ejecutable de la Feature [#11](#issue-11). Entre las Features recién desbloqueadas ([#12](#issue-12), [#14](#issue-14), [#15](#issue-15)), [#12](#issue-12) tiene prioridad `Critical` (las otras dos son `High`), así que su primera Task, [#38](#issue-38), es la siguiente unidad del flujo principal. [#16](#issue-16) sigue bloqueada porque además requiere que [#12](#issue-12) esté completa.
 
 ## Política de orden
 
@@ -45,7 +45,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Ola | Features, en orden dentro de la ola | Tasks del Feature |
 |---:|---|---|
-| 0 | [#11 Inicializar workspace pnpm/Turborepo](#issue-11) | [~~#35 Configurar workspace raíz~~](#issue-35) → ([~~#110 Scaffold de API~~](#issue-110) y [~~#111 Scaffold web~~](#issue-111) en paralelo) → [~~#36 Probar límites~~](#issue-36) → [#37 Documentar evidencia](#issue-37) |
+| 0 | [#11 Inicializar workspace pnpm/Turborepo](#issue-11) | [~~#35 Configurar workspace raíz~~](#issue-35) → ([~~#110 Scaffold de API~~](#issue-110) y [~~#111 Scaffold web~~](#issue-111) en paralelo) → [~~#36 Probar límites~~](#issue-36) → [~~#37 Documentar evidencia~~](#issue-37) |
 | 1 | [#12 Definir estados y contratos](#issue-12) | [#38 Implementar](#issue-38) → [#39 Probar](#issue-39) → [#40 Documentar](#issue-40) |
 | 1 | [#15 Configurar pruebas y CI](#issue-15) | [#47 Implementar](#issue-47) → [#48 Probar](#issue-48) → [#49 Documentar](#issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#issue-14) | [#44 Implementar](#issue-44) → [#45 Probar](#issue-45) → [#46 Documentar](#issue-46) |
@@ -219,15 +219,15 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 **Rama e implementación.** `Vaqcrow#36_Task_Test_workspace_and_Clean_Architecture_boundaries`, mergeada vía [PR #122](https://github.com/reyduar/Vaqcrow/pull/122). Fixture-probó las 9 reglas de `dependency-cruiser` (5 ya cubiertas + 4 sin cobertura previa) y corrigió, con aprobación explícita del usuario, un bug de regex de doble barra que dejaba 4 de 8 ramas de proveedores sin matchear. Evidencia completa en [`workspace-boundary-enforcement.md`](./workspace-boundary-enforcement.md).
 
 <a id="issue-37"></a>
-### #37 — Documentar evidencia del workspace pnpm/Turborepo
+### ~~#37 — Documentar evidencia del workspace pnpm/Turborepo~~
 
 - **Título original:** `Task: Document evidence for the pnpm/Turborepo workspace`
-- **GitHub y estado:** [issue #37](https://github.com/reyduar/Vaqcrow/issues/37) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #37](https://github.com/reyduar/Vaqcrow/issues/37) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#11](#issue-11), cuyo Feature no tiene prerrequisitos; bloqueada nativamente por [#36](#issue-36), ya en `Done`.
 - **Objetivo:** registrar evidencia concisa y reproducible del workspace raíz, los scaffolds independientes, sus límites arquitectónicos y el límite de contratos compartidos.
 - **Orden:** cierra el trabajo ejecutable de [#11](#issue-11) y habilita sus dependientes [#12](#issue-12), [#14](#issue-14), [#15](#issue-15) y [#16](#issue-16).
 
-**Rama propuesta.** `Vaqcrow#37_Task_Document_evidence_for_the_pnpm_Turborepo_workspace` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#37_Task_Document_evidence_for_the_pnpm_Turborepo_workspace`. Evidencia completa en [`document-workspace-evidence.md`](./document-workspace-evidence.md); `pnpm run verify` pasa en cero violaciones tras agregar el documento. Commit y Pull Request quedan como paso explícito posterior a esta implementación.
 
 ## Ola 1 — Contratos, calidad y configuración
 
@@ -246,8 +246,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ### #38 — Implementar estados de dominio y contratos compartidos
 
 - **Título original:** `Task: Implement domain states and shared contracts`
-- **GitHub y estado:** [issue #38](https://github.com/reyduar/Vaqcrow/issues/38) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#12](#issue-12), que requiere [#11](#issue-11); sin bloqueos nativos propios.
+- **GitHub y estado:** [issue #38](https://github.com/reyduar/Vaqcrow/issues/38) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#12](#issue-12), que requiere [#11](#issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento central y los contratos delimitados por [#12](#issue-12).
 - **Orden:** inicia el Feature y desbloquea [#39](#issue-39).
 
