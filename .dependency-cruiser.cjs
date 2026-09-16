@@ -40,7 +40,7 @@ module.exports = {
       comment: "framework integration belongs outside the portable contracts package",
       severity: "error",
       from: { path: "^packages/contracts/src/", pathNot: "\\.test\\.ts$" },
-      to: { path: "(^|/)node_modules/(fastify|@fastify/)(/|$)" }
+      to: { path: "(^|/)node_modules/(fastify|@fastify)(/|$)" }
     },
     {
       name: "api-application-stays-provider-free",
@@ -49,7 +49,7 @@ module.exports = {
       severity: "error",
       from: { path: "^apps/api/src/application/" },
       to: {
-        path: "(^|/)node_modules/(fastify|@fastify/|@supabase/|@stellar/|stellar-sdk|@anthropic-ai/|openai)(/|$)",
+        path: "(^|/)node_modules/(fastify|@fastify|@supabase|@stellar|stellar-sdk|@anthropic-ai|openai)(/|$)",
         dependencyTypesNot: ["type-only"]
       }
     },
