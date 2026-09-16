@@ -1,3 +1,3 @@
-import { isWorkspaceBootstrapped } from "@vaqcrow/domain";
+import { transitionApplicationReview } from "@vaqcrow/domain";
 
-export const probe = isWorkspaceBootstrapped;
+export const probe = transitionApplicationReview;

@@ -1,3 +1,3 @@
-import { describeWorkspace } from "@vaqcrow/contracts";
+import { parseApplicationId } from "@vaqcrow/contracts";
 
-export const probe = describeWorkspace;
+export const probe = parseApplicationId;
