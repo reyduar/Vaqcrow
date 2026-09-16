@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 15 de septiembre de 2026; 102 issues están en `Backlog`, 2 en `Ready` y 3 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 102 issues están en `Backlog`, 1 en `Ready` y 4 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`, en orden de ejecución: [#36 — Probar el workspace y los límites de Clean Architecture](#issue-36) y [#116 — Agregar una utilidad de identificador de correlación a `packages/contracts`](#issue-116).**
+> **Unidad actualmente `Ready`: [#36 — Probar el workspace y los límites de Clean Architecture](#issue-36).**
 >
-> [#36](#issue-36) es la siguiente unidad del flujo principal después de [#110](#issue-110) y [#111](#issue-111), ambas en `Done`. [#116](#issue-116) es un follow-up independiente ya listo después de [#110](#issue-110) y debe coordinar con [#38](#issue-38) la elección de la biblioteca de validación.
+> [#36](#issue-36) es la siguiente unidad del flujo principal después de [#110](#issue-110) y [#111](#issue-111), ambas en `Done`. Ninguna Task adicional de `Backlog` está desbloqueada: [#37](#issue-37) depende de #36 y las demás permanecen bloqueadas por la jerarquía de Features o por sus propias dependencias.
 
 ## Política de orden
 
@@ -49,7 +49,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 1 | [#12 Definir estados y contratos](#issue-12) | [#38 Implementar](#issue-38) → [#39 Probar](#issue-39) → [#40 Documentar](#issue-40) |
 | 1 | [#15 Configurar pruebas y CI](#issue-15) | [#47 Implementar](#issue-47) → [#48 Probar](#issue-48) → [#49 Documentar](#issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#issue-14) | [#44 Implementar](#issue-44) → [#45 Probar](#issue-45) → [#46 Documentar](#issue-46) |
-| 1 | Task sin padre | [#116 Agregar una utilidad de identificador de correlación a `packages/contracts`](#issue-116), después de #110 y coordinada con #38 |
+| 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#issue-116), completada después de #110 y coordinada con #38 |
 | 2 | [#16 Construir shell y navegación](#issue-16) | [#50 Implementar](#issue-50) → [#51 Probar](#issue-51) → [#52 Documentar](#issue-52) |
 | 2 | [#20 Definir esquema y guardrails de IA](#issue-20) | [#65 Implementar](#issue-65) → [#66 Probar](#issue-66) → [#67 Documentar](#issue-67) |
 | 2 | [#23 Encapsular Stellar y Freighter](#issue-23) | [#74 Implementar](#issue-74) → [#75 Probar](#issue-75) → [#76 Documentar](#issue-76) |
@@ -364,13 +364,13 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 **Rama propuesta.** `Vaqcrow#46_Task_Document_evidence_establish_typed_configuration_and_secret_boundaries` es una unidad de documentación revisable.
 
 <a id="issue-116"></a>
-### #116 — Agregar una utilidad de identificador de correlación a `packages/contracts`
+### ~~#116 — Agregar una utilidad de identificador de correlación a `packages/contracts`~~
 
 - **Título original:** `Task: Add correlation-id helper to packages/contracts`
-- **GitHub y estado:** [issue #116](https://github.com/reyduar/Vaqcrow/issues/116) · Tipo `Task` · Área `backend` · Prioridad `Medium` · Workflow `Ready`.
+- **GitHub y estado:** [issue #116](https://github.com/reyduar/Vaqcrow/issues/116) · Tipo `Task` · Área `backend` · Prioridad `Medium` · Workflow `Done`.
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos. Su sección `Dependencies` declara una dependencia textual de [#110](#issue-110) y una relación funcional con [#12](#issue-12) y [#38](#issue-38); no se inventa una relación padre.
 - **Objetivo:** agregar a `packages/contracts` un tipo de identificador de correlación, un generador y un esquema o parser validable en runtime, y demostrar que `apps/api` puede propagar el identificador sin introducir dependencias de framework o proveedor en las capas internas.
-- **Orden:** se ubica en esta ola como follow-up independiente ya listo porque [#110](#issue-110) está `Done`; debe coordinar con [#38](#issue-38) la elección de la biblioteca de validación para evitar dos soluciones competidoras.
+- **Orden:** se completó en esta ola como follow-up independiente después de [#110](#issue-110) y coordinó con [#38](#issue-38) la elección de la biblioteca de validación para evitar dos soluciones competidoras.
 
 **Rama propuesta.** `Vaqcrow#116_Task_Add_correlation_id_helper_to_packages_contracts` es una unidad de implementación revisable.
 
