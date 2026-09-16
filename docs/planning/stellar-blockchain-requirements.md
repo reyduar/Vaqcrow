@@ -4,51 +4,54 @@
 
 ## Índice
 
-- [Parte 1 — Decisión, alcance y fundamentos](#parte-1)
-  - [1. Resumen de la decisión](#resumen-de-la-decision)
-  - [2. Mapa canónico de issues](#mapa-canonico-de-issues)
-  - [3. Ruta conceptual de aprendizaje recomendada](#ruta-conceptual-de-aprendizaje)
-  - [4. Referencias oficiales](#referencias-oficiales)
-- [Parte 2 — Preparación del equipo y herramientas](#parte-2)
-  - [1. Alcance obligatorio y opcional](#alcance-de-preparacion)
-  - [2. Comprobaciones obligatorias sin instalación](#comprobaciones-obligatorias)
-  - [3. Dependencias del proyecto](#dependencias-del-proyecto)
-  - [4. Preparación segura de Freighter](#preparacion-de-freighter)
-  - [5. Prerrequisitos opcionales para contratos inteligentes](#prerrequisitos-opcionales)
-  - [6. Decisión de lenguajes y herramientas](#decision-de-herramientas)
-  - [7. Distinción arquitectónica de `packages/contracts`](#distincion-de-packages-contracts)
-  - [8. Lista de seguridad](#lista-de-seguridad)
-  - [9. Referencias oficiales de preparación](#referencias-oficiales-de-preparacion)
-- [Parte 3 — Plan de pruebas y gates de decisión](#parte-3)
-  - [1. Plan de pruebas obligatorio de transferencias Testnet](#pruebas-obligatorias-testnet)
-    - [a. Unit tests determinísticos sin red](#unit-tests-sin-red)
-    - [b. Preflight manual acotado en Testnet](#preflight-testnet)
-    - [c. Pruebas negativas](#pruebas-negativas)
-    - [d. Checklist de evidencia y limpieza](#checklist-evidencia)
-  - [2. Plan de pruebas opcional de smart contracts Soroban](#pruebas-opcionales-soroban)
-  - [3. Gates de decisión](#gates-de-decision)
-    - [a. Definition of ready antes de #74](#dor-antes-de-74)
-    - [b. Gate separado antes de issues Soroban](#gate-soroban)
-- [Parte 4 — Cierre, skills, seguridad y verificación](#parte-4)
-  - [1. Tabla de skills recomendadas](#skills-recomendadas)
-  - [2. Convenios de seguridad y arquitectura](#convenios-seguridad)
-  - [3. Fuentes oficiales consolidadas](#fuentes-oficiales-consolidadas)
-  - [4. Definition of ready consolidada](#dor-consolidada)
-  - [5. Checklist de verificación final](#checklist-verificacion-final)
+- [Parte 1 — Decisión, alcance y fundamentos](#^parte-1)
+  - [1. Resumen de la decisión](#^resumen-de-la-decision)
+  - [2. Mapa canónico de issues](#^mapa-canonico-de-issues)
+  - [3. Ruta conceptual de aprendizaje recomendada](#^ruta-conceptual-de-aprendizaje)
+  - [4. Referencias oficiales](#^referencias-oficiales)
+- [Parte 2 — Preparación del equipo y herramientas](#^parte-2)
+  - [1. Alcance obligatorio y opcional](#^alcance-de-preparacion)
+  - [2. Comprobaciones obligatorias sin instalación](#^comprobaciones-obligatorias)
+  - [3. Dependencias del proyecto](#^dependencias-del-proyecto)
+  - [4. Preparación segura de Freighter](#^preparacion-de-freighter)
+  - [5. Prerrequisitos opcionales para contratos inteligentes](#^prerrequisitos-opcionales)
+  - [6. Decisión de lenguajes y herramientas](#^decision-de-herramientas)
+  - [7. Distinción arquitectónica de `packages/contracts`](#^distincion-de-packages-contracts)
+  - [8. Lista de seguridad](#^lista-de-seguridad)
+  - [9. Referencias oficiales de preparación](#^referencias-oficiales-de-preparacion)
+- [Parte 3 — Plan de pruebas y gates de decisión](#^parte-3)
+  - [1. Plan de pruebas obligatorio de transferencias Testnet](#^pruebas-obligatorias-testnet)
+    - [a. Unit tests determinísticos sin red](#^unit-tests-sin-red)
+    - [b. Preflight manual acotado en Testnet](#^preflight-testnet)
+    - [c. Pruebas negativas](#^pruebas-negativas)
+    - [d. Checklist de evidencia y limpieza](#^checklist-evidencia)
+  - [2. Plan de pruebas opcional de smart contracts Soroban](#^pruebas-opcionales-soroban)
+  - [3. Gates de decisión](#^gates-de-decision)
+    - [a. Definition of ready antes de #74](#^dor-antes-de-74)
+    - [b. Gate separado antes de issues Soroban](#^gate-soroban)
+- [Parte 4 — Cierre, skills, seguridad y verificación](#^parte-4)
+  - [1. Tabla de skills recomendadas](#^skills-recomendadas)
+  - [2. Convenios de seguridad y arquitectura](#^convenios-seguridad)
+  - [3. Fuentes oficiales consolidadas](#^fuentes-oficiales-consolidadas)
+  - [4. Definition of ready consolidada](#^dor-consolidada)
+  - [5. Checklist de verificación final](#^checklist-verificacion-final)
 
-<a id="parte-1"></a>
 ## Parte 1 — Decisión, alcance y fundamentos
 
-<a id="resumen-de-la-decision"></a>
+^parte-1
+
 ### 1. Resumen de la decisión
+
+^resumen-de-la-decision
 
 | Alcance | Decisión |
 |---|---|
 | **Obligatorio** | El camino base de Vaqcrow utiliza pagos clásicos en **Stellar Testnet**, construidos y verificados con `@stellar/stellar-sdk`, enviados y consultados mediante **Horizon**, y autorizados por la persona usuaria mediante **Freighter**. El fondeo y la distribución de revenue share deben funcionar por este camino. **No se requiere ningún contrato inteligente.** |
 | **Opcional** | **Soroban y los contratos inteligentes de Stellar son únicamente trabajo de extensión**. Solo pueden considerarse después de que el fondeo y la distribución clásicos estén estables; no sustituyen, condicionan ni retrasan el camino obligatorio. |
 
-<a id="mapa-canonico-de-issues"></a>
 ### 2. Mapa canónico de issues
+
+^mapa-canonico-de-issues
 
 Los siguientes enlaces y títulos se verificaron contra GitHub en modo de solo lectura el **2026-09-14**. Los títulos canónicos se conservan en su idioma original y todos los issues enumerados están abiertos.
 
@@ -83,8 +86,9 @@ Los siguientes enlaces y títulos se verificaron contra GitHub en modo de solo l
 
 **Ausencia explícita:** actualmente no existe un issue canónico dedicado a implementar un contrato inteligente o una integración Soroban. Ese trabajo no forma parte del camino obligatorio y requeriría una decisión y un issue independientes si se autorizara como extensión.
 
-<a id="ruta-conceptual-de-aprendizaje"></a>
 ### 3. Ruta conceptual de aprendizaje recomendada
+
+^ruta-conceptual-de-aprendizaje
 
 El aprendizaje debe seguir este orden; cada etapa presupone el dominio de la anterior:
 
@@ -97,8 +101,9 @@ El aprendizaje debe seguir este orden; cada etapa presupone el dominio de la ant
 7. **Idempotencia y reintentos:** correlacionar cada intención interna con su hash y estado, consultar antes de repetir, reutilizar de forma segura la misma transacción firmada cuando corresponda y evitar crear pagos nuevos ante resultados inciertos.
 8. **Solo después, Soroban:** estudiar autorización, almacenamiento `Persistent`/`Temporary`/`Instance` y TTL, eventos, recursos y fees, aritmética determinística, y riesgos de actualización y administración. Estos conceptos pertenecen únicamente a una posible extensión, no al requisito base.
 
-<a id="referencias-oficiales"></a>
 ### 4. Referencias oficiales
+
+^referencias-oficiales
 
 Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 
@@ -110,21 +115,24 @@ Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 - [Horizon](https://developers.stellar.org/docs/data/apis/horizon) y [envío de transacciones](https://developers.stellar.org/docs/data/apis/horizon/api-reference/submit-a-transaction): consulta, envío y reenvío seguro de una transacción ya incluida.
 - [Autorización](https://developers.stellar.org/docs/learn/fundamentals/contract-development/authorization), [almacenamiento y TTL](https://developers.stellar.org/docs/learn/fundamentals/contract-development/storage/state-archival), [eventos](https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/events), [recursos y fees](https://developers.stellar.org/docs/learn/fundamentals/fees-resource-limits-metering), [tipos numéricos](https://developers.stellar.org/docs/learn/fundamentals/contract-development/types/built-in-types) y [actualización de contratos](https://developers.stellar.org/docs/build/guides/conventions/upgrading-contracts): fundamentos y riesgos que solo aplican a una eventual extensión Soroban.
 
-<a id="parte-2"></a>
 ## Parte 2 — Preparación del equipo y herramientas
+
+^parte-2
 
 Esta parte define qué debe comprobarse y prepararse en un equipo de desarrollo. No afirma que Git, Node.js, pnpm, Freighter, Rust o Stellar CLI ya estén instalados, y no registra ninguna instalación realizada.
 
-<a id="alcance-de-preparacion"></a>
 ### 1. Alcance obligatorio y opcional
+
+^alcance-de-preparacion
 
 | Camino | Preparación del equipo | Regla de entrada |
 |---|---|---|
 | **Obligatorio: pagos clásicos** | Git, Node.js, pnpm, un navegador compatible con Freighter, una cuenta descartable en Stellar Testnet y acceso a Horizon. El código utiliza TypeScript, `@stellar/stellar-sdk` y `@stellar/freighter-api`. | Es el único camino necesario para implementar y demostrar fondeo y distribución. |
 | **Opcional: contratos inteligentes** | Rust `1.84.0` o superior, `rustup`, `cargo`, el target `wasm32v1-none`, Stellar CLI y `soroban-sdk`. | Solo se prepara si el stretch goal recibe autorización después de estabilizar los pagos clásicos. No bloquea el camino obligatorio. |
 
-<a id="comprobaciones-obligatorias"></a>
 ### 2. Comprobaciones obligatorias sin instalación
+
+^comprobaciones-obligatorias
 
 Estas órdenes son de solo lectura. Deben ejecutarse antes de implementar para registrar las versiones disponibles; si alguna falla, el equipo no está listo y debe resolver el requisito por separado, sin improvisar una instalación dentro de la comprobación.
 
@@ -146,8 +154,9 @@ La preparación del navegador se verifica en el propio navegador, porque una ord
 - Freighter muestra una dirección pública y la red **Testnet** antes de cualquier firma;
 - el navegador puede acceder a la aplicación local mediante el origen seguro que exija Freighter durante la implementación.
 
-<a id="dependencias-del-proyecto"></a>
 ### 3. Dependencias del proyecto
+
+^dependencias-del-proyecto
 
 | Dependencia | Lado propietario | Regla de instalación durante la implementación |
 |---|---|---|
@@ -156,8 +165,9 @@ La preparación del navegador se verifica en el propio navegador, porque una ord
 
 Ambas dependencias se incorporarán mediante los manifiestos del workspace cuando se ejecuten las tareas de implementación correspondientes. **No deben instalarse globalmente** ni agregarse durante esta fase de comprobación del equipo.
 
-<a id="preparacion-de-freighter"></a>
 ### 4. Preparación segura de Freighter
+
+^preparacion-de-freighter
 
 1. Seguir la [guía oficial de instalación](https://docs.freighter.app/extension-freighter-api/installation.md) e instalar la extensión únicamente desde sus enlaces oficiales: [Chrome Web Store](https://chromewebstore.google.com/detail/freighter/bcacfldlkkdogcmkkibnjlakofdplcbk) para Chrome o Brave, o [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/freighter/) para Firefox.
 2. Crear en Freighter una wallet o cuenta **descartable y exclusiva para Testnet**; no importar una cuenta que custodie fondos reales.
@@ -168,8 +178,9 @@ Ambas dependencias se incorporarán mediante los manifiestos del workspace cuand
 
 Vaqcrow nunca debe solicitar, recibir, copiar ni mostrar la seed, frase de recuperación o clave privada. La persona usuaria revisa y firma el XDR dentro de Freighter; la aplicación solo recibe la dirección pública y el resultado de la firma autorizada.
 
-<a id="prerrequisitos-opcionales"></a>
 ### 5. Prerrequisitos opcionales para contratos inteligentes
+
+^prerrequisitos-opcionales
 
 > **No ejecutar este bloque para el camino obligatorio.** Solo corresponde al stretch goal Soroban autorizado. Las órdenes de instalación se documentan como prerrequisitos futuros; no se ejecutaron al preparar este documento.
 
@@ -204,23 +215,26 @@ stellar version
 
 `soroban-sdk` no es una herramienta global: se declara como dependencia del `Cargo.toml` del eventual workspace Rust y cada contrato la referencia desde su propio manifiesto. La versión se fijará de forma compatible con Stellar CLI y la red cuando el stretch goal tenga un issue canónico.
 
-<a id="decision-de-herramientas"></a>
 ### 6. Decisión de lenguajes y herramientas
+
+^decision-de-herramientas
 
 | Camino | Stack decidido | Exclusiones |
 |---|---|---|
 | **Pagos clásicos obligatorios** | TypeScript + `@stellar/stellar-sdk` + Horizon + Freighter mediante `@stellar/freighter-api`. | No necesita framework de contratos ni Stellar RPC para cumplir el alcance base. |
 | **Contratos inteligentes opcionales** | Rust + `soroban-sdk` + Stellar CLI, con Stellar RPC cuando exista una implementación autorizada. | No se utilizarán Solidity, Hardhat, Foundry ni Truffle: son herramientas del ecosistema EVM y no forman parte del stack de contratos Stellar decidido. |
 
-<a id="distincion-de-packages-contracts"></a>
 ### 7. Distinción arquitectónica de `packages/contracts`
+
+^distincion-de-packages-contracts
 
 `packages/contracts` pertenece al monorepo TypeScript y contiene **esquemas, tipos públicos y contratos de comunicación entre web y API**. El nombre `contracts` se refiere a contratos de software, no a programas on-chain: ese paquete no contiene Rust, `soroban-sdk`, artefactos Wasm ni lógica desplegable en Stellar.
 
 Si se autoriza el stretch goal, el contrato inteligente debe vivir en un workspace o directorio Rust independiente, identificado por sus propios `Cargo.toml` y fuentes `.rs`. Su ubicación y nombre se decidirán en el issue canónico correspondiente; no se reutilizará `packages/contracts` para evitar mezclar límites de API con código on-chain.
 
-<a id="lista-de-seguridad"></a>
 ### 8. Lista de seguridad
+
+^lista-de-seguridad
 
 - [ ] Todas las cuentas y wallets usadas por la demo son descartables y exclusivas de Testnet.
 - [ ] Ninguna cuenta de demo contiene fondos reales y ninguna operación apunta a Public Network.
@@ -230,8 +244,9 @@ Si se autoriza el stretch goal, el contrato inteligente debe vivir en un workspa
 - [ ] La dirección pública y la red activa se vuelven a verificar antes de cada firma de demostración.
 - [ ] Cuando sea práctico, inversor, PyME y distribución utilizan cuentas descartables separadas.
 
-<a id="referencias-oficiales-de-preparacion"></a>
 ### 9. Referencias oficiales de preparación
+
+^referencias-oficiales-de-preparacion
 
 Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 
@@ -246,18 +261,21 @@ Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 - [Instalación de Stellar CLI](https://developers.stellar.org/docs/tools/cli/install-cli) y [manual de Stellar CLI](https://developers.stellar.org/docs/tools/cli/stellar-cli): órdenes `cargo install --locked stellar-cli` y `stellar version`.
 - [Estructura de un contrato Stellar](https://developers.stellar.org/docs/build/smart-contracts/getting-started/hello-world): workspace Rust, manifiestos Cargo y dependencia `soroban-sdk`.
 
-<a id="parte-3"></a>
 ## Parte 3 — Plan de pruebas y gates de decisión
+
+^parte-3
 
 Esta parte define las pruebas obligatorias del camino clásico, las pruebas opcionales de Soroban y los gates de decisión que controlan cuándo puede avanzar cada camino.
 
-<a id="pruebas-obligatorias-testnet"></a>
 ### 1. Plan de pruebas obligatorio de transferencias Testnet
+
+^pruebas-obligatorias-testnet
 
 Todas las pruebas de esta sección son **obligatorias**. Deben ejecutarse y documentarse antes de considerar completa la integración clásica. El orden entre los bloques es secuencial: los unit tests sin red se verifican primero, luego el preflight en Testnet, luego las pruebas negativas y finalmente la evidencia se archiva.
 
-<a id="unit-tests-sin-red"></a>
 #### a. Unit tests determinísticos sin red
+
+^unit-tests-sin-red
 
 Estas pruebas no dependen de Testnet, Horizon ni Freighter. Verifican la lógica de construcción y validación de transacciones de forma aislada y repetible.
 
@@ -272,8 +290,9 @@ Estas pruebas no dependen de Testnet, Horizon ni Freighter. Verifican la lógica
 
 Estas pruebas deben ejecutarse en el pipeline de CI sin conexión de red y sin mocks externos. La infraestructura de pruebas del monorepo (issue [#47 — `Task: Implement set up deterministic testing and ci gates`](https://github.com/reyduar/Vaqcrow/issues/47)) es la base que las sustenta.
 
-<a id="preflight-testnet"></a>
 #### b. Preflight manual acotado en Testnet
+
+^preflight-testnet
 
 Este flujo se ejecuta una vez por cada escenario de demostración (fondeo de inversor, distribución a PyME, distribución de revenue share). Es manual, observado y documentado con capturas de cada paso.
 
@@ -292,8 +311,9 @@ Este flujo se ejecuta una vez por cada escenario de demostración (fondeo de inv
 
 **Seguridad:** en ningún paso la clave privada abandona Freighter. El backend solo manipula XDR construidos y firmados; nunca recibe ni almacena secretos.
 
-<a id="pruebas-negativas"></a>
 #### c. Pruebas negativas
+
+^pruebas-negativas
 
 Las pruebas negativas verifican que el sistema rechaza correctamente condiciones inválidas o adversas. Cada caso debe producir un error controlado, no una falla no manejada.
 
@@ -316,8 +336,9 @@ Las pruebas negativas verifican que el sistema rechaza correctamente condiciones
 
 Cada caso negativo debe tener al menos una prueba automatizada para las categorías verificables sin red (rechazo de firma, XDR alterado, secuencia obsoleta, idempotencia) y una prueba manual documentada para las categorías que requieren interacción con Freighter (red incorrecta, rechazo de firma por la persona usuaria).
 
-<a id="checklist-evidencia"></a>
 #### d. Checklist de evidencia y limpieza
+
+^checklist-evidencia
 
 Al finalizar cada ejecución del preflight manual, se completa la siguiente evidencia:
 
@@ -336,10 +357,11 @@ Al finalizar cada ejecución del preflight manual, se completa la siguiente evid
 - Las cuentas anteriores no se borran (Testnet no lo requiere), pero se registran como inactivas en el registro de evidencia.
 - Si se detecta que una cuenta descartable acumuló fondos reales por error, se documenta el incidente y se descarta la cuenta.
 
-<a id="pruebas-opcionales-soroban"></a>
 ### 2. Plan de pruebas opcional de smart contracts Soroban
 
-> **Esta sección NO es requerida para el camino obligatorio.** Solo se ejecuta si el stretch goal Soroban recibe autorización después de estabilizar los pagos clásicos. Si existe algún riesgo de que las pruebas de Soroban retrasen la demo clásica, se aplica el gate de la [sección 3.b](#gate-soroban) y se elimina esta sección del plan.
+^pruebas-opcionales-soroban
+
+> **Esta sección NO es requerida para el camino obligatorio.** Solo se ejecuta si el stretch goal Soroban recibe autorización después de estabilizar los pagos clásicos. Si existe algún riesgo de que las pruebas de Soroban retrasen la demo clásica, se aplica el gate de la [sección 3.b](#^gate-soroban) y se elimina esta sección del plan.
 
 #### a. Unit tests Rust locales
 
@@ -404,13 +426,15 @@ Antes de iniciar cualquier trabajo de pruebas Soroban, se evalúa:
 
 Si cualquiera de estos ítems no se cumple, **no se inician las pruebas de Soroban**. El stretch goal se pospone hasta que el camino obligatorio esté completamente validado.
 
-<a id="gates-de-decision"></a>
 ### 3. Gates de decisión
+
+^gates-de-decision
 
 Los gates de decisión controlan el avance entre fases. Son binarios: se cumple o no se cumple. No hay excepciones parciales.
 
-<a id="dor-antes-de-74"></a>
 #### a. Definition of ready antes de #74
+
+^dor-antes-de-74
 
 El issue [#74 — `Task: Implement Stellar and Freighter integration`](https://github.com/reyduar/Vaqcrow/issues/74) no puede iniciarse hasta que se cumplan **todos** los siguientes condiciones:
 
@@ -425,8 +449,9 @@ El issue [#74 — `Task: Implement Stellar and Freighter integration`](https://g
 
 Si alguna condición no se cumple, el issue #74 permanece bloqueado y se resuelve la dependencia antes de continuar.
 
-<a id="gate-soroban"></a>
 #### b. Gate separado antes de issues Soroban
+
+^gate-soroban
 
 Ningún issue de contratos inteligentes o integración Soroban puede crearse o iniciarse hasta que se cumplan **todos** los siguientes condiciones:
 
@@ -442,13 +467,15 @@ Si cualquiera de estas condiciones no se cumple, no se crea ningún issue Soroba
 
 **Regla de emergencia:** si en algún momento durante el desarrollo de Soroban se detecta que el camino clásico se ha degradado o que las pruebas de Soroban retrasan la demo, se detiene inmediatamente el trabajo de Soroban y se regresa al camino clásico. La prioridad absoluta es la demo funcional con pagos clásicos.
 
-<a id="parte-4"></a>
 ## Parte 4 — Cierre, skills, seguridad y verificación
+
+^parte-4
 
 Esta parte consolida las skills recomendadas, los convenios de seguridad y arquitectura, las fuentes oficiales, la definition of ready y el checklist de verificación final del documento.
 
-<a id="skills-recomendadas"></a>
 ### 1. Tabla de skills recomendadas
+
+^skills-recomendadas
 
 Las skills se cargan en el agente de IA según la tarea en curso. Ninguna skill garantiza correctness ni reemplaza pruebas automatizadas o revisión humana. La selección se basa en la relevancia para Stellar, la reputación del maintainer y la cobertura de los escenarios de Vaqcrow.
 
@@ -467,8 +494,9 @@ Las skills se cargan en el agente de IA según la tarea en curso. Ninguna skill 
 
 **Nota importante:** Las skills de Stellar Foundation y OpenZeppelin son complementarias, no contradictorias. `stellar-dev` cubre el espectro completo de Stellar (dapps, contratos, APIs, assets). `setup-stellar-contracts` y `develop-secure-contracts` profundizan en el setup y la seguridad de contratos con las librerías de OpenZeppelin. Para Vaqcrow, la skill primaria es `stellar-dev` (camino clásico y general). Las skills de OpenZeppelin solo se cargan si se autoriza Soroban.
 
-<a id="convenios-seguridad"></a>
 ### 2. Convenios de seguridad y arquitectura
+
+^convenios-seguridad
 
 Los siguientes convenios consolidan las reglas de seguridad y arquitectura que atraviesan las 4 partes del documento. Están alineados con Clean Architecture: los adaptadores interfieran con el mundo exterior, los dominios y aplicaciones permanecen puros.
 
@@ -502,8 +530,9 @@ Los siguientes convenios consolidan las reglas de seguridad y arquitectura que a
 | **Cuentas descartables** | Todas las cuentas usadas en demo y pruebas son descartables y exclusivas de Testnet. No se reutilizan sin reinicio explícito. | Parte 2, sección 4; Parte 3, sección 1.d. |
 | **No Ethereum/EVM** | No se utilizan Solidity, Hardhat, Foundry ni Truffle para contratos Stellar. Son herramientas del ecosistema EVM y no forman parte del stack decidido. | Parte 2, sección 6. |
 
-<a id="fuentes-oficiales-consolidadas"></a>
 ### 3. Fuentes oficiales consolidadas
+
+^fuentes-oficiales-consolidadas
 
 Todas las fuentes oficiales fueron consultadas y verificadas el **2026-09-14**. Se presentan deduplicadas, agrupadas por categoría.
 
@@ -578,10 +607,11 @@ Todas las fuentes oficiales fueron consultadas y verificadas el **2026-09-14**. 
 | Raven MCP Server (Stellar) | https://raven.stellar.buzz |
 | skills.stellar.org | https://skills.stellar.org |
 
-<a id="dor-consolidada"></a>
 ### 4. Definition of ready consolidada
 
-La siguiente checklist consolida todas las condiciones necesarias para iniciar el trabajo de integración Stellar. Se extrae de la [sección 3.a de la Parte 3](#dor-antes-de-74) y se referencia el origen de cada condición.
+^dor-consolidada
+
+La siguiente checklist consolida todas las condiciones necesarias para iniciar el trabajo de integración Stellar. Se extrae de la [sección 3.a de la Parte 3](#^dor-antes-de-74) y se referencia el origen de cada condición.
 
 | # | Condición | Origen | Verificación |
 |---|---|---|---|
@@ -596,8 +626,9 @@ La siguiente checklist consolida todas las condiciones necesarias para iniciar e
 
 Si alguna condición no se cumple, el issue [#74](https://github.com/reyduar/Vaqcrow/issues/74) permanece bloqueado. No hay excepciones.
 
-<a id="checklist-verificacion-final"></a>
 ### 5. Checklist de verificación final
+
+^checklist-verificacion-final
 
 Esta es la auto-verificación que el autor del documento ejecuta antes de considerarlo completo. Cada ítems se verifica con evidencia concreta.
 
