@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 100 issues están en `Backlog`, 1 en `Ready` y 6 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 98 issues están en `Backlog`, 3 en `Ready` y 6 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidad actualmente `Ready`: [#38 — Implementar estados de dominio y contratos compartidos](#issue-38).**
+> **Unidades actualmente `Ready`: [#38 — Implementar el ciclo mínimo de revisión de solicitudes y su contrato compartido](#issue-38), [#44 — Implementar configuración tipada y límites de secretos](#issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#issue-47).**
 >
-> [#37](#issue-37) quedó en `Done`, cerrando el trabajo ejecutable de la Feature [#11](#issue-11). Entre las Features recién desbloqueadas ([#12](#issue-12), [#14](#issue-14), [#15](#issue-15)), [#12](#issue-12) tiene prioridad `Critical` (las otras dos son `High`), así que su primera Task, [#38](#issue-38), es la siguiente unidad del flujo principal. [#16](#issue-16) sigue bloqueada porque además requiere que [#12](#issue-12) esté completa.
+> [#37](#issue-37) quedó en `Done`, cerrando el trabajo ejecutable de la Feature [#11](#issue-11). Eso desbloqueó simultáneamente las tres Features cuyo único prerrequisito era [#11](#issue-11): [#12](#issue-12), [#14](#issue-14) y [#15](#issue-15). Sus primeras Tasks — [#38](#issue-38), [#44](#issue-44) y [#47](#issue-47), respectivamente — pasaron a `Ready`. Por la política de orden, [#12](#issue-12) tiene prioridad `Critical` (las otras dos son `High`), así que su Task [#38](#issue-38) sigue siendo la siguiente unidad recomendada del flujo principal; [#44](#issue-44) y [#47](#issue-47) quedan disponibles para trabajo en paralelo si hay capacidad. [#16](#issue-16) sigue bloqueada porque además requiere que [#12](#issue-12) esté completa.
 
 ## Política de orden
 
@@ -46,7 +46,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | Ola | Features, en orden dentro de la ola | Tasks del Feature |
 |---:|---|---|
 | 0 | [#11 Inicializar workspace pnpm/Turborepo](#issue-11) | [~~#35 Configurar workspace raíz~~](#issue-35) → ([~~#110 Scaffold de API~~](#issue-110) y [~~#111 Scaffold web~~](#issue-111) en paralelo) → [~~#36 Probar límites~~](#issue-36) → [~~#37 Documentar evidencia~~](#issue-37) |
-| 1 | [#12 Definir estados y contratos](#issue-12) | [#38 Implementar](#issue-38) → [#39 Probar](#issue-39) → [#40 Documentar](#issue-40) |
+| 1 | [#12 Definir estados y contratos](#issue-12) | [#38 Implementar ciclo mínimo de revisión](#issue-38) → [#39 Probar](#issue-39) → [#40 Documentar](#issue-40) |
 | 1 | [#15 Configurar pruebas y CI](#issue-15) | [#47 Implementar](#issue-47) → [#48 Probar](#issue-48) → [#49 Documentar](#issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#issue-14) | [#44 Implementar](#issue-44) → [#45 Probar](#issue-45) → [#46 Documentar](#issue-46) |
 | 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#issue-116), completada después de #110 y coordinada con #38 |
@@ -243,15 +243,15 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 **Rama propuesta.** `Vaqcrow#12_Feat_Define_domain_states_and_shared_contracts` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
 <a id="issue-38"></a>
-### #38 — Implementar estados de dominio y contratos compartidos
+### #38 — Implementar el ciclo mínimo de revisión de solicitudes y su contrato compartido
 
-- **Título original:** `Task: Implement domain states and shared contracts`
+- **Título original:** `Task: Implement the minimal application-review lifecycle and shared contract`
 - **GitHub y estado:** [issue #38](https://github.com/reyduar/Vaqcrow/issues/38) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
-- **Jerarquía y bloqueos:** padre [#12](#issue-12), que requiere [#11](#issue-11), ya en `Done`; sin bloqueos nativos propios.
-- **Objetivo:** implementar el comportamiento central y los contratos delimitados por [#12](#issue-12).
-- **Orden:** inicia el Feature y desbloquea [#39](#issue-39).
+- **Jerarquía y bloqueos:** padre [#12](#issue-12); dependencia textual [#37](#issue-37), completada; relacionado con [#116](#issue-116), completado, para reutilizar Zod 4 y la base de `CorrelationId` sin duplicarla.
+- **Objetivo:** implementar el ciclo autoritativo mínimo de revisión de solicitudes, un `ApplicationId` opaco validable en runtime y schemas estrictos de estado y snapshot, manteniendo separados el dominio en `packages/domain` y el protocolo portable en `packages/contracts`.
+- **Orden:** inicia [#12](#issue-12) y desbloquea [#39](#issue-39); excluye evaluación con IA, persistencia, Stellar y telemetría.
 
-**Rama propuesta.** `Vaqcrow#38_Task_Implement_domain_states_and_shared_contracts` es una unidad de implementación revisable.
+**Rama propuesta.** `Vaqcrow#38_Task_Implement_the_minimal_application_review_lifecycle_and_shared_contract` es una unidad de implementación revisable.
 
 <a id="issue-39"></a>
 ### #39 — Probar estados de dominio y contratos compartidos
@@ -290,8 +290,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ### #47 — Implementar la configuración de pruebas determinísticas y gates de CI
 
 - **Título original:** `Task: Implement set up deterministic testing and ci gates`
-- **GitHub y estado:** [issue #47](https://github.com/reyduar/Vaqcrow/issues/47) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#15](#issue-15), que requiere [#11](#issue-11); sin bloqueos nativos propios.
+- **GitHub y estado:** [issue #47](https://github.com/reyduar/Vaqcrow/issues/47) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#15](#issue-15), que requiere [#11](#issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** entregar el slice de implementación delimitado para pruebas determinísticas y gates de CI.
 - **Orden:** inicia el Feature y desbloquea [#48](#issue-48).
 
@@ -334,8 +334,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ### #44 — Implementar configuración tipada y límites de secretos
 
 - **Título original:** `Task: Implement typed configuration and secret boundaries`
-- **GitHub y estado:** [issue #44](https://github.com/reyduar/Vaqcrow/issues/44) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#14](#issue-14), que requiere [#11](#issue-11); sin bloqueos nativos propios.
+- **GitHub y estado:** [issue #44](https://github.com/reyduar/Vaqcrow/issues/44) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#14](#issue-14), que requiere [#11](#issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento y el contrato centrales del Feature de configuración y secretos.
 - **Orden:** inicia el Feature y desbloquea [#45](#issue-45).
 

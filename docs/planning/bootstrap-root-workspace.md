@@ -1,4 +1,3 @@
-# Bootstrap del workspace raíz — Issue #35
 
 > Documento de cierre de iteración. Registra qué se hizo, por qué, y qué decisiones se tomaron para implementar el [issue #35](https://github.com/reyduar/Vaqcrow/issues/35) ("Configure the root pnpm/Turborepo workspace"), la primera unidad ejecutable del backlog según [demo-tasks-list.md](./demo-tasks-list.md). No reemplaza la fuente de verdad arquitectónica ([monorepo.md](../architecture/monorepo.md)) ni el plan de la demo ([DEMO.md](./DEMO.md)); es el registro de esta implementación puntual.
 
