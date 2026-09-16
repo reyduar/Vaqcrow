@@ -29,6 +29,20 @@ module.exports = {
       to: { dependencyTypes: ["npm", "npm-dev", "npm-peer", "npm-optional"] }
     },
     {
+      name: "contracts-never-import-node-core",
+      comment: "contracts runtime exports must remain portable across Node and web consumers",
+      severity: "error",
+      from: { path: "^packages/contracts/src/", pathNot: "\\.test\\.ts$" },
+      to: { dependencyTypes: ["core"] }
+    },
+    {
+      name: "contracts-never-import-frameworks",
+      comment: "framework integration belongs outside the portable contracts package",
+      severity: "error",
+      from: { path: "^packages/contracts/src/", pathNot: "\\.test\\.ts$" },
+      to: { path: "(^|/)node_modules/(fastify|@fastify/)(/|$)" }
+    },
+    {
       name: "api-application-stays-provider-free",
       comment:
         "apps/api/src/application holds use cases and ports; Fastify and provider SDKs belong in infrastructure/. type-only imports stay legal so ports can name SDK types.",

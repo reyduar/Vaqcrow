@@ -4,9 +4,7 @@ packages:
 
 allowBuilds:
   esbuild: true
-
-ignoredBuiltDependencies:
-  - unrs-resolver
+  unrs-resolver: false
 
 catalog:
   typescript: ^5.9.3
@@ -16,6 +14,7 @@ catalog:
   globals: ^16.5.0
   vitest: ^3.2.7
   "@types/node": ^24.10.0
+  zod: ^4.6.5
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.10.13'

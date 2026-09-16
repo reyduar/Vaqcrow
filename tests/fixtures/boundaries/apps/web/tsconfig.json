@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@vaqcrow/contracts": ["../../../../../packages/contracts/src/index.ts"]
+    },
+    "strict": true,
+    "noEmit": true,
+    "types": [],
+    "skipLibCheck": false
+  },
+  "files": ["runtime-contracts.consumer.ts"]
+}
