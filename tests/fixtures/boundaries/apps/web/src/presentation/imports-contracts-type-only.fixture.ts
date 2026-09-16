@@ -1,3 +1,3 @@
-import type { WorkspaceProbe } from "@vaqcrow/contracts";
+import type { ApplicationReviewSnapshot } from "@vaqcrow/contracts";
 
-export type ProbeType = WorkspaceProbe;
+export type ProbeType = ApplicationReviewSnapshot;
