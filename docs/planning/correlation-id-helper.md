@@ -6,7 +6,9 @@
 
 `packages/contracts` seguía siendo un placeholder desde #35: exportaba solo un probe de cableado (`WorkspaceProbe`) y no tenía ninguna librería de validación en runtime. El issue #110 había dejado explícitamente diferido "contratos validables en runtime y correlation IDs" para no absorber ese trabajo dentro del scaffolding de `apps/api`. El issue #116 recoge exactamente esa deuda: un tipo de correlation ID opaco, un generador, un schema/parser que rechace valores malformados, y que `apps/api` demuestre generar y propagar ese ID en al menos una request — todo sin que `packages/contracts` ni la capa de aplicación importen Fastify o SDKs de proveedores.
 
-La tarea se implementó con un ciclo completo de **Spec-Driven Development (SDD)**: exploración → investigación → propuesta → especificación → diseño → tareas → implementación → verificación → archivo, persistido en `openspec/changes/archive/2026-09-15-correlation-id-helper/` y sincronizado a la especificación canónica `openspec/specs/correlation-id/spec.md`. Al igual que en #110, diseño e implementación pasaron por un validador de contrato en contexto fresco que re-ejecutó los comandos reales del repositorio.
+La tarea se implementó con un ciclo completo de **Spec-Driven Development (SDD)**: exploración → investigación → propuesta → especificación → diseño → tareas → implementación → verificación → archivo. Al igual que en #110, diseño e implementación pasaron por un validador de contrato en contexto fresco que re-ejecutó los comandos reales del repositorio.
+
+> **Nota sobre persistencia:** las 7 fases del ciclo SDD (exploración, propuesta, spec, diseño, tareas, apply-progress y verify-report) se persistieron inicialmente como archivos en `openspec/`, porque el dispatcher nativo resolvió ese store en vez de Engram (el default del proyecto) al encontrar un change ya materializado localmente. El 15/09/2026 se migró ese contenido íntegro a Engram (topic keys `sdd/correlation-id-helper/*`, mismo patrón usado en #110/#111) y se eliminó la carpeta `openspec/` del repositorio: no aporta valor versionarla junto al código, y Engram es ahora el artifact store por defecto para todos los ciclos SDD de este proyecto.
 
 ## Decisiones clave
 
@@ -63,7 +65,7 @@ Fastify permite un `requestIdHeader` que deja al caller elegir el ID de la reque
 - Commit `bebb50a` en la rama `Vaqcrow#116_Task_Add_correlation_id_helper_to_packages_contracts`, pusheado y con **PR #121** abierto contra `main`: https://github.com/reyduar/Vaqcrow/pull/121.
 - El push se hizo por HTTPS usando las credenciales de `gh` (la clave SSH no estaba disponible en este entorno de trabajo), sin modificar la configuración git persistente del repositorio.
 - El issue #116 se movió a **"In review"** en el tablero Vaqcrow-TFM (proyecto #4), con el PR #121 ya vinculado automáticamente por GitHub al abrir la rama con el nombre del issue.
-- El cambio SDD `correlation-id-helper` ya fue archivado (`sdd-archive`) con sus 8 fases persistidas en `openspec/changes/archive/2026-09-15-correlation-id-helper/`, y la especificación `correlation-id` quedó sincronizada como capability canónica en `openspec/specs/correlation-id/spec.md`.
+- El cambio SDD `correlation-id-helper` ya fue archivado (`sdd-archive`); sus 7 fases quedan persistidas en Engram bajo los topic keys `sdd/correlation-id-helper/{exploration,proposal,spec,design,tasks,apply-progress,verify-report}`, con `sdd/correlation-id-helper/archive-report` como índice de trazabilidad — no en archivos del repositorio.
 
 ## Qué queda desbloqueado
 
