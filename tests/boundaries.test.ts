@@ -14,8 +14,15 @@ const WEB_RULE_NAME = "web-presentation-stays-contracts-free";
 const WEB_DOMAIN_RULE_NAME = "web-never-imports-domain";
 const CONTRACTS_NODE_RULE_NAME = "contracts-never-import-node-core";
 const CONTRACTS_FRAMEWORK_RULE_NAME = "contracts-never-import-frameworks";
+const CIRCULAR_RULE_NAME = "no-circular";
+const PACKAGES_APPS_RULE_NAME = "packages-never-import-apps";
+const CROSS_APP_RULE_NAME = "no-cross-app-imports";
+const DOMAIN_RULE_NAME = "domain-stays-framework-free";
 const WEB_CONSUMER_CONFIG = fileURLToPath(
   new URL("./fixtures/boundaries/apps/web/tsconfig.json", import.meta.url)
+);
+const PROVIDER_STUB_MODULES = fileURLToPath(
+  new URL("./fixtures/boundaries/provider-stubs/node_modules", import.meta.url)
 );
 
 async function cruiseFixture(target: string, extraModules: readonly string[] = []): Promise<ICruiseResult> {
@@ -64,8 +71,12 @@ function compileFixture(configPath: string): readonly string[] {
   );
 }
 
-async function expectFixtureViolation(target: string, ruleName: string): Promise<void> {
-  const result = await cruiseFixture(target);
+async function expectFixtureViolation(
+  target: string,
+  ruleName: string,
+  extraModules: readonly string[] = []
+): Promise<void> {
+  const result = await cruiseFixture(target, extraModules);
 
   expect(result.summary.error).toBeGreaterThanOrEqual(1);
   expect(violationsFor(result, ruleName).length).toBeGreaterThanOrEqual(1);
@@ -110,6 +121,54 @@ describe("apps/api/src/application boundary rule", () => {
 
     expect(violationsFor(result, RULE_NAME)).toHaveLength(0);
   });
+
+  it("flags a runtime @supabase/supabase-js import from application/ with the named forbidden rule", async () => {
+    await expectFixtureViolation("apps/api/src/application/imports-supabase.fixture.ts", RULE_NAME, [
+      PROVIDER_STUB_MODULES
+    ]);
+  });
+
+  it("does not flag a type-only @supabase/supabase-js import from application/", async () => {
+    const result = await cruiseFixture("apps/api/src/application/imports-supabase-type-only.fixture.ts", [
+      PROVIDER_STUB_MODULES
+    ]);
+
+    expect(violationsFor(result, RULE_NAME)).toHaveLength(0);
+  });
+
+  it("flags a runtime stellar-sdk import from application/ with the named forbidden rule", async () => {
+    await expectFixtureViolation("apps/api/src/application/imports-stellar.fixture.ts", RULE_NAME, [
+      PROVIDER_STUB_MODULES
+    ]);
+  });
+
+  it("flags a runtime openai import from application/ with the named forbidden rule", async () => {
+    await expectFixtureViolation("apps/api/src/application/imports-llm.fixture.ts", RULE_NAME, [
+      PROVIDER_STUB_MODULES
+    ]);
+  });
+});
+
+describe("workspace-wide boundary rules", () => {
+  it("flags a mutual import between two contracts fixtures with the no-circular rule", async () => {
+    await expectFixtureViolation("packages/contracts/src/circular-a.fixture.ts", CIRCULAR_RULE_NAME);
+  });
+
+  it("flags a package importing an app with the packages-never-import-apps rule", async () => {
+    await expectFixtureViolation("packages/contracts/src/imports-app.fixture.ts", PACKAGES_APPS_RULE_NAME);
+  });
+
+  it("flags apps/web importing apps/api application internals with the no-cross-app-imports rule", async () => {
+    await expectFixtureViolation(
+      "apps/web/src/presentation/imports-api-application.fixture.ts",
+      CROSS_APP_RULE_NAME,
+      [WEB_MODULES]
+    );
+  });
+
+  it("flags packages/domain importing an npm dependency with the domain-stays-framework-free rule", async () => {
+    await expectFixtureViolation("packages/domain/src/imports-npm-dep.fixture.ts", DOMAIN_RULE_NAME);
+  });
 });
 
 describe("apps/web/src/presentation boundary rule", () => {
@@ -136,16 +195,36 @@ describe("apps/web/src/presentation boundary rule", () => {
   });
 });
 
-describe("web boundary fixtures stay outside build/typecheck/boundaries globs", () => {
-  const WEB_FIXTURE_REPO_PATHS = [
+describe("boundary fixtures stay outside build/typecheck/boundaries globs", () => {
+  const FIXTURE_REPO_PATHS = [
+    "tests/fixtures/boundaries/packages/contracts/src/imports-node-crypto.fixture.ts",
+    "tests/fixtures/boundaries/packages/contracts/src/imports-fastify.fixture.ts",
+    "tests/fixtures/boundaries/packages/contracts/src/circular-a.fixture.ts",
+    "tests/fixtures/boundaries/packages/contracts/src/circular-b.fixture.ts",
+    "tests/fixtures/boundaries/packages/contracts/src/imports-app.fixture.ts",
+    "tests/fixtures/boundaries/packages/domain/src/imports-npm-dep.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-fastify.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-fastify-type-only.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-domain.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/app-probe.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-supabase.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-supabase-type-only.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-stellar.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/application/imports-llm.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-contracts.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-contracts-type-only.fixture.ts",
-    "tests/fixtures/boundaries/apps/web/src/presentation/imports-domain.fixture.ts"
+    "tests/fixtures/boundaries/apps/web/src/presentation/imports-domain.fixture.ts",
+    "tests/fixtures/boundaries/apps/web/src/presentation/imports-api-application.fixture.ts",
+    "tests/fixtures/boundaries/provider-stubs/node_modules/@supabase/supabase-js/index.ts",
+    "tests/fixtures/boundaries/provider-stubs/node_modules/stellar-sdk/index.ts",
+    "tests/fixtures/boundaries/provider-stubs/node_modules/openai/index.ts"
   ];
 
-  it("fixture paths do not fall under apps/web/src/, so apps/web/tsconfig.json's `src/**/*` include (used by build and typecheck) never matches them", () => {
-    for (const fixturePath of WEB_FIXTURE_REPO_PATHS) {
-      expect(fixturePath.startsWith("apps/web/src/")).toBe(false);
+  it("fixture paths stay under tests/fixtures/boundaries/, so no real apps/*/src or packages/*/src include (used by build, lint, and typecheck) ever matches them", () => {
+    for (const fixturePath of FIXTURE_REPO_PATHS) {
+      expect(fixturePath.startsWith("tests/fixtures/boundaries/")).toBe(true);
+      expect(fixturePath.startsWith("apps/")).toBe(false);
+      expect(fixturePath.startsWith("packages/")).toBe(false);
     }
   });
 
@@ -162,7 +241,7 @@ describe("web boundary fixtures stay outside build/typecheck/boundaries globs", 
 
     const modulePaths = output.modules.map((module) => module.source);
 
-    for (const fixturePath of WEB_FIXTURE_REPO_PATHS) {
+    for (const fixturePath of FIXTURE_REPO_PATHS) {
       expect(modulePaths).not.toContain(fixturePath);
     }
   });
