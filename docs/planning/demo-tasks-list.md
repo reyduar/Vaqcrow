@@ -281,17 +281,17 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#39_Task_Test_domain_states_and_shared_contracts`, mergeada vía [PR #126](https://github.com/reyduar/Vaqcrow/pull/126). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive) con `sdd-verify` independiente en PASS (0 crítico/0 warning/0 sugerencia). Cambio solo de tests, sin modificaciones a código de producción. Evidencia completa en [`application-review-lifecycle-testing-evidence.md`](./application-review-lifecycle-testing-evidence.md).
 
-### #40 — Documentar evidencia de estados de dominio y contratos compartidos
+### ~~#40 — Documentar evidencia de estados de dominio y contratos compartidos~~
 
 ^issue-40
 
 - **Título original:** `Task: Document evidence for domain states and shared contracts`
-- **GitHub y estado:** [issue #40](https://github.com/reyduar/Vaqcrow/issues/40) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #40](https://github.com/reyduar/Vaqcrow/issues/40) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); dependía de [#39](#^issue-39), completada.
 - **Objetivo:** registrar evidencia de verificación, límites operativos y resultado visible de la demo.
 - **Orden:** cierra [#12](#^issue-12) y habilita [#13](#^issue-13), [#16](#^issue-16), [#20](#^issue-20) y [#27](#^issue-27).
 
-**Rama propuesta.** `Vaqcrow#40_Task_Document_evidence_for_domain_states_and_shared_contracts` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#40_Task_Document_evidence_for_domain_states_and_shared_contracts`, mergeada vía [PR #NNN](https://github.com/reyduar/Vaqcrow/pull/NNN). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive). Cambio solo de documentación, sin modificaciones a código de producción. Evidencia completa en [`domain-states-and-shared-contracts-evidence.md`](./domain-states-and-shared-contracts-evidence.md).
 
 ### #15 — Configurar pruebas determinísticas y gates de CI
 

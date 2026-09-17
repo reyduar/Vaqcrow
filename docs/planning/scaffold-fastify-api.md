@@ -30,7 +30,9 @@ El fixture que prueba la regla (`tests/boundaries.test.ts`) vive en la raíz del
 
 ### Relocación del código de #35, no borrado
 
-`apiBootstrapProbe()` (la función que #35 usó para probar el cableado entre `@vaqcrow/domain` y `@vaqcrow/contracts`) se trasladó a `application/bootstrap-probe.ts` en lugar de borrarse. Además de preservar esa prueba de cableado, es la primera demostración real de que `application/` puede importar los dos paquetes compartidos.
+`apiBootstrapProbe()` (la función que #35 usó para probar el cableado entre `@vaqcrow/domain` y `@vaqcrow/contracts`) se trasladó a `application/bootstrap-probe.ts` en lugar de borrarse. Además de preservar esa prueba de cableado, fue la primera demostración real de que `application/` podía importar los dos paquetes compartidos.
+
+> **Estado actual (post-#38):** apps/api/src/application/bootstrap-probe.ts y los cuatro símbolos de probe (apiBootstrapProbe, WorkspaceProbe, describeWorkspace, isWorkspaceBootstrapped) fueron retirados de forma atómica por el issue #38 (decisión D4). Este párrafo registra el estado vigente al cierre del #110, no el código actual.
 
 ### Alcance explícitamente diferido
 
