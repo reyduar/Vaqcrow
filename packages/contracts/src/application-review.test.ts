@@ -4,12 +4,31 @@ import { applicationReviewSnapshotSchema, applicationReviewStateSchema } from ".
 const VALID_APPLICATION_ID = "123e4567-e89b-42d3-a456-426614174000";
 
 describe("applicationReviewStateSchema", () => {
-  it("parses a known state", () => {
-    expect(applicationReviewStateSchema.safeParse("human_review").success).toBe(true);
+  it.each([
+    "draft",
+    "awaiting_assessment",
+    "human_review",
+    "approved",
+    "changes_requested",
+    "rejected"
+  ])("accepts the known state %s", (state) => {
+    expect(applicationReviewStateSchema.safeParse(state).success).toBe(true);
   });
 
-  it("rejects an arbitrary string not among the six states", () => {
-    expect(applicationReviewStateSchema.safeParse("not_a_state").success).toBe(false);
+  it.each([
+    ["near-miss casing of a known state", "Draft"],
+    ["near-miss casing of a known state", "APPROVED"],
+    ["near-miss spelling of a known state", "drafts"],
+    ["near-miss spelling of a known state", "awaiting_assesment"],
+    ["near-miss spelling of a known state", "human-review"],
+    ["an empty string", ""],
+    ["an unrelated value", "not_a_state"],
+    ["an unrelated value", "pending"],
+    ["a numeric value", 1],
+    ["a boolean value", true],
+    ["a null value", null]
+  ])("rejects %s: %j", (_description, value) => {
+    expect(applicationReviewStateSchema.safeParse(value).success).toBe(false);
   });
 });
 

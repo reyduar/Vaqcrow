@@ -26,6 +26,8 @@
     "typescript-eslint": "catalog:",
     "globals": "catalog:",
     "vitest": "catalog:",
-    "eslint-config-next": "^16.3.5"
+    "eslint-config-next": "^16.3.5",
+    "@vaqcrow/contracts": "workspace:*",
+    "@vaqcrow/domain": "workspace:*"
   }
 }

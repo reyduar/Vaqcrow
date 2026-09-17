@@ -38,6 +38,12 @@ importers:
       '@eslint/js':
         specifier: 'catalog:'
         version: 9.39.5
+      '@vaqcrow/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
+      '@vaqcrow/domain':
+        specifier: workspace:*
+        version: link:packages/domain
       dependency-cruiser:
         specifier: ^16.0.0
         version: 16.10.4

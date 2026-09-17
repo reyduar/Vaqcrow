@@ -27,7 +27,8 @@ describe("parseApplicationId", () => {
   it.each([
     ["a malformed string", "not-a-uuid"],
     ["a non-string value", 42],
-    ["a UUID v1 value", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"]
+    ["a UUID v1 value", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"],
+    ["a UUID v5 value", "123e4567-e89b-52d3-a456-426614174000"]
   ])("rejects %s", (_description, input) => {
     expect(() => parseApplicationId(input)).toThrow();
   });

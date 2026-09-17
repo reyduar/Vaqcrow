@@ -22,50 +22,69 @@ describe("applicationReviewStates", () => {
   });
 });
 
-describe("transitionApplicationReview — allowed transitions", () => {
-  it.each<[ApplicationReviewState, ApplicationReviewState]>([
-    ["draft", "awaiting_assessment"],
-    ["awaiting_assessment", "human_review"],
-    ["human_review", "approved"],
-    ["human_review", "changes_requested"],
-    ["human_review", "rejected"],
-    ["changes_requested", "draft"]
-  ])("allows %s -> %s", (from, to) => {
-    const result = transitionApplicationReview(from, to);
+describe("transitionApplicationReview — exhaustive 36-pair matrix", () => {
+  // Independent, hand-authored oracle. MUST NOT call canTransitionApplicationReview
+  // or isTerminalApplicationReviewState — those are the implementation under test.
+  const ALLOWED = new Set<string>([
+    "draft->awaiting_assessment",
+    "awaiting_assessment->human_review",
+    "human_review->approved",
+    "human_review->changes_requested",
+    "human_review->rejected",
+    "changes_requested->draft"
+  ]);
+  const TERMINAL_ORACLE: readonly string[] = ["approved", "rejected"];
 
-    expect(result).toEqual({ ok: true, state: to });
-  });
+  const transitionPairs = applicationReviewStates.flatMap((from) =>
+    applicationReviewStates.map(
+      (to): [ApplicationReviewState, ApplicationReviewState] => [from, to]
+    )
+  );
 
-  it("allows changes_requested -> draft as a recovery path", () => {
-    const result = transitionApplicationReview("changes_requested", "draft");
+  function expected(
+    from: ApplicationReviewState,
+    to: ApplicationReviewState
+  ): ReturnType<typeof transitionApplicationReview> {
+    if (ALLOWED.has(`${from}->${to}`)) {
+      return { ok: true, state: to };
+    }
 
-    expect(result).toEqual({ ok: true, state: "draft" });
-  });
-});
-
-describe("transitionApplicationReview — invalid transitions", () => {
-  it("rejects draft -> approved with an invalid_transition error and no mutation", () => {
-    const from: ApplicationReviewState = "draft";
-    const result = transitionApplicationReview(from, "approved");
-
-    expect(result).toEqual({
+    return {
       ok: false,
-      error: { code: "invalid_transition", from: "draft", to: "approved" }
-    });
-    expect(from).toBe("draft");
+      error: {
+        code: TERMINAL_ORACLE.includes(from) ? "terminal_state" : "invalid_transition",
+        from,
+        to
+      }
+    };
+  }
+
+  it("covers exactly 36 unique pairs with 6 allowed edges", () => {
+    expect(transitionPairs).toHaveLength(36);
+
+    const uniqueKeys = new Set(transitionPairs.map(([from, to]) => `${from}->${to}`));
+    expect(uniqueKeys.size).toBe(36);
+    expect(ALLOWED.size).toBe(6);
   });
 
-  it.each<ApplicationReviewState>(["approved", "rejected"])(
-    "rejects any transition attempted from the terminal state %s",
-    (from) => {
-      const result = transitionApplicationReview(from, "draft");
-
-      expect(result).toEqual({
-        ok: false,
-        error: { code: "terminal_state", from, to: "draft" }
-      });
+  it.each<[ApplicationReviewState, ApplicationReviewState]>(transitionPairs)(
+    "%s -> %s",
+    (from, to) => {
+      expect(transitionApplicationReview(from, to)).toEqual(expected(from, to));
     }
   );
+
+  it("leaves the exported state literals unchanged after the matrix ran", () => {
+    expect(applicationReviewStates).toEqual([
+      "draft",
+      "awaiting_assessment",
+      "human_review",
+      "approved",
+      "changes_requested",
+      "rejected"
+    ]);
+    expect(terminalApplicationReviewStates).toEqual(["approved", "rejected"]);
+  });
 });
 
 describe("terminalApplicationReviewStates / isTerminalApplicationReviewState", () => {
