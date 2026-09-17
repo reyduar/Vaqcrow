@@ -15,6 +15,14 @@ import RequestPage from "./request/page";
  * canonical `application/trust/disclosures.ts` module and its own frozen
  * fixture/microcopy, none of which contain these strings — this test is a
  * regression guard against a future route inlining ad hoc marketing copy.
+ *
+ * §10.5's rows are mostly fixed literal phrases, but its last row —
+ * "`Retorno` como certeza" — is a conceptual guideline, not a fixed
+ * phrase: any wording that pairs "Retorno" with certainty-implying language
+ * (e.g. "garantizado", "asegurado", "certeza", "sin riesgo", "100%") is
+ * prohibited, not only the literal string "Retorno garantizado".
+ * `RETORNO_AS_CERTAINTY_PATTERN` below catches that whole family instead of
+ * one fixed phrase.
  */
 const PROHIBITED_PHRASES = [
   "Inversión segura",
@@ -23,9 +31,16 @@ const PROHIBITED_PHRASES = [
   "Dinero depositado",
   "KYC verificado",
   "Wallet de Vaqcrow",
-  "Pago real",
-  "Retorno garantizado"
+  "Pago real"
 ];
+
+/**
+ * Matches "Retorno" (in either order, within the same sentence) paired with
+ * certainty-implying language — the conceptual guideline from §10.5's last
+ * row, not just the literal phrase "Retorno garantizado".
+ */
+const RETORNO_AS_CERTAINTY_PATTERN =
+  /retorno[^.]{0,40}(garantiz\w*|asegur\w*|certeza|100\s?%|sin\s+riesgo)|(garantiz\w*|asegur\w*|certeza|100\s?%|sin\s+riesgo)[^.]{0,40}retorno/i;
 
 const pages = [
   ["request", RequestPage],
@@ -44,5 +59,7 @@ describe("Prohibited/conditioned terms", () => {
     for (const phrase of PROHIBITED_PHRASES) {
       expect(text).not.toContain(phrase);
     }
+
+    expect(text).not.toMatch(RETORNO_AS_CERTAINTY_PATTERN);
   });
 });
