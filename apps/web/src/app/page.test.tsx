@@ -1,11 +1,19 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const { redirect } = vi.hoisted(() => ({
+  redirect: vi.fn()
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect
+}));
+
 import Home from "./page";
 
 describe("Home", () => {
-  it("renders the workspace status heading", () => {
-    render(<Home />);
+  it("redirects to the first demo step", () => {
+    Home();
 
-    expect(screen.getByRole("heading", { name: "Vaqcrow Workspace" })).toBeInTheDocument();
+    expect(redirect).toHaveBeenCalledWith("/request");
   });
 });
