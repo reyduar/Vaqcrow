@@ -1,11 +1,18 @@
+import { Chip } from "@heroui/react";
 import type { IconType } from "react-icons";
 
 /**
- * Badge primitive (Feature #17 / Task #53). Every instance renders visible
- * text — `label` is required — so meaning never lives only in an icon or a
- * color. `BadgeTone` deliberately has no "success" member: a transaction in
+ * Badge primitive (Feature #17 / Task #53). Wraps HeroUI's `Chip` so trust
+ * badges are accessible HeroUI primitives, not plain `<span>` markup, while
+ * keeping the project's own `--color-trust-*` Tailwind tokens as the visual
+ * source of truth via `className`. Every instance renders visible text —
+ * `label` is required — so meaning never lives only in an icon or a color.
+ * `BadgeTone` deliberately has no "success" member: a transaction in
  * "Enviada"/"Pendiente de confirmación" must never be able to read as
- * success at the type level, not only by convention.
+ * success at the type level, not only by convention. HeroUI's own `Chip`
+ * `color` vocabulary DOES include `"success"` (see `@heroui/styles`
+ * `chipVariants`), so `TONE_TO_CHIP_COLOR` below is written to never select
+ * it, regardless of what HeroUI itself supports.
  */
 export type BadgeVariant =
   | "simulado"
@@ -45,11 +52,25 @@ const TONE_CLASSES: Readonly<Record<BadgeTone, string>> = {
   critical: "bg-trust-critical/10 text-trust-critical border-trust-critical/30"
 };
 
+/**
+ * `BadgeTone` → HeroUI `Chip` `color`. Deliberately never maps to HeroUI's
+ * own `"success"` color — see module doc above.
+ */
+const TONE_TO_CHIP_COLOR: Readonly<Record<BadgeTone, "default" | "accent" | "warning" | "danger">> = {
+  neutral: "default",
+  info: "accent",
+  caution: "warning",
+  critical: "danger"
+};
+
 export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
   const resolvedTone = tone ?? DEFAULT_TONE[variant];
 
   return (
-    <span
+    <Chip
+      color={TONE_TO_CHIP_COLOR[resolvedTone]}
+      variant="soft"
+      size="sm"
       data-variant={variant}
       data-tone={resolvedTone}
       lang={lang}
@@ -57,6 +78,6 @@ export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
     >
       {Icon ? <Icon aria-hidden="true" focusable="false" /> : null}
       {label}
-    </span>
+    </Chip>
   );
 }
