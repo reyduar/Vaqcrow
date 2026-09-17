@@ -1,12 +1,14 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 91 issues están en `Backlog`, 3 en `Ready` y 13 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 92 issues están en `Backlog`, 3 en `Ready` y 13 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
 
 ## Comenzar aquí
 
 > **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#17 — Implementar avisos de confianza y fixtures sintéticos](#^issue-17).**
 >
 > [#52](#^issue-52) quedó en `Done` (PR [#133](https://github.com/reyduar/Vaqcrow/pull/133) mergeada, tras un ciclo verify→fix→re-verify que corrigió un comando de sweep no reproducible), documentando la evidencia completa del shell guiado. Eso cerró [#16](#^issue-16) por completo (sus tres Tasks — [#50](#^issue-50), [#51](#^issue-51) y [#52](#^issue-52) — ya están en `Done`), y desbloqueó a [#17](#^issue-17), que pasó a `Ready`. [#30](#^issue-30) sigue bloqueado: además de [#16](#^issue-16) depende de [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+
+> **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
 ## Política de orden
 
@@ -70,6 +72,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 7 | [#32 Preparar entornos de despliegue](#^issue-32) | [#101 Implementar](#^issue-101) → [#102 Probar](#^issue-102) → [#103 Documentar](#^issue-103) |
 | 8 | [#33 Ensayar y empaquetar evidencia](#^issue-33) | [#104 Implementar](#^issue-104) → [#105 Probar](#^issue-105) → [#106 Documentar](#^issue-106) |
 | 9 | [#34 Congelar build y presentación](#^issue-34) | [#107 Implementar](#^issue-107) → [#108 Probar](#^issue-108) → [#109 Documentar](#^issue-109) |
+
+### Trabajo transversal fuera del camino crítico de la demo
+
+| Issue | Alcance | Ubicación en la hoja de ruta |
+|---|---|---|
+| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Backlog`, pero fuera de las olas y del camino crítico acotado hasta una promoción explícita de alcance. |
 
 ## Contenedores de planificación
 
@@ -313,6 +321,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **GitHub y estado:** [issue #47](https://github.com/reyduar/Vaqcrow/issues/47) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#15](#^issue-15), que requiere [#11](#^issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** entregar el slice de implementación delimitado para pruebas determinísticas y gates de CI.
+- **Requisitos técnicos confirmados:** usar [Playwright](https://playwright.dev/) para browser E2E determinístico con fixtures o dobles locales; los checks de pull request no dependen de servicios externos vivos. Aplicar el gate compartido de skills/MCP antes de cualquier cambio de manifest o lockfile y registrar el soporte usado o `none`.
 - **Orden:** inicia el Feature y desbloquea [#48](#^issue-48).
 
 **Rama propuesta.** `Vaqcrow#47_Task_Implement_set_up_deterministic_testing_and_ci_gates` es una unidad de implementación revisable.
@@ -669,6 +678,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **GitHub y estado:** [issue #53](https://github.com/reyduar/Vaqcrow/issues/53) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
 - **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); sin bloqueos nativos propios.
 - **Objetivo:** entregar el slice delimitado de avisos de confianza y fixtures sintéticos.
+- **Requisitos técnicos confirmados:** usar [HeroUI](https://www.heroui.com/) para primitivas accesibles, [Tailwind CSS](https://tailwindcss.com/) para tema/tokens centralizados sin constantes visuales locales y [React Icons `io5`](https://react-icons.github.io/react-icons/icons/io5/) para iconos; significado crítico siempre combina texto y semántica accesible. [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) (ID `5439082704079758723`) es referencia visual, y su HTML no es fuente autoritativa de producción. Aplicar el gate compartido de skills/MCP antes de modificar dependencias.
 - **Orden:** inicia el Feature y desbloquea [#54](#^issue-54).
 
 **Rama propuesta.** `Vaqcrow#53_Task_Implement_implement_trust_disclosures_and_synthetic_fixtures` es una unidad de implementación revisable; conserva literalmente la duplicación `Implement implement` del título original.
@@ -863,6 +873,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **GitHub y estado:** [issue #56](https://github.com/reyduar/Vaqcrow/issues/56) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
 - **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); sin bloqueos nativos propios.
 - **Objetivo:** capturar la solicitud sintética, historial y evidencia, permitir revisar faltantes o contradicciones y rotular toda simulación.
+- **Requisitos técnicos confirmados:** [Axios](https://www.axios.com/) opera solo como transporte detrás del puerto/adaptador HTTP; presentación no importa Axios ni `packages/contracts`. [SWR](https://swr.vercel.app/) posee carga, caché y revalidación de estado de servidor mediante fetchers de aplicación/adaptador. [React Hook Form](https://react-hook-form.com/) posee estado de formulario en navegador, mientras validación de negocio y decisiones siguen siendo autoritativas en backend. No duplicar en SWR estado cliente de Zustand y aplicar el gate compartido de skills/MCP antes de modificar dependencias.
 - **Orden:** inicia el Feature y desbloquea [#57](#^issue-57).
 
 **Rama propuesta.** `Vaqcrow#56_Task_Implement_SME_request_and_evidence_review` es una unidad de implementación revisable.
@@ -1107,6 +1118,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **GitHub y estado:** [issue #95](https://github.com/reyduar/Vaqcrow/issues/95) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
 - **Jerarquía y bloqueos:** padre [#30](#^issue-30), que requiere [#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28); sin bloqueos nativos propios.
 - **Objetivo:** implementar el recorrido vertical completo dentro de la arquitectura delimitada.
+- **Requisitos técnicos confirmados:** usar [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) solo para estado de workflow cliente entre rutas. No duplicar estado de servidor gestionado por SWR ni estado, decisiones o workflow autoritativos del backend. Aplicar el gate compartido de skills/MCP antes de cualquier cambio de manifest o lockfile.
 - **Orden:** inicia el Feature y desbloquea [#96](#^issue-96).
 
 **Rama propuesta.** `Vaqcrow#95_Task_Implement_complete_vertical_demo_journey` es una unidad de implementación revisable.
@@ -1380,6 +1392,22 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **Orden:** cierra [#34](#^issue-34) y el recorrido canónico completo.
 
 **Rama propuesta.** `Vaqcrow#109_Task_Document_evidence_for_final_build_and_presentation_freeze` es una unidad de documentación revisable.
+
+## Trabajo transversal fuera del camino crítico de la demo
+
+### #134 — Establecer límites de autenticación y sesión con Auth.js
+
+^issue-134
+
+- **Título original:** `[Backlog] Task: Establish Auth.js authentication and session boundaries`
+- **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Backlog` verificado en el Project canónico `Vaqcrow-TFM` #4.
+- **Jerarquía y bloqueos:** sin padre; el cuerpo declara dependencia de [#14](#^issue-14). No se fabrica una relación jerárquica ni una ola.
+- **Objetivo:** establecer [Auth.js v5 / NextAuth](https://authjs.dev/) en el límite server-side de Next.js para autenticación y sesión; el backend conserva autorización, permisos, comandos y decisiones de dominio, y un adaptador server-only conserva registros de autenticación.
+- **Límite de alcance:** deja sin efecto la dirección opcional de Supabase Auth como autoridad de identidad/sesión para este alcance futuro. Supabase puede seguir como PostgreSQL/Storage, sin autoridad paralela. La demo actual conserva identidad sintética y #134 permanece fuera de su camino crítico salvo cambio de alcance explícito.
+- **Requisitos técnicos confirmados:** configuración y secretos dependen de #14; pruebas usan dobles locales de proveedor/persistencia; antes de instalar Auth.js o dependencias de autenticación se aplica el gate compartido de skills/MCP y se registra el soporte usado o `none`.
+- **Orden:** está inventariado porque pertenece al Project #4, pero no altera las olas ni bloquea el recorrido de dos semanas.
+
+**Rama propuesta.** `Vaqcrow#134_Task_Establish_Auth_js_authentication_and_session_boundaries` sería una unidad transversal revisable solo cuando se promueva explícitamente su ejecución.
 
 ## Discrepancias y exclusiones
 

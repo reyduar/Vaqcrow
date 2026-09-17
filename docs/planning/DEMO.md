@@ -47,7 +47,7 @@ La demostración debe seguir una sola PyME sintética y evitar journeys paralelo
 
 | Capacidad | En la demo | Evidencia visible | Reemplazo de producción |
 |---|---|---|---|
-| Perfiles y PyME | Datos sintéticos | Banner y fixtures versionados | Supabase Auth + modelo de identidad autorizado |
+| Perfiles y PyME | Datos sintéticos; sin autenticación real en el camino crítico | Banner y fixtures versionados | Auth.js v5 planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134) como límite futuro de autenticación/sesión; autorización backend separada |
 | KYC/KYB | **Simulado** por `KycProvider` | Resultado, timestamp y etiqueta `SIMULATED` | Proveedor KYC/KYB aprobado para Argentina; eventualmente SEP-12 con el anchor |
 | Historial y feed mensual de ventas | **Simulado** por `SalesDataProvider` | Dataset reproducible, fuentes y anomalía conocida | APIs fiscales, bancarias, adquirentes o ERP con permiso y cobertura validados |
 | Evaluación de riesgo | **Real** | JSON validado, evidencia citada, alertas, versión de prompt/modelo y aprobación humana | Servicio de underwriting gobernado, monitoreado y validado con datos autorizados |
@@ -107,16 +107,27 @@ No se replica la arquitectura completa de producción. Se construyen dos aplicac
 
 ### Stack tecnológico recomendado
 
+Esta es la selección planificada para implementación; la tabla no afirma que todas las dependencias ya estén instaladas o configuradas.
+
 | Tecnología | Responsabilidad | Por qué es apropiada para esta demo de dos semanas |
 |---|---|---|
 | Next.js | Aplicación web, experiencia de demo y BFF solo para necesidades propias de la UI | Permite construir y desplegar rápidamente el journey sin trasladar comandos de dominio al navegador |
+| [HeroUI](https://www.heroui.com/) | Primitivas accesibles de interfaz | Acelera composición sin reemplazar validación de accesibilidad ni reglas de dominio |
+| [Tailwind CSS](https://tailwindcss.com/) | Tema y tokens de diseño centralizados | Evita constantes visuales locales por feature y mantiene coherencia con el sistema aprobado |
+| [React Icons `io5`](https://react-icons.github.io/react-icons/icons/io5/) | Set único de iconos de producto | Mantiene consistencia; todo significado crítico se acompaña con texto y semántica accesible |
+| [Axios](https://www.axios.com/) | Transporte HTTP detrás de puertos/adaptadores frontend | Aísla detalles de red; presentación no importa Axios ni `packages/contracts` directamente |
+| [SWR](https://swr.vercel.app/) | Estado de servidor, caché y revalidación mediante fetchers de aplicación/adaptador | Evita lógica de fetching dispersa y conserva una fuente de verdad para datos remotos |
+| [React Hook Form](https://react-hook-form.com/) | Estado y presentación de formularios en navegador | Reduce complejidad de interacción sin sustituir validación o decisiones autoritativas del backend |
+| [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) | Estado de workflow cliente entre rutas | Conserva continuidad de UI sin duplicar estado de SWR ni estado autoritativo del backend |
+| [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) · Stitch ID `5439082704079758723` | Referencia visual y del sistema de diseño | Orienta la implementación revisada en Next.js; el HTML generado nunca es fuente autoritativa de producción |
 | Node.js + Fastify | Servidor HTTP/API de larga ejecución, desplegable por separado; orquesta dominio, verifica XDR y coordina solicitudes de IA | Mantiene un límite backend explícito con bajo costo de implementación y buen soporte TypeScript |
 | GitHub Actions | CI/CD para pull requests, previews y ramas `main`/demo | Automatiza gates reproducibles sin fijar un proveedor de hosting |
 | Vitest | Pruebas unitarias, de dominio y funcionales de la API | Ofrece feedback rápido y una configuración coherente con TypeScript |
 | Testing Library | Pruebas de comportamiento de componentes de UI | Valida lo que observa y hace la persona usuaria, sin acoplarse a detalles internos |
-| Playwright | Smoke tests y E2E del journey crítico en navegador | Protege la secuencia de demo que integra UI, API y Freighter |
-| Supabase | Servicios gestionados: PostgreSQL, Auth opcional y Storage acotado | Reduce trabajo operativo durante el sprint sin convertirlo en dueño del dominio |
+| [Playwright](https://playwright.dev/) | Smoke tests y E2E determinísticos del journey crítico, con fixtures o dobles locales | Protege la secuencia de demo sin hacer que los checks de pull request dependan de proveedores vivos |
+| Supabase | PostgreSQL gestionado y Storage acotado; no es autoridad paralela de identidad/sesión | Reduce trabajo operativo durante el sprint sin convertirlo en dueño del dominio |
 | PostgreSQL | Persistencia de solicitudes, decisiones, intenciones, estados e idempotencia | Aporta consistencia transaccional y trazabilidad con un modelo conocido |
+| [Auth.js v5 / NextAuth](https://authjs.dev/) | Límite futuro server-side de autenticación y sesión definido en [#134](https://github.com/reyduar/Vaqcrow/issues/134) | Separa identidad/sesión de autorización backend; no está implementado ni pertenece al camino crítico de esta demo |
 | Stellar: Freighter, Horizon y Testnet | Firma no custodial, consulta/envío de transacciones y liquidación de prueba | Demuestra el núcleo técnico del challenge sin usar fondos reales |
 | Proveedor LLM real, TBD | Evaluación estructurada de riesgo detrás de `packages/ai` | Hace real la capacidad diferencial y conserva un adaptador reemplazable |
 
@@ -138,7 +149,9 @@ packages/
 
 `apps/web` no sustituye al backend: contiene Next.js, la UI y un BFF únicamente cuando simplifica una necesidad propia de presentación. `apps/api` es un servicio Node.js con Fastify de larga ejecución y despliegue independiente; allí viven la autorización, los comandos de dominio, la verificación del XDR y la coordinación con IA y adaptadores externos. `apps/worker` se agrega únicamente si las confirmaciones o jobs acotados no caben de forma segura en el proceso de la API. No se crean `apps/admin`, microservicios, Kubernetes, un ledger de producción ni una jerarquía de paquetes por tabla durante el sprint.
 
-Supabase aporta **PostgreSQL gestionado**. Supabase Auth se usa solo si la demo necesita identidades reales, y Supabase Storage se limita a fixtures sintéticos o evidencia de la demostración. Fastify valida la identidad y es dueño de la autorización y de los comandos de dominio: el navegador no escribe directamente estados críticos ni recibe credenciales de servicio de Supabase.
+Supabase aporta **PostgreSQL gestionado** y, si se requiere, Storage limitado a fixtures sintéticos o evidencia de la demostración. Supabase Auth deja de ser una autoridad opcional competidora para el alcance futuro de [#134](https://github.com/reyduar/Vaqcrow/issues/134): Auth.js v5 será el límite de autenticación y sesión, con persistencia server-only, mientras Fastify validará identidad confiable y seguirá siendo dueño de autorización, permisos, comandos y decisiones de dominio. Nada de esto se presenta como implementado ni se incorpora al camino crítico actual, que conserva identidad sintética.
+
+> **Gate de instalación/configuración.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
 ### Clean Architecture pragmática
 
@@ -147,7 +160,9 @@ Supabase aporta **PostgreSQL gestionado**. Supabase Auth se usa solo si la demo 
 | Unidad | Límite requerido |
 |---|---|
 | `apps/api` | Es dueño del comportamiento de dominio autoritativo, los casos de uso de aplicación del backend, los puertos de persistencia y la orquestación de proveedores. Sus adaptadores conectan Fastify, PostgreSQL/Supabase, LLM y Stellar/Horizon; dominio y aplicación no importan frameworks ni SDKs de proveedores. |
-| `apps/web` | Es dueño de la presentación, la orquestación de casos de uso de aplicación del frontend, el estado de cliente, los modelos y políticas propios del frontend, y los adaptadores hacia HTTP/API y Freighter. Su estructura nace del comportamiento de la interfaz; la UI no contiene reglas de negocio autoritativas ni usa SDKs de proveedores fuera de adaptadores explícitos. |
+| `apps/web` · presentación | Compone HeroUI, tokens Tailwind CSS e iconos `io5`; React Hook Form gestiona interacción de formularios. No importa Axios ni `packages/contracts`, no decide reglas de negocio y no usa SDKs de proveedores directamente. |
+| `apps/web` · aplicación/estado | Los casos de uso y fetchers orquestan SWR para estado de servidor. Zustand guarda solo workflow cliente entre rutas; no duplica caché SWR, permisos, decisiones ni estado autoritativo del backend. |
+| `apps/web` · puertos/adaptadores | Un puerto HTTP separa aplicación de transporte y su adaptador usa Axios; Freighter permanece detrás de su adaptador. Los contratos se traducen fuera de presentación y los detalles de proveedor no entran a las capas internas. |
 | `packages/contracts` | Es el límite compartido entre aplicaciones y contiene solo esquemas de solicitudes, respuestas y eventos validables en runtime, sus DTOs, identificadores de correlación y primitivas inmutables realmente universales. Ningún contrato expone tipos de SDKs o detalles internos de una aplicación. |
 | `packages/domain` | Conserva reglas y cálculos de negocio autoritativos, puros y sin frameworks, usados por la API y por pruebas de backend/dominio. `apps/web` consume contratos y proyecciones de la API en lugar de importar casos de uso del backend. Una primitiva universal solo pasa a `packages/contracts` cuando es inmutable, no depende de frameworks y su comportamiento compartido está justificado. |
 
@@ -166,8 +181,15 @@ flowchart LR
 
     BROWSER[Navegador<br/>inversor, PyME u operador] -->|HTTPS| WEB
     BROWSER <-->|firma no custodial| FREIGHTER[Freighter]
-    WEB -->|solicitudes y XDR firmado| API
-    API -->|estado y XDR para revisión| WEB
+    WEB --> WEBUI[Presentación<br/>HeroUI · Tailwind · io5 · React Hook Form]
+    WEBUI --> WEBAPP[Aplicación frontend<br/>SWR · Zustand acotado]
+    WEBAPP --> HTTP[Puerto HTTP<br/>adaptador Axios]
+    HTTP -->|solicitudes y XDR firmado| API
+    API -->|estado y XDR para revisión| HTTP
+
+    WEB -.->|futuro #134| AUTHJS[Auth.js v5<br/>autenticación y sesión]
+    AUTHJS -.-> AUTHPERSIST[(Persistencia auth<br/>server-only)]
+    AUTHJS -.->|identidad confiable| API
 
     API --> DOMAIN[packages/domain]
     API --> AIPKG[packages/ai]
@@ -180,7 +202,6 @@ flowchart LR
     SIM --> SALES[Ventas simuladas]
     SIM --> FUNDING[Fondeo/ARS simulado]
 
-    API --> AUTH[Supabase Auth<br/>si la demo lo requiere]
     API --> DB[(Supabase PostgreSQL)]
     API --> STORAGE[Supabase Storage<br/>fixtures/evidencia sintética]
     WORKER --> DB
@@ -190,7 +211,7 @@ flowchart LR
     HORIZON --> TESTNET[Stellar Testnet]
 ```
 
-Las flechas continuas representan relaciones de ejecución; las flechas punteadas, componentes opcionales. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
+Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. El bloque Auth.js v5 corresponde a #134, no a una capacidad ya implementada ni a una dependencia del sprint. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
 
 ### CI/CD con GitHub Actions
 
@@ -204,7 +225,7 @@ Las flechas continuas representan relaciones de ejecución; las flechas punteada
 **En la rama `main` o demo:**
 
 1. Repetir todos los gates requeridos del pull request.
-2. Preparar un candidato aislado en preview o demo y ejecutar un smoke/E2E acotado con Playwright sobre el journey crítico.
+2. Preparar un candidato aislado en preview o demo y ejecutar un smoke/E2E acotado con Playwright sobre el journey crítico, usando fixtures o dobles locales para que la verificación de pull request no dependa de proveedores vivos.
 3. Desplegar o promover Next.js y la API Fastify solo después de que los gates y Playwright pasen; desplegar el worker únicamente si forma parte del candidato habilitado.
 
 Los secretos se inyectan mediante GitHub Environments y GitHub Secrets. Ninguna seed de Testnet ni token de Supabase, del proveedor LLM o del hosting se escribe en YAML o se imprime en logs. Los workflows permanecen independientes del proveedor; web y API tienen artefactos, despliegues y rollback separados.
@@ -340,7 +361,7 @@ Nunca se recortan la evaluación real de IA, la aprobación humana, la firma rea
 | Testing Library + Vitest — componentes | Comportamiento visible de formularios, revisión humana, estados pendientes/terminales, errores y rótulos `SIMULADO` |
 | Contrato de adaptadores | KYC, ventas, funding rail, LLM, Freighter y Horizon contra fixtures versionados y dobles determinísticos |
 | Arquitectura y límites de importación | Dirección de dependencias de web, API, dominio, aplicación e infraestructura; ausencia de imports directos desde UI/dominio hacia frameworks o SDKs de proveedores no autorizados |
-| Playwright — smoke/E2E | Journey crítico completo en navegador: solicitud, evaluación, aprobación, Freighter, fondeo, confirmación y distribución; fallbacks esenciales de LLM/red |
+| Playwright — smoke/E2E | Journey crítico completo y determinístico en navegador: solicitud, evaluación, aprobación, Freighter, fondeo, confirmación y distribución; fixtures/dobles locales y fallbacks esenciales de LLM/red |
 | Testnet — comprobación operativa | Fondeo y distribución con cuentas aisladas y passphrase explícita, ejecutados fuera de la suite CI determinística |
 
 Las pruebas de pull request no dependen de Testnet, Horizon ni del proveedor LLM: usan dobles y fixtures reproducibles. Las comprobaciones reales de Testnet se ejecutan de manera separada y acotada en preview/demo o manualmente antes del ensayo; un fallo externo no se confunde con una regresión determinística. Playwright protege el journey de demostración, no una matriz exhaustiva de navegadores.
