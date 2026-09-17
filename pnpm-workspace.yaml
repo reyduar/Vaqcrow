@@ -24,3 +24,5 @@ minimumReleaseAgeExclude:
   - '@turbo/windows-64@2.10.13'
   - '@turbo/windows-arm64@2.10.13'
   - turbo@2.10.13
+  - '@heroui/react@3.2.6'
+  - '@heroui/styles@3.2.6'

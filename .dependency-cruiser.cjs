@@ -60,6 +60,14 @@ module.exports = {
       severity: "error",
       from: { path: "^apps/web/src/presentation/" },
       to: { path: "(^packages/contracts/|/@vaqcrow/contracts/)", dependencyTypesNot: ["type-only"] }
+    },
+    {
+      name: "web-application-stays-react-free",
+      comment:
+        "apps/web/src/application holds pure frozen data and selectors (trust copy, fixtures, navigation); React belongs in presentation/ and state/, not here.",
+      severity: "error",
+      from: { path: "^apps/web/src/application/" },
+      to: { path: "(^|/)node_modules/(react|react-dom)(/|$)", dependencyTypesNot: ["type-only"] }
     }
   ],
   options: {

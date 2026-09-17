@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/*
+ * Trust-disclosure and chart design tokens for Feature #17.
+ * Single source of style tokens for Badge/TrustBanner/SalesEvidenceTable
+ * primitives — no feature-local color constants elsewhere.
+ *
+ * Trust tones map 1:1 to `BadgeTone` (design decision: no "success" tone,
+ * so pending/submitted states never read as success).
+ */
+@theme {
+  --color-trust-neutral: #475569;
+  --color-trust-info: #2563eb;
+  --color-trust-caution: #b45309;
+  --color-trust-critical: #b91c1c;
+
+  --color-chart-primary: #2563eb;
+  --color-chart-anomaly: #b91c1c;
+  --color-chart-missing: #94a3b8;
+  --color-chart-grid: #e2e8f0;
+}
