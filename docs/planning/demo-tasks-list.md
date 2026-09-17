@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 94 issues están en `Backlog`, 3 en `Ready` y 10 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 93 issues están en `Backlog`, 3 en `Ready` y 11 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#51 — Probar la estructura guiada y la navegación de la demo](#^issue-51).**
+> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#52 — Documentar evidencia de la estructura guiada y la navegación](#^issue-52).**
 >
-> [#50](#^issue-50) quedó en `Done` (PRs [#128](https://github.com/reyduar/Vaqcrow/pull/128), [#129](https://github.com/reyduar/Vaqcrow/pull/129), [#130](https://github.com/reyduar/Vaqcrow/pull/130) y [#131](https://github.com/reyduar/Vaqcrow/pull/131) mergeadas, cadena stacked-to-main), entregando el shell guiado de seis pasos (`request → ai-assessment → approval → funding → distribution → evidence`) para [#16](#^issue-16). Eso desbloqueó a [#51](#^issue-51), que pasó a `Ready`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+> [#51](#^issue-51) quedó en `Done` (PR [#132](https://github.com/reyduar/Vaqcrow/pull/132) mergeada), cubriendo con tests el shell guiado de seis pasos de [#50](#^issue-50): traversal real entre pasos (antes solo probado con mocks estáticos) y recuperación real del error boundary (antes solo se probaba la invocación del callback). Eso desbloqueó a [#52](#^issue-52), que pasó a `Ready`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 
 ## Política de orden
 
@@ -433,10 +433,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-51
 
 - **Título original:** `Task: Test build guided demo shell and navigation`
-- **GitHub y estado:** [issue #51](https://github.com/reyduar/Vaqcrow/issues/51) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #51](https://github.com/reyduar/Vaqcrow/issues/51) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#16](#^issue-16), que requiere [#11](#^issue-11) y [#12](#^issue-12); bloqueada nativamente por [#50](#^issue-50), ya `Done`.
 - **Objetivo:** demostrar el slice mediante pruebas determinísticas focalizadas.
 - **Orden:** valida la implementación y desbloquea [#52](#^issue-52).
+- **Entrega:** 1 PR — [#132](https://github.com/reyduar/Vaqcrow/pull/132) (mergeada), 292 líneas, 3 archivos nuevos, cero cambios de producción. Cubre traversal real entre los seis pasos y recuperación real del error boundary; delta sobre la misma capability `demo-shell-navigation` de #50.
 
 **Rama propuesta.** `Vaqcrow#51_Task_Test_build_guided_demo_shell_and_navigation` es una unidad de pruebas revisable.
 
@@ -445,8 +446,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-52
 
 - **Título original:** `Task: Document evidence build guided demo shell and navigation`
-- **GitHub y estado:** [issue #52](https://github.com/reyduar/Vaqcrow/issues/52) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#16](#^issue-16), que requiere [#11](#^issue-11) y [#12](#^issue-12); bloqueada nativamente por [#51](#^issue-51).
+- **GitHub y estado:** [issue #52](https://github.com/reyduar/Vaqcrow/issues/52) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#16](#^issue-16), que requiere [#11](#^issue-11) y [#12](#^issue-12); bloqueada nativamente por [#51](#^issue-51), ya `Done`.
 - **Objetivo:** capturar evidencia de finalización reproducible del shell guiado y su navegación.
 - **Orden:** cierra [#16](#^issue-16) y habilita [#17](#^issue-17) y [#30](#^issue-30).
 
