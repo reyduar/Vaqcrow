@@ -208,11 +208,13 @@ Igual que en la sección 4, los cuatro comandos corren independientes de `turbo 
 | Export | Archivo | Qué es | Validación runtime | Consumidor |
 |---|---|---|---|---|
 | `correlationIdSchema`, `parseCorrelationId`, `generateCorrelationId`, `CorrelationId` | `packages/contracts/src/correlation-id.ts` ([#116](https://github.com/reyduar/Vaqcrow/issues/116)) | Contrato de protocolo: identificador de correlación validado con Zod (`z.uuidv4().brand<"CorrelationId">()`) | **Sí** | Cualquier consumidor que necesite generar o validar un identificador de correlación en un límite explícito |
-| `describeWorkspace`, `WorkspaceProbe` | `packages/contracts/src/index.ts` | Placeholder de cableado de bootstrap (`{ name: string }`), sin reglas de negocio | **No** | Único consumidor: `apps/api/src/application/bootstrap-probe.ts` |
+| `describeWorkspace`, `WorkspaceProbe` | `packages/contracts/src/index.ts` | Placeholder de cableado de bootstrap (`{ name: string }`), sin reglas de negocio — **retirado por [#38](https://github.com/reyduar/Vaqcrow/issues/38)** | **No** | Único consumidor en su momento: `apps/api/src/application/bootstrap-probe.ts` (también retirado) |
 
-El issue #37 describe `packages/contracts` como conteniendo "solo contratos validables en runtime". Esa afirmación es exacta para `correlation-id.ts`, pero **no** para `describeWorkspace`/`WorkspaceProbe`: es un objeto plano sin esquema ni parseo, cuya única función hoy es dejar que `apps/api` importe algo real desde `@vaqcrow/contracts` mientras el paquete madura. Este documento no repite esa afirmación como un hecho sobre el paquete completo — cada export se describe por separado, como exige la tabla de arriba.
+El issue #37 describe `packages/contracts` como conteniendo "solo contratos validables en runtime". Esa afirmación es exacta para `correlation-id.ts`, pero **no** para `describeWorkspace`/`WorkspaceProbe`: era un objeto plano sin esquema ni parseo, cuya única función entonces era dejar que `apps/api` importe algo real desde `@vaqcrow/contracts` mientras el paquete madura. Este documento no repite esa afirmación como un hecho sobre el paquete completo — cada export se describe por separado, como exige la tabla de arriba.
 
-`packages/domain` expone únicamente `isWorkspaceBootstrapped(packages: readonly string[]): boolean`, sin dependencias externas — eso es exactamente lo que la regla `domain-stays-framework-free` (ver sección 7) protege hoy: cero imports de npm en `packages/domain/src`.
+`packages/domain` exponía entonces únicamente `isWorkspaceBootstrapped(packages: readonly string[]): boolean`, sin dependencias externas — eso es exactamente lo que la regla `domain-stays-framework-free` (ver sección 7) protegía: cero imports de npm en `packages/domain/src`.
+
+> **Nota (post-#38):** los cuatro símbolos de probe citados en esta sección fueron retirados por el issue #38. packages/domain expone hoy el ciclo de revisión de solicitudes (ver domain-states-and-shared-contracts-evidence.md). Esta sección se conserva como registro de lo que el #37 probó, no como descripción del código actual.
 
 ### 6.2 Evidencia de pruebas por paquete
 
@@ -226,7 +228,7 @@ $ vitest run
 # exit 0
 ```
 
-`src/correlation-id.test.ts` (6 tests) es la prueba directa del único export de `contracts` con validación runtime real; `src/index.test.ts` cubre `describeWorkspace`.
+`src/correlation-id.test.ts` (6 tests) es la prueba directa del único export de `contracts` con validación runtime real; `src/index.test.ts` cubría `describeWorkspace` (test retirado junto con el símbolo en #38).
 
 ```sh
 $ pnpm --filter @vaqcrow/domain run test
