@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 93 issues están en `Backlog`, 3 en `Ready` y 11 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 91 issues están en `Backlog`, 3 en `Ready` y 13 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#52 — Documentar evidencia de la estructura guiada y la navegación](#^issue-52).**
+> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#17 — Implementar avisos de confianza y fixtures sintéticos](#^issue-17).**
 >
-> [#51](#^issue-51) quedó en `Done` (PR [#132](https://github.com/reyduar/Vaqcrow/pull/132) mergeada), cubriendo con tests el shell guiado de seis pasos de [#50](#^issue-50): traversal real entre pasos (antes solo probado con mocks estáticos) y recuperación real del error boundary (antes solo se probaba la invocación del callback). Eso desbloqueó a [#52](#^issue-52), que pasó a `Ready`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+> [#52](#^issue-52) quedó en `Done` (PR [#133](https://github.com/reyduar/Vaqcrow/pull/133) mergeada, tras un ciclo verify→fix→re-verify que corrigió un comando de sweep no reproducible), documentando la evidencia completa del shell guiado. Eso cerró [#16](#^issue-16) por completo (sus tres Tasks — [#50](#^issue-50), [#51](#^issue-51) y [#52](#^issue-52) — ya están en `Done`), y desbloqueó a [#17](#^issue-17), que pasó a `Ready`. [#30](#^issue-30) sigue bloqueado: además de [#16](#^issue-16) depende de [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 
 ## Política de orden
 
@@ -408,10 +408,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-16
 
 - **Título original:** `Feature: Build guided demo shell and navigation`
-- **GitHub y estado:** [issue #16](https://github.com/reyduar/Vaqcrow/issues/16) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#11](#^issue-11) y [#12](#^issue-12).
+- **GitHub y estado:** [issue #16](https://github.com/reyduar/Vaqcrow/issues/16) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#11](#^issue-11) y [#12](#^issue-12), ambas completas.
 - **Objetivo:** implementar rutas de seis pasos, progreso y estados de carga, error y recuperación.
 - **Orden:** desbloquea [#17](#^issue-17) y [#30](#^issue-30).
+- **Entrega:** sus tres Tasks completas — [#50](#^issue-50) (implementación, PRs #128-#131), [#51](#^issue-51) (tests, PR #132) y [#52](#^issue-52) (evidencia, PR #133). Cerrado manualmente el 17/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues).
 
 **Rama propuesta.** `Vaqcrow#16_Feat_Build_guided_demo_shell_and_navigation` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
@@ -446,10 +447,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-52
 
 - **Título original:** `Task: Document evidence build guided demo shell and navigation`
-- **GitHub y estado:** [issue #52](https://github.com/reyduar/Vaqcrow/issues/52) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #52](https://github.com/reyduar/Vaqcrow/issues/52) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#16](#^issue-16), que requiere [#11](#^issue-11) y [#12](#^issue-12); bloqueada nativamente por [#51](#^issue-51), ya `Done`.
 - **Objetivo:** capturar evidencia de finalización reproducible del shell guiado y su navegación.
 - **Orden:** cierra [#16](#^issue-16) y habilita [#17](#^issue-17) y [#30](#^issue-30).
+- **Entrega:** 1 PR — [#133](https://github.com/reyduar/Vaqcrow/pull/133) (mergeada), `docs/planning/guided-demo-shell-and-navigation-evidence.md`. Ciclo verify→fix→re-verify: el primer verify encontró un comando de sweep en §7 no reproducible (se auto-matcheaba con la prosa del propio documento); corregido con exclusión de glob y re-verificado byte a byte.
 
 **Rama propuesta.** `Vaqcrow#52_Task_Document_evidence_build_guided_demo_shell_and_navigation` es una unidad de documentación revisable.
 
@@ -652,8 +654,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-17
 
 - **Título original:** `Feature: Implement trust disclosures and synthetic fixtures`
-- **GitHub y estado:** [issue #17](https://github.com/reyduar/Vaqcrow/issues/17) · Tipo `Feature` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#16](#^issue-16).
+- **GitHub y estado:** [issue #17](https://github.com/reyduar/Vaqcrow/issues/17) · Tipo `Feature` · Área `demo` · Prioridad `Critical` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#16](#^issue-16), ya `Done`.
 - **Objetivo:** congelar los fixtures de Panadería Horizonte SRL y mostrar los avisos canónicos `SIMULADO`, `TESTNET` y de no producción.
 - **Orden:** desbloquea [#18](#^issue-18) y precede a [#21](#^issue-21) por desempate numérico.
 
