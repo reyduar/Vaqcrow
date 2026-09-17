@@ -1,5 +1,5 @@
-import { WorkspaceStatus } from "@/presentation/components/workspace-status";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <WorkspaceStatus />;
+  redirect("/request");
 }
