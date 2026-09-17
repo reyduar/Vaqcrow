@@ -4,7 +4,7 @@ Este documento convierte el plan de la demo en un sistema visual y de interacci�
 
 > **Fuente de alcance:** [Plan de la demo](../planning/DEMO.md). Esta especificación desarrolla su historia vertical, sus límites de confianza y su sistema visual; el alcance de superficie de producto ya no se limita a seis pantallas (ver sección 1 y sección 4).
 
-> **Estado de Google Stitch MCP — conectado.** Stitch está configurado como servidor MCP con alcance de proyecto en `.mcp.json` (Claude Code), autenticado mediante `X-Goog-Api-Key` interpolado desde `STITCH_API_KEY`. El proyecto real `VaqcrowWebApp` (ID `5439082704079758723`) ya existe en Stitch y contiene 18 flujos de pantalla completos en escritorio, cada uno con variante Light y Dark (36 pantallas), más 6 generaciones de marca/logo. Este documento ya no describe una configuración pendiente: describe el inventario real, verificado mediante `mcp__stitch__list_screens`, y el trabajo pendiente sobre ese inventario (ver sección 11.9).
+> **Estado de Google Stitch MCP — conectado.** Stitch está configurado como servidor MCP con alcance de proyecto en `.mcp.json` (Claude Code), autenticado mediante `X-Goog-Api-Key` interpolado desde `STITCH_API_KEY`. El proyecto real `VaqcrowWebApp` (ID `5439082704079758723`) ya existe en Stitch y tiene un ledger canónico de 19 flujos de producto completos en escritorio, cada uno con variante Light y Dark (38 pantallas canónicas), más 6 generaciones de marca/logo. Para el flujo 19 están visibles las dos pantallas canónicas —Light `9184aabe0b3a4262b51893198c3c045e` y Dark `3d81c0bf51d64d90be76c9c82deff6fa`— y una pantalla Light duplicada adicional (`1c94354c1625445988a50ecc2a77b4b3`), excluida del ledger y pendiente de ocultarse, eliminarse o reconciliarse. Las dos instancias históricas ocultas ajenas a Vaqcrow también se excluyen, por separado, de ese conteo. Este documento ya no describe una configuración pendiente: describe el inventario canónico, verificado mediante `mcp__stitch__list_screens`, y el trabajo pendiente sobre el estado visible del proyecto (ver sección 11.9).
 
 > **Identidad aprobada, archivo fuente pendiente.** La marca usa un isotipo geométrico/angular de cabeza de toro. La referencia visual provista está aprobada, pero este documento no afirma que exista un SVG o PNG versionado en el repositorio. Debe incorporarse un archivo fuente autorizado antes de implementarlo y antes de generar en Stitch si la herramienta exige un asset.
 
@@ -12,17 +12,19 @@ Este documento convierte el plan de la demo en un sistema visual y de interacci�
 
 1. Confirmar únicamente los TBD operativos reales de la sección 15; tema e identidad visual ya están decididos.
 2. Incorporar el SVG/PNG fuente autorizado del isotipo si la generación requiere un archivo y siempre antes de implementación.
-3. Partir del inventario real ya existente en el proyecto Stitch `VaqcrowWebApp` (sección 11.6): 18 flujos × Light/Dark en escritorio, ya generados.
-4. Generar las variantes MOBILE faltantes para los 18 flujos (0 de 36 pantallas reales tienen hoy contraparte móvil) y resolver las anomalías señaladas en la sección 11.9 (pantallas "Identical", pantallas "Updated" y las dos pantallas ajenas al proyecto).
+3. Partir del inventario real ya existente en el proyecto Stitch `VaqcrowWebApp` (sección 11.6): 19 flujos × Light/Dark en escritorio, ya generados.
+4. Generar las variantes MOBILE faltantes para los 19 flujos (0 de las 38 pantallas canónicas tienen hoy contraparte móvil) y resolver las anomalías señaladas en la sección 11.9 (pantallas "Identical", pantalla "Updated", duplicado Light visible del flujo 19 y dos instancias históricas ocultas ajenas al proyecto).
 5. Mapear cada flujo aprobado a una ruta Next.js (sección 4) y aplicar el gate de la sección 11.5 antes de dar por cerrada una pantalla.
 6. Mantener el ledger de la sección 11.6 como fuente de verdad de IDs reales; no reintroducir marcadores `<PLACEHOLDER>`.
 7. Extender las especificaciones detalladas de la sección 8 —hoy limitadas a la narrativa original de 6 pantallas— a las áreas nuevas (marketplace, admin, billetera, etc.) y validar el recorrido ampliado con accesibilidad, estados reales y evidencia Playwright.
 
 ## Resumen de decisiones
 
+El stack siguiente está confirmado como dirección de implementación; su presencia aquí no afirma que cada dependencia ya esté instalada o configurada.
+
 | Tema | Decisión |
 |---|---|
-| Alcance | Producto completo: marketplace con múltiples PyMEs, registro y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y la historia vertical original de una PyME sintética. El inventario real ya cubre 18 flujos de pantalla en Stitch (`VaqcrowWebApp`). |
+| Alcance | Producto completo: marketplace con múltiples PyMEs, registro y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración, página Acerca de Vaqcrow y la historia vertical original de una PyME sintética. El inventario real ya cubre 19 flujos de producto en Stitch (`VaqcrowWebApp`). |
 | Idioma de interfaz | Español neutral, apropiado para personas usuarias de Argentina y sin coloquialismos. |
 | Estilo | Fintech moderna y confiable: data-forward, precisa, sobria, con superficies limpias, jerarquía fuerte, densidad controlada y microinteracciones discretas. |
 | Color | Morado `#8A05BE` como acento intencional; paletas clara y oscura exactas, sin reemplazos. |
@@ -31,7 +33,11 @@ Este documento convierte el plan de la demo en un sistema visual y de interacci�
 | Confianza | Estado `TESTNET` persistente, `SIMULADO` junto a cada dato sintético, IA consultiva y confirmación asíncrona explícita. |
 | Wallet | Freighter conecta y firma de forma no custodial; Vaqcrow nunca solicita ni almacena seeds. |
 | Diseño responsivo | Por cada ruta se aprueba el par claro/oscuro de escritorio y luego el par claro/oscuro móvil, sin recortar contenido ni reglas de confianza. |
-| Stitch | Fuente visual y de prototipado; el HTML generado es referencia, no implementación autoritativa. |
+| Componentes y estilo | [HeroUI](https://www.heroui.com/) aporta primitivas accesibles; [Tailwind CSS](https://tailwindcss.com/) centraliza tema y tokens, sin constantes visuales locales por feature; [React Icons](https://react-icons.github.io/react-icons/icons/io5/) `io5` es el set de iconos elegido y nunca comunica significado crítico sin texto y semántica accesible. |
+| Datos y formularios | [Axios](https://www.axios.com/) es transporte HTTP detrás de puertos/adaptadores; [SWR](https://swr.vercel.app/) orquesta estado de servidor y revalidación mediante fetchers de aplicación/adaptador; [React Hook Form](https://react-hook-form.com/) gestiona estado de formulario en navegador, sin decidir reglas de negocio. |
+| Estado y pruebas | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) conserva solo estado de workflow cliente entre rutas, sin duplicar SWR ni estado autoritativo del backend; [Playwright](https://playwright.dev/) cubre smoke/E2E determinísticos con fixtures o dobles locales. |
+| Stitch | [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) (ID `5439082704079758723`) es la referencia visual y de sistema de diseño; el HTML generado nunca es implementación autoritativa de producción. |
+| Autenticación | La demo mantiene identidad sintética. [Auth.js v5](https://authjs.dev/) queda planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134) como límite futuro de autenticación/sesión, dependiente de #14 y fuera del camino crítico acotado. |
 
 ---
 
@@ -60,7 +66,7 @@ Al abrir la experiencia, una persona debe entender:
 - Operación con dinero real o Stellar Public Network.
 - Afirmaciones regulatorias, legales, de solvencia o rentabilidad.
 - Aprobación autónoma por IA.
-- Autenticación y perfiles de producción (login real, recuperación de contraseña, gestión de sesión persistente más allá de lo simulado).
+- Autenticación y perfiles de producción (login real, recuperación de contraseña y sesión persistente): la demo conserva identidad sintética; Auth.js v5 se planifica por separado en [#134](https://github.com/reyduar/Vaqcrow/issues/134), fuera del camino crítico salvo promoción explícita de alcance.
 - Soroban, salvo que exista como extensión posterior independiente del diseño base.
 
 El marketplace con múltiples PyMEs, filtros avanzados y el panel de administración **ya no están fuera de alcance**: están diseñados en Stitch (sección 4, sección 11.6) y son parte del producto completo descrito en el Objetivo. Persisten fuera de alcance únicamente los puntos listados arriba.
@@ -113,9 +119,9 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 
 ## 4. Arquitectura de información y mapa de pantallas
 
-> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real en Stitch (proyecto `VaqcrowWebApp`, sección 11.6) ya cubre 18 flujos de pantalla que constituyen el producto completo. Las seis rutas originales se conservan como alias/heredadas donde el mapeo es directo (marcado abajo) y siguen siendo el recorrido guiado detallado en la sección 8; el resto son rutas nuevas propuestas.
+> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real en Stitch (proyecto `VaqcrowWebApp`, sección 11.6) ya cubre 19 flujos de producto que constituyen el producto completo. Las seis rutas originales se conservan como alias/heredadas donde el mapeo es directo (marcado abajo) y siguen siendo el recorrido guiado detallado en la sección 8; el resto son rutas nuevas propuestas.
 
-### Mapa completo (18 flujos reales, agrupados por área)
+### Mapa completo (19 flujos reales, agrupados por área)
 
 | # | Flujo Stitch | Ruta Next.js propuesta | Actor principal | Resultado de la etapa |
 |---:|---|---|---|---|
@@ -143,10 +149,12 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | 16 | Admin — Gestión de PyMEs | `/admin/pymes` | Operador/admin | Administra el catálogo de PyMEs registradas. |
 | 17 | Admin — Revisión de Solicitud | `/demo/evaluacion` *(ruta heredada; alias `/admin/solicitudes/[solicitudId]`)* | Operador | Obtiene evaluación estructurada de IA y registra aprobación humana. |
 | 18 | Admin — Usuarios | `/admin/usuarios` | Operador/admin | Administra personas usuarias y roles. |
+| **Institucional** | | | | |
+| 19 | Acerca de Vaqcrow | `/acerca-de` | Visitante | Consulta la misión, visión, pilares de valor y presentación del creador del proyecto. |
 
 `/demo/transacciones/[intentId]` (estado asíncrono de transacción) se conserva como patrón de estado compartido —reutilizado desde Billetera, Portafolio y Tokenización— sin ser todavía un flujo propio en el inventario Stitch; no se agrega una ruta por cada estado interno: wallet, XDR, aprobación y distribución siguen usando paneles, diálogos o drawers dentro de estas pantallas, con URL/estado recuperable cuando corresponda.
 
-Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas heredadas (la historia vertical original); las 12 pantallas restantes están diseñadas en Stitch pero no tienen todavía su ficha de especificación equivalente (ver nota al inicio de la sección 8 y sección 11.9).
+Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas heredadas (la historia vertical original); los 13 flujos restantes están diseñados en Stitch pero no tienen todavía su ficha de especificación equivalente (ver nota al inicio de la sección 8 y sección 11.9).
 
 ### Navegación global
 
@@ -158,7 +166,7 @@ Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas 
 
 ### Flujo de usuario
 
-> El diagrama siguiente describe únicamente la historia vertical original (las seis rutas heredadas, sección 8). Los 12 flujos nuevos (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding) todavía no tienen su propio diagrama de estados; es un pendiente de la sección 11.9.
+> El diagrama siguiente describe únicamente la historia vertical original (las seis rutas heredadas, sección 8). Los 13 flujos nuevos (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow) todavía no tienen su propio diagrama de estados; es un pendiente de la sección 11.9.
 
 ```mermaid
 flowchart TD
@@ -229,6 +237,8 @@ La identidad aprobada usa una **cabeza de toro geométrica/angular**, simétrica
 **Dependencia de asset:** la elección visual no está abierta. Sí permanece pendiente incorporar y versionar el SVG fuente autorizado —y un PNG de respaldo si hace falta— con procedencia y licencia confirmadas. No asumir una ruta de archivo ni inventar un asset. Si Stitch necesita upload o referencia de archivo, detener esa generación hasta disponer del fuente; la implementación también lo requiere.
 
 ### 5.3 Paleta central exacta
+
+La implementación materializa esta paleta y sus extensiones semánticas como tema/tokens centralizados de Tailwind CSS. Ningún feature define colores, radios, sombras o espaciado como constantes locales que compitan con este sistema.
 
 #### Tema claro
 
@@ -356,7 +366,7 @@ Tokens funcionales adicionales:
 
 ### 5.7 Iconografía, datos, imágenes y movimiento
 
-**Iconografía:** trazo simple, 20/24 px, geometría consistente. Icono más texto para wallet, red, advertencia, pendiente, confirmado y error. No usar logos de activos como sustitutos de etiquetas.
+**Iconografía:** React Icons `io5` es el set único elegido. Usar trazo simple, 20/24 px y geometría consistente; combinar icono, texto y semántica accesible para wallet, red, advertencia, pendiente, confirmado y error. No usar logos de activos como sustitutos de etiquetas ni depender de icono o color para significado crítico.
 
 **Visualización de datos:**
 
@@ -375,7 +385,7 @@ Tokens funcionales adicionales:
 - Tablet reorganiza columnas, pero conserva resumen de decisión antes del detalle.
 - Móvil apila contenido, fija la acción primaria al borde inferior solo si no oculta disclosures y convierte tablas en listas etiquetadas.
 - XDR y hashes usan bloques con salto seguro, abreviación visual y acción `Copiar`; el valor completo permanece accesible.
-- Claro y oscuro son entregables obligatorios para los 18 flujos en escritorio y móvil; ambos deben diseñarse, generarse, aprobarse, implementarse y superar QA.
+- Claro y oscuro son entregables obligatorios para los 19 flujos en escritorio y móvil; ambos deben diseñarse, generarse, aprobarse, implementarse y superar QA.
 - El selector visible ofrece `Claro`, `Oscuro` y `Sistema`, con nombre accesible, estado seleccionado perceptible sin depender del color y operación completa por teclado. `Sistema` sigue `prefers-color-scheme` y reacciona a cambios del sistema.
 - Persistir la elección explícita en almacenamiento local con una clave estable, por ejemplo `vaqcrow-theme`; `Sistema` puede persistirse como valor propio para conservar el seguimiento dinámico.
 - Aplicar el tema efectivo antes del primer paint mediante un script inline mínimo o mecanismo equivalente: leer preferencia persistida, resolver `Sistema` con `matchMedia`, establecer `data-theme` y `color-scheme`, y recién entonces habilitar transiciones. Así se evita mostrar falsamente el tema claro antes de cambiar al oscuro.
@@ -405,6 +415,8 @@ Tokens funcionales adicionales:
 - Enlaces al explorador indican que abren una nueva pestaña y exponen el hash completo en nombre o descripción accesible.
 
 ## 7. Inventario de componentes
+
+HeroUI es la base de primitivas accesibles; se compone con tokens centralizados de Tailwind CSS y con React Icons `io5`. La adopción de HeroUI no reemplaza la validación WCAG, y ningún valor visual generado por una feature puede convertirse en una segunda fuente de verdad.
 
 ### 7.1 Fundamentos
 
@@ -460,7 +472,7 @@ Tokens funcionales adicionales:
 
 ## 8. Especificaciones de pantallas
 
-> **Cobertura parcial.** Las seis fichas siguientes especifican en detalle únicamente la historia vertical original (una sola PyME, sección 4 — rutas heredadas). Las 12 pantallas restantes del inventario real (marketplace, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías y las tres pantallas de administración) están diseñadas en Stitch pero **no tienen todavía** contenido/estados/criterios de aceptación equivalentes en este documento. Escribir esas fichas es un trabajo de seguimiento independiente y más amplio; ver la lista de "Actualizaciones pendientes en Stitch" al final de la sección 11.9.
+> **Cobertura parcial.** Las seis fichas siguientes especifican en detalle únicamente la historia vertical original (una sola PyME, sección 4 — rutas heredadas). Los 13 flujos restantes del inventario real —incluidas las áreas de marketplace, portafolio, billetera, informes, soporte, administración y Acerca de Vaqcrow— están diseñados en Stitch pero **no tienen todavía** contenido/estados/criterios de aceptación equivalentes en este documento. Escribir esas fichas es un trabajo de seguimiento independiente y más amplio; ver la lista de "Actualizaciones pendientes en Stitch" al final de la sección 11.9.
 
 ### Pantalla 1 — Oportunidad y límites de la demo
 
@@ -846,13 +858,14 @@ Estructura: **qué ocurrió + qué se conservó + qué puede hacer la persona**.
 **Estado actual:** Stitch está conectado. El servidor MCP tiene alcance de proyecto (Claude Code, `.mcp.json` en la raíz del repositorio) y ya no depende de configuración ni reinicio de OpenCode. El proyecto real ya existe:
 
 - Project ID: `5439082704079758723` (`VaqcrowWebApp`)
-- Screen IDs: 36 IDs reales registrados en el ledger de la sección 11.6 (18 flujos × Light/Dark), verificados mediante `mcp__stitch__list_screens`. Ninguno es un marcador; todos corresponden a pantallas generadas.
+- Screen IDs canónicos: 38 IDs reales registrados en el ledger de la sección 11.6 (19 flujos × Light/Dark), verificados mediante `mcp__stitch__list_screens`. Ninguno es un marcador; todos corresponden a pantallas generadas. El listado visible también contiene el duplicado Light `1c94354c1625445988a50ecc2a77b4b3`, que no integra el ledger.
 
 **Estado pendiente dentro de ese mismo proyecto:**
 
-- Las 36 pantallas reales son **exclusivamente DESKTOP**; no existe ninguna variante MOBILE todavía (ver sección 11.9).
+- Las 38 pantallas canónicas son **exclusivamente DESKTOP**; no existe ninguna variante MOBILE todavía (ver sección 11.9).
 - Tres anomalías de contenido/nomenclatura señaladas por Stitch quedan pendientes de revisión (ver sección 11.9).
-- Dos pantallas ajenas a Vaqcrow conviven en el proyecto y deberían removerse (ver sección 11.9).
+- Las tres pantallas del flujo 19 están visibles: el par canónico Light/Dark y un duplicado Light adicional pendiente de ocultarse, eliminarse o reconciliarse (ver sección 11.9).
+- Dos instancias históricas ajenas a Vaqcrow siguen ocultas en el proyecto; se excluyen, por separado, de los 19 flujos y 38 pantallas canónicas (ver sección 11.9).
 
 **Prerrequisitos ya satisfechos:**
 
@@ -886,29 +899,29 @@ Estructura: **qué ocurrió + qué se conservó + qué puede hacer la persona**.
 
 ### 11.2 Secuencia controlada
 
-La secuencia original (crear proyecto, generar cada ruta desde cero) ya se ejecutó fuera de este documento: el proyecto `VaqcrowWebApp` (`5439082704079758723`) existe con 18 flujos × Light/Dark en escritorio. La secuencia vigente parte de ese inventario y cierra lo pendiente:
+La secuencia original (crear proyecto, generar cada ruta desde cero) ya se ejecutó fuera de este documento: el proyecto `VaqcrowWebApp` (`5439082704079758723`) existe con un inventario canónico de 19 flujos × Light/Dark en escritorio. La secuencia vigente parte de ese inventario y cierra lo pendiente:
 
 1. **Confirmar inventario real:** ejecutar `list_projects`/`get_project` y `list_screens` sobre `5439082704079758723` y contrastar contra el ledger de 11.6 antes de generar nada nuevo; no asumir que el ledger sigue vigente sin esta comprobación.
 2. **Resolver anomalías señaladas por Stitch:** las pantallas 7 (Detalle de PyME — Dark) y 8 (Tokenización de PyME — Dark) traen sufijo `- Identical` en su título de Stitch; la pantalla 10 (Billetera — Light) trae sufijo `- Updated`. Revisar contenido real con `get_screen`, regenerar o corregir con `edit_screens` cuando corresponda, y quitar el sufijo cuando ya no aplique.
-3. **Depurar el proyecto:** las pantallas ajenas “Ariel Duarte - Professional Landing” (Light/Dark) no pertenecen a Vaqcrow; recomendar su eliminación del proyecto Stitch (no se eliminan desde este documento).
-4. **Generar MOBILE LIGHT y DARK para cada uno de los 18 flujos:** para cada par de escritorio ya aprobado, aplicar Prompt 7 (sección 12) con `TARGET_DEVICE: MOBILE` y el tema correspondiente; registrar el ID resultante y aplicar el gate de 11.5. Esto son 36 generaciones nuevas (18 flujos × Light/Dark), hoy en cero.
+3. **Depurar el proyecto:** ocultar, eliminar o reconciliar el duplicado Light visible del flujo 19 (`1c94354c1625445988a50ecc2a77b4b3`) sin sustituir los IDs canónicos de 11.6. Por separado, las instancias históricas ocultas “Ariel Duarte - Professional Landing” (Light/Dark) no pertenecen a Vaqcrow ni al inventario canónico; recomendar su eliminación definitiva del proyecto Stitch (no se eliminan desde este documento).
+4. **Generar MOBILE LIGHT y DARK para cada uno de los 19 flujos:** para cada par de escritorio ya aprobado, aplicar Prompt 7 (sección 12) con `TARGET_DEVICE: MOBILE` y el tema correspondiente; registrar el ID resultante y aplicar el gate de 11.5. Esto son 38 generaciones nuevas (19 flujos × Light/Dark), hoy en cero.
 5. **Comparar solo decisiones acotadas:** usar `generate_variants` únicamente para una decisión concreta, máximo tres variantes en `variantOptions.variantCount` y criterio previo. Enviar los IDs mediante `selectedScreenIds`.
 6. **Capturar outputs:** invocar `get_screen` para cada ID (existente o nuevo) y guardar únicamente los metadatos devueltos en `screenshot.downloadUrl` y `htmlCode.downloadUrl`. HTML es referencia visual; no inventar una URL ni afirmar que existe una salida ausente.
-7. **Mapear a Next.js:** implementar los 18 flujos mediante las rutas propuestas en la sección 4, con sistema de tema compartido, revisar accesibilidad/estados y verificar con Playwright. El HTML recuperado es solo referencia; no convertir flujos de terceros en fuente autoritativa.
-8. **Escribir especificaciones faltantes:** producir para los 12 flujos nuevos el mismo nivel de detalle (contenido, estados, criterios de aceptación) que la sección 8 ya tiene para las seis rutas heredadas.
+7. **Mapear a Next.js:** implementar los 19 flujos mediante las rutas propuestas en la sección 4, con sistema de tema compartido, revisar accesibilidad/estados y verificar con Playwright. El HTML recuperado es solo referencia; no convertir flujos de terceros en fuente autoritativa.
+8. **Escribir especificaciones faltantes:** producir para los 13 flujos nuevos el mismo nivel de detalle (contenido, estados, criterios de aceptación) que la sección 8 ya tiene para las seis rutas heredadas.
 
 ### 11.3 Matriz obligatoria de generación
 
 | Dimensión | Valores | Total |
 |---|---|---:|
-| Flujo | Los 18 flujos reales de la sección 4/11.6 | 18 |
+| Flujo | Los 19 flujos reales de la sección 4/11.6 | 19 |
 | Device | `DESKTOP` (completo), `MOBILE` (pendiente) | 2 |
 | Tema | `LIGHT`, `DARK` | 2 |
-| Entregables totales de la matriz completa | Una pantalla completa por combinación | **72** |
-| Entregables ya completados | 18 flujos × `DESKTOP` × `LIGHT`/`DARK` | **36 (100 % de DESKTOP)** |
-| Entregables pendientes | 18 flujos × `MOBILE` × `LIGHT`/`DARK` | **36 (0 % de MOBILE)** |
+| Entregables totales de la matriz canónica completa | Una pantalla completa por combinación | **76** |
+| Entregables canónicos ya completados | 19 flujos × `DESKTOP` × `LIGHT`/`DARK` | **38 (100 % de DESKTOP)** |
+| Entregables pendientes | 19 flujos × `MOBILE` × `LIGHT`/`DARK` | **38 (0 % de MOBILE)** |
 
-No existe hoy una matriz ficticia de “24 entregables”: la superficie real de producto son 18 flujos, no 6, y la dimensión `MOBILE` está en cero en los 18. Cada flujo comparte estructura, copy y semántica entre temas. Un screen ID oscuro debe estar vinculado conceptualmente a su base clara del mismo device (ver columna `Base vinculada` en 11.6), pero sigue siendo un entregable completo y auditable. Una imagen clara con paleta, swatch, nota lateral o fragmento oscuro **no** cumple la matriz.
+No existe hoy una matriz ficticia de “24 entregables”: la superficie real de producto son 19 flujos, no 6, y la dimensión `MOBILE` está en cero en los 19. Cada flujo comparte estructura, copy y semántica entre temas. Un screen ID oscuro debe estar vinculado conceptualmente a su base clara del mismo device (ver columna `Base vinculada` en 11.6), pero sigue siendo un entregable completo y auditable. Una imagen clara con paleta, swatch, nota lateral o fragmento oscuro **no** cumple la matriz.
 
 ### 11.4 Invocaciones y captura de referencia
 
@@ -966,7 +979,7 @@ No generar la siguiente pantalla hasta que la actual cumpla:
 
 ### 11.6 Ledger de proyecto y pantallas
 
-Inventario real, verificado con `mcp__stitch__list_screens` sobre el proyecto `5439082704079758723` (`VaqcrowWebApp`). Las 38 filas son pantallas `DESKTOP` ya generadas con el contenido correcto; no existe todavía ninguna variante `MOBILE` (ver 11.9). `Notas` señala las anomalías de título reportadas por Stitch mismo.
+Inventario canónico, verificado con `mcp__stitch__list_screens` sobre el proyecto `5439082704079758723` (`VaqcrowWebApp`). Las 38 filas representan 19 flujos × Light/Dark en `DESKTOP`; no existe todavía ninguna variante `MOBILE` (ver 11.9). Para el flujo 19, el listado visible contiene además el duplicado Light `1c94354c1625445988a50ecc2a77b4b3`: las tres pantallas de ese flujo están visibles, pero solo `9184aabe0b3a4262b51893198c3c045e` (Light) y `3d81c0bf51d64d90be76c9c82deff6fa` (Dark) integran este ledger. `Notas` señala las anomalías de título o contenido pendientes reportadas por Stitch.
 
 | Orden | Flujo | Ruta Next.js propuesta | Tema | Project ID | Screen ID | Estado | Notas |
 |---:|---|---|---|---|---|---|---|
@@ -1010,7 +1023,7 @@ Inventario real, verificado con `mcp__stitch__list_screens` sobre el proyecto `5
 | 19.1 | Acerca de Vaqcrow | `/acerca-de` | LIGHT | `5439082704079758723` | `9184aabe0b3a4262b51893198c3c045e` | Completado (desktop) · Pendiente (mobile) | Verificado: header (Visión / Sobre Vaqcrow / Sobre el equipo / Contacto), hero de producto, sección "Misión y visión", siete pilares de valor, sección "Sobre el creador" (Ariel Duarte, condensada), contacto y footer con aclaración académica/demo. Sin "Trayectoria profesional" ni "Proyectos destacados". |
 | 19.2 | Acerca de Vaqcrow | `/acerca-de` | DARK | `5439082704079758723` | `3d81c0bf51d64d90be76c9c82deff6fa` | Completado (desktop) · Pendiente (mobile) | Mismo contenido verificado que 19.1, tema oscuro. |
 
-No se listan en este ledger (no son pantallas de la aplicación): 6 generaciones de marca/logo (lockups cuadrado/horizontal en claro y oscuro) — ver 11.9.
+No se listan en este ledger: el duplicado Light visible del flujo 19, pendiente de ocultarse, eliminarse o reconciliarse; las dos instancias históricas ocultas ajenas a Vaqcrow; ni las 6 generaciones de marca/logo, que no son pantallas de la aplicación. Estas exclusiones son independientes — ver 11.9.
 
 ### 11.7 Checklist de captura de outputs
 
@@ -1033,28 +1046,34 @@ Por cada generación o edición:
 | Stitch | Next.js | Regla de traducción |
 |---|---|---|
 | Pantalla generada | `app/demo/.../page.tsx` o estructura equivalente existente | Respetar rutas propuestas solo después de validar la estructura real del proyecto. |
-| Elemento repetido | Componente compartido en el límite ya adoptado por el repositorio | Extraer solo cuando existe reutilización real. |
-| Colores/tipografía | Tokens CSS/Tailwind | Usar tokens semánticos; no copiar valores dispersos. |
+| Elemento repetido | HeroUI + componente compartido en el límite ya adoptado por el repositorio | Usar primitivas accesibles y extraer solo cuando existe reutilización real. |
+| Colores/tipografía | Tema y tokens centralizados de Tailwind CSS | Usar tokens semánticos; no copiar valores dispersos ni crear constantes visuales locales por feature. |
+| Iconografía | React Icons `io5` | Mantener un único set y acompañar todo significado crítico con texto y semántica accesible. |
 | Estado visual | Estado de dominio/API | No simular `confirmed`; conectar a estados persistidos/Horizon. |
 | HTML Stitch | Referencia de layout y contenido | Reimplementar, revisar semántica y eliminar dependencias generadas no aprobadas. |
 | Imagen Stitch | Evidencia de diseño | No usar como UI funcional ni como sustituto de accesibilidad. |
+
+**Handoff de datos y estado:** presentación no importa Axios ni `packages/contracts` directamente. Los casos de uso/fetchers de aplicación consumen puertos; el adaptador HTTP implementa el transporte con Axios; SWR posee carga, caché y revalidación de estado de servidor. React Hook Form conserva solo estado de formulario y presentación, mientras el backend valida y decide. Zustand se limita al workflow cliente entre rutas y no replica estado de SWR ni decisiones, permisos o estados autoritativos del backend.
+
+**Gate de dependencias:** antes de instalar o configurar HeroUI, Tailwind CSS, React Icons, Axios, SWR, React Hook Form, Zustand, Playwright, Auth.js o cualquier dependencia nombrada, buscar primero skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni alcance adicionales.
 
 ### 11.9 Actualizaciones pendientes en Stitch
 
 Lista única de seguimiento para el trabajo pendiente sobre el proyecto real `VaqcrowWebApp` (`5439082704079758723`), referenciada desde la sección 4 y desde la nota de cobertura al inicio de la sección 8:
 
-- **Variantes MOBILE ausentes por completo.** Las 36 pantallas reales son exclusivamente `DESKTOP`; no existe ninguna variante `MOBILE` para ninguno de los 18 flujos, a pesar de que la estrategia responsiva (sección 5.8) y el gate (sección 11.5) exigen paridad móvil. Esto no es un recorte silencioso: es una tarea de generación pendiente y explícita (36 generaciones nuevas, ver 11.2 y 11.3).
+- **Variantes MOBILE ausentes por completo.** Las 38 pantallas canónicas son exclusivamente `DESKTOP`; no existe ninguna variante `MOBILE` para ninguno de los 19 flujos, a pesar de que la estrategia responsiva (sección 5.8) y el gate (sección 11.5) exigen paridad móvil. Esto no es un recorte silencioso: es una tarea de generación pendiente y explícita (38 generaciones nuevas, ver 11.2 y 11.3).
 - **Filas 7.2 y 8.2 — sufijo "- Identical" en Stitch.** Detalle de PyME (Dark, `dc9847ecf79d4376b7761ad4697a8ab9`) y Tokenización de PyME (Dark, `6dd3022b903041eabedf6aa4dc1a5c81`) traen ese sufijo en el título que asigna Stitch, lo que sugiere que la variante oscura podría no diferir realmente de la clara. Pendiente: revisar con `get_screen` y, si corresponde, regenerar la variante oscura.
 - **Fila 10.1 — sufijo "- Updated" en Stitch.** Billetera (Light, `ef5204b866d743f8a927d374098948d0`) trae ese sufijo en su título. Pendiente: pasada de limpieza de nomenclatura en Stitch (no afecta necesariamente el contenido visual).
 - **Fila 3.1 — inconsistencia cosmética de nomenclatura.** Landing Page (Light, `ae8b5ce90b9c4a7ba2e7697b247f370c`) no lleva el sufijo "(Light)" que sí tiene su contraparte Dark. Pendiente menor de nomenclatura, sin impacto funcional conocido.
 - **Filas 19.1 y 19.2 — página "Acerca de Vaqcrow" completada, IDs viejos huérfanos.** `mcp__stitch__edit_screens` falló dos veces por timeout sin aplicar nada sobre las pantallas originales "Ariel Duarte - Professional Landing" (Light `c8e3e7de5ec0429781f791a72e157101`, Dark `2c7f829716de4f57bfdab10fb651d516`). El usuario aplicó el mismo prompt manualmente desde el chat de Stitch (https://stitch.withgoogle.com/projects/5439082704079758723) y Stitch generó pantallas **nuevas** en vez de editar las existentes: `9184aabe0b3a4262b51893198c3c045e` (Light) y `3d81c0bf51d64d90be76c9c82deff6fa` (Dark), tituladas "Vaqcrow - Acerca de Vaqcrow". Contenido verificado: header con nueva navegación, hero de producto, misión y visión, siete pilares de valor, sección condensada sobre Ariel Duarte, y contacto/footer sin cambios; sin trayectoria profesional ni proyectos destacados. **Estado de los IDs originales:** el usuario los ocultó desde la UI de Stitch. Verificado con `get_project`: ambos siguen en `screenInstances` con `"hidden": true` y `get_screen` sigue devolviendo el contenido íntegro de "Ariel Duarte - Professional Landing" para los dos — no fueron eliminados, solo dejaron de mostrarse en el canvas y en `list_screens`. Para efectos prácticos del ledger y del canvas ya no estorban; si en el futuro se audita el proyecto por cantidad real de recursos, tener presente que siguen existiendo como pantallas ocultas, no borradas.
+- **Flujo 19 — duplicado Light visible fuera del ledger.** Actualmente están visibles las pantallas canónicas Light `9184aabe0b3a4262b51893198c3c045e` y Dark `3d81c0bf51d64d90be76c9c82deff6fa`, junto con una segunda pantalla Light `1c94354c1625445988a50ecc2a77b4b3`. Esta última se excluye del ledger canónico de 38 entregables y queda pendiente de ocultarse, eliminarse o reconciliarse sin cambiar los dos IDs canónicos.
 - **6 generaciones de marca/logo no son pantallas.** El proyecto también contiene 6 generaciones de isotipo/wordmark (lockups cuadrado y horizontal, claro y oscuro). No se listan en el ledger de 11.6 porque no son pantallas de producto, pero son un insumo relevante para la sección 5.2 (isotipo) una vez que se confirme el archivo fuente autorizado.
-- **Especificaciones de pantalla faltantes.** La sección 8 solo detalla contenido/estados/criterios para las seis rutas heredadas. Las 12 pantallas nuevas (marketplace, filtros avanzados, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, ambas guías y las tres pantallas de administración) necesitan su propia ficha de especificación; es un trabajo de seguimiento independiente.
-- **Diagrama de flujo de usuario incompleto.** El diagrama Mermaid de la sección 4 describe solo la historia vertical original; los 12 flujos nuevos no tienen todavía un diagrama de estados equivalente.
+- **Especificaciones de pantalla faltantes.** La sección 8 solo detalla contenido/estados/criterios para las seis rutas heredadas. Los 13 flujos nuevos —incluido Acerca de Vaqcrow— necesitan su propia ficha de especificación; es un trabajo de seguimiento independiente.
+- **Diagrama de flujo de usuario incompleto.** El diagrama Mermaid de la sección 4 describe solo la historia vertical original; los 13 flujos nuevos no tienen todavía un diagrama de estados equivalente.
 
 ## 12. Prompts listos para copiar y pegar
 
-> **Alcance de esta sección.** Los Prompts 1–6 corresponden únicamente a las seis pantallas de la historia vertical heredada (sección 8), ya generadas en `DESKTOP` (ledger 11.6, filas 1–2, 6, 9–10, 17). Todavía no existen prompts equivalentes para los 12 flujos nuevos del inventario real (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding); escribirlos es parte del pendiente de la sección 11.9. Prompt 7 (edición móvil) sí aplica hoy a los 18 flujos reales, porque es el prompt vigente para cerrar el pendiente de MOBILE señalado en 11.3/11.9.
+> **Alcance de esta sección.** Los Prompts 1–6 corresponden únicamente a las seis pantallas de la historia vertical heredada (sección 8), ya generadas en `DESKTOP` (ledger 11.6, filas 1–2, 6, 9–10, 17). Todavía no existen prompts equivalentes para los 13 flujos nuevos del inventario real (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow); escribirlos es parte del pendiente de la sección 11.9. Prompt 7 (edición móvil) sí aplica hoy a los 19 flujos reales, porque es el prompt vigente para cerrar el pendiente de MOBILE señalado en 11.3/11.9.
 
 **Uso:** para cada ruta de escritorio, concatenar el prompt maestro completo con **un** prompt de pantalla y `TARGET_DEVICE: DESKTOP · TARGET_THEME: LIGHT|DARK`. Para móvil, aplicar Prompt 7 desde el escritorio aprobado del mismo tema con `TARGET_DEVICE: MOBILE · TARGET_THEME: LIGHT|DARK`. No resumir el maestro entre generaciones. Toda copy visible debe quedar en español neutral aunque los prompts estén escritos en inglés. Cada combinación produce una pantalla completa y cada DARK se vincula con su base LIGHT en el ledger.
 
@@ -1200,7 +1219,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 
 ### 13.1 Consistencia visual
 
-- [ ] Los 18 flujos de pantalla (sección 4/11.6) usan la misma jerarquía, contenedor, grilla, escala, radios y patrón de encabezado.
+- [ ] Los 19 flujos de pantalla (sección 4/11.6) usan la misma jerarquía, contenedor, grilla, escala, radios y patrón de encabezado.
 - [ ] Los colores centrales coinciden exactamente con `#8A05BE`, `#FFFFFF`, `#F5F5F5`, `#111111`, `#666666`, `#1F1F1F`, `#272727` y `#A0A0A0`.
 - [ ] Las parejas semánticas de éxito, advertencia, error e información coinciden con la sección 5 en LIGHT y DARK.
 - [ ] El acento morado se reserva para acción/foco/progreso y no sustituye semántica de estado.
@@ -1221,7 +1240,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 ### 13.3 Responsive y accesibilidad
 
 - [ ] Validado a 1440 × 1024, 1280 × 800, tablet, 390 × 844 y 320 CSS px.
-- [ ] Los 18 flujos fueron revisados en LIGHT y DARK para DESKTOP (completado, ledger 11.6); MOBILE está pendiente para los 18 (sección 11.9) y debe cerrarse antes de dar por cumplido este punto. Ninguna variante temática es solo una anotación o swatch.
+- [ ] Los 19 flujos fueron revisados en LIGHT y DARK para DESKTOP (completado, ledger 11.6); MOBILE está pendiente para los 19 (sección 11.9) y debe cerrarse antes de dar por cumplido este punto. Ninguna variante temática es solo una anotación o swatch.
 - [ ] El selector `Claro` / `Oscuro` / `Sistema` funciona con teclado, persiste la elección y sigue cambios del sistema cuando corresponde.
 - [ ] La resolución de tema ocurre antes del primer paint con fallback claro estable, sin flash engañoso ni pérdida de estado al cambiar.
 - [ ] Validado con teclado, zoom 200 %, lector de pantalla representativo y reducción de movimiento.
@@ -1233,17 +1252,20 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 ### 13.4 De Stitch a Next.js
 
 - [ ] Project/screen IDs, imagen, HTML de referencia, variante y desviaciones están registrados.
-- [ ] El ledger registra los 36 entregables DESKTOP reales y los 36 MOBILE pendientes (72 en total, sección 11.3) sin IDs inventados.
+- [ ] El ledger registra los 38 entregables DESKTOP canónicos y los 38 MOBILE pendientes (76 en total, sección 11.3) sin IDs inventados; el duplicado Light visible del flujo 19 permanece identificado fuera del ledger hasta su reconciliación.
 - [ ] El HTML de Stitch se trata como referencia, no como fuente autoritativa ni artefacto de producción.
-- [ ] El diseño se implementa en el sistema de componentes existente de Next.js.
-- [ ] Tokens se centralizan; no se copian valores visuales dispersos.
+- [ ] El diseño se implementa en Next.js con primitivas accesibles de HeroUI, tema/tokens centralizados de Tailwind CSS e iconos React Icons `io5` acompañados por texto cuando el significado es crítico.
+- [ ] No se copian valores visuales dispersos ni se crean constantes de estilo locales por feature.
 - [ ] Los estados se conectan al dominio/API, Freighter y Horizon; no se falsifica confirmación.
+- [ ] Presentación no importa Axios ni `packages/contracts`; SWR, React Hook Form y Zustand respetan las responsabilidades del handoff de la sección 11.8.
 - [ ] La semántica HTML, accesibilidad, seguridad y comportamiento se revisan en código.
+- [ ] Antes de cualquier cambio de dependencia, la evidencia registra la skill/MCP aplicable o `none`; la búsqueda no amplía el alcance.
 
 ### 13.5 Evidencia Playwright y de demo
 
 - [ ] Playwright recorre solicitud → IA → aprobación humana → Freighter → fondeo → confirmación → ventas → cálculo → distribución → evidencia.
-- [ ] Se capturan snapshots de las seis rutas heredadas en ambos temas y devices (cobertura actual de Playwright), más estados críticos pending/failed donde aporten cobertura; extender la cobertura a los 12 flujos nuevos es parte del pendiente de la sección 11.9.
+- [ ] Los smoke/E2E de Playwright son determinísticos, usan fixtures o dobles locales y los checks de pull request no dependen de proveedores vivos.
+- [ ] Se capturan snapshots de las seis rutas heredadas en ambos temas y devices (cobertura actual de Playwright), más estados críticos pending/failed donde aporten cobertura; extender la cobertura a los 13 flujos nuevos es parte del pendiente de la sección 11.9.
 - [ ] Se prueba rechazo de Freighter, red incorrecta, timeout/invalidación de IA y Horizon indisponible.
 - [ ] Se comprueba que ningún `submitted` aparece como confirmado.
 - [ ] Se verifican badges `SIMULADO`, `TESTNET`, disclosures y enlaces de explorador.
@@ -1258,11 +1280,13 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 | D-03 | Inter como sistema de una familia. | Consistencia y jerarquía con menor complejidad; disponibilidad/condiciones deben verificarse. | Recomendación |
 | D-04 | Un gráfico de ventas con tabla equivalente. | Es la única visualización necesaria para explicar faltante y anomalía. | Aceptada en este diseño |
 | D-05 | Reutilizar la pantalla de estado para fondeo y distribución. | Ambos comparten la misma máquina asíncrona sin mezclar su identidad. | Aceptada en este diseño |
-| D-06 | Stitch completa por flujo DESKTOP LIGHT/DARK primero y luego MOBILE LIGHT/DARK, con gate por entregable y por par. | Reduce drift sin degradar la matriz obligatoria de 72 entregables (18 flujos × device × tema). | Aceptada en este diseño; DESKTOP completado (36/36), MOBILE pendiente (0/36). |
+| D-06 | Stitch completa por flujo DESKTOP LIGHT/DARK primero y luego MOBILE LIGHT/DARK, con gate por entregable y por par. | Reduce drift sin degradar la matriz obligatoria de 76 entregables (19 flujos × device × tema). | Aceptada en este diseño; DESKTOP completado (38/38), MOBILE pendiente (0/38). |
 | D-07 | HTML de Stitch es referencia visual. | La implementación autoritativa pertenece a Next.js y al sistema de componentes revisado. | No negociable |
 | D-08 | Colores semánticos de apoyo explícitos por tema, con parejas surface/text/icon. | Permite que Stitch produzca estados consistentes; la implementación aún debe medir WCAG AA. | Aceptada en este diseño |
 | D-09 | Cabeza de toro geométrica/angular como isotipo aprobado, con variantes monocromas morada y blanca. | Integra la referencia provista sin convertir su gradiente en lenguaje general ni inventar un archivo del repositorio. | Aceptada; asset fuente pendiente |
-| D-10 | El producto completo es la aplicación real diseñada en el proyecto Stitch `VaqcrowWebApp` (18 flujos): marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías y panel de administración; la historia vertical original queda como recorrido guiado dentro de ese producto. | El usuario construyó manualmente el proyecto Stitch real, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
+| D-10 | El producto completo es la aplicación real diseñada en el proyecto Stitch `VaqcrowWebApp` (19 flujos): marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y Acerca de Vaqcrow; la historia vertical original queda como recorrido guiado dentro de ese producto. | El usuario construyó manualmente el proyecto Stitch real, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
+| D-11 | HeroUI + Tailwind CSS + React Icons `io5` forman la base de implementación visual. | Separa primitivas accesibles, tokens centralizados e iconografía consistente sin convertir Stitch o constantes locales en fuentes de producción. | Aceptada; reemplaza la decisión abierta sobre iconos |
+| D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; Auth.js v5 queda en #134 fuera de la demo. | Evita fuentes de verdad paralelas y conserva backend e identidad sintética como límites autoritativos del alcance actual. | Aceptada para handoff; Auth.js aún no implementado |
 
 ## 15. Preguntas de diseño abiertas
 
@@ -1277,7 +1301,6 @@ Solo bloquean la generación o implementación indicada en la tercera columna. T
 | P1 | ¿Qué librería de gráficos ya existe o se elige para el único gráfico accesible? | Implementar pantalla 2/6. |
 | P2 | ¿Se usa fotografía sintética, ilustración geométrica o ninguna imagen? | Refinar identidad de pantalla 1. |
 | P2 | ¿El panel permite exportar un paquete de evidencia o solo copiar referencias? | Implementar acción secundaria final. |
-| P2 | ¿Se crea un icon set propio o se adopta uno ya presente en el proyecto? | Handoff de componentes. |
 
 ### Supuestos explícitos
 
@@ -1296,10 +1319,11 @@ Los estados siguientes son independientes. No usar “terminado” si solo se co
 
 - [x] Servidor Stitch MCP conectado y herramientas verificadas.
 - [x] Un proyecto creado con ID registrado (`VaqcrowWebApp`, `5439082704079758723`).
-- [x] 36 entregables DESKTOP generados y registrados: 18 flujos × LIGHT/DARK (ledger 11.6).
-- [ ] 36 entregables MOBILE generados y registrados: 18 flujos × LIGHT/DARK (0/36 hoy — sección 11.9).
+- [x] 38 entregables DESKTOP canónicos generados y registrados: 19 flujos × LIGHT/DARK (ledger 11.6).
+- [ ] 38 entregables MOBILE generados y registrados: 19 flujos × LIGHT/DARK (0/38 hoy — sección 11.9).
 - [ ] Anomalías señaladas por Stitch resueltas: sufijos "- Identical" (filas 7.2, 8.2) y "- Updated" (fila 10.1) revisados y, si corresponde, regenerados.
-- [ ] Pantallas ajenas al proyecto ("Ariel Duarte - Professional Landing") removidas de `VaqcrowWebApp`.
+- [ ] El duplicado Light visible del flujo 19 (`1c94354c1625445988a50ecc2a77b4b3`) se oculta, elimina o reconcilia sin sustituir los IDs canónicos Light/Dark.
+- [ ] Las dos instancias históricas ocultas "Ariel Duarte - Professional Landing" permanecen fuera del inventario actual y se eliminan definitivamente cuando la herramienta lo permita.
 - [ ] Correcciones aplicadas con `edit_screens`; comparaciones limitadas con `generate_variants` cuando estuvieron justificadas.
 - [x] Cada DARK es una pantalla completa vinculada conceptualmente a su base LIGHT; no se aceptan swatches o anotaciones como variantes.
 - [ ] URLs de imagen/HTML disponibles fueron capturadas sin secretos.
@@ -1322,7 +1346,7 @@ Los estados siguientes son independientes. No usar “terminado” si solo se co
 
 ### C. Implementado y verificado en Next.js
 
-- [ ] Los 18 flujos/estados responsivos implementan LIGHT y DARK con componentes reutilizables y tokens centralizados, sin duplicar lógica de negocio (las seis rutas heredadas de la historia vertical original son el subconjunto ya especificado en detalle, sección 8).
+- [ ] Los 19 flujos/estados responsivos implementan LIGHT y DARK con componentes reutilizables y tokens centralizados, sin duplicar lógica de negocio (las seis rutas heredadas de la historia vertical original son el subconjunto ya especificado en detalle, sección 8).
 - [ ] El selector `Claro` / `Oscuro` / `Sistema` persiste, sigue preferencia del dispositivo, resuelve antes del primer paint y usa fallback claro estable.
 - [ ] El SVG autorizado está versionado y se usa sin deformación, recoloreado semántico ni gradiente generalizado.
 - [ ] Datos sintéticos, IA, decisión humana, Freighter, XDR, Horizon y cálculo determinístico respetan los límites del plan.
@@ -1333,7 +1357,7 @@ Los estados siguientes son independientes. No usar “terminado” si solo se co
 - [ ] No hay secretos, seeds, PII, fondos reales ni claims de producción.
 - [ ] El HTML generado por Stitch permanece como referencia y no reemplaza revisión de código.
 
-**Estado actual de la definición de terminado:** documento de diseño actualizado con el inventario real. Fase `Diseñado en Stitch` está **parcialmente completa** (36/72 entregables: 100 % de DESKTOP, 0 % de MOBILE, más las anomalías y la limpieza de proyecto pendientes en 11.9). Fases `Aprobado` e `Implementado y verificado en Next.js` permanecen pendientes.
+**Estado actual de la definición de terminado:** documento de diseño actualizado con el inventario canónico y su diferencia frente al estado visible de Stitch. Fase `Diseñado en Stitch` está **parcialmente completa** (38/76 entregables canónicos: 100 % de DESKTOP, 0 % de MOBILE, más las anomalías, la reconciliación del duplicado Light visible del flujo 19 y la limpieza separada de instancias históricas pendientes en 11.9). Fases `Aprobado` e `Implementado y verificado en Next.js` permanecen pendientes.
 
 ## 17. Referencias de Stitch
 
