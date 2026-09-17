@@ -84,14 +84,16 @@ Hasta que esas Features salgan de `Backlog`, no hay ningún journey de demo ejec
 
 ## 7. Correcciones de documentación de este cambio
 
+El barrido excluye este mismo documento del glob: su propia prosa cita términos como "shell guiado" y "demo-shell" (por ejemplo, en los encabezados de este §7 y en las secciones §3/§5/§10), así que incluirlo generaría coincidencias contra sí mismo y el resultado dejaría de ser el barrido de documentos de planificación que esta sección audita.
+
 ```sh
-$ rg -n 'demo-shell|[Ss]hell de demo|[Ss]hell guiad' docs/
+$ rg -n 'demo-shell|[Ss]hell de demo|[Ss]hell guiad' docs/ --glob '!docs/planning/guided-demo-shell-and-navigation-evidence.md'
 docs/planning/DEMO.md:267:| 2 | Shell de demo y estados | Navegación completa con fixtures y banners | Día 1 |
-docs/planning/DEMO.md:290:Dependencia crítica: `demo-shell -> AI assessment -> ...
+docs/planning/DEMO.md:290:Dependencia crítica: `demo-shell -> AI assessment -> Stellar payment -> confirmation -> revenue-share distribution -> integration/demo hardening`. La UI puede usar estados predefinidos mientras IA y Stellar se implementan, pero la integración final no puede falsificar esos dos caminos reales.
 docs/planning/DEMO.md:377:| 1 | `demo-shell` | Caso sintético, estados y rotulado de simulaciones | Journey navegable y fixture congelado |
-docs/planning/demo-tasks-list.md:9:> [#51](#^issue-51) quedó en `Done` ...
+docs/planning/demo-tasks-list.md:9:> [#51](#^issue-51) quedó en `Done` (PR [#132](https://github.com/reyduar/Vaqcrow/pull/132) mergeada), cubriendo con tests el shell guiado de seis pasos de [#50](#^issue-50): traversal real entre pasos (antes solo probado con mocks estáticos) y recuperación real del error boundary (antes solo se probaba la invocación del callback). Eso desbloqueó a [#52](#^issue-52), que pasó a `Ready`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 docs/planning/demo-tasks-list.md:425:- **Objetivo:** entregar el slice de implementación delimitado para el shell guiado y su navegación.
-docs/planning/demo-tasks-list.md:440:- **Entrega:** 1 PR — [#132](https://github.com/reyduar/Vaqcrow/pull/132) ...
+docs/planning/demo-tasks-list.md:440:- **Entrega:** 1 PR — [#132](https://github.com/reyduar/Vaqcrow/pull/132) (mergeada), 292 líneas, 3 archivos nuevos, cero cambios de producción. Cubre traversal real entre los seis pasos y recuperación real del error boundary; delta sobre la misma capability `demo-shell-navigation` de #50.
 docs/planning/demo-tasks-list.md:451:- **Objetivo:** capturar evidencia de finalización reproducible del shell guiado y su navegación.
 ```
 
