@@ -10,7 +10,7 @@ export function WorkspaceStatus() {
 
   return (
     <section>
-      <h1>Vaqcrow Workspace</h1>
+      <h2>Vaqcrow Workspace</h2>
       <p>Status: {status}</p>
       <button type="button" onClick={connect}>
         Connect wallet
