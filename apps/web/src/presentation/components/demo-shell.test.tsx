@@ -28,9 +28,11 @@ describe("DemoShell", () => {
       "/ai-assessment"
     );
     expect(screen.getByRole("link", { name: "Funding" })).toHaveAttribute("href", "/funding");
+    expect(screen.getByText("DEMO")).toBeInTheDocument();
+    expect(screen.getByText("TESTNET · Activos sin valor económico")).toBeInTheDocument();
   });
 
-  it("renders only children when the pathname is not a valid demo route", () => {
+  it("renders only children (plus the persistent environment header) when the pathname is not a valid demo route", () => {
     usePathname.mockReturnValue("/not-a-step");
 
     render(
@@ -41,5 +43,7 @@ describe("DemoShell", () => {
 
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByText("Fallback content")).toBeInTheDocument();
+    expect(screen.getByText("DEMO")).toBeInTheDocument();
+    expect(screen.getByText("TESTNET · Activos sin valor económico")).toBeInTheDocument();
   });
 });
