@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 16 de septiembre de 2026; 97 issues están en `Backlog`, 3 en `Ready` y 7 en `Done`.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 107 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 75 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 96 issues están en `Backlog`, 3 en `Ready` y 8 en `Done`.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#39 — Probar exhaustivamente el ciclo de revisión de solicitudes y su contrato compartido](#^issue-39), [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
+> **Unidades actualmente `Ready`: [#40 — Documentar evidencia de estados de dominio y contratos compartidos](#^issue-40), [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
 >
-> [#38](#^issue-38) quedó en `Done` (PR [#125](https://github.com/reyduar/Vaqcrow/pull/125) mergeado), completando el ciclo SDD del ciclo mínimo de revisión de solicitudes y su contrato compartido. Eso desbloqueó su única dependiente nativa, [#39](#^issue-39), que pasó a `Ready`. Por la política de orden, [#12](#^issue-12) tiene prioridad `Critical` (las otras dos Features en juego son `High`), así que [#39](#^issue-39) sigue siendo la siguiente unidad recomendada del flujo principal; [#44](#^issue-44) y [#47](#^issue-47) quedan disponibles para trabajo en paralelo si hay capacidad. [#16](#^issue-16) sigue bloqueada porque además requiere que [#12](#^issue-12) esté completa.
+> [#39](#^issue-39) quedó en `Done` (PR [#126](https://github.com/reyduar/Vaqcrow/pull/126) mergeado), completando la matriz exhaustiva de transiciones y la verificación cruzada `domain`/`contracts`. Eso desbloqueó su única dependiente nativa, [#40](#^issue-40), que pasó a `Ready`. Por la política de orden, [#12](#^issue-12) tiene prioridad `Critical` (las otras dos Features en juego son `High`), así que [#40](#^issue-40) sigue siendo la siguiente unidad recomendada del flujo principal; [#44](#^issue-44) y [#47](#^issue-47) quedan disponibles para trabajo en paralelo si hay capacidad. [#16](#^issue-16) sigue bloqueada porque además requiere que [#12](#^issue-12) esté completa.
 
 ## Política de orden
 
@@ -46,7 +46,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | Ola | Features, en orden dentro de la ola | Tasks del Feature |
 |---:|---|---|
 | 0 | [#11 Inicializar workspace pnpm/Turborepo](#^issue-11) | [~~#35 Configurar workspace raíz~~](#^issue-35) → ([~~#110 Scaffold de API~~](#^issue-110) y [~~#111 Scaffold web~~](#^issue-111) en paralelo) → [~~#36 Probar límites~~](#^issue-36) → [~~#37 Documentar evidencia~~](#^issue-37) |
-| 1 | [#12 Definir estados y contratos](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [#39 Probar](#^issue-39) → [#40 Documentar](#^issue-40) |
+| 1 | [#12 Definir estados y contratos](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [~~#39 Probar~~](#^issue-39) → [#40 Documentar](#^issue-40) |
 | 1 | [#15 Configurar pruebas y CI](#^issue-15) | [#47 Implementar](#^issue-47) → [#48 Probar](#^issue-48) → [#49 Documentar](#^issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#^issue-14) | [#44 Implementar](#^issue-44) → [#45 Probar](#^issue-45) → [#46 Documentar](#^issue-46) |
 | 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#^issue-116), completada después de #110 y coordinada con #38 |
@@ -269,25 +269,25 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#38_Task_Implement_the_minimal_application_review_lifecycle_and_shared_contract`, mergeada vía [PR #125](https://github.com/reyduar/Vaqcrow/pull/125). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive) con `sdd-verify` independiente en PASS (0 crítico/0 warning). Evidencia completa en [`application-review-lifecycle-evidence.md`](./application-review-lifecycle-evidence.md).
 
-### #39 — Probar exhaustivamente el ciclo de revisión de solicitudes y su contrato compartido
+### ~~#39 — Probar exhaustivamente el ciclo de revisión de solicitudes y su contrato compartido~~
 
 ^issue-39
 
 - **Título original:** `Task: Exhaustively test the application-review lifecycle and shared contract`
-- **GitHub y estado:** [issue #39](https://github.com/reyduar/Vaqcrow/issues/39) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #39](https://github.com/reyduar/Vaqcrow/issues/39) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); depende de [#38](#^issue-38), completada.
 - **Objetivo:** probar la matriz exhaustiva de las 36 combinaciones `(from, to)` de estados, la equivalencia de vocabulario entre `packages/domain` y `packages/contracts`, y un round-trip realista (`contracts` parsea → `domain` transiciona → `contracts` revalida) — alcance que #38 dejó explícitamente diferido a esta unidad.
-- **Orden:** valida la implementación de [#38](#^issue-38) y desbloquea [#40](#^issue-40).
+- **Orden:** valida la implementación de [#38](#^issue-38) y desbloqueó [#40](#^issue-40).
 
-**Rama propuesta.** `Vaqcrow#39_Task_Test_domain_states_and_shared_contracts` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#39_Task_Test_domain_states_and_shared_contracts`, mergeada vía [PR #126](https://github.com/reyduar/Vaqcrow/pull/126). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive) con `sdd-verify` independiente en PASS (0 crítico/0 warning/0 sugerencia). Cambio solo de tests, sin modificaciones a código de producción. Evidencia completa en [`application-review-lifecycle-testing-evidence.md`](./application-review-lifecycle-testing-evidence.md).
 
 ### #40 — Documentar evidencia de estados de dominio y contratos compartidos
 
 ^issue-40
 
 - **Título original:** `Task: Document evidence for domain states and shared contracts`
-- **GitHub y estado:** [issue #40](https://github.com/reyduar/Vaqcrow/issues/40) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); bloqueada nativamente por [#39](#^issue-39).
+- **GitHub y estado:** [issue #40](https://github.com/reyduar/Vaqcrow/issues/40) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#12](#^issue-12), que requiere [#11](#^issue-11); dependía de [#39](#^issue-39), completada.
 - **Objetivo:** registrar evidencia de verificación, límites operativos y resultado visible de la demo.
 - **Orden:** cierra [#12](#^issue-12) y habilita [#13](#^issue-13), [#16](#^issue-16), [#20](#^issue-20) y [#27](#^issue-27).
 
