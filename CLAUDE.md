@@ -63,4 +63,27 @@ Pull-request-gated tests (`pnpm run test`, and everything `pnpm run verify` runs
 
 ### Planning vs. implementation
 
-`docs/planning/DEMO.md` is the scope source for the demo; GitHub Issues in the `Vaqcrow-TFM` Project organize execution as Epic → Feature → Task. Issues follow a recurring pattern: a Feature's sub-issues (Implement/Test/Document-evidence Tasks) can all be closed while GitHub leaves the parent Feature open — check `subIssuesSummary`/native blocking relations before trusting an issue's open/closed state, and close the Feature manually once its Tasks are done. Evidence for completed Features is written to `docs/planning/*-evidence.md` (Spanish, established format — read an existing one before writing a new one).
+`docs/planning/DEMO.md` is the scope source for the demo; GitHub Issues organize execution as Epic → Feature → Task and are tracked on the [Vaqcrow-TFM](https://github.com/users/reyduar/projects/4) Project board — every issue worked on should be there, not just a bare repo issue. Issues follow a recurring pattern: a Feature's sub-issues (Implement/Test/Document-evidence Tasks) can all be closed while GitHub leaves the parent Feature open — check `subIssuesSummary`/native blocking relations before trusting an issue's open/closed state, and close the Feature manually once its Tasks are done.
+
+`docs/planning/` holds the rest of the planning corpus — check it before assuming scope or architecture for a given technology:
+- `product.md` — the real-product roadmap beyond the demo (Argentina-specific risks, production decisions still open).
+- `stellar-blockchain-requirements.md` — the authoritative Stellar/Freighter/Horizon scope: classic Testnet payments only via `@stellar/stellar-sdk` + Horizon + Freighter; Soroban/smart contracts are explicitly optional extension work, never required or blocking.
+- `demo-tasks-list.md` — the executable roadmap; see Branching below for how it drives branch names.
+- `*-evidence.md` files (e.g. `domain-states-and-shared-contracts-evidence.md`, `trust-disclosures-and-synthetic-fixtures-evidence.md`, `supabase-schema-and-persistence-evidence.md`) — the established format for a Feature-closing evidence doc; read one before writing a new one rather than inventing a structure.
+
+## Workflow
+
+### Branching
+
+When starting work on an issue, name the branch exactly as `docs/planning/demo-tasks-list.md` prescribes for it — every issue entry there has a **Rama propuesta** (not yet implemented) or **Rama e implementación** (already delivered) line naming the branch. The stated convention: `Vaqcrow#<number>_Feat_<original title>` for Features, `Vaqcrow#<number>_Task_<original title>` for Tasks — `Feature: `/`Task: ` stripped, spaces/punctuation replaced by `_`, original English title preserved, literal `#`. Epics never get a branch. For a chained/stacked PR split, suffix subsequent branches off the first one as `-02-<slug>`, `-03-<slug>`, etc.
+
+### Skills
+
+Match the active skill registry (`.atl/skill-registry.md`, kept fresh automatically) to the technology being touched, and load the matching skill before writing code in that area — this mirrors `demo-tasks-list.md`'s own "Gate compartido antes de dependencias" convention. Currently installed and relevant to this stack: `supabase` + `supabase-postgres-best-practices` (schema, RLS, migrations), `heroui-react` / `heroui-native` / `heroui-migration` (UI components), `frontend-design` (visual/UX decisions). Stellar/Freighter/Horizon work has no skill installed yet: `docs/planning/stellar-blockchain-requirements.md` §Parte 4 (Tabla de skills recomendadas) is a vetted catalog with install commands — `stellar-dev` (Stellar Foundation) is its primary recommendation — install and load the relevant one when that work actually starts, rather than improvising. Playwright/Next.js have no dedicated skill catalog documented yet; check the registry and install through the same gate if a relevant one exists before adding either as a dependency.
+
+### Obsidian-flavored Markdown
+
+This repository is an Obsidian vault (`.obsidian/` exists) and its docs use Obsidian syntax beyond plain GFM. Any `.md` file you create or edit should keep rendering correctly in Obsidian:
+- Block references: a line ending in `^block-id` is linkable as `[text](#^block-id)` — used throughout `demo-tasks-list.md` for per-issue anchors.
+- Wikilinks with a display-text pipe: `[[path/to/file|Display text]]` (seen in `deploy-planning.md`) when linking to another vault file, instead of a plain Markdown link.
+- Callouts: `> [!info]`, `> [!warning]`, `> [!important]`, `> [!todo]`, `> [!tip]`, `> [!question]` for admonition-style blocks, matching `deploy-planning.md` and `demo-tasks-list.md` — prefer these over plain blockquotes when the content is a note/warning/todo rather than a quotation.

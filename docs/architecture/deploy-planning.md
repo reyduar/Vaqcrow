@@ -70,7 +70,7 @@ graph TB
 
     subgraph "MCP Servers"
         FLY_MCP["Fly.io MCP — flyctl mcp server"]
-        VERCEL_MCP["Vercel MCP — @vercel/mcp"]
+        VERCEL_MCP["Vercel MCP — mcp.vercel.com (hosted)"]
         PW_MCP["Playwright MCP — @playwright/mcp"]
         GH_MCP["GitHub MCP — ghcr.io/github/github-mcp-server"]
     end
@@ -383,14 +383,15 @@ fly mcp server --claude --server flyctl
 
 **Propósito:** Gestionar el frontend en Vercel desde el IDE (deploy, preview, logs).
 
-#### Instalación
+> [!warning] Corrección (2026-09-18)
+> Vercel migró a un servidor MCP **remoto y alojado** (`https://mcp.vercel.com`, autenticado por OAuth) — ya no requiere instalar un paquete `@vercel/mcp` local por npx ni pasar un token manual. La entrada de este repo vive en `.mcp.json` (raíz del monorepo) como servidor `type: "http"`, siguiendo el mismo patrón que Supabase.
+
+#### Instalación (Claude Code)
 
 ```bash
-# Instalar Vercel CLI
-npm i -g vercel
-
-# Login
-vercel login
+claude mcp add --transport http vercel https://mcp.vercel.com
+# primera conexión: se abre el navegador para autorizar por OAuth
+# verificar: claude mcp list
 ```
 
 #### Claude Desktop — `claude_desktop_config.json`
@@ -399,8 +400,7 @@ vercel login
 {
   "mcpServers": {
     "vercel": {
-      "command": "npx",
-      "args": ["-y", "@vercel/mcp", "--token", "<VERCEL_TOKEN>"]
+      "url": "https://mcp.vercel.com"
     }
   }
 }
@@ -412,8 +412,8 @@ vercel login
 {
   "mcp": {
     "vercel": {
-      "command": "npx",
-      "args": ["-y", "@vercel/mcp", "--token", "<VERCEL_TOKEN>"]
+      "type": "remote",
+      "url": "https://mcp.vercel.com"
     }
   }
 }
@@ -535,8 +535,8 @@ vercel login
       "args": ["mcp", "server", "--server", "flyctl"]
     },
     "vercel": {
-      "command": "npx",
-      "args": ["-y", "@vercel/mcp", "--token", "<VERCEL_TOKEN>"]
+      "type": "remote",
+      "url": "https://mcp.vercel.com"
     },
     "playwright": {
       "command": "npx",
