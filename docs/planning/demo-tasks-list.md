@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 18 de septiembre de 2026; 89 issues están en `Backlog`, 2 en `Ready` y 17 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 18 de septiembre de 2026; 83 issues están en `Backlog`, 2 en `Ready` y 23 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
 
 ## Comenzar aquí
 
 > **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
 >
-> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). [#18](#^issue-18) sigue bloqueado: además de [#17](#^issue-17) depende de [#13](#^issue-13), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados. [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -184,10 +184,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-11
 
 - **Título original:** `Feature: Bootstrap pnpm/Turborepo workspace`
-- **GitHub y estado:** [issue #11](https://github.com/reyduar/Vaqcrow/issues/11) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #11](https://github.com/reyduar/Vaqcrow/issues/11) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#4](#^issue-4); sin bloqueos nativos.
 - **Objetivo:** establecer un workspace raíz reproducible con `apps/api` y `apps/web` independientes, Clean Architecture pragmática y un modelo deliberadamente estrecho de código compartido.
 - **Orden:** abre el grafo y desbloquea [#12](#^issue-12), [#14](#^issue-14), [#15](#^issue-15) y [#16](#^issue-16).
+- **Entrega:** sus cinco Tasks completas — [#35](#^issue-35), [#36](#^issue-36), [#37](#^issue-37), [#110](#^issue-110) y [#111](#^issue-111). Cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)).
 
 **Rama propuesta.** `Vaqcrow#11_Feat_Bootstrap_pnpm_Turborepo_workspace` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
@@ -258,10 +259,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-12
 
 - **Título original:** `Feature: Define domain states and shared contracts`
-- **GitHub y estado:** [issue #12](https://github.com/reyduar/Vaqcrow/issues/12) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#11](#^issue-11).
+- **GitHub y estado:** [issue #12](https://github.com/reyduar/Vaqcrow/issues/12) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#11](#^issue-11), ya completo.
 - **Objetivo:** definir máquinas de estado tipadas, identificadores y esquemas normalizados para API, eventos y adaptadores.
 - **Orden:** desbloquea [#13](#^issue-13), [#16](#^issue-16), [#20](#^issue-20) y [#27](#^issue-27), la mayor cantidad de dependientes de esta ola.
+- **Entrega:** sus tres Tasks completas — [#38](#^issue-38), [#39](#^issue-39) y [#40](#^issue-40). Cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16) y [#11](#^issue-11)).
 
 **Rama propuesta.** `Vaqcrow#12_Feat_Define_domain_states_and_shared_contracts` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
@@ -565,48 +567,49 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-13
 
 - **Título original:** `Feature: Create Supabase schema and idempotent persistence`
-- **GitHub y estado:** [issue #13](https://github.com/reyduar/Vaqcrow/issues/13) · Tipo `Feature` · Área `database` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#12](#^issue-12).
+- **GitHub y estado:** [issue #13](https://github.com/reyduar/Vaqcrow/issues/13) · Tipo `Feature` · Área `database` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#12](#^issue-12), ya completo.
 - **Objetivo:** persistir casos, evidencia, decisiones, intenciones, transacciones y metadatos de auditoría en Supabase PostgreSQL.
 - **Orden:** se ubica después de los `Critical` listos y desbloquea [#18](#^issue-18), [#24](#^issue-24) y [#26](#^issue-26).
+- **Entrega:** sus tres Tasks completas — [#41](#^issue-41), [#42](#^issue-42) y [#43](#^issue-43) (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)). Cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16), [#11](#^issue-11) y [#12](#^issue-12)). Desbloquea [#18](#^issue-18) y [#26](#^issue-26) por completo; [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23).
 
 **Rama propuesta.** `Vaqcrow#13_Feat_Create_Supabase_schema_and_idempotent_persistence` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
-### #41 — Implementar el esquema Supabase y la persistencia
+### ~~#41 — Implementar el esquema Supabase y la persistencia~~
 
 ^issue-41
 
 - **Título original:** `Task: Implement the Supabase schema and persistence`
-- **GitHub y estado:** [issue #41](https://github.com/reyduar/Vaqcrow/issues/41) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12); sin bloqueos nativos propios.
+- **GitHub y estado:** [issue #41](https://github.com/reyduar/Vaqcrow/issues/41) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12), ya completo; sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento y el contrato centrales de persistencia del Feature.
 - **Orden:** inicia el Feature y desbloquea [#42](#^issue-42).
 
-**Rama propuesta.** `Vaqcrow#41_Task_Implement_the_Supabase_schema_and_persistence` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#41_Task_Implement_the_Supabase_schema_and_persistence`, mergeada vía [PR #148](https://github.com/reyduar/Vaqcrow/pull/148) (schema/port/client) y [PR #149](https://github.com/reyduar/Vaqcrow/pull/149) (adapter/tests), con un PR de cierre adicional ([PR #150](https://github.com/reyduar/Vaqcrow/pull/150)) tras detectarse que #149 solo había mergeado en la rama de #148, no en `main` — hueco encontrado y corregido en la misma sesión. Migración `application_review` (RLS + grants + trigger atómicos) verificada idempotente en vivo contra el proyecto real vía MCP de Supabase (`apply_migration` corrido dos veces).
 
-### #42 — Probar el esquema Supabase y la persistencia
+### ~~#42 — Probar el esquema Supabase y la persistencia~~
 
 ^issue-42
 
 - **Título original:** `Task: Test the Supabase schema and persistence`
-- **GitHub y estado:** [issue #42](https://github.com/reyduar/Vaqcrow/issues/42) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12); bloqueada nativamente por [#41](#^issue-41).
+- **GitHub y estado:** [issue #42](https://github.com/reyduar/Vaqcrow/issues/42) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12), ya completo; bloqueada nativamente por [#41](#^issue-41), ya completo.
 - **Objetivo:** añadir pruebas determinísticas focalizadas de éxito, rechazo y recuperación.
 - **Orden:** valida la implementación y desbloquea [#43](#^issue-43).
 
-**Rama propuesta.** `Vaqcrow#42_Task_Test_the_Supabase_schema_and_persistence` es una unidad de pruebas revisable.
+**Rama e implementación.** Dos PRs encadenadas (stacked-to-main) — [PR #151](https://github.com/reyduar/Vaqcrow/pull/151) (plumbing: cliente publishable, config de integración) y [PR #152](https://github.com/reyduar/Vaqcrow/pull/152) (7 bloques `it(...)` cubriendo 9 requisitos: denegación RLS/grant con `42501`, CHECK constraint, trigger de `updated_at`, idempotencia y conflicto de estado), ambas mergeadas. Corrida en vivo contra el proyecto real confirmada por el usuario localmente antes del merge.
 
-### #43 — Documentar evidencia del esquema Supabase y la persistencia
+### ~~#43 — Documentar evidencia del esquema Supabase y la persistencia~~
 
 ^issue-43
 
 - **Título original:** `Task: Document evidence for the Supabase schema and persistence`
-- **GitHub y estado:** [issue #43](https://github.com/reyduar/Vaqcrow/issues/43) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12); bloqueada nativamente por [#42](#^issue-42).
+- **GitHub y estado:** [issue #43](https://github.com/reyduar/Vaqcrow/issues/43) · Tipo `Task` · Área `database` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#13](#^issue-13), que requiere [#12](#^issue-12), ya completo; bloqueada nativamente por [#42](#^issue-42), ya completo.
 - **Objetivo:** registrar evidencia de verificación, límites operativos y resultado visible de la demo.
 - **Orden:** cierra [#13](#^issue-13) y habilita [#18](#^issue-18), [#24](#^issue-24) y [#26](#^issue-26).
 
-**Rama propuesta.** `Vaqcrow#43_Task_Document_evidence_for_the_Supabase_schema_and_persistence` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#43_Task_Document_evidence_for_the_Supabase_schema_and_persistence`, mergeada vía [PR #153](https://github.com/reyduar/Vaqcrow/pull/153). Evidencia completa en [`supabase-schema-and-persistence-evidence.md`](./supabase-schema-and-persistence-evidence.md); `sdd-verify` independiente en PASS (0 crítico/0 warning).
 
 ## Ola 3 — Primeros slices funcionales paralelos
 
@@ -616,7 +619,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Feature: Build, verify and submit funding intent`
 - **GitHub y estado:** [issue #24](https://github.com/reyduar/Vaqcrow/issues/24) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#7](#^issue-7); bloqueada nativamente por [#13](#^issue-13) y [#23](#^issue-23).
+- **Jerarquía y bloqueos:** padre [#7](#^issue-7); bloqueada nativamente por [#13](#^issue-13), ya completo, y [#23](#^issue-23), aún en `Backlog`.
 - **Objetivo:** crear una intención de fondeo idempotente, verificar invariantes del XDR y exponer las API de envío y estado.
 - **Orden:** tiene prioridad `Critical`, desbloquea [#25](#^issue-25) y [#30](#^issue-30), y usa las dependencias nativas para ordenar.
 
@@ -765,7 +768,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Feature: Implement monthly sales feed`
 - **GitHub y estado:** [issue #26](https://github.com/reyduar/Vaqcrow/issues/26) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#13](#^issue-13).
+- **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#13](#^issue-13), ya completo — sin bloqueos propios pendientes.
 - **Objetivo:** cargar el siguiente período sintético de ventas con procedencia, anomalía conocida y rotulado simulado explícito.
 - **Orden:** se ejecuta después de los Features `Critical` listos y desbloquea [#27](#^issue-27).
 
@@ -863,7 +866,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Feature: Implement SME request and evidence review`
 - **GitHub y estado:** [issue #18](https://github.com/reyduar/Vaqcrow/issues/18) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#13](#^issue-13) y [#17](#^issue-17).
+- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#13](#^issue-13) y [#17](#^issue-17), ambas completas — sin bloqueos propios pendientes, es la siguiente unidad ejecutable de esta rama.
 - **Objetivo:** presentar identidad, KYC/KYB, evidencia de ventas, datos faltantes y referencias de anomalías, todo sintético.
 - **Orden:** entre los Features `High` empatados precede por número y desbloquea [#19](#^issue-19).
 
