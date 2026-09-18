@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Input, Label } from "@heroui/react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import type {
   SmeRequestFormField,
@@ -21,6 +22,12 @@ export interface SmeRequestFormProps {
   readonly onSubmit: (values: SmeRequestFormValues) => void | Promise<void>;
   readonly submitError?: SmeRequestSubmitError;
   readonly isSubmitting?: boolean;
+}
+
+interface Dismissal {
+  readonly forError: SmeRequestSubmitError | undefined;
+  readonly fields: readonly SmeRequestFormField[];
+  readonly message: boolean;
 }
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -44,8 +51,26 @@ export function SmeRequestForm({
     defaultValues: { declaredTotalArs: "", periodStart: "", periodEnd: "" }
   });
 
+  const idPrefix = useId();
+
+  // Server errors are dismissed per field when the user edits it. Dismissals
+  // belong to one `submitError` object: a new error from the caller starts
+  // fresh, so a stale dismissal can never mask it.
+  const [dismissal, setDismissal] = useState<Dismissal>({ forError: submitError, fields: [], message: false });
+  const active: Dismissal =
+    dismissal.forError === submitError ? dismissal : { forError: submitError, fields: [], message: false };
+
+  const dismiss = (name: SmeRequestFormField) =>
+    setDismissal({
+      forError: submitError,
+      fields: active.fields.includes(name) ? active.fields : [...active.fields, name],
+      message: true
+    });
+
+  // A live server error wins over local validation state, never the reverse.
   const errorFor = (field: SmeRequestFormField): string | undefined =>
-    errors[field]?.message ?? submitError?.fieldErrors?.[field];
+    (active.fields.includes(field) ? undefined : submitError?.fieldErrors?.[field]) ??
+    errors[field]?.message;
 
   const field = (
     name: SmeRequestFormField,
@@ -55,19 +80,20 @@ export function SmeRequestForm({
     inputMode: "numeric" | "text"
   ) => {
     const error = errorFor(name);
-    const hintId = `${name}-hint`;
-    const errorId = `${name}-error`;
+    const inputId = `${idPrefix}-${name}`;
+    const hintId = `${inputId}-hint`;
+    const errorId = `${inputId}-error`;
     return (
       <div className="flex flex-col gap-1">
-        <Label htmlFor={name}>{label}</Label>
+        <Label htmlFor={inputId}>{label}</Label>
         <Input
-          id={name}
+          id={inputId}
           type="text"
           inputMode={inputMode}
           aria-required="true"
           aria-invalid={error ? "true" : undefined}
           aria-describedby={error ? `${hintId} ${errorId}` : hintId}
-          {...register(name, rules)}
+          {...register(name, { ...rules, onChange: () => dismiss(name) })}
         />
         <span id={hintId} className="text-sm text-muted">
           {hint}
@@ -125,7 +151,7 @@ export function SmeRequestForm({
         "text"
       )}
 
-      {submitError?.message ? (
+      {submitError?.message && !active.message ? (
         <p role="alert" className="text-sm text-trust-critical">
           {submitError.message}
         </p>

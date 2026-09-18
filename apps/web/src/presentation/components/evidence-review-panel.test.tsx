@@ -108,4 +108,12 @@ describe("EvidenceReviewPanel", () => {
       expect(text).not.toContain(phrase);
     }
   });
+
+  it("falls back to 'Dato faltante' for contradictory totals that were not supplied", () => {
+    renderPanel([{ kind: "contradictory" }]);
+
+    const item = screen.getByRole("listitem");
+    expect(within(item).getAllByText("Dato faltante")).toHaveLength(2);
+    expect(within(item).queryAllByText(SIMULADO)).toHaveLength(0);
+  });
 });
