@@ -17,6 +17,18 @@ status: draft
 > [!info] Objetivo
 > Definir la arquitectura de despliegue, CI/CD, testing y herramientas MCP para la demo del TFM.
 
+> [!important] Mapeo a issues del backlog canónico (Project #4)
+> Este plan no requiere issues nuevos: su alcance ya está descompuesto en Features existentes. La numeración de fase es la de la sección [8. Checklist de implementación](#8-checklist-de-implementación).
+>
+> | Fase | Alcance | Issue | Estado (18/09/2026) |
+> |---|---|---|---|
+> | 1 — Fundación | `Dockerfile`, `fly.toml`, `vercel.json`, `.dockerignore`, secretos | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | Bloqueada por [#30](https://github.com/reyduar/Vaqcrow/issues/30) (a su vez espera #20, #24, #28) |
+> | 2 — CI (`ci.yml`: lint/typecheck/test/boundaries/build) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47)/[#48](https://github.com/reyduar/Vaqcrow/issues/48)/[#49](https://github.com/reyduar/Vaqcrow/issues/49) | **`Ready`** — solo dependía de #11, ya cerrada |
+> | 2 — Deploy (`deploy-dev.yml`, `deploy-production.yml`) | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | Igual que Fase 1 |
+> | 3 — Testing E2E (Playwright) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47) | Igual que Fase 2 (mismo Task, su objetivo nombra Playwright explícitamente) |
+> | 4 — MCP (Fly.io/Vercel/Playwright/GitHub para Claude Desktop y OpenCode) | Sin issue — configuración local de entorno, no scope funcional de la demo | N/A |
+> | 5 — Demo (ensayo, freeze, presentación) | [#33](https://github.com/reyduar/Vaqcrow/issues/33), [#34](https://github.com/reyduar/Vaqcrow/issues/34) | Bloqueadas, lejos en la cadena |
+
 ---
 
 ## 1. Arquitectura de despliegue
