@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/planning/demo-tasks-list.md",
+                "file": "docs/architecture/deploy-planning.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "demo-tasks-list"
+              "title": "deploy-planning"
             }
           }
         ]
@@ -190,21 +190,24 @@
   },
   "active": "0b1c462170ae45ac",
   "lastOpenFiles": [
-    "apps/api/src/infrastructure/adapters/supabase-application-review-repository.ts",
-    "apps/api/src/infrastructure/adapters/supabase-application-review-repository.test.ts",
-    "supabase/migrations/20260918114635_create_application_review.sql",
-    "supabase/migrations",
-    "supabase/config.toml",
-    "supabase",
-    "apps/api/src/infrastructure/supabase/create-supabase-client.ts",
-    "apps/api/src/infrastructure/supabase/create-supabase-client.test.ts",
-    "apps/api/src/infrastructure/supabase",
-    "apps/api/src/application/ports/application-review-repository-port.ts",
-    "apps/api/src/infrastructure/adapters/supabase-workspace-repository.ts",
+    "CLAUDE.md",
+    "docs/planning/supabase-schema-and-persistence-evidence.md",
+    "apps/api/dist/infrastructure/supabase/create-supabase-client.js.map",
+    "apps/api/dist/infrastructure/supabase/create-supabase-client.js",
+    "apps/api/dist/infrastructure/supabase/create-supabase-client.d.ts.map",
+    "apps/api/dist/infrastructure/supabase/create-supabase-client.d.ts",
+    "apps/api/dist/infrastructure/supabase",
+    "apps/api/dist/infrastructure/adapters/supabase-application-review-repository.d.ts",
+    "apps/api/dist/infrastructure/adapters/supabase-application-review-repository.d.ts.map",
+    "apps/api/dist/infrastructure/adapters/supabase-application-review-repository.js",
+    "apps/api/dist/infrastructure/adapters/supabase-application-review-repository.js.map",
+    "apps/api/dist/application/ports/application-review-repository-port.d.ts",
+    "docs/architecture/monorepo.md",
+    "docs/architecture/deploy-planning.md",
+    "docs/planning/demo-tasks-list.md",
     "docs/planning/trust-disclosures-and-synthetic-fixtures-evidence.md",
     "docs/planning/DEMO.md",
     "docs/planning/trust-disclosures-and-synthetic-fixtures-dependency-gate.md",
-    "docs/planning/demo-tasks-list.md",
     "docs/planning/guided-demo-shell-and-navigation-evidence.md",
     "docs/planning/scaffold-fastify-api.md",
     "docs/planning/stellar-blockchain-requirements.md",

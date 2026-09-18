@@ -10,7 +10,8 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Estado actual
 
-- **Repositorio:** documentación y planificación de una demo para el Trabajo Fin de Máster (TFM) del Máster en Desarrollo con IA. No existe implementación ejecutable, aplicaciones arrancables, pruebas automatizadas ni despliegues en este repositorio.
+- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos y dominio aplicado. La demo del TFM del Máster en Desarrollo con IA está en implementación activa. Persistencia con Supabase (PostgreSQL) ya configurada para el ciclo de vida de `application_review`.
+- **Pruebas:** 44 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
 - **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
 - **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
 
@@ -65,14 +66,20 @@ Vaqcrow debe continuar como **monorepo**. Un monorepo es una estrategia de organ
 
 Los límites para evitar un monorepo caótico son explícitos: dependencias dirigidas, dominio independiente de frameworks, ninguna importación de internals entre aplicaciones, un paquete por capacidad cohesionada y despliegues separados. La estructura completa y sus reglas están en [Arquitectura del monorepo](./docs/architecture/monorepo.md).
 
-Resumen planificado:
+Estructura actual:
 
 ```text
-apps/web · apps/api · apps/worker (opcional)
-packages/domain · contracts · ai · stellar · simulators · db · config · testing · ui
+apps/web · apps/api                          ← implementados y funcionales
+packages/domain · contracts                  ← implementados con tests
+supabase/                                    ← config.toml + 1 migración (application_review)
 ```
 
-Esta estructura todavía no está implementada.
+Paquetes previstos para etapas futuras:
+
+```text
+apps/worker (opcional)
+packages/ai · stellar · simulators · db · config · testing · ui
+```
 
 ## Stack previsto para la demo
 
@@ -83,8 +90,8 @@ Esta estructura todavía no está implementada.
 | Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
 | Stellar | Stellar SDK, Freighter, Horizon y Testnet para XDR, firma no custodial, envío y confirmación |
 | IA | Proveedor LLM por definir, detrás de un adaptador reemplazable y con salida estructurada |
-| Pruebas | Vitest, Testing Library y Playwright |
-| Workspace y CI | pnpm, Turborepo y GitHub Actions |
+| Pruebas | Vitest y Testing Library; Playwright previsto para journey crítico |
+| Workspace y CI | pnpm, Turborepo; GitHub Actions previsto (todavía no implementado) |
 
 ## Despliegue propuesto
 
@@ -96,15 +103,15 @@ No existen despliegues productivos actualmente.
 
 ## Desarrollo y calidad
 
-- La CI debe ser determinística: las pruebas normales usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
-- Cada pull request debe ejecutar instalación con lockfile congelado, lint, typecheck, pruebas, contratos y builds.
-- Playwright debe proteger el journey crítico y sus fallbacks esenciales.
-- Las comprobaciones externas de Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
-- Los secretos se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
+- **Estado actual:** `pnpm verify` ejecuta lint, typecheck, pruebas, build y verificación de boundaries entre workspaces. Las pruebas usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
+- **CI:** GitHub Actions está previsto pero aún no implementado. El objetivo es determinismo: instalación con lockfile congelado, lint, typecheck, pruebas, contratos y builds en cada pull request.
+- **Playwright** está previsto para proteger el journey crítico y sus fallbacks esenciales, pero aún no está instalado.
+- **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
+- **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
 ## Planificación y gestión del desarrollo
 
-La fuente de alcance para implementar la demo es el [plan de la demo](./docs/planning/DEMO.md). La planificación y la implementación se mantienen deliberadamente separadas: el plan define el resultado esperado y el backlog de GitHub organiza el trabajo ejecutable; ninguna de las dos cosas implica que la aplicación ya esté implementada.
+La fuente de alcance para implementar la demo es el [plan de la demo](./docs/planning/DEMO.md). La planificación y la implementación se mantienen deliberadamente separadas: el plan define el resultado esperado y el backlog de GitHub organiza el trabajo ejecutable.
 
 El backlog previsto se gestionará en un GitHub Project Kanban llamado **Vaqcrow-TFM**. El flujo de trabajo debe permitir distinguir el estado de cada unidad sin confundir planificación con entrega:
 
@@ -150,7 +157,7 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 
 ## Próximo paso
 
-Después de una **autorización explícita**, el siguiente paso es bootstrapear únicamente el monorepo mínimo, el shell de demo y los gates de calidad descritos en la arquitectura. Este README y el documento de arquitectura no implican que esa implementación ya exista ni amplían el alcance hacia operación real.
+El monorepo, el shell de demo y los gates de calidad básicos ya están implementados. Las tareas abiertas (44 issues) cubren la implementación completa del journey vertical: esquema y guardrails de IA, integración con Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard de evidencia y preparación de la demo. El backlog se gestiona en el repositorio de GitHub.
 
 ## Licencia
 
