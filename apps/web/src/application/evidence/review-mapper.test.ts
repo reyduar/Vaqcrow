@@ -7,7 +7,11 @@ import {
 import { panaderiaHorizonte } from "@/application/fixtures/panaderia-horizonte";
 import { deriveReviewFindings } from "./evidence-review";
 import {
+  BACKEND_PROVENANCE,
+  backendPeriodsToEvidenced,
   buildEvidenceRegistry,
+  buildReviewItems,
+  demoReviewItems,
   formatArs,
   formatPeriodLabel,
   mapFindingsToReviewItems
@@ -96,5 +100,36 @@ describe("buildEvidenceRegistry", () => {
 
     expect(registry["sales:2026-01"]).toEqual({ provenance: "Declaración mensual sintética" });
     expect(registry["missing:2026-04"]).toBeUndefined();
+  });
+});
+
+describe("buildReviewItems", () => {
+  it("derives findings and maps them in one step for a request", () => {
+    const items = buildReviewItems(contradictoryRequest, contradictorySalesPeriods);
+
+    expect(items.map((item) => item.kind)).toEqual(["contradictory"]);
+  });
+
+  it("without a request only period-level findings are produced (no total is invented)", () => {
+    const items = buildReviewItems(null, panaderiaHorizonte.sales);
+
+    expect(items.map((item) => item.kind)).toEqual(["missing", "anomalous"]);
+  });
+});
+
+describe("demo fallback review", () => {
+  it("combines the Panadería period findings with the contradictory fixture case", () => {
+    expect(demoReviewItems.map((item) => item.kind)).toEqual(["missing", "anomalous", "contradictory"]);
+    expect(demoReviewItems[2]?.declaredTotal).toBeDefined();
+  });
+});
+
+describe("backendPeriodsToEvidenced", () => {
+  it("adds a neutral provenance without inventing one per period", () => {
+    const [period] = backendPeriodsToEvidenced([
+      { period: "2026-01", amountArs: 1, status: "reported", evidenceRef: "e:1", simuladoLabel: "SIMULADO" }
+    ]);
+
+    expect(period?.provenance).toBe(BACKEND_PROVENANCE);
   });
 });
