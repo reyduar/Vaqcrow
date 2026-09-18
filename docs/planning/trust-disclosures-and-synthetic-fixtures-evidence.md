@@ -102,7 +102,7 @@ $ echo exit code: $?
 exit code: 0
 ```
 
-Verificado el 2026-09-17 sobre el commit `f1a5312` de la rama de este cambio (`Vaqcrow#55_Task_Document_evidence_for_trust_disclosures_and_synthetic_fixtures`), con `PATH="$(brew --prefix node@24)/bin:$PATH"` y Node `v24.21.0` confirmado vía `node -v`: `pnpm run verify` (lint → typecheck → test → build → boundaries → test:boundaries) → **exit 0**. Esta corrida es un **gate de regresión** de un cambio solo de documentación, no una fuente de evidencia nueva: los conteos de la sección 4 (36 archivos/137 tests, 125 módulos/247 dependencias) coinciden con los ya citados de obs #439 y obs #449 sin drift, y esta corrida además cubre `@vaqcrow/api` y `@vaqcrow/contracts` (33 y 8 tests respectivamente) y la suite raíz `test:boundaries` (23 tests / 2 archivos), que las evidencias del #53/#54 no reportaron por estar acotadas a `@vaqcrow/web`.
+Verificado el 2026-09-17 sobre el commit `f1a5312` de la rama de este cambio (`Vaqcrow#55_Task_Document_evidence_for_trust_disclosures_and_synthetic_fixtures`), con `PATH="$(brew --prefix node@24)/bin:$PATH"` y Node `v24.21.0` confirmado vía `node -v`: `pnpm run verify` (lint → typecheck → test → build → boundaries → test:boundaries) → **exit 0**. Esta corrida es un **gate de regresión** de un cambio solo de documentación, no una fuente de evidencia nueva: los conteos de la sección 4 (36 archivos/137 tests, 125 módulos/247 dependencias) coinciden con los ya citados de obs #439 y obs #449 sin drift, y esta corrida además cubre `@vaqcrow/contracts` y `@vaqcrow/api` (33 y 8 tests respectivamente) y la suite raíz `test:boundaries` (23 tests / 2 archivos), que las evidencias del #53/#54 no reportaron por estar acotadas a `@vaqcrow/web`.
 
 ## 5. Límites operativos vigentes
 
