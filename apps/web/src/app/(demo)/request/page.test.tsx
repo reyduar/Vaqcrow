@@ -34,7 +34,7 @@ describe("RequestPage", () => {
     render(<RequestPage />);
 
     for (const period of panaderiaHorizonte.sales) {
-      const row = screen.getByText(period.label).closest("tr");
+      const row = within(screen.getByRole("table")).getByText(period.label).closest("tr");
       expect(row).not.toBeNull();
 
       if (period.status === "missing") {

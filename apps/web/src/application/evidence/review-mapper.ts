@@ -1,5 +1,8 @@
-import type { ReviewFinding, SmeRequest } from "@vaqcrow/contracts";
+import type { ReviewFinding, SalesPeriodContract, SmeRequest } from "@vaqcrow/contracts";
+import { contradictoryRequest, contradictorySalesPeriods } from "@/application/fixtures/contradictory-request";
+import { panaderiaHorizonte } from "@/application/fixtures/panaderia-horizonte";
 import {
+  deriveReviewFindings,
   resolveEvidenceRef,
   type EvidenceRegistry,
   type ReviewablePeriod
@@ -86,3 +89,43 @@ export function mapFindingsToReviewItems(input: MapFindingsInput): readonly Evid
     };
   });
 }
+
+/**
+ * Derives and maps findings in one step. Without a request there is no
+ * declared total to compare, so no contradictory finding (or total) is made up.
+ */
+export function buildReviewItems(
+  request: SmeRequest | null,
+  periods: readonly EvidencedPeriod[]
+): readonly EvidenceReviewItem[] {
+  const findings = request
+    ? deriveReviewFindings(request, periods)
+    : deriveReviewFindings({ declaredTotalArs: 0 }, periods).filter((f) => f.kind !== "contradictory");
+  return mapFindingsToReviewItems({
+    findings,
+    request: request ?? undefined,
+    periods,
+    registry: buildEvidenceRegistry(periods)
+  });
+}
+
+/**
+ * The contract carries no provenance text per period, so backend data gets one
+ * neutral, honest label instead of an invented per-period source.
+ */
+export const BACKEND_PROVENANCE = "Registro del servicio de solicitudes";
+
+export function backendPeriodsToEvidenced(
+  periods: readonly SalesPeriodContract[]
+): readonly EvidencedPeriod[] {
+  return periods.map((period) => ({ ...period, provenance: BACKEND_PROVENANCE }));
+}
+
+/**
+ * Synthetic review shown when no backend is configured or reachable: the
+ * Panadería period findings plus the contradictory fixture case, all SIMULADO.
+ */
+export const demoReviewItems: readonly EvidenceReviewItem[] = Object.freeze([
+  ...buildReviewItems(null, panaderiaHorizonte.sales),
+  ...buildReviewItems(contradictoryRequest, contradictorySalesPeriods)
+]);
