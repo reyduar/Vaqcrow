@@ -116,7 +116,10 @@ describe("Cross-route trust disclosure integration", () => {
       (period) => period.status !== "missing"
     ).length;
 
-    // 2 identity/KYC SyntheticValue badges + one per non-missing sales row.
-    expect(screen.getAllByText(SIMULADO_LABEL)).toHaveLength(2 + reportedOrAnomalousRowCount);
+    // One badge per non-missing sales row, counted inside the table now that the
+    // request form and evidence review add their own SIMULADO labels to the route.
+    expect(within(screen.getByRole("table")).getAllByText(SIMULADO_LABEL)).toHaveLength(
+      reportedOrAnomalousRowCount
+    );
   });
 });
