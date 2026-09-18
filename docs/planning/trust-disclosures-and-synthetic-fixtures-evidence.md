@@ -60,59 +60,41 @@ Citado de `sdd/feature-17-test-trust-disclosures/verify-report` (obs #449), sin 
 ```sh
 $ nvm use v24.21.0
 $ git rev-parse --short HEAD
-b5d64fa
+f1a5312
 $ pnpm run verify
 
-> vaqcrow@ lint /Users/REDACTED/Workspaces/Vaqcrow
-> turbo run lint
+$ turbo run lint
+• Packages in scope: @vaqcrow/api, @vaqcrow/contracts, @vaqcrow/domain, @vaqcrow/web
+@vaqcrow/web:lint: apps/web/src/infrastructure/http/fetch-http-client.ts
+@vaqcrow/web:lint:   8:17  warning  '_request' is defined but never used
+@vaqcrow/web:lint: apps/web/src/infrastructure/wallet/freighter-wallet.ts
+@vaqcrow/web:lint:   25:25  warning  '_xdr' is defined but never used
+@vaqcrow/web:lint:   25:39  warning  '_networkPassphrase' is defined but never used
+@vaqcrow/web:lint: ✖ 3 problems (0 errors, 3 warnings)
+ Tasks:    4 successful, 4 total
 
-turbo 2.10.13
-• Packages in scope: @vaqcrow/contracts, @vaqcrow/domain, @vaqcrow/web
-• Running lint in 3 packages
-@vaqcrow/contracts:lint: cache hit, replaying logs
-@vaqcrow/domain:lint: cache hit, replaying logs
-@vaqcrow/web:lint: cache hit, replaying logs
+$ turbo run typecheck
+ Tasks:    6 successful, 6 total
 
- Tasks:    3 successful, 3 total
-Cached:    3 cached, 3 total
+$ turbo run test
+@vaqcrow/contracts:test:  Test Files  3 passed (3) / Tests  33 passed (33)
+@vaqcrow/domain:test:  Test Files  1 passed (1) / Tests  41 passed (41)
+@vaqcrow/api:test:  Test Files  1 passed (1) / Tests  8 passed (8)
+@vaqcrow/web:test:  Test Files  36 passed (36) / Tests  137 passed (137)
+ Tasks:    6 successful, 6 total
 
-> vaqcrow@ typecheck
-> turbo run typecheck
+$ turbo run build
+@vaqcrow/web:build: ✓ Compiled successfully in 786ms
+@vaqcrow/web:build:   Route (app): /, /_not-found, /ai-assessment, /approval, /distribution, /evidence, /funding, /request
+@vaqcrow/web:build: ○  (Static)  prerendered as static content
+ Tasks:    4 successful, 4 total
 
-@vaqcrow/contracts:typecheck: cache hit, replaying logs
-@vaqcrow/domain:typecheck: cache hit, replaying logs
-@vaqcrow/web:typecheck: cache hit, replaying logs
-
- Tasks:    3 successful, 3 total
-Cached:    3 cached, 3 total
-
-> vaqcrow@ test
-> turbo run test
-
-@vaqcrow/contracts:test: cache hit, replaying logs
-@vaqcrow/domain:test: cache hit, replaying logs
-@vaqcrow/web:test:  Test Files  36 passed (36)
-@vaqcrow/web:test:       Tests  137 passed (137)
-
- Tasks:    3 successful, 3 total
-Cached:    0 cached, 3 total
-
-> vaqcrow@ build
-> turbo run build
-
-@vaqcrow/web:build: ✓ Compiled successfully
-@vaqcrow/web:build: ✓ Generating static pages using 8 workers (8/8)
-
- Tasks:    3 successful, 3 total
-
-> vaqcrow@ boundaries
-> depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs
-
+$ depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs
 ✔ no dependency violations found (125 modules, 247 dependencies cruised)
 
-> vaqcrow@ test:boundaries
-> vitest run
-
+$ vitest run
+ ✓ tests/application-review-round-trip.test.ts (4 tests)
+ ✓ tests/boundaries.test.ts (19 tests)
  Test Files  2 passed (2)
       Tests  23 passed (23)
 
@@ -120,7 +102,7 @@ $ echo exit code: $?
 exit code: 0
 ```
 
-Verificado el 2026-09-17 sobre el commit `b5d64fa` de la rama de este cambio: `pnpm run verify` → **exit 0**. Esta corrida es un **gate de regresión** de un cambio solo de documentación, no una fuente de evidencia nueva; los conteos de la sección 4 siguen siendo los citados de obs #439 y obs #449.
+Verificado el 2026-09-17 sobre el commit `f1a5312` de la rama de este cambio (`Vaqcrow#55_Task_Document_evidence_for_trust_disclosures_and_synthetic_fixtures`), con `PATH="$(brew --prefix node@24)/bin:$PATH"` y Node `v24.21.0` confirmado vía `node -v`: `pnpm run verify` (lint → typecheck → test → build → boundaries → test:boundaries) → **exit 0**. Esta corrida es un **gate de regresión** de un cambio solo de documentación, no una fuente de evidencia nueva: los conteos de la sección 4 (36 archivos/137 tests, 125 módulos/247 dependencias) coinciden con los ya citados de obs #439 y obs #449 sin drift, y esta corrida además cubre `@vaqcrow/api` y `@vaqcrow/contracts` (33 y 8 tests respectivamente) y la suite raíz `test:boundaries` (23 tests / 2 archivos), que las evidencias del #53/#54 no reportaron por estar acotadas a `@vaqcrow/web`.
 
 ## 5. Límites operativos vigentes
 
@@ -160,7 +142,7 @@ $ rg -n '#53|#54|#55|Backlog' docs/planning/demo-tasks-list.md
 |---|---|---|
 | 1 | "Evidence identifies Feature #17, the tested trust boundaries, the verification commands, and observed results." | ✅ PASS — §1 identifica la Feature #17 y sus tres Tasks (#53/#54/#55); §3/§4 citan los límites de confianza probados (Badge, TrustBanner, la guardia de términos prohibidos, la contención por ruta), los 5 comandos de verificación y sus resultados observados citados a obs #439/#449; §4.1 agrega el resultado fechado de este propio cambio |
 | 2 | "Evidence demonstrates visible simulation labeling and the required disclaimers from DEMO.md." | ✅ PASS — §3 cita el rotulado `SIMULADO` verbatim vía `Badge`/`SyntheticValue`, sourced por registro del propio fixture (`demo-ui.md` §9.3, "La etiqueta `SIMULADO` viaja con el dato al resumirlo, graficarlo o citarlo; no vive solo en la pantalla de origen"); las cinco disclosures canónicas quedan citadas verbatim en el bloque de origen de `disclosures.ts`, verbatim de `DEMO.md` §12 |
-| 3 | "Evidence is reproducible and traceable to the implementation and focused tests." | ✅ PASS — §2 define el formato de reproducción local (`nvm use v24.21.0`, sin CI); §4.1 re-ejecuta `pnpm run verify` una única vez sobre el commit `b5d64fa` de esta misma rama y cita el `exit 0` fechado del 2026-09-17; §3/§4 trazan cada aviso y fixture hacia su archivo de implementación (`disclosures.ts`, `step-disclosures.ts`, `panaderia-horizonte.ts`) y su test focalizado correspondiente |
+| 3 | "Evidence is reproducible and traceable to the implementation and focused tests." | ✅ PASS — §2 define el formato de reproducción local (`nvm use v24.21.0`, sin CI); §4.1 re-ejecuta `pnpm run verify` una única vez sobre el commit `f1a5312` de esta misma rama y cita el `exit 0` fechado del 2026-09-17; §3/§4 trazan cada aviso y fixture hacia su archivo de implementación (`disclosures.ts`, `step-disclosures.ts`, `panaderia-horizonte.ts`) y su test focalizado correspondiente |
 | 4 | "Sensitive data and unsupported production claims are excluded." | ✅ PASS — sin credenciales, semillas, claves privadas, XDR innecesario ni datos personales reales en este documento; §5/§6 acotan explícitamente el alcance sin afirmar una demo completada, y el propio texto canónico "No apto para producción" (§12 de `DEMO.md`) es uno de los cinco disclaimers citados en §3 |
 
 Las cinco disclosures canónicas, citadas verbatim de `apps/web/src/application/trust/disclosures.ts` (a su vez verbatim de `DEMO.md` §12):
