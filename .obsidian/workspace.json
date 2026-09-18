@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/architecture/deploy-planning.md",
+                "file": "docs/planning/demo-tasks-list.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "deploy-planning"
+              "title": "demo-tasks-list"
             }
           }
         ]
@@ -190,7 +190,9 @@
   },
   "active": "0b1c462170ae45ac",
   "lastOpenFiles": [
+    "README.md",
     "CLAUDE.md",
+    "docs/architecture/deploy-planning.md",
     "docs/planning/supabase-schema-and-persistence-evidence.md",
     "apps/api/dist/infrastructure/supabase/create-supabase-client.js.map",
     "apps/api/dist/infrastructure/supabase/create-supabase-client.js",
@@ -203,7 +205,6 @@
     "apps/api/dist/infrastructure/adapters/supabase-application-review-repository.js.map",
     "apps/api/dist/application/ports/application-review-repository-port.d.ts",
     "docs/architecture/monorepo.md",
-    "docs/architecture/deploy-planning.md",
     "docs/planning/demo-tasks-list.md",
     "docs/planning/trust-disclosures-and-synthetic-fixtures-evidence.md",
     "docs/planning/DEMO.md",
@@ -218,7 +219,6 @@
     "docs/planning/correlation-id-helper.md",
     "docs/planning/document-workspace-evidence.md",
     "docs/planning/domain-states-and-shared-contracts-evidence.md",
-    "README.md",
     "docs/planning/bootstrap-root-workspace.md",
     "docs/planning/product.md",
     "Welcome.md"
