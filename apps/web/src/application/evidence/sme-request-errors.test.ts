@@ -23,6 +23,17 @@ describe("toSmeSubmitError", () => {
     expect(JSON.stringify(error)).not.toContain("weird");
   });
 
+  it("never resolves inherited Object.prototype members as field messages", () => {
+    const error = toSmeSubmitError(
+      new HttpClientError("http", 422, { declaredTotalArs: "constructor", periodStart: "valueof", periodEnd: "required" })
+    );
+
+    expect(error.fieldErrors).toEqual({ periodEnd: "Ingresá el período final." });
+    for (const message of Object.values(error.fieldErrors ?? {})) {
+      expect(typeof message).toBe("string");
+    }
+  });
+
   it("gives a generic message for http failures without field errors", () => {
     const error = toSmeSubmitError(new HttpClientError("http", 500));
 

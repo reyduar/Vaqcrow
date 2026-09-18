@@ -35,7 +35,9 @@ export function toSmeSubmitError(error: unknown): SmeRequestSubmitError {
   const fieldErrors: Partial<Record<SmeRequestFormField, string>> = {};
   for (const [field, code] of Object.entries(error.fieldErrors ?? {})) {
     if (!Object.hasOwn(FIELD_MESSAGES, field)) continue;
-    const message = FIELD_MESSAGES[field as SmeRequestFormField][code];
+    const messages = FIELD_MESSAGES[field as SmeRequestFormField];
+    if (!Object.hasOwn(messages, code)) continue;
+    const message = messages[code];
     if (message !== undefined) fieldErrors[field as SmeRequestFormField] = message;
   }
 
