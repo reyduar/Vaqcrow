@@ -118,3 +118,22 @@ describe("deriveReviewFindings", () => {
     expect(byKind("anomalous").map((finding) => finding.period)).toEqual(["2026-06"]);
   });
 });
+
+describe("deriveReviewFindings edge cases (#57 characterization)", () => {
+  it("excludes anomalous periods from the reported sum, so a total matching only reported periods is consistent", () => {
+    const periods = [period("2026-01", 300, "reported"), period("2026-02", 999, "anomalous")];
+    const kinds = deriveReviewFindings(request, periods).map((finding) => finding.kind);
+    expect(kinds).toEqual(["anomalous"]);
+  });
+
+  it("reports contradictory and missing findings together when a period is missing and the total mismatches", () => {
+    const periods = [period("2026-01", 100, "reported"), period("2026-02", null, "missing")];
+    const kinds = deriveReviewFindings(request, periods).map((finding) => finding.kind);
+    expect(kinds).toEqual(["missing", "contradictory"]);
+  });
+
+  it("KNOWN GAP: a reported period with a null amount is summed as 0 and raises no finding of its own", () => {
+    const periods = [period("2026-01", 300, "reported"), period("2026-02", null, "reported")];
+    expect(deriveReviewFindings(request, periods)).toEqual([]);
+  });
+});

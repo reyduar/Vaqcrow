@@ -103,6 +103,35 @@ describe("buildEvidenceRegistry", () => {
   });
 });
 
+describe("buildEvidenceRegistry (direct input)", () => {
+  const evidenced = (period: string, status: "reported" | "missing" | "anomalous", ref: string) => ({
+    period,
+    amountArs: status === "missing" ? null : 10,
+    status,
+    evidenceRef: ref,
+    provenance: `origen ${ref}`
+  });
+
+  it("skips missing periods and keeps reported and anomalous ones", () => {
+    const registry = buildEvidenceRegistry([
+      evidenced("2026-01", "reported", "e:1"),
+      evidenced("2026-02", "missing", "e:2"),
+      evidenced("2026-03", "anomalous", "e:3")
+    ]);
+
+    expect(Object.keys(registry).sort()).toEqual(["e:1", "e:3"]);
+    expect(registry["e:2"]).toBeUndefined();
+  });
+
+  it("leaves the reference of a missing period unresolved end to end", () => {
+    const items = buildReviewItems(null, [evidenced("2026-02", "missing", "e:2")]);
+
+    expect(items).toEqual([
+      { kind: "missing", periodLabel: "Febrero 2026", evidence: { status: "unresolved", ref: "e:2" } }
+    ]);
+  });
+});
+
 describe("buildReviewItems", () => {
   it("derives findings and maps them in one step for a request", () => {
     const items = buildReviewItems(contradictoryRequest, contradictorySalesPeriods);
