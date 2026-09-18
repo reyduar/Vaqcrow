@@ -39,6 +39,11 @@ describe("salesPeriodSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("CHARACTERIZATION: accepts a missing period that carries a numeric amount (cross-field rule lives outside the schema)", () => {
+    const result = salesPeriodSchema.safeParse({ ...validPeriod, status: "missing", amountArs: 100 });
+    expect(result.success).toBe(true);
+  });
+
   it.each([
     ["bad period format", { period: "2026-13" }],
     ["bad period format", { period: "2026-1" }],
