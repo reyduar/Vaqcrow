@@ -1,0 +1,123 @@
+import { AxiosError, type AxiosInstance, type AxiosRequestConfig } from "axios";
+import { describe, expect, it, vi } from "vitest";
+import { AxiosHttpClient, HttpClientError } from "./axios-http-client";
+
+type RequestFn = (config: AxiosRequestConfig) => Promise<unknown>;
+
+function fakeInstance(request: RequestFn): AxiosInstance {
+  return { request } as unknown as AxiosInstance;
+}
+
+describe("AxiosHttpClient", () => {
+  it("maps a 2xx response to status and body", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({
+      status: 200,
+      data: { id: "w1" },
+      headers: { "set-cookie": "secret" },
+      config: { headers: { Authorization: "Bearer secret" } }
+    });
+    const client = new AxiosHttpClient(fakeInstance(request));
+
+    const response = await client.send<{ id: string }>({ method: "GET", path: "/workspaces" });
+
+    expect(response).toEqual({ status: 200, body: { id: "w1" } });
+  });
+
+  it("sends method, path and JSON body to axios", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({ status: 201, data: {} });
+    const client = new AxiosHttpClient(fakeInstance(request));
+
+    await client.send({ method: "POST", path: "/workspaces", body: { name: "acme" } });
+
+    expect(request).toHaveBeenCalledTimes(1);
+    const config = request.mock.calls[0]![0];
+    expect(config.method).toBe("POST");
+    expect(config.url).toBe("/workspaces");
+    expect(config.data).toEqual({ name: "acme" });
+  });
+
+  it("omits the body for requests without one", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({ status: 200, data: [] });
+    const client = new AxiosHttpClient(fakeInstance(request));
+
+    await client.send({ method: "GET", path: "/workspaces" });
+
+    expect(request.mock.calls[0]![0].data).toBeUndefined();
+  });
+
+  it("accepts every status so non-2xx is mapped by the adapter, not by axios", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({ status: 200, data: {} });
+    const client = new AxiosHttpClient(fakeInstance(request));
+
+    await client.send({ method: "GET", path: "/x" });
+
+    const validate = request.mock.calls[0]![0].validateStatus;
+    expect(validate?.(404)).toBe(true);
+    expect(validate?.(500)).toBe(true);
+  });
+
+  it("rejects non-2xx responses with a sanitized HttpClientError carrying only the status", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({
+      status: 422,
+      data: { message: "internal detail", stack: "trace" },
+      headers: { authorization: "Bearer secret" }
+    });
+    const client = new AxiosHttpClient(fakeInstance(request));
+
+    const error = await client.send({ method: "POST", path: "/x", body: {} }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpClientError);
+    expect((error as HttpClientError).kind).toBe("http");
+    expect((error as HttpClientError).status).toBe(422);
+    expect(JSON.stringify(error)).not.toContain("secret");
+    expect((error as HttpClientError).message).not.toContain("internal detail");
+  });
+
+  it("rejects network failures with a sanitized error and no raw axios data", async () => {
+    const axiosError = new AxiosError("connect ECONNREFUSED 10.0.0.1:443 token=abc", "ECONNREFUSED", {
+      headers: { Authorization: "Bearer secret" }
+    } as never);
+    const client = new AxiosHttpClient(fakeInstance(vi.fn<RequestFn>().mockRejectedValue(axiosError)));
+
+    const error = await client.send({ method: "GET", path: "/x" }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpClientError);
+    expect((error as HttpClientError).kind).toBe("network");
+    expect((error as HttpClientError).status).toBeUndefined();
+    expect((error as HttpClientError).message).not.toContain("10.0.0.1");
+    expect((error as HttpClientError).message).not.toContain("abc");
+    expect((error as HttpClientError).cause).toBeUndefined();
+    expect(JSON.stringify(error)).not.toContain("secret");
+  });
+
+  it("sanitizes non-axios failures the same way", async () => {
+    const client = new AxiosHttpClient(
+      fakeInstance(vi.fn<RequestFn>().mockRejectedValue(new Error("boom secret")))
+    );
+
+    const error = await client.send({ method: "GET", path: "/x" }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpClientError);
+    expect((error as HttpClientError).message).not.toContain("secret");
+  });
+
+  it("passes configured base headers to axios.create without exposing them in errors", async () => {
+    const created = vi.fn<(config: AxiosRequestConfig) => AxiosInstance>().mockReturnValue(
+      fakeInstance(vi.fn<RequestFn>().mockRejectedValue(new Error("x")))
+    );
+
+    const client = AxiosHttpClient.create(
+      { baseUrl: "https://api.example.test", headers: { "X-Api-Key": "secret" } },
+      created
+    );
+    const error = await client.send({ method: "GET", path: "/x" }).catch((e: unknown) => e);
+
+    expect(created).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: "https://api.example.test",
+        headers: { "X-Api-Key": "secret" }
+      })
+    );
+    expect(JSON.stringify(error)).not.toContain("secret");
+  });
+});
