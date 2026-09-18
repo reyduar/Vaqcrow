@@ -120,4 +120,70 @@ describe("AxiosHttpClient", () => {
     );
     expect(JSON.stringify(error)).not.toContain("secret");
   });
+
+  it("applies a default 10s timeout and lets callers override it", () => {
+    const created = vi
+      .fn<(config: AxiosRequestConfig) => AxiosInstance>()
+      .mockReturnValue(fakeInstance(vi.fn<RequestFn>()));
+
+    AxiosHttpClient.create({ baseUrl: "https://api.example.test" }, created);
+    AxiosHttpClient.create({ baseUrl: "https://api.example.test", timeoutMs: 2500 }, created);
+
+    expect(created.mock.calls[0]![0].timeout).toBe(10_000);
+    expect(created.mock.calls[1]![0].timeout).toBe(2500);
+  });
+
+  describe("field errors from the documented { errors: [{ field, code }] } envelope", () => {
+    async function failWith(data: unknown): Promise<HttpClientError> {
+      const client = new AxiosHttpClient(
+        fakeInstance(vi.fn<RequestFn>().mockResolvedValue({ status: 422, data }))
+      );
+      return (await client.send({ method: "POST", path: "/x", body: {} }).catch((e: unknown) => e)) as HttpClientError;
+    }
+
+    it("surfaces only sanitized field codes", async () => {
+      const error = await failWith({
+        errors: [
+          { field: "periodEnd", code: "before_start", message: "raw backend text" },
+          { field: "declaredTotalArs", code: "not_integer" }
+        ],
+        stack: "trace"
+      });
+
+      expect(error.status).toBe(422);
+      expect(error.fieldErrors).toEqual({ periodEnd: "before_start", declaredTotalArs: "not_integer" });
+      expect(JSON.stringify(error)).not.toContain("raw backend text");
+      expect(JSON.stringify(error)).not.toContain("trace");
+    });
+
+    it("drops malformed entries, odd characters and oversized tokens", async () => {
+      const error = await failWith({
+        errors: [
+          { field: "periodEnd", code: "<script>" },
+          { field: "a".repeat(80), code: "ok_code" },
+          { field: 3, code: "ok_code" },
+          "nope",
+          null,
+          { field: "periodStart", code: "required" }
+        ]
+      });
+
+      expect(error.fieldErrors).toEqual({ periodStart: "required" });
+    });
+
+    it("omits fieldErrors when the body has no usable envelope", async () => {
+      for (const data of [undefined, null, "boom", { errors: "x" }, { errors: [] }, { errors: [{}] }]) {
+        const error = await failWith(data);
+        expect(error.fieldErrors).toBeUndefined();
+        expect(error.status).toBe(422);
+      }
+    });
+
+    it("ignores field-name keys that could pollute prototypes", async () => {
+      const error = await failWith({ errors: [{ field: "__proto__", code: "x" }] });
+
+      expect(error.fieldErrors).toBeUndefined();
+      expect(({} as Record<string, unknown>).x).toBeUndefined();
+    });
+  });
 });
