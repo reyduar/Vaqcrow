@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 17 de septiembre de 2026; 92 issues están en `Backlog`, 3 en `Ready` y 13 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 18 de septiembre de 2026; 89 issues están en `Backlog`, 2 en `Ready` y 17 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44), [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47) y [#17 — Implementar avisos de confianza y fixtures sintéticos](#^issue-17).**
+> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
 >
-> [#52](#^issue-52) quedó en `Done` (PR [#133](https://github.com/reyduar/Vaqcrow/pull/133) mergeada, tras un ciclo verify→fix→re-verify que corrigió un comando de sweep no reproducible), documentando la evidencia completa del shell guiado. Eso cerró [#16](#^issue-16) por completo (sus tres Tasks — [#50](#^issue-50), [#51](#^issue-51) y [#52](#^issue-52) — ya están en `Done`), y desbloqueó a [#17](#^issue-17), que pasó a `Ready`. [#30](#^issue-30) sigue bloqueado: además de [#16](#^issue-16) depende de [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). [#18](#^issue-18) sigue bloqueado: además de [#17](#^issue-17) depende de [#13](#^issue-13), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -663,10 +663,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-17
 
 - **Título original:** `Feature: Implement trust disclosures and synthetic fixtures`
-- **GitHub y estado:** [issue #17](https://github.com/reyduar/Vaqcrow/issues/17) · Tipo `Feature` · Área `demo` · Prioridad `Critical` · Workflow `Ready`.
+- **GitHub y estado:** [issue #17](https://github.com/reyduar/Vaqcrow/issues/17) · Tipo `Feature` · Área `demo` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#16](#^issue-16), ya `Done`.
 - **Objetivo:** congelar los fixtures de Panadería Horizonte SRL y mostrar los avisos canónicos `SIMULADO`, `TESTNET` y de no producción.
 - **Orden:** desbloquea [#18](#^issue-18) y precede a [#21](#^issue-21) por desempate numérico.
+- **Entrega:** sus tres Tasks completas — [#53](#^issue-53) (implementación, PRs #137-#142, con un ciclo de fix por un hallazgo CRITICAL de `sdd-verify`), [#54](#^issue-54) (pruebas, PRs #143-#144) y [#55](#^issue-55) (evidencia, PR #146). Cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues).
 
 **Rama propuesta.** `Vaqcrow#17_Feat_Implement_trust_disclosures_and_synthetic_fixtures` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
@@ -675,11 +676,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-53
 
 - **Título original:** `Task: Implement implement trust disclosures and synthetic fixtures`
-- **GitHub y estado:** [issue #53](https://github.com/reyduar/Vaqcrow/issues/53) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #53](https://github.com/reyduar/Vaqcrow/issues/53) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); sin bloqueos nativos propios.
 - **Objetivo:** entregar el slice delimitado de avisos de confianza y fixtures sintéticos.
 - **Requisitos técnicos confirmados:** usar [HeroUI](https://www.heroui.com/) para primitivas accesibles, [Tailwind CSS](https://tailwindcss.com/) para tema/tokens centralizados sin constantes visuales locales y [React Icons `io5`](https://react-icons.github.io/react-icons/icons/io5/) para iconos; significado crítico siempre combina texto y semántica accesible. [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) (ID `5439082704079758723`) es referencia visual, y su HTML no es fuente autoritativa de producción. Aplicar el gate compartido de skills/MCP antes de modificar dependencias.
 - **Orden:** inicia el Feature y desbloquea [#54](#^issue-54).
+- **Entrega:** 5 PRs encadenadas — [#137](https://github.com/reyduar/Vaqcrow/pull/137)-[#141](https://github.com/reyduar/Vaqcrow/pull/141) (foundation → datos → primitivas UI → chrome/rutas → fix de HeroUI). `sdd-verify` encontró 1 CRITICAL (HeroUI instalado pero sin consumir en ningún componente); corregido reescribiendo `Badge`/`TrustBanner` sobre `Chip`/`Alert` de HeroUI y re-verificado limpio.
 
 **Rama propuesta.** `Vaqcrow#53_Task_Implement_implement_trust_disclosures_and_synthetic_fixtures` es una unidad de implementación revisable; conserva literalmente la duplicación `Implement implement` del título original.
 
@@ -688,10 +690,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-54
 
 - **Título original:** `Task: Test trust disclosures and synthetic fixtures`
-- **GitHub y estado:** [issue #54](https://github.com/reyduar/Vaqcrow/issues/54) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); bloqueada nativamente por [#53](#^issue-53).
+- **GitHub y estado:** [issue #54](https://github.com/reyduar/Vaqcrow/issues/54) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); bloqueada nativamente por [#53](#^issue-53), ya `Done`.
 - **Objetivo:** demostrar avisos y fixtures mediante pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#55](#^issue-55).
+- **Entrega:** 2 PRs encadenadas — [#143](https://github.com/reyduar/Vaqcrow/pull/143) (3 archivos nuevos: `synthetic-value`, `step-disclosures` con tabla independiente por contención, integración cross-route) y [#144](https://github.com/reyduar/Vaqcrow/pull/144) (los 6 `page.test.tsx` reemplazados con aserciones reales). Suite final: 36 archivos / 137 tests.
 
 **Rama propuesta.** `Vaqcrow#54_Task_Test_trust_disclosures_and_synthetic_fixtures` es una unidad de pruebas revisable.
 
@@ -700,10 +703,11 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-55
 
 - **Título original:** `Task: Document evidence for trust disclosures and synthetic fixtures`
-- **GitHub y estado:** [issue #55](https://github.com/reyduar/Vaqcrow/issues/55) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); bloqueada nativamente por [#54](#^issue-54).
+- **GitHub y estado:** [issue #55](https://github.com/reyduar/Vaqcrow/issues/55) · Tipo `Task` · Área `demo` · Prioridad `Critical` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#17](#^issue-17), que requiere [#16](#^issue-16); bloqueada nativamente por [#54](#^issue-54), ya `Done`.
 - **Objetivo:** capturar evidencia reproducible de finalización de avisos y fixtures.
 - **Orden:** cierra [#17](#^issue-17) y habilita [#18](#^issue-18).
+- **Entrega:** 1 PR — [#146](https://github.com/reyduar/Vaqcrow/pull/146) (mergeada), `docs/planning/trust-disclosures-and-synthetic-fixtures-evidence.md`. Ciclo verify→fix→re-verify: el primer verify encontró un conteo de tests de `@vaqcrow/api`/`@vaqcrow/contracts` invertido en la prosa del §4.1; corregido en una línea y re-verificado limpio. El barrido de documentos desactualizados detectó que este mismo documento (`demo-tasks-list.md`) seguía marcando #53/#54/#55 como `Backlog`; ese hallazgo quedó registrado en [#145](https://github.com/reyduar/Vaqcrow/issues/145), que este commit resuelve.
 
 **Rama propuesta.** `Vaqcrow#55_Task_Document_evidence_for_trust_disclosures_and_synthetic_fixtures` es una unidad de documentación revisable.
 
