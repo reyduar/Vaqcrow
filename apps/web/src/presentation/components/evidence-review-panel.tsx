@@ -75,15 +75,27 @@ function FindingItem({
           <div className="inline-flex items-center gap-2">
             <dt>Total declarado:</dt>
             <dd className="inline-flex items-center gap-2">
-              <span>{item.declaredTotal}</span>
-              <Badge variant="simulado" label={simuladoLabel} lang="es" />
+              {item.declaredTotal !== undefined ? (
+                <>
+                  <span>{item.declaredTotal}</span>
+                  <Badge variant="simulado" label={simuladoLabel} lang="es" />
+                </>
+              ) : (
+                <span>Dato faltante</span>
+              )}
             </dd>
           </div>
           <div className="inline-flex items-center gap-2">
             <dt>Suma de ventas informadas:</dt>
             <dd className="inline-flex items-center gap-2">
-              <span>{item.reportedTotal}</span>
-              <Badge variant="simulado" label={simuladoLabel} lang="es" />
+              {item.reportedTotal !== undefined ? (
+                <>
+                  <span>{item.reportedTotal}</span>
+                  <Badge variant="simulado" label={simuladoLabel} lang="es" />
+                </>
+              ) : (
+                <span>Dato faltante</span>
+              )}
             </dd>
           </div>
         </dl>
