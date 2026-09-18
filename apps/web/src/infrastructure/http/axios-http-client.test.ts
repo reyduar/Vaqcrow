@@ -90,6 +90,19 @@ describe("AxiosHttpClient", () => {
     expect(JSON.stringify(error)).not.toContain("secret");
   });
 
+  it("surfaces a timeout as a sanitized network error that never claims a response", async () => {
+    const timeout = new AxiosError("timeout of 10000ms exceeded for https://api.internal/x?token=abc", "ECONNABORTED");
+    const client = new AxiosHttpClient(fakeInstance(vi.fn<RequestFn>().mockRejectedValue(timeout)));
+
+    const error = await client.send({ method: "POST", path: "/x", body: {} }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpClientError);
+    expect((error as HttpClientError).kind).toBe("network");
+    expect((error as HttpClientError).status).toBeUndefined();
+    expect((error as HttpClientError).message).not.toContain("api.internal");
+    expect((error as HttpClientError).message).not.toContain("abc");
+  });
+
   it("sanitizes non-axios failures the same way", async () => {
     const client = new AxiosHttpClient(
       fakeInstance(vi.fn<RequestFn>().mockRejectedValue(new Error("boom secret")))
