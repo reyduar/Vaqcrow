@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/planning/DEMO.md",
+                "file": "docs/planning/demo-tasks-list.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "DEMO"
+              "title": "demo-tasks-list"
             }
           }
         ]
@@ -190,17 +190,19 @@
   },
   "active": "0b1c462170ae45ac",
   "lastOpenFiles": [
-    "apps/web/src/app/(demo)/prohibited-terms.test.tsx",
-    "apps/web/src/presentation/components/demo-environment-header.test.tsx",
-    "apps/web/src/presentation/components/step-trust-disclosures.test.tsx",
-    "apps/web/src/presentation/components/step-trust-disclosures.tsx",
-    "apps/web/src/presentation/components/demo-environment-header.tsx",
-    "apps/web/src/presentation/components/sales-evidence-table.test.tsx",
-    "apps/web/src/presentation/components/canonical-disclosure.test.tsx",
-    "apps/web/src/presentation/components/trust-banner.test.tsx",
-    "apps/web/src/presentation/components/badge.test.tsx",
-    "apps/web/src/presentation/components/sales-evidence-table.tsx",
-    "apps/web/src/presentation/components/synthetic-value.tsx",
+    "apps/api/src/infrastructure/adapters/supabase-application-review-repository.ts",
+    "apps/api/src/infrastructure/adapters/supabase-application-review-repository.test.ts",
+    "supabase/migrations/20260918114635_create_application_review.sql",
+    "supabase/migrations",
+    "supabase/config.toml",
+    "supabase",
+    "apps/api/src/infrastructure/supabase/create-supabase-client.ts",
+    "apps/api/src/infrastructure/supabase/create-supabase-client.test.ts",
+    "apps/api/src/infrastructure/supabase",
+    "apps/api/src/application/ports/application-review-repository-port.ts",
+    "apps/api/src/infrastructure/adapters/supabase-workspace-repository.ts",
+    "docs/planning/trust-disclosures-and-synthetic-fixtures-evidence.md",
+    "docs/planning/DEMO.md",
     "docs/planning/trust-disclosures-and-synthetic-fixtures-dependency-gate.md",
     "docs/planning/demo-tasks-list.md",
     "docs/planning/guided-demo-shell-and-navigation-evidence.md",
@@ -216,7 +218,6 @@
     "README.md",
     "docs/planning/bootstrap-root-workspace.md",
     "docs/planning/product.md",
-    "docs/planning/DEMO.md",
     "Welcome.md"
   ]
 }
