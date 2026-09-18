@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --watch dist/index.js)",
     "start": "node dist/index.js"
   },
@@ -24,6 +25,7 @@
     "globals": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
+    "vite": "7.3.6",
     "vitest": "catalog:"
   }
 }
