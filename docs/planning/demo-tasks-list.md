@@ -1,12 +1,12 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 18 de septiembre de 2026; 83 issues están en `Backlog`, 2 en `Ready` y 23 en `Done`. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado y las relaciones se verificaron el 18 de septiembre de 2026; 78 issues están en `Backlog`, 3 en `Ready` y 27 en `Done` (los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera de este conteo). El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
+> **Unidades actualmente `Ready`: [#19 — Implementar la evaluación y aprobación humanas](#^issue-19), [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47).**
 >
-> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados. [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19), cuyo único bloqueo nativo era [#18](#^issue-18), en `Ready`. [#44](#^issue-44) y [#47](#^issue-47) siguen disponibles en paralelo si hay capacidad.
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -865,49 +865,50 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-18
 
 - **Título original:** `Feature: Implement SME request and evidence review`
-- **GitHub y estado:** [issue #18](https://github.com/reyduar/Vaqcrow/issues/18) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#13](#^issue-13) y [#17](#^issue-17), ambas completas — sin bloqueos propios pendientes, es la siguiente unidad ejecutable de esta rama.
+- **GitHub y estado:** [issue #18](https://github.com/reyduar/Vaqcrow/issues/18) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#13](#^issue-13) y [#17](#^issue-17), ambas completas.
 - **Objetivo:** presentar identidad, KYC/KYB, evidencia de ventas, datos faltantes y referencias de anomalías, todo sintético.
 - **Orden:** entre los Features `High` empatados precede por número y desbloquea [#19](#^issue-19).
+- **Entrega:** sus tres Tasks completas — [#56](#^issue-56) (implementación, cadena stacked-to-main de 6 PRs #154-#159), [#57](#^issue-57) (pruebas, PR #161) y [#58](#^issue-58) (evidencia, PR #162). Cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues). Límites conocidos: `apps/api` aún no expone el endpoint de solicitud (el cliente usa rutas provisionales) y, sin `NEXT_PUBLIC_API_BASE_URL`, la demo muestra solo los fixtures sintéticos. Desbloquea [#19](#^issue-19), ahora `Ready`.
 
 **Rama propuesta.** `Vaqcrow#18_Feat_Implement_SME_request_and_evidence_review` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
-### #56 — Implementar la solicitud de PyME y la revisión de evidencia
+### ~~#56 — Implementar la solicitud de PyME y la revisión de evidencia~~
 
 ^issue-56
 
 - **Título original:** `Task: Implement SME request and evidence review`
-- **GitHub y estado:** [issue #56](https://github.com/reyduar/Vaqcrow/issues/56) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #56](https://github.com/reyduar/Vaqcrow/issues/56) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); sin bloqueos nativos propios.
 - **Objetivo:** capturar la solicitud sintética, historial y evidencia, permitir revisar faltantes o contradicciones y rotular toda simulación.
 - **Requisitos técnicos confirmados:** [Axios](https://www.axios.com/) opera solo como transporte detrás del puerto/adaptador HTTP; presentación no importa Axios ni `packages/contracts`. [SWR](https://swr.vercel.app/) posee carga, caché y revalidación de estado de servidor mediante fetchers de aplicación/adaptador. [React Hook Form](https://react-hook-form.com/) posee estado de formulario en navegador, mientras validación de negocio y decisiones siguen siendo autoritativas en backend. No duplicar en SWR estado cliente de Zustand y aplicar el gate compartido de skills/MCP antes de modificar dependencias.
 - **Orden:** inicia el Feature y desbloquea [#57](#^issue-57).
 
-**Rama propuesta.** `Vaqcrow#56_Task_Implement_SME_request_and_evidence_review` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#56_Task_Implement_SME_request_and_evidence_review` y sus ramas apiladas `-02-http-adapter-and-deps`, `-03-review-ui`, `-04-http-field-errors`, `-05-gateway-and-mapper` y `-06-page-wiring`: cadena stacked-to-main de 6 PRs, [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), todas en `main` (contratos y lógica de evidencia → adaptador axios y dependencias → formulario y panel → errores de campo HTTP → gateway y mapper → cableado de la página). Límites conocidos: no hay endpoint de backend en `apps/api` todavía (rutas provisionales) y, sin `NEXT_PUBLIC_API_BASE_URL`, la demo muestra solo los fixtures sintéticos.
 
-### #57 — Probar la solicitud de PyME y la revisión de evidencia
+### ~~#57 — Probar la solicitud de PyME y la revisión de evidencia~~
 
 ^issue-57
 
 - **Título original:** `Task: Test SME request and evidence review`
-- **GitHub y estado:** [issue #57](https://github.com/reyduar/Vaqcrow/issues/57) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); bloqueada nativamente por [#56](#^issue-56).
+- **GitHub y estado:** [issue #57](https://github.com/reyduar/Vaqcrow/issues/57) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); bloqueada nativamente por [#56](#^issue-56), ya completo.
 - **Objetivo:** probar de forma determinística el comportamiento central, rechazos y fallbacks aplicables.
 - **Orden:** valida la implementación y desbloquea [#58](#^issue-58).
 
-**Rama propuesta.** `Vaqcrow#57_Task_Test_SME_request_and_evidence_review` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#57_Task_Test_SME_request_and_evidence_review-02-to-main`, mergeada vía [PR #161](https://github.com/reyduar/Vaqcrow/pull/161): 10 tests de caracterización deterministas, sin red ni cambios de producción. La [PR #160](https://github.com/reyduar/Vaqcrow/pull/160) se había mergeado contra una rama ya mergeada y su commit nunca llegó a `main`, por lo que #161 la reemplazó con el mismo diff.
 
-### #58 — Documentar evidencia de la solicitud de PyME y su revisión
+### ~~#58 — Documentar evidencia de la solicitud de PyME y su revisión~~
 
 ^issue-58
 
 - **Título original:** `Task: Document evidence for SME request and evidence review`
-- **GitHub y estado:** [issue #58](https://github.com/reyduar/Vaqcrow/issues/58) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); bloqueada nativamente por [#57](#^issue-57).
+- **GitHub y estado:** [issue #58](https://github.com/reyduar/Vaqcrow/issues/58) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#18](#^issue-18), que requiere [#13](#^issue-13) y [#17](#^issue-17); bloqueada nativamente por [#57](#^issue-57), ya completo.
 - **Objetivo:** documentar evidencia reproducible y no sensible de la solicitud y la revisión.
 - **Orden:** cierra [#18](#^issue-18) y habilita [#19](#^issue-19).
 
-**Rama propuesta.** `Vaqcrow#58_Task_Document_evidence_for_SME_request_and_evidence_review` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#58_Task_Document_evidence_for_SME_request_and_evidence_review`, mergeada vía [PR #162](https://github.com/reyduar/Vaqcrow/pull/162). Evidencia completa en [`sme-request-and-evidence-review-evidence.md`](./sme-request-and-evidence-review-evidence.md).
 
 ### #22 — Derivar los fallos de IA a revisión manual
 
@@ -1060,8 +1061,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-19
 
 - **Título original:** `Feature: Implement human assessment and approval`
-- **GitHub y estado:** [issue #19](https://github.com/reyduar/Vaqcrow/issues/19) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#18](#^issue-18).
+- **GitHub y estado:** [issue #19](https://github.com/reyduar/Vaqcrow/issues/19) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Ready`.
+- **Jerarquía y bloqueos:** padre [#5](#^issue-5); bloqueada nativamente por [#18](#^issue-18), ya completo.
 - **Objetivo:** presentar razones, evidencia e incertidumbre de IA y registrar aprobación o rechazo humanos explícitos.
 - **Orden:** desbloquea [#29](#^issue-29).
 
