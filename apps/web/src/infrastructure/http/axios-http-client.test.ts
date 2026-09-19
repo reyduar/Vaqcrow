@@ -199,4 +199,25 @@ describe("AxiosHttpClient", () => {
       expect(({} as Record<string, unknown>).x).toBeUndefined();
     });
   });
+  describe("error code from the documented { code } envelope", () => {
+    async function failWith(status: number, data: unknown): Promise<HttpClientError> {
+      const client = new AxiosHttpClient(
+        fakeInstance(vi.fn<RequestFn>().mockResolvedValue({ status, data }))
+      );
+      return (await client.send({ method: "POST", path: "/x", body: {} }).catch((e: unknown) => e)) as HttpClientError;
+    }
+
+    it("surfaces a sanitized machine code and drops everything else", async () => {
+      const error = await failWith(409, { code: "state_conflict", actualState: "approved", message: "raw" });
+
+      expect(error.errorCode).toBe("state_conflict");
+      expect(JSON.stringify(error)).not.toContain("raw");
+    });
+
+    it("drops codes that are not identifier-shaped", async () => {
+      for (const data of [{ code: "<script>" }, { code: 7 }, { code: "A".repeat(80) }, {}, null]) {
+        expect((await failWith(409, data)).errorCode).toBeUndefined();
+      }
+    });
+  });
 });

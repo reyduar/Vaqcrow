@@ -1,5 +1,6 @@
+import { simulatedAssessment } from "@/application/assessment/simulated-assessment";
 import { microcopy } from "@/application/trust/disclosures";
-import { StepPlaceholder } from "@/presentation/components/step-placeholder";
+import { AiAssessmentPanel } from "@/presentation/components/ai-assessment-panel";
 import { StepTrustDisclosures } from "@/presentation/components/step-trust-disclosures";
 import { TrustBanner } from "@/presentation/components/trust-banner";
 
@@ -14,7 +15,7 @@ export default function AiAssessmentPage() {
         badge={{ variant: "fallback", label: "RESPUESTA DE RESPALDO" }}
         lang="es"
       />
-      <StepPlaceholder />
+      <AiAssessmentPanel assessment={simulatedAssessment} />
     </>
   );
 }
