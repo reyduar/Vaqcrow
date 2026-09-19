@@ -10,8 +10,10 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Estado actual
 
-- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos y dominio aplicado. La demo del TFM del Máster en Desarrollo con IA está en implementación activa. Persistencia con Supabase (PostgreSQL) ya configurada para el ciclo de vida de `application_review`.
-- **Pruebas:** 44 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
+- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado y persistencia Supabase para `application_review` y decisiones humanas.
+- **Evaluación y aprobación humana:** implementada en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La integración credential-gated contra Supabase registró 15/15 tests pasando el 19/09/2026.
+- **Pruebas:** 74 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
+- **Límites actuales:** la evaluación usa un fixture consultivo simulado, no hay autenticación, `apps/api` todavía no expone el endpoint de solicitudes SME y la web usa rutas provisionales; IA real, Stellar/Freighter y el recorrido vertical completo siguen planificados.
 - **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
 - **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
 
@@ -39,7 +41,7 @@ El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es rea
 | Empresa, identidad y perfiles | Datos sintéticos, rotulados `SIMULADO` |
 | KYC/KYB | Simulado detrás de un adaptador reemplazable |
 | Historial y feed mensual de ventas | Simulados, reproducibles y con una anomalía/faltante intencionales |
-| Evaluación de riesgo por IA | Real, estructurada, validada y respaldada por evidencia |
+| Evaluación de riesgo por IA | Actualmente fixture consultivo simulado; integración real planificada |
 | Decisión de financiamiento | Real y humana sobre el caso sintético |
 | Entrada/cotización ARS | Simulada; el corredor de producción continúa sin resolver |
 | Wallet y firma | Reales con Freighter, de forma no custodial |
@@ -157,7 +159,7 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 
 ## Próximo paso
 
-El monorepo, el shell de demo y los gates de calidad básicos ya están implementados. Las tareas abiertas (44 issues) cubren la implementación completa del journey vertical: esquema y guardrails de IA, integración con Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard de evidencia y preparación de la demo. El backlog se gestiona en el repositorio de GitHub.
+El monorepo, el shell de demo, la persistencia y el slice de evaluación/aprobación humana ya están implementados. El roadmap local registra 31 unidades `Done`, 2 `Ready` y 75 `Backlog`; estos conteos reflejan la evidencia disponible en el repositorio y no sustituyen la sincronización del tablero remoto. El siguiente trabajo disponible es la configuración tipada y los límites de secretos (#44). La configuración de pruebas y gates de CI (#47) ya no está pausada: su implementación está entregada en el PR #176, pendiente de merge. Después siguen el esquema/guardrails de IA, Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard y preparación de la demo.
 
 ## Licencia
 
