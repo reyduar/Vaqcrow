@@ -72,3 +72,8 @@ Thumbs.db
 
 # Local tooling cache
 .atl/
+# Local agent working notes (ODD task documents)
+odd/
+
+# Obsidian vault state (mutates constantly)
+.obsidian/
