@@ -26,4 +26,19 @@ describe("AiAssessmentPage", () => {
 
     expect(screen.getByText(microcopy.aiFallback)).toBeInTheDocument();
   });
+
+  it("renders the simulated, advisory-only assessment with cited evidence", () => {
+    render(<AiAssessmentPage />);
+
+    expect(screen.getByRole("region", { name: /Evaluación de IA \(simulada\)/ })).toBeInTheDocument();
+    expect(screen.getByText("Riesgo medio")).toBeInTheDocument();
+    expect(screen.getByText("missing:2026-04")).toBeInTheDocument();
+  });
+
+  it("offers no decision control: the decision lives on the approval step", () => {
+    render(<AiAssessmentPage />);
+
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Registrar decisión/ })).not.toBeInTheDocument();
+  });
 });
