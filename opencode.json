@@ -264,6 +264,16 @@
       "oauth": false,
       "type": "remote",
       "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=ppvlnwejajxpsmazvnbj&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching",
+      "enabled": true
+    },
+    "vercel": {
+    "type": "remote",
+    "url": "https://mcp.vercel.com",
+    "enabled": true
     }
   },
   "share": "disabled"
