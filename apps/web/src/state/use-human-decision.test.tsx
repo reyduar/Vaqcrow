@@ -79,6 +79,25 @@ describe("useHumanDecision", () => {
     expect(result.current.recorded).toBeUndefined();
   });
 
+  it("discards the attempt after an idempotency conflict so resubmitting uses a fresh decision id", async () => {
+    const record = vi
+      .fn()
+      .mockRejectedValueOnce(new HttpClientError("http", 409, undefined, "idempotency_conflict"))
+      .mockResolvedValueOnce({ applied: true, decision: recordFor(ID_2) });
+    const generate = ids(ID_1, ID_2);
+    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+
+    await act(() => result.current.submit(input));
+    expect(result.current.error?.kind).toBe("idempotency_conflict");
+
+    await act(() => result.current.submit(input));
+
+    expect(record.mock.calls[0]![0].decisionId).toBe(ID_1);
+    expect(record.mock.calls[1]![0].decisionId).toBe(ID_2);
+    expect(result.current.recorded?.applied).toBe(true);
+    expect(result.current.error).toBeUndefined();
+  });
+
   it("fails explicitly, without pretending, when no gateway is configured", async () => {
     const { result } = renderHook(() => useHumanDecision(null, APPLICATION_ID, ids(ID_1)));
 
