@@ -24,7 +24,7 @@ Issue #62 asks an operator to review AI evidence and record an explicit approval
 
 - Test counts and results in section 5 were observed in this working tree or recorded in [[odd/tasks/human-assessment-and-approval|the feature task document]]; nothing is inferred.
 - Commands need Node 24: `PATH="/opt/homebrew/opt/node@24/bin:$PATH"`.
-- The live, credential-gated integration suite was **not** run (section 6).
+- The live, credential-gated integration suite was run by the operator after the merge and passed (section 6).
 
 ## 3. What was implemented
 
@@ -68,6 +68,7 @@ Commits: `a2ee438`, `b879602`, `9b63a8e`, `0552b2f`, `d4a8a2b`, `c2c3d6e`, `268d
 | Native review (RDD), all assessed medium risk | Approved and acknowledged for `f044f2c..d4a8a2b`, `d4a8a2b..268d35a` and the accumulated branch `f044f2c..HEAD` | Feature document, T5/T6, and orchestrator report |
 | Commit `2e57ec1` | Medium, 26 lines, under budget, no review due | Feature document, T6 |
 | Commit `6880eb9` | Under budget, no review due | Feature document, T7 |
+| Live integration suite (`pnpm --filter @vaqcrow/api test:integration`) | 2 files, 15 tests passed against the hosted Supabase project on 2026-09-19: `human-decision-persistence` 8 tests and `application-review-persistence` 7 tests. Run by the operator with real credentials after the chain was merged; output supplied as pasted test results, not re-run by the assistant | Operator report |
 | Remote migrations | The three human-decision migrations were applied to the **hosted** Supabase project through MCP (no local Docker). A rolled-back SQL probe showed: the RPC applies, `service_role` update and delete are denied, and deleting an `application_review` cascades to its audit rows | Feature document, T7 |
 
 Integration suite: `apps/api/tests/integration/human-decision-persistence.integration.test.ts` contains 8 `it(...)` blocks (apply and exact audit record, replay, changed payload conflict, terminal state conflict, not found, publishable-key denial with `42501`, service-role immutability, concurrent ids).
@@ -81,8 +82,8 @@ Integration suite: `apps/api/tests/integration/human-decision-persistence.integr
 
 ## 8. Limits and accepted risks
 
-> [!warning] Not verified live
-> The credential-gated integration suite (`pnpm --filter @vaqcrow/api test:integration`) was **not run**: this environment has no Supabase credentials, and none were fabricated. The remote SQL probe (section 6) is the only live evidence for the RPC, grants and cascade; it does not replace that suite.
+> [!info] Live verification
+> After the merge, the operator ran the credential-gated integration suite (`pnpm --filter @vaqcrow/api test:integration`) against the hosted Supabase project: 15 of 15 tests passed, including replay, changed-payload conflict, terminal state conflict, `not_found`, publishable-key denial with `42501`, service-role immutability and concurrent decision ids. The `stderr` lines in that output (`23514`, `23505`) come from the negative tests forcing a CHECK and a duplicate key; the adapter logs them internally and does not return them to callers. Before this run, the only live evidence was the rolled-back SQL probe in section 6.
 
 - **UI copy is Spanish**, matching the existing web copy and `docs/design/demo-ui.md`; code, tests and this document are English.
 - **Remote migration history** lists `create_application_review` twice. This predates #62 and was not altered here.
