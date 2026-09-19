@@ -275,6 +275,25 @@ describe.skipIf(!hasIntegrationCredentials())("human decisions (live integration
     expect(await selectAuditRows(applicationId)).toMatchObject([{ decision_id: original.decisionId }]);
   });
 
+  it("keeps the audit immutable even for the service role: update and delete are denied with 42501", async () => {
+    const applicationId = await createHumanReviewApplication();
+    const original = approvedDecision(applicationId);
+    await recordApprovedDecision(original);
+    const auditBefore = await selectAuditRows(applicationId);
+    const serviceRole = getServiceRoleClient();
+
+    const updated = await serviceRole
+      .from(AUDIT_TABLE)
+      .update({ reason: "A direct update must not rewrite the audit." })
+      .eq("decision_id", original.decisionId);
+    expect(updated.error?.code).toBe("42501");
+
+    const deleted = await serviceRole.from(AUDIT_TABLE).delete().eq("decision_id", original.decisionId);
+    expect(deleted.error?.code).toBe("42501");
+
+    expect(await selectAuditRows(applicationId)).toEqual(auditBefore);
+  });
+
   it("serializes concurrent decision ids so exactly one applies and one sees the terminal state", async () => {
     const applicationId = await createHumanReviewApplication();
     const commands = [approvedDecision(applicationId), approvedDecision(applicationId)] as const;

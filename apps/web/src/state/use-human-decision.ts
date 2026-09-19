@@ -49,7 +49,12 @@ export function useHumanDecision(
           input
         });
         if (result.ok) setRecorded(result.value);
-        else setError(result.error);
+        else {
+          // The server already bound this decision id to a different payload;
+          // keeping the attempt would replay the same conflict forever.
+          if (result.error.kind === "idempotency_conflict") attemptRef.current = undefined;
+          setError(result.error);
+        }
       } catch {
         // An invalid generated id is a programming error, not a backend outcome.
         setError(decisionErrorOfKind("unknown"));
