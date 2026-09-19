@@ -1,7 +1,9 @@
 import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
+import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
 import { registerHealthRoute } from "./routes/health.route.js";
+import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
 
 function assertRandomUUIDAvailable(): void {
   const crypto = Reflect.get(globalThis, "crypto") as { randomUUID?: unknown } | undefined;
@@ -11,7 +13,9 @@ function assertRandomUUIDAvailable(): void {
   }
 }
 
-export function buildApp(): FastifyInstance {
+export function buildApp(dependencies: {
+  readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
+} = {}): FastifyInstance {
   assertRandomUUIDAvailable();
 
   const app = Fastify({
@@ -25,5 +29,8 @@ export function buildApp(): FastifyInstance {
     done();
   });
   registerHealthRoute(app);
+  if (dependencies.applicationReviewRepository) {
+    registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
+  }
   return app;
 }
