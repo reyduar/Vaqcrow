@@ -42,6 +42,13 @@ function extractFieldErrors(data: unknown): HttpFieldErrors | undefined {
   return result.size > 0 ? Object.fromEntries(result) : undefined;
 }
 
+/** Extracts the identifier-shaped `code` token of a `{ code }` error envelope, or `undefined`. */
+function extractErrorCode(data: unknown): string | undefined {
+  if (typeof data !== "object" || data === null || !("code" in data)) return undefined;
+  const code = (data as { code: unknown }).code;
+  return typeof code === "string" && CODE_PATTERN.test(code) ? code : undefined;
+}
+
 export interface AxiosHttpClientOptions {
   readonly baseUrl: string;
   readonly headers?: Readonly<Record<string, string>>;
@@ -82,7 +89,12 @@ export class AxiosHttpClient implements HttpClientPort {
     }
 
     if (response.status < 200 || response.status >= 300) {
-      throw new HttpClientError("http", response.status, extractFieldErrors(response.data));
+      throw new HttpClientError(
+        "http",
+        response.status,
+        extractFieldErrors(response.data),
+        extractErrorCode(response.data)
+      );
     }
     return { status: response.status, body: response.data as T };
   }

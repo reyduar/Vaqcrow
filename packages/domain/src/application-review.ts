@@ -9,6 +9,10 @@ export const applicationReviewStates = [
 
 export type ApplicationReviewState = (typeof applicationReviewStates)[number];
 
+export const humanDecisionOutcomes = ["approved", "changes_requested", "rejected"] as const;
+
+export type HumanDecisionOutcome = (typeof humanDecisionOutcomes)[number];
+
 export const terminalApplicationReviewStates = ["approved", "rejected"] as const;
 
 export type ApplicationReviewTransitionErrorCode = "invalid_transition" | "terminal_state";
@@ -56,4 +60,11 @@ export function transitionApplicationReview(
     : "invalid_transition";
 
   return { ok: false, error: { code, from, to } };
+}
+
+export function decideApplicationReview(
+  from: ApplicationReviewState,
+  outcome: HumanDecisionOutcome
+): ApplicationReviewTransitionResult {
+  return transitionApplicationReview(from, outcome);
 }

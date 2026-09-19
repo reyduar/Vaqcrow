@@ -1,12 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   applicationReviewStates,
   canTransitionApplicationReview,
+  decideApplicationReview,
+  humanDecisionOutcomes,
   isTerminalApplicationReviewState,
   terminalApplicationReviewStates,
   transitionApplicationReview
 } from "./application-review.js";
-import type { ApplicationReviewState } from "./application-review.js";
+import type { ApplicationReviewState, HumanDecisionOutcome } from "./application-review.js";
 
 describe("applicationReviewStates", () => {
   it("contains exactly the six named states and no others", () => {
@@ -105,5 +107,44 @@ describe("canTransitionApplicationReview", () => {
     expect(canTransitionApplicationReview("draft", "awaiting_assessment")).toBe(true);
     expect(canTransitionApplicationReview("draft", "approved")).toBe(false);
     expect(canTransitionApplicationReview("approved", "draft")).toBe(false);
+  });
+});
+
+describe("decideApplicationReview", () => {
+  it("exposes exactly the three human decision outcomes", () => {
+    expect(humanDecisionOutcomes).toEqual(["approved", "changes_requested", "rejected"]);
+    expectTypeOf<Parameters<typeof decideApplicationReview>[1]>().toEqualTypeOf<HumanDecisionOutcome>();
+  });
+
+  it.each(humanDecisionOutcomes)("accepts %s from human review", (outcome) => {
+    expect(decideApplicationReview("human_review", outcome)).toEqual({
+      ok: true,
+      state: outcome
+    });
+  });
+
+  const nonHumanReviewStates = applicationReviewStates.filter(
+    (state): state is Exclude<ApplicationReviewState, "human_review"> => state !== "human_review"
+  );
+  const rejectedDecisionPairs = nonHumanReviewStates.flatMap((from) =>
+    humanDecisionOutcomes.map((outcome): [ApplicationReviewState, HumanDecisionOutcome] => [
+      from,
+      outcome
+    ])
+  );
+
+  it.each(rejectedDecisionPairs)("rejects the human outcome %s -> %s", (from, outcome) => {
+    expect(decideApplicationReview(from, outcome)).toEqual({
+      ok: false,
+      error: {
+        code: terminalApplicationReviewStates.includes(
+          from as (typeof terminalApplicationReviewStates)[number]
+        )
+          ? "terminal_state"
+          : "invalid_transition",
+        from,
+        to: outcome
+      }
+    });
   });
 });
