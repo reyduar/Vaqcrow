@@ -26,4 +26,12 @@ describe("ApprovalPage", () => {
     expect(banner).not.toBe(decisionNote);
     expect(banner.contains(decisionNote)).toBe(false);
   });
+
+  it("renders the human decision form apart from the AI recommendation", () => {
+    render(<ApprovalPage />);
+
+    expect(screen.getByRole("form", { name: /Decisión humana/ })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Recomendación de IA/ })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+  });
 });

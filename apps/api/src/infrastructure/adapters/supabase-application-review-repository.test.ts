@@ -1,10 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
+import {
+  parseApplicationId,
+  parseCorrelationId,
+  parseHumanDecisionCommand
+} from "@vaqcrow/contracts";
 import { SupabaseApplicationReviewRepository } from "./supabase-application-review-repository.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
+const ORIGINAL_CORRELATION_ID = parseCorrelationId("33333333-3333-4333-8333-333333333333");
+const DECISION = parseHumanDecisionCommand({
+  decisionId: "44444444-4444-4444-8444-444444444444",
+  applicationId: APPLICATION_ID,
+  outcome: "approved",
+  actor: "credit-committee@example.test",
+  reason: "Synthetic evidence supports this test decision.",
+  approvedLimitArs: 5_000_000
+});
+const DECIDED_AT = "2026-09-19T18:30:00.000Z";
 
 interface FakePostgrestError {
   readonly code: string;
@@ -29,6 +43,7 @@ interface RecordedCalls {
   readonly insert: unknown[];
   readonly update: unknown[];
   readonly eq: Array<readonly [column: string, value: unknown]>;
+  readonly rpc: Array<readonly [functionName: string, params: unknown]>;
 }
 
 /**
@@ -45,7 +60,7 @@ interface RecordedCalls {
  */
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { insert: [], update: [], eq: [] };
+  const calls: RecordedCalls = { insert: [], update: [], eq: [], rpc: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -81,7 +96,32 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
     return self;
   }
 
-  return { client: { from: () => builder() } as unknown as SupabaseClient, calls };
+  return {
+    client: {
+      from: () => builder(),
+      rpc: (functionName: string, params: unknown) => {
+        calls.rpc.push([functionName, params]);
+        return nextResult();
+      }
+    } as unknown as SupabaseClient,
+    calls
+  };
+}
+
+function decisionRpcRow(overrides: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
+  return {
+    result_kind: "applied",
+    decision_id: DECISION.decisionId,
+    application_id: DECISION.applicationId,
+    outcome: DECISION.outcome,
+    actor: DECISION.actor,
+    reason: DECISION.reason,
+    approved_limit_ars: String(DECISION.approvedLimitArs),
+    decided_at: DECIDED_AT,
+    correlation_id: CORRELATION_ID,
+    actual_state: null,
+    ...overrides
+  };
 }
 
 describe("SupabaseApplicationReviewRepository", () => {
@@ -274,6 +314,183 @@ describe("SupabaseApplicationReviewRepository", () => {
       });
 
       expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+  });
+
+  describe("recordHumanDecision", () => {
+    it("calls the atomic RPC with exact params and returns an applied decision", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        { data: [decisionRpcRow()], error: null }
+      ]);
+      const repository = new SupabaseApplicationReviewRepository(client);
+
+      const result = await repository.recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(calls.rpc).toEqual([
+        [
+          "record_human_decision",
+          {
+            p_decision_id: DECISION.decisionId,
+            p_application_id: DECISION.applicationId,
+            p_outcome: DECISION.outcome,
+            p_actor: DECISION.actor,
+            p_reason: DECISION.reason,
+            p_approved_limit_ars: DECISION.approvedLimitArs,
+            p_correlation_id: CORRELATION_ID
+          }
+        ]
+      ]);
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          applied: true,
+          record: {
+            ...DECISION,
+            decidedAt: DECIDED_AT,
+            correlationId: CORRELATION_ID
+          }
+        }
+      });
+    });
+
+    it("returns the original immutable record for an exact replay", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: [
+            decisionRpcRow({
+              result_kind: "replayed",
+              correlation_id: ORIGINAL_CORRELATION_ID
+            })
+          ],
+          error: null
+        }
+      ]);
+      const repository = new SupabaseApplicationReviewRepository(client);
+
+      const result = await repository.recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          applied: false,
+          record: {
+            ...DECISION,
+            decidedAt: DECIDED_AT,
+            correlationId: ORIGINAL_CORRELATION_ID
+          }
+        }
+      });
+    });
+
+    it("accepts a safe numeric bigint result", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: [decisionRpcRow({ approved_limit_ars: DECISION.approvedLimitArs })],
+          error: null
+        }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        value: { record: { approvedLimitArs: DECISION.approvedLimitArs } }
+      });
+    });
+
+    it("maps not_found without claiming success", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [decisionRpcRow({ result_kind: "not_found" })], error: null }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+
+    it("maps state_conflict only after parsing the shared application state", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: [decisionRpcRow({ result_kind: "state_conflict", actual_state: "rejected" })],
+          error: null
+        }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: "state_conflict", actualState: "rejected" }
+      });
+    });
+
+    it("maps idempotency_conflict without exposing the conflicting record", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [decisionRpcRow({ result_kind: "idempotency_conflict" })], error: null }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "idempotency_conflict" } });
+    });
+
+    it("sanitizes Supabase RPC errors", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: null, error: fakeError("42501") }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      if (result.ok) throw new Error("expected a sanitized repository error");
+      expect(result.error).not.toHaveProperty("message");
+      expect(result.error).not.toHaveProperty("details");
+      expect(result.error).not.toHaveProperty("hint");
+    });
+
+    it.each([
+      ["zero rows", []],
+      ["multiple rows", [decisionRpcRow(), decisionRpcRow()]],
+      ["non-array payload", decisionRpcRow()],
+      ["unknown result kind", [decisionRpcRow({ result_kind: "unexpected" })]],
+      ["unsafe bigint", [decisionRpcRow({ approved_limit_ars: "9007199254740992" })]],
+      ["invalid actual state", [decisionRpcRow({ result_kind: "state_conflict", actual_state: "unknown" })]]
+    ])("maps malformed RPC output (%s) to unavailable", async (_label, data) => {
+      const { client } = createFakeSupabaseClient([{ data, error: null }]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+
+    it("maps a thrown RPC transport failure to unavailable", async () => {
+      const { client } = createFakeSupabaseClient([
+        { reject: new Error("fetch failed: network unreachable") }
+      ]);
+      const result = await new SupabaseApplicationReviewRepository(client).recordHumanDecision({
+        command: DECISION,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     });
   });
 

@@ -1,8 +1,16 @@
-import type { ApplicationId, ApplicationReviewSnapshot, ApplicationReviewState, CorrelationId } from "@vaqcrow/contracts";
+import type {
+  ApplicationId,
+  ApplicationReviewSnapshot,
+  ApplicationReviewState,
+  CorrelationId,
+  HumanDecisionCommand,
+  HumanDecisionRecord
+} from "@vaqcrow/contracts";
 
 export type ApplicationReviewRepositoryErrorCode =
   | "not_found"
   | "state_conflict"
+  | "idempotency_conflict"
   | "already_exists"
   | "invalid_state"
   | "unavailable";
@@ -23,6 +31,12 @@ export interface ApplicationReviewTransitionOutcome {
   readonly applied: boolean;
 }
 
+export interface HumanDecisionRepositoryOutcome {
+  readonly record: HumanDecisionRecord;
+  // false = exact decision-id replay; the original immutable row is returned.
+  readonly applied: boolean;
+}
+
 export interface ApplicationReviewRepositoryPort {
   create(input: {
     applicationId: ApplicationId;
@@ -38,4 +52,9 @@ export interface ApplicationReviewRepositoryPort {
     to: ApplicationReviewState;
     correlationId: CorrelationId;
   }): Promise<ApplicationReviewRepositoryResult<ApplicationReviewTransitionOutcome>>;
+
+  recordHumanDecision(input: {
+    command: HumanDecisionCommand;
+    correlationId: CorrelationId;
+  }): Promise<ApplicationReviewRepositoryResult<HumanDecisionRepositoryOutcome>>;
 }
