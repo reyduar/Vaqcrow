@@ -125,3 +125,24 @@ Two honest alternatives, if the reviewer prefers:
 
 Slice 1 verifies standalone: `pnpm run verify` passes with no importer, proving the additive claim.
 
+## Delivery
+- Commits, branch `Vaqcrow#44_Task_Implement_typed_configuration_and_secret_boundaries`:
+  - `ff35c05` feat(api): add typed configuration contract and secret boundary (9 files, 890+/0−)
+- Commits, branch `…-02-wiring`:
+  - `887ce3d` refactor(api): drive the runtime from validated configuration (6 files, 198+/59−)
+- PR [#183](https://github.com/reyduar/Vaqcrow/pull/183) — slice 1, base `main`, labels `type:task`
+  `area:security`.
+- PR [#184](https://github.com/reyduar/Vaqcrow/pull/184) — slice 2, base is slice 1's branch (retarget to
+  `main` after #183 merges), same labels.
+- **CI on both PRs: every check succeeded on the first run.** Quality gates run
+  [`35520508253`](https://github.com/reyduar/Vaqcrow/actions/runs/35520508253) (#183) and
+  [`35520521992`](https://github.com/reyduar/Vaqcrow/actions/runs/35520521992) (#184); the Playwright
+  job passed on both. No retry, no flake.
+- **Diff hygiene verified, not assumed.** `gh pr view 184` reports additions 198 / deletions 59 /
+  changedFiles 6, so the child PR shows only its own slice — no parent commits. A stacked PR whose
+  diff shows its parent's work is a branching bug, not a review.
+- #44 closes **manually** once the chain lands on `main` (the repo's existing pattern), and `#45`
+  (Test) then unblocks.
+- After #183 merges: retarget #184 to `main` and rebase before merging.
+
+
