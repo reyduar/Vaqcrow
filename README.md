@@ -12,7 +12,7 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 - **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado y persistencia Supabase para `application_review` y decisiones humanas.
 - **Evaluación y aprobación humana:** implementada en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La integración credential-gated contra Supabase registró 15/15 tests pasando el 19/09/2026.
-- **Pruebas:** 74 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
+- **Pruebas:** 75 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
 - **Límites actuales:** la evaluación usa un fixture consultivo simulado, no hay autenticación, `apps/api` todavía no expone el endpoint de solicitudes SME y la web usa rutas provisionales; IA real, Stellar/Freighter y el recorrido vertical completo siguen planificados.
 - **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
 - **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
@@ -108,6 +108,7 @@ No existen despliegues productivos actualmente.
 - **Estado actual:** `pnpm verify` ejecuta lint, typecheck, pruebas, build y verificación de boundaries entre workspaces. Las pruebas usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
 - **CI:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) corre en cada pull request con `pnpm install --frozen-lockfile`: un job ejecuta `pnpm verify` y otro el journey de Playwright. Ningún job usa servicios externos vivos ni requiere secretos del repositorio.
 - **Playwright:** cubre el journey crítico de la demo —shell guiado de seis pasos y decisión humana— contra un doble local en `apps/web/e2e/`, con navegador Chromium, un solo worker y sin reintentos. Comandos: `pnpm run test:e2e:install` (instala Chromium, una vez) y `pnpm run test:e2e`.
+- **Gates verificados por tests:** `tests/testing-and-ci-gates.test.ts` comprueba de forma determinística el workflow de CI (instalación congelada, sin secretos ni endpoints externos), la determinación de Playwright y el doble local, y ejercita el rechazo del guard de hosts externos.
 - **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
 - **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
