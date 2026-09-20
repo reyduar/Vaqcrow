@@ -72,8 +72,8 @@ Thumbs.db
 
 # Local tooling cache
 .atl/
-# Local agent working notes (ODD task documents)
-odd/
+# `odd/` is NOT ignored: odd/tasks/<slug>.md is the versioned iteration log
+# behind every Feature-closing evidence document (see CLAUDE.md).
 
 # Obsidian vault state (mutates constantly)
 .obsidian/

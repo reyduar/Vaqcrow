@@ -71,6 +71,10 @@ Pull-request-gated tests (`pnpm run test`, and everything `pnpm run verify` runs
 - `demo-tasks-list.md` — the executable roadmap; see Branching below for how it drives branch names.
 - `*-evidence.md` files (e.g. `domain-states-and-shared-contracts-evidence.md`, `trust-disclosures-and-synthetic-fixtures-evidence.md`, `supabase-schema-and-persistence-evidence.md`) — the established format for a Feature-closing evidence doc; read one before writing a new one rather than inventing a structure.
 
+**Every Feature closes with an evidence document in `docs/planning/`.** The Document-evidence Task of each Feature produces one, named `<feature-slug>-evidence.md`, and the Feature is not closed without it. Write it in **Spanish**: the evidence corpus is Spanish (eight of the ten documents as of 2026-09-20); English (`human-assessment-and-approval-evidence.md`, `deterministic-testing-and-ci-gates-evidence.md`) is the exception, not the convention — check the corpus rather than sampling a single document. Keep the established structure (read a sibling first), map every acceptance criterion quoted verbatim from its issue, and name the source of every verification result — a command re-run in the working tree, or a CI run — never reporting a merged state that does not exist yet.
+
+`odd/tasks/<slug>.md` is the iteration log that feeds that document: work units with commit hashes, RED→GREEN cycles, design decisions, advisories and how each was resolved. Keep it detailed enough that the evidence document can be written from it without re-deriving anything, and keep it current as the work happens. `odd/` is versioned — it is the record of how the work actually happened, not scratch space.
+
 ## Workflow
 
 ### Branching
