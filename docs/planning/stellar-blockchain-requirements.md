@@ -119,7 +119,7 @@ Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 
 ^parte-2
 
-Esta parte define qué debe comprobarse y prepararse en un equipo de desarrollo. No afirma que Git, Node.js, pnpm, Freighter, Rust o Stellar CLI ya estén instalados, y no registra ninguna instalación realizada.
+Esta parte define qué debe comprobarse y prepararse en un equipo de desarrollo. No afirma que Git, Node.js, pnpm, Freighter, Rust o Stellar CLI ya estén instalados, y no registra ninguna instalación realizada de ese toolchain.
 
 ### 1. Alcance obligatorio y opcional
 
@@ -479,9 +479,9 @@ Esta parte consolida las skills recomendadas, los convenios de seguridad y arqui
 
 Las skills se cargan en el agente de IA según la tarea en curso. Ninguna skill garantiza correctness ni reemplaza pruebas automatizadas o revisión humana. La selección se basa en la relevancia para Stellar, la reputación del maintainer y la cobertura de los escenarios de Vaqcrow.
 
-| Skill | Repositorio | Foco | Evidencia (2026-09-14) | Evaluación de confianza | Instalación (Claude Code) | Cuándo cargarla |
+| Skill | Repositorio | Foco | Evidencia (2026-09-14) | Evaluación de confianza | Instalación | Cuándo cargarla |
 |---|---|---|---|---|---|---|
-| **stellar-dev** | [stellar/stellar-dev-skill](https://github.com/stellar/stellar-dev-skill) | Dapp frontend, smart contracts, assets, data/APIs, agentic payments, standards (SEPs/CAPs). Incluye sub-skills: `dapp`, `smart-contracts`, `assets`, `data`, `agentic-payments`, `zk-proofs`, `standards`, `cross-chain`. | 51 estrellas, 50 forks, 284 commits, Apache-2.0, mantenida por Stellar Foundation. | **Alta** — oficial, activa, evals incluidos, documentación cita fuentes oficiales. | `/plugin marketplace add stellar/stellar-dev-skill` → `/plugin install stellar-dev@stellar-dev` | Cualquier tarea de Stellar: frontend, contratos, assets, API, integración. |
+| **stellar-dev** | [stellar/stellar-dev-skill](https://github.com/stellar/stellar-dev-skill) | Dapp frontend, smart contracts, assets, data/APIs, agentic payments, standards (SEPs/CAPs). Incluye sub-skills: `dapp`, `smart-contracts`, `assets`, `data`, `agentic-payments`, `zk-proofs`, `standards`, `cross-chain`. | 51 estrellas, 50 forks, 284 commits, Apache-2.0, mantenida por Stellar Foundation. | **Alta** — oficial, activa, evals incluidos, documentación cita fuentes oficiales. | **Proyecto (recomendado):** `npx skills add stellar/stellar-dev-skill` → instala las 8 skills en `.agents/skills/` con symlinks en `.claude/skills/` y entradas en `skills-lock.json`. **Global:** `/plugin marketplace add stellar/stellar-dev-skill` → `/plugin install stellar-dev@stellar-dev`, que escribe en `~/.claude/plugins/` y por lo tanto es de alcance de usuario, no de proyecto. | Cualquier tarea de Stellar: frontend, contratos, assets, API, integración. |
 | **setup-stellar-contracts** | [OpenZeppelin/openzeppelin-skills](https://github.com/OpenZeppelin/openzeppelin-skills) | Setup de proyecto Stellar/Soroban, dependencias OpenZeppelin, patrones de importación. | 210 estrellas, 32 forks, 42 commits, AGPL-3.0, mantenida por OpenZeppelin. | **Alta** — oficial, activa, cubre setup y dependencias de OpenZeppelin para Stellar. | `/plugin marketplace add OpenZeppelin/openzeppelin-skills` → `/plugin install openzeppelin-skills` | Solo si se autoriza Soroban: setup de proyecto, dependencias, patrones de contratos. |
 | **develop-secure-contracts** | [OpenZeppelin/openzeppelin-skills](https://github.com/OpenZeppelin/openzeppelin-skills) | Desarrollo seguro de contratos: tokens, acceso, pausable, reentrancy, governance, upgrades. Soporta Stellar. | Misma reputación que setup-stellar-contracts. | **Alta** — oficial, cubre seguridad y patrones de contratos Stellar. | `/plugin marketplace add OpenZeppelin/openzeppelin-skills` → `/plugin install openzeppelin-skills` | Solo si se autoriza Soroban: desarrollo y revisión de seguridad de contratos. |
 
@@ -492,7 +492,10 @@ Las skills se cargan en el agente de IA según la tarea en curso. Ninguna skill 
 | **find-skills** | (disponible localmente) | Descubrir e instalar skills nuevas. | Cuando se necesite una skill no listada. |
 | **skill-creator** | (disponible localmente) | Crear skills nuevas. | Solo si se documenta un patrón repetible del proyecto. |
 
-**Nota importante:** Las skills de Stellar Foundation y OpenZeppelin son complementarias, no contradictorias. `stellar-dev` cubre el espectro completo de Stellar (dapps, contratos, APIs, assets). `setup-stellar-contracts` y `develop-secure-contracts` profundizan en el setup y la seguridad de contratos con las librerías de OpenZeppelin. Para Vaqcrow, la skill primaria es `stellar-dev` (camino clásico y general). Las skills de OpenZeppelin solo se cargan si se autoriza Soroban.
+**Nota importante:** Las skills de Stellar Foundation y OpenZeppelin son complementarias, no contradictorias. `stellar-dev` es el nombre del plugin/paquete de Stellar Foundation, **no el de una skill**: `stellar/stellar-dev-skill` expone 8 skills — `dapp`, `data`, `assets`, `standards`, `smart-contracts`, `agentic-payments`, `cross-chain` y `zk-proofs` — que en conjunto cubren el espectro completo de Stellar (dapps, contratos, APIs, assets). Pedir "la skill `stellar-dev`" devuelve 8 unidades, no una. `setup-stellar-contracts` y `develop-secure-contracts` profundizan en el setup y la seguridad de contratos con las librerías de OpenZeppelin. Para Vaqcrow, el paquete primario es `stellar-dev` (camino clásico y general); dentro de él, el camino de la demo —pagos clásicos en Testnet vía `@stellar/stellar-sdk`, Horizon y Freighter— lo cubren `dapp`, `data` y `assets`, mientras que `smart-contracts`, `zk-proofs` y `cross-chain` pertenecen al mundo Soroban, que `DEMO.md` declara extensión opcional y nunca bloqueante. Las skills de OpenZeppelin solo se cargan si se autoriza Soroban.
+
+**Estado de instalación (verificado el 2026-09-20):** las 8 skills de `stellar/stellar-dev-skill` están instaladas **a nivel de proyecto** — presentes en `.agents/skills/` con symlinks en `.claude/skills/`, registradas en `skills-lock.json` y con `scope=project` en `.atl/skill-registry.md`. Las raíces globales (`~/.claude/skills`, `~/.agents/skills`, `~/.config/opencode/skills`) no contienen ninguna skill de Stellar: la instalación no alcanzó alcance de usuario. Aplicado el gate compartido de `AGENTS.md`: `skill_resolution: skill-registry` (usada para reindexar), `mcp_support: none`.
+
 
 ### 2. Convenios de seguridad y arquitectura
 
