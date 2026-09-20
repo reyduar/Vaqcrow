@@ -219,5 +219,7 @@ scoped to one workspace at a time.
   branch) then `418bb20` (slice 1 into `main`). Verified by ancestry, not by report — all seven
   commits are ancestors of `origin/main`. #74's three acceptance criteria were ticked and the Task
   closed as completed, naming both PRs and this log as its evidence.
-- **#75** — branch `Vaqcrow#75_Task_Test_Stellar_and_Freighter_integration` → `main`.
+- **#75** — PR [#193](https://github.com/reyduar/Vaqcrow/pull/193) → `main`, labels `type:task` +
+  `area:stellar` + `area:testing`, four commits: `20e4509` (SDK split), `14ea664` (non-custody),
+  `c9dc5c3` (branch coverage), `7cadc53` (this log).
 
