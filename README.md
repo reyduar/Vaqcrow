@@ -160,7 +160,7 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 
 ## Próximo paso
 
-El monorepo, el shell de demo, la persistencia y el slice de evaluación/aprobación humana ya están implementados. El roadmap local registra 31 unidades `Done`, 2 `Ready` y 75 `Backlog`; estos conteos reflejan la evidencia disponible en el repositorio y no sustituyen la sincronización del tablero remoto. El siguiente trabajo disponible es la configuración tipada y los límites de secretos (#44). La configuración de pruebas y gates de CI (#47) ya no está pausada: su implementación está entregada en el PR #176, pendiente de merge. Después siguen el esquema/guardrails de IA, Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard y preparación de la demo.
+El monorepo, el shell de demo, la persistencia, el slice de evaluación/aprobación humana y la configuración de pruebas determinísticas y gates de CI ya están implementados. El roadmap local registra 35 unidades `Done`, 1 `Ready` y 72 `Backlog`; estos conteos reflejan la evidencia disponible en el repositorio y no sustituyen la sincronización del tablero remoto. El siguiente trabajo disponible es la configuración tipada y los límites de secretos (#44). Después siguen el esquema/guardrails de IA, Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard y preparación de la demo.
 
 ## Licencia
 
