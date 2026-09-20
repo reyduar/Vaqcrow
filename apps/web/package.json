@@ -16,6 +16,7 @@
   "dependencies": {
     "@heroui/react": "^3.2.6",
     "@heroui/styles": "^3.2.6",
+    "@stellar/freighter-api": "^6.0.1",
     "@vaqcrow/contracts": "workspace:*",
     "axios": "^1.20.0",
     "next": "^16.3.5",
