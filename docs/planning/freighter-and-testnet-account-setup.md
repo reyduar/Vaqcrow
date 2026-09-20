@@ -7,11 +7,16 @@
 
 | Si esto queda listo… | …entonces se puede |
 |---|---|
-| Freighter instalado, habilitado y en Testnet, con una cuenta descartable fondeada | Cumplir la condición 2 del *Definition of ready* antes de [#74](https://github.com/reyduar/Vaqcrow/issues/74) (`stellar-blockchain-requirements.md`, Parte 3 §3.a) |
-| La cuenta descartable y su dirección pública registradas | Correr el *preflight* manual acotado en Testnet (`stellar-blockchain-requirements.md`, Parte 3 §1.b) |
-| La lista de seguridad firmada | Cerrar la condición 6 del mismo gate, y aportar la evidencia que pide [#76](https://github.com/reyduar/Vaqcrow/issues/76) |
+| Freighter instalado, habilitado y en Testnet, con una cuenta descartable fondeada | Cumplir la condición 2 del *Definition of ready* que `stellar-blockchain-requirements.md` (Parte 3 §3.a) exige **antes de empezar** [#74](https://github.com/reyduar/Vaqcrow/issues/74) |
+| La cuenta descartable y su dirección pública registradas | Correr el *preflight* manual acotado en Testnet (Parte 3 §1.b), que es el *bounded Testnet check* que pide la estrategia de pruebas de [#23](https://github.com/reyduar/Vaqcrow/issues/23) |
+| La lista de seguridad firmada | Cumplir la condición 6 de ese mismo gate (Parte 2 §8) |
 
-Sin esto, el *bounded Testnet check* que la estrategia de pruebas de [#23](https://github.com/reyduar/Vaqcrow/issues/23) pide **no se puede ejecutar**, y la evidencia tiene que declararlo como limitación externa en lugar de como resultado observado.
+> [!important] Esto no bloquea el cierre de #23 ni de #76
+> Ningún criterio de aceptación de [#23](https://github.com/reyduar/Vaqcrow/issues/23) ni de [#76](https://github.com/reyduar/Vaqcrow/issues/76) menciona una cuenta Testnet ni la lista de seguridad, y el *Definition of Done* de #23 acepta explícitamente "bounded external limitations are documented". Por eso la evidencia de cierre declara el *bounded Testnet check* como **límite** en lugar de como resultado observado, y ambos issues pueden cerrarse sin ejecutar nada de este documento.
+>
+> Lo que **sí** queda sin cumplir es el **gate de preparación** de la Parte 3 §3.a, cuyas condiciones 2 y 6 nunca se satisfacieron antes de #74. Es una desviación de proceso, no un criterio de cierre, y está registrada como tal en la sección 5 de la evidencia.
+
+Lo que desbloquea este documento es, entonces, **poder ejecutar la verificación en Testnet** —no cerrar los issues—. Sin esto, esa verificación no puede correr y la evidencia tiene que declararlo como limitación externa.
 
 ## 2. El principio que no se negocia
 
