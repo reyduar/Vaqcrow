@@ -1,10 +1,10 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026. Con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), de la configuración de pruebas y gates de CI (#15, #47, #48 y #49) y de la implementación de configuración tipada y límites de secretos ([#44](https://github.com/reyduar/Vaqcrow/issues/44)), el estado queda en 68 `Backlog`, 3 `Ready` y 37 `Done`. Esos conteos provienen de una consulta verificada al Project #4 el 20 de septiembre de 2026, tomada sobre los 108 ítems de este inventario: el tablero tiene 110 y los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera. El ítem [#134](https://github.com/reyduar/Vaqcrow/issues/134) cuenta como `Done` porque así lo registran su issue (cerrado el 17/09/2026) y el Project #4; sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main`, así que este documento no declara entregada la capa de Auth.js.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026. Con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), de la configuración de pruebas y gates de CI (#15, #47, #48 y #49) y de la implementación de configuración tipada y límites de secretos ([#44](https://github.com/reyduar/Vaqcrow/issues/44)), el estado queda en 67 `Backlog`, 4 `Ready` y 37 `Done`. Esos conteos provienen de una consulta verificada al Project #4 el 20 de septiembre de 2026, tomada sobre los 108 ítems de este inventario: el tablero tiene 110 y los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera. El ítem [#134](https://github.com/reyduar/Vaqcrow/issues/134) cuenta como `Done` porque así lo registran su issue (cerrado el 17/09/2026) y el Project #4; sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main`, así que este documento no declara entregada la capa de Auth.js.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#14 — Establecer configuración tipada y límites de secretos](#^issue-14), [#26 — Implementar el feed mensual de ventas](#^issue-26) y [#83 — Implementar el feed mensual de ventas](#^issue-83).**
+> **Unidades actualmente `Ready`: [#14 — Establecer configuración tipada y límites de secretos](#^issue-14), [#26 — Implementar el feed mensual de ventas](#^issue-26), [#45 — Probar la configuración tipada y los límites de secretos](#^issue-45) y [#83 — Implementar el feed mensual de ventas](#^issue-83).**
 >
 > **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y [#44](#^issue-44), respaldada por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183) y [#184](https://github.com/reyduar/Vaqcrow/pull/184).**
 >
@@ -388,12 +388,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-45
 
 - **Título original:** `Task: Test establish typed configuration and secret boundaries`
-- **GitHub y estado:** [issue #45](https://github.com/reyduar/Vaqcrow/issues/45) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#14](#^issue-14), que requiere [#11](#^issue-11); bloqueada nativamente por [#44](#^issue-44), ya en `Done` — sin bloqueos pendientes, aunque el tablero todavía la registra en `Backlog`.
+- **GitHub y estado:** [issue #45](https://github.com/reyduar/Vaqcrow/issues/45) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Ready`, promovida en el Project #4 al quedar [#44](#^issue-44) en `Done`.
+- **Jerarquía y bloqueos:** padre [#14](#^issue-14), que requiere [#11](#^issue-11); bloqueada nativamente por [#44](#^issue-44), ya en `Done` — sin bloqueos pendientes.
 - **Objetivo:** demostrar el slice mediante pruebas determinísticas focalizadas.
 - **Orden:** valida la implementación y desbloquea [#46](#^issue-46).
 
-**Rama propuesta.** `Vaqcrow#45_Task_Test_establish_typed_configuration_and_secret_boundaries` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#45_Task_Test_establish_typed_configuration_and_secret_boundaries` es una unidad de pruebas revisable. Registro de la unidad en `odd/tasks/typed-configuration-and-secret-boundaries-testing.md`.
 
 ### #46 — Documentar evidencia de configuración tipada y límites de secretos
 
