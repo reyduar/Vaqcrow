@@ -1,5 +1,6 @@
 import type { PostgrestResponse, SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, afterEach } from "vitest";
+import { parseSupabaseConfig } from "../../../src/application/config/supabase-config.js";
 import {
   createPublishableSupabaseClient,
   createSupabaseClient
@@ -25,13 +26,13 @@ let publishableClient: SupabaseClient | undefined;
 
 /** Lazily-created, process-wide service-role client for setup/teardown and privileged assertions. */
 export function getServiceRoleClient(): SupabaseClient {
-  serviceRoleClient ??= createSupabaseClient();
+  serviceRoleClient ??= createSupabaseClient(parseSupabaseConfig(process.env));
   return serviceRoleClient;
 }
 
 /** Lazily-created, process-wide publishable-key client for non-privileged access assertions. */
 export function getPublishableClient(): SupabaseClient {
-  publishableClient ??= createPublishableSupabaseClient();
+  publishableClient ??= createPublishableSupabaseClient(parseSupabaseConfig(process.env));
   return publishableClient;
 }
 
