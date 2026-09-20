@@ -1,14 +1,14 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026; con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), el estado documentado queda en 75 `Backlog`, 2 `Ready` y 31 `Done`. Los conteos reflejan la evidencia versionada en `main`; no implican una consulta nueva al tablero remoto. Los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera de este conteo. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026; con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64) y de la configuración de pruebas y gates de CI (#15, #47, #48 y #49), el estado documentado queda en 72 `Backlog`, 1 `Ready` y 35 `Done`. Los conteos reflejan la evidencia versionada en `main`; no implican una consulta nueva al tablero remoto. Los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera de este conteo. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44) y [#47 — Implementar la configuración de pruebas determinísticas y gates de CI](#^issue-47), cuya implementación está entregada en el PR [#176](https://github.com/reyduar/Vaqcrow/pull/176), pendiente de merge.**
+> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44).**
 >
-> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana.**
+> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI.**
 >
-> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) sigue disponible; [#47](#^issue-47) ya no está pausada y tiene su implementación entregada en el PR [#176](https://github.com/reyduar/Vaqcrow/pull/176), pendiente de merge.
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) sigue disponible; [#15](#^issue-15) quedó completa —sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49) están en `Done`— y se cerró manualmente el 20/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), lo que habilita [#20](#^issue-20) y [#32](#^issue-32).
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -51,7 +51,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 |---:|---|---|
 | 0 | [#11 Inicializar workspace pnpm/Turborepo](#^issue-11) | [~~#35 Configurar workspace raíz~~](#^issue-35) → ([~~#110 Scaffold de API~~](#^issue-110) y [~~#111 Scaffold web~~](#^issue-111) en paralelo) → [~~#36 Probar límites~~](#^issue-36) → [~~#37 Documentar evidencia~~](#^issue-37) |
 | 1 | [#12 Definir estados y contratos](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [~~#39 Probar~~](#^issue-39) → [~~#40 Documentar~~](#^issue-40) |
-| 1 | [#15 Configurar pruebas y CI](#^issue-15) | [#47 Implementar](#^issue-47) → [#48 Probar](#^issue-48) → [#49 Documentar](#^issue-49) |
+| 1 | [~~#15 Configurar pruebas y CI~~](#^issue-15) | [~~#47 Implementar~~](#^issue-47) → [~~#48 Probar~~](#^issue-48) → [~~#49 Documentar~~](#^issue-49) |
 | 1 | [#14 Establecer configuración y secretos](#^issue-14) | [#44 Implementar](#^issue-44) → [#45 Probar](#^issue-45) → [#46 Documentar](#^issue-46) |
 | 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#^issue-116), completada después de #110 y coordinada con #38 |
 | 2 | [#16 Construir shell y navegación](#^issue-16) | [#50 Implementar](#^issue-50) → [#51 Probar](#^issue-51) → [#52 Documentar](#^issue-52) |
@@ -310,50 +310,53 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-15
 
 - **Título original:** `Feature: Set up deterministic testing and CI gates`
-- **GitHub y estado:** [issue #15](https://github.com/reyduar/Vaqcrow/issues/15) · Tipo `Feature` · Área `testing` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #15](https://github.com/reyduar/Vaqcrow/issues/15) · Tipo `Feature` · Área `testing` · Prioridad `High` · Workflow `Done` (evidencia en `main`).
 - **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#11](#^issue-11).
 - **Objetivo:** configurar Vitest, Testing Library, Playwright y gates de calidad de PR con dobles locales.
 - **Orden:** entre los Features `High` de la ola desbloquea más dependientes: [#20](#^issue-20) y [#32](#^issue-32).
+- **Entrega:** sus tres Tasks completas — [#47](#^issue-47) ([PR #176](https://github.com/reyduar/Vaqcrow/pull/176)), [#48](#^issue-48) ([PR #178](https://github.com/reyduar/Vaqcrow/pull/178)) y [#49](#^issue-49) ([PR #179](https://github.com/reyduar/Vaqcrow/pull/179)). Cerrada manualmente el 20/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues). Evidencia en [`deterministic-testing-and-ci-gates-evidence.md`](./deterministic-testing-and-ci-gates-evidence.md). Habilita [#20](#^issue-20) y [#32](#^issue-32).
 
-**Rama propuesta.** `Vaqcrow#15_Feat_Set_up_deterministic_testing_and_CI_gates` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#15_Feat_Set_up_deterministic_testing_and_CI_gates`, entregada mediante sus Tasks y los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179).
 
 ### #47 — Implementar la configuración de pruebas determinísticas y gates de CI
 
 ^issue-47
 
 - **Título original:** `Task: Implement set up deterministic testing and ci gates`
-- **GitHub y estado:** [issue #47](https://github.com/reyduar/Vaqcrow/issues/47) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Ready`.
+- **GitHub y estado:** [issue #47](https://github.com/reyduar/Vaqcrow/issues/47) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Done` (evidencia en `main`).
 - **Jerarquía y bloqueos:** padre [#15](#^issue-15), que requiere [#11](#^issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** entregar el slice de implementación delimitado para pruebas determinísticas y gates de CI.
 - **Requisitos técnicos confirmados:** usar [Playwright](https://playwright.dev/) para browser E2E determinístico con fixtures o dobles locales; los checks de pull request no dependen de servicios externos vivos. Aplicar el gate compartido de skills/MCP antes de cualquier cambio de manifest o lockfile y registrar el soporte usado o `none`.
 - **Orden:** inicia el Feature y desbloquea [#48](#^issue-48).
-- **Entrega:** suite Playwright determinística (Chromium, un worker, sin reintentos) contra un doble local en `apps/web/e2e/`, más `.github/workflows/ci.yml` con instalación congelada y sin servicios externos vivos; PR [#176](https://github.com/reyduar/Vaqcrow/pull/176), pendiente de merge.
+- **Entrega:** suite Playwright determinística (Chromium, un worker, sin reintentos) contra un doble local en `apps/web/e2e/`, más `.github/workflows/ci.yml` con instalación congelada y sin servicios externos vivos; [PR #176](https://github.com/reyduar/Vaqcrow/pull/176), mergeada.
 
-**Rama e implementación.** `Vaqcrow#47_Task_Implement_set_up_deterministic_testing_and_ci_gates`, con la implementación entregada en el PR [#176](https://github.com/reyduar/Vaqcrow/pull/176) (pendiente de merge).
+**Rama e implementación.** `Vaqcrow#47_Task_Implement_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #176](https://github.com/reyduar/Vaqcrow/pull/176).
 
 ### #48 — Probar la configuración de pruebas determinísticas y gates de CI
 
 ^issue-48
 
 - **Título original:** `Task: Test set up deterministic testing and ci gates`
-- **GitHub y estado:** [issue #48](https://github.com/reyduar/Vaqcrow/issues/48) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #48](https://github.com/reyduar/Vaqcrow/issues/48) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Done` (evidencia en `main`).
 - **Jerarquía y bloqueos:** padre [#15](#^issue-15), que requiere [#11](#^issue-11); bloqueada nativamente por [#47](#^issue-47).
 - **Objetivo:** probar el slice con comprobaciones determinísticas, sin depender de servicios externos vivos.
 - **Orden:** valida la implementación y desbloquea [#49](#^issue-49).
+- **Entrega:** 25 meta-tests determinísticos en `tests/testing-and-ci-gates.test.ts` sobre los propios gates (workflow de CI, configuración de Playwright, doble local, wiring de scripts y comandos documentados), más el predicado `apps/web/e2e/support/local-hosts.ts` que hace ejercitable el rechazo de hosts externos; [PR #178](https://github.com/reyduar/Vaqcrow/pull/178), mergeada.
 
-**Rama propuesta.** `Vaqcrow#48_Task_Test_set_up_deterministic_testing_and_ci_gates` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#48_Task_Test_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #178](https://github.com/reyduar/Vaqcrow/pull/178).
 
 ### #49 — Documentar evidencia de pruebas determinísticas y gates de CI
 
 ^issue-49
 
 - **Título original:** `Task: Document evidence set up deterministic testing and ci gates`
-- **GitHub y estado:** [issue #49](https://github.com/reyduar/Vaqcrow/issues/49) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #49](https://github.com/reyduar/Vaqcrow/issues/49) · Tipo `Task` · Área `testing` · Prioridad `High` · Workflow `Done` (evidencia en `main`).
 - **Jerarquía y bloqueos:** padre [#15](#^issue-15), que requiere [#11](#^issue-11); bloqueada nativamente por [#48](#^issue-48).
 - **Objetivo:** capturar evidencia reproducible de finalización de las pruebas determinísticas y los gates de CI.
 - **Orden:** cierra [#15](#^issue-15) y habilita [#20](#^issue-20) y [#32](#^issue-32).
+- **Entrega:** evidencia de cierre de la Feature #15 en [`deterministic-testing-and-ci-gates-evidence.md`](./deterministic-testing-and-ci-gates-evidence.md), con cada criterio de aceptación mapeado y cada resultado de verificación con su fuente; [PR #179](https://github.com/reyduar/Vaqcrow/pull/179), mergeada.
 
-**Rama propuesta.** `Vaqcrow#49_Task_Document_evidence_set_up_deterministic_testing_and_ci_gates` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#49_Task_Document_evidence_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #179](https://github.com/reyduar/Vaqcrow/pull/179).
 
 ### #14 — Establecer configuración tipada y límites de secretos
 
