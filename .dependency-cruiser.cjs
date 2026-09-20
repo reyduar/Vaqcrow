@@ -68,6 +68,28 @@ module.exports = {
       severity: "error",
       from: { path: "^apps/web/src/application/" },
       to: { path: "(^|/)node_modules/(react|react-dom)(/|$)", dependencyTypesNot: ["type-only"] }
+    },
+    {
+      name: "web-never-imports-server-stellar-sdk",
+      comment:
+        "apps/web signs through Freighter and never builds, decodes or verifies XDR — that belongs to apps/api. The SDK must not reach the browser bundle. type-only imports stay legal so a component could name an SDK type without shipping it.",
+      severity: "error",
+      from: { path: "^apps/web/src/" },
+      to: {
+        path: "(^|/)node_modules/@stellar/stellar-sdk(/|$)",
+        dependencyTypesNot: ["type-only"]
+      }
+    },
+    {
+      name: "api-never-imports-wallet-sdk",
+      comment:
+        "apps/api holds no wallet and never signs; Freighter is the browser's signing surface, so the wallet SDK must not appear in the backend. type-only imports stay legal so a port could name a wallet type without depending on the wallet.",
+      severity: "error",
+      from: { path: "^apps/api/src/" },
+      to: {
+        path: "(^|/)node_modules/@stellar/freighter-api(/|$)",
+        dependencyTypesNot: ["type-only"]
+      }
     }
   ],
   options: {
