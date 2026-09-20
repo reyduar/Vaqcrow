@@ -1,107 +1,118 @@
-# Evidence for issue #62: Implement human assessment and approval
+# Evidencia de cierre de la Feature #19 — Issue #62
 
-> [!info] Scope of this document
-> Closing evidence for the implement Task [#62](https://github.com/reyduar/Vaqcrow/issues/62) ("Task: Implement human assessment and approval"), child of Feature [#19](https://github.com/reyduar/Vaqcrow/issues/19). It maps each acceptance criterion to files, tests and commits, records design decisions, simulation boundaries, verification results and honest limits. It adds no production code. Format follows [[docs/planning/supabase-schema-and-persistence-evidence|the #43 evidence document]]; the ordered test Task is [#63](#^issue-63) and the evidence Task is [#64](#^issue-64) in [[docs/planning/demo-tasks-list|demo-tasks-list]].
+> Documento de cierre de Feature. Mapea cada criterio de aceptación contra archivos, tests y commits, registra las decisiones de diseño, los límites de simulación, los resultados de verificación y los límites honestos. No agrega código de producción. El formato sigue a [`supabase-schema-and-persistence-evidence.md`](./supabase-schema-and-persistence-evidence.md) (#43); la Task de pruebas es [#63](https://github.com/reyduar/Vaqcrow/issues/63) y la de evidencia es [#64](https://github.com/reyduar/Vaqcrow/issues/64) en [`demo-tasks-list.md`](./demo-tasks-list.md).
 
-> [!warning] Demo boundary
-> Everything here is a **simulated, non-production demo**. The assessment is a frozen fixture, the actor is a free-text field (there is no authentication), and nothing in this work is KYC/KYB, a credit decision or a production approval. The AI is advisory only and never decides.
+> **Límite de la demo.** Todo lo de este documento es una **demo simulada y no productiva**. La evaluación es un fixture congelado, el actor es un campo de texto libre (no hay autenticación) y nada de este trabajo es KYC/KYB, una decisión crediticia ni una aprobación de producción. La IA es solo asesora y nunca decide.
 
-## 1. Context and objective
+## 1. Contexto y objetivo
 
-Issue #62 asks an operator to review AI evidence and record an explicit approval or rejection with reasons, limits, actor and timestamp, keeping the decision authoritative on the backend. It was delivered as a Feature Branch Chain of small work units on top of the existing `application_review` persistence (Feature #13):
+El issue [#62](https://github.com/reyduar/Vaqcrow/issues/62) pide que un operador revise la evidencia de la IA y registre una aprobación o un rechazo explícitos, con razones, límites, actor y timestamp, manteniendo la decisión como autoridad del backend. Se entregó como una cadena de unidades de trabajo pequeñas sobre la persistencia `application_review` ya existente (Feature #13):
 
-| Unit | Commit | Content |
+| Unidad | Commit | Contenido |
 |---|---|---|
-| T1 | `a2ee438` | Contracts and domain invariants for human decisions |
-| T2 | `b879602` | `human_decision` audit table and atomic `record_human_decision` RPC |
-| T3 | `9b63a8e` | Repository adapter calling the RPC |
-| T4 | `0552b2f` | Use case and `POST /application-reviews/:applicationId/decisions` |
-| T5 | `d4a8a2b` | Credential-gated integration tests and FK cascade migration |
-| T6 | `c2c3d6e`, `268d35a`, `2e57ec1` | Web application logic and gateway, screens, fix for a fresh attempt after an idempotency conflict |
-| T7 | `6880eb9` | Grant-level audit immutability fix (plus remote migration application, no commit of its own) |
+| T1 | `a2ee438` | Contratos e invariantes de dominio para decisiones humanas |
+| T2 | `b879602` | Tabla de auditoría `human_decision` y RPC atómica `record_human_decision` |
+| T3 | `9b63a8e` | Adaptador de repositorio que llama a la RPC |
+| T4 | `0552b2f` | Caso de uso y `POST /application-reviews/:applicationId/decisions` |
+| T5 | `d4a8a2b` | Tests de integración con credenciales y migración de cascada de FK |
+| T6 | `c2c3d6e`, `268d35a`, `2e57ec1` | Lógica de aplicación y gateway web, pantallas, y corrección para un intento nuevo tras un conflicto de idempotencia |
+| T7 | `6880eb9` | Corrección de inmutabilidad de la auditoría a nivel de GRANT (más la aplicación remota de migraciones, sin commit propio) |
 
-## 2. How to read this evidence
+Se mergeó mediante los PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175), lo que completó la Feature [#19](https://github.com/reyduar/Vaqcrow/issues/19) junto con [#63](https://github.com/reyduar/Vaqcrow/issues/63) y [#64](https://github.com/reyduar/Vaqcrow/issues/64).
 
-- Test counts and results in section 5 were observed in this working tree or recorded in [[odd/tasks/human-assessment-and-approval|the feature task document]]; nothing is inferred.
-- Commands need Node 24: `PATH="/opt/homebrew/opt/node@24/bin:$PATH"`.
-- The live, credential-gated integration suite was run by the operator after the merge and passed (section 6).
+## 2. Cómo leer esta evidencia
 
-## 3. What was implemented
+- Los conteos y resultados de la sección 4 se observaron en un árbol de trabajo o quedaron registrados en la bitácora `odd/tasks/human-assessment-and-approval.md`; nada se infiere.
+- **Comandos.** Requieren Node 24: `PATH="/opt/homebrew/opt/node@24/bin:$PATH"`.
+- **La suite de integración viva y con credenciales la corrió el operador después del merge y pasó** (sección 4 y sección 7).
 
-- **Contract.** `packages/contracts/src/application-review.ts` defines `humanDecisionCommandSchema` (strict object: `decisionId`, `applicationId`, `outcome` in `approved | changes_requested | rejected`, `actor` trimmed 1..120, `reason` trimmed 1..1000, `approvedLimitArs` nullable positive integer) and `humanDecisionRecordSchema` (adds server `decidedAt` and `correlationId`). Tests: `application-review.test.ts`, `human-decision-id.test.ts`.
-- **Domain.** `packages/domain/src/application-review.ts` allows `human_review` to reach exactly the three outcomes (`decideApplicationReview`). Test: `application-review.test.ts`.
-- **Database.** `supabase/migrations/20260919181453_create_human_decision_audit.sql` creates `public.human_decision` and `public.record_human_decision(...)`. Follow-ups: `20260919185430_cascade_human_decision_on_application_delete.sql` and `20260919203900_enforce_human_decision_grant_immutability.sql`.
-- **API.** `apps/api/src/application/use-cases/record-human-decision.ts`, the repository port/adapter (`application-review-repository-port.ts`, `supabase-application-review-repository.ts`) and `apps/api/src/infrastructure/http/routes/human-decision.route.ts`. The route accepts exactly five body keys, parses with the contract, takes the correlation id from `request.id`, and maps outcomes to `201` applied, `200` replay, `404 not_found`, `409 state_conflict` (with `actualState`), `409 idempotency_conflict`, `503 unavailable`.
-- **Web.** Assessment screen (`apps/web/src/app/(demo)/ai-assessment/page.tsx`) and approval screen (`.../approval/page.tsx`); decision logic in `apps/web/src/application/decision/` (`decision-form.ts`, `decision-attempt.ts`, `record-human-decision.ts`, `human-decision-errors.ts`); port `human-decision-gateway.ts` with HTTP adapter `infrastructure/decision/http-human-decision-gateway.ts`; state hook `state/use-human-decision.ts`; components `human-decision-form`, `human-decision-workspace`, `human-decision-record`, `ai-assessment-panel`, `evidence-review-panel`.
+## 3. Qué quedó implementado
 
-## 4. Acceptance-criteria mapping
+- **Contrato.** `packages/contracts/src/application-review.ts` define `humanDecisionCommandSchema` (objeto estricto: `decisionId`, `applicationId`, `outcome` en `approved | changes_requested | rejected`, `actor` recortado 1..120, `reason` recortado 1..1000, `approvedLimitArs` entero positivo anulable) y `humanDecisionRecordSchema` (agrega `decidedAt` del servidor y `correlationId`). Tests: `application-review.test.ts`, `human-decision-id.test.ts`.
+- **Dominio.** `packages/domain/src/application-review.ts` permite que `human_review` alcance exactamente los tres desenlaces (`decideApplicationReview`). Test: `application-review.test.ts`.
+- **Base de datos.** `supabase/migrations/20260919181453_create_human_decision_audit.sql` crea `public.human_decision` y `public.record_human_decision(...)`. Seguimientos: `20260919185430_cascade_human_decision_on_application_delete.sql` y `20260919203900_enforce_human_decision_grant_immutability.sql`.
+- **API.** `apps/api/src/application/use-cases/record-human-decision.ts`, el puerto/adaptador de repositorio (`application-review-repository-port.ts`, `supabase-application-review-repository.ts`) y `apps/api/src/infrastructure/http/routes/human-decision.route.ts`. La ruta acepta exactamente cinco claves de body, parsea con el contrato, toma el correlation id de `request.id` y mapea los desenlaces a `201` aplicado, `200` replay, `404 not_found`, `409 state_conflict` (con `actualState`), `409 idempotency_conflict`, `503 unavailable`.
+- **Web.** Pantalla de evaluación (`apps/web/src/app/(demo)/ai-assessment/page.tsx`) y pantalla de aprobación (`.../approval/page.tsx`); lógica de decisión en `apps/web/src/application/decision/` (`decision-form.ts`, `decision-attempt.ts`, `record-human-decision.ts`, `human-decision-errors.ts`); puerto `human-decision-gateway.ts` con adaptador HTTP `infrastructure/decision/http-human-decision-gateway.ts`; hook de estado `state/use-human-decision.ts`; componentes `human-decision-form`, `human-decision-workspace`, `human-decision-record`, `ai-assessment-panel`, `evidence-review-panel`.
 
-Criteria quoted verbatim from `gh issue view 62`.
+### Decisiones de diseño
 
-| # | Criterion | Result | Evidence |
+1. **Invariante del límite aprobado.** `approved` exige un `approvedLimitArs` entero positivo y seguro; `changes_requested` y `rejected` exigen exactamente `null`. Se aplica en el contrato (`superRefine`, `z.int().positive()`) y otra vez en SQL con `human_decision_approved_limit_check`, para que un escritor directo no pueda saltarla.
+2. **Idempotencia por `decisionId`.** El mismo id con el mismo payload de negocio (`applicationId`, `outcome`, `actor`, `reason`, `approvedLimitArs`) es un **replay**: se devuelve el registro original (`200`, `applied: false`) sin una segunda fila. El mismo id con un payload distinto es un **`idempotency_conflict`** (`409`), sin mutación. Un id nuevo contra una aplicación ya terminal es un `state_conflict`. Un `pg_advisory_xact_lock` sobre el id serializa las peticiones concurrentes, así que ninguna carrera de violación de unicidad se filtra.
+3. **Una sola RPC atómica.** `record_human_decision` hace la verificación de idempotencia, la transición condicional de `human_review` al estado de desenlace (`UPDATE ... WHERE state = 'human_review'`) y el insert de auditoría en una transacción. O existen tanto el cambio de estado como la fila de auditoría, o no existe ninguno.
+4. **`SECURITY INVOKER`, `search_path = ''`.** La función nunca escala privilegios; el execute está revocado de `public, anon, authenticated` y otorgado solo a `service_role`.
+5. **Acceso solo por service role.** RLS está habilitada en `human_decision`, anon/authenticated no tienen grants, y la API es el único escritor.
+6. **Corrección de inmutabilidad a nivel de GRANT (`6880eb9`).** Supabase otorga privilegios amplios a `service_role` sobre tablas nuevas por defecto, así que revocar solo de anon/authenticated dejaba la auditoría mutable a través del service role. La migración `20260919203900_...` revoca todo de `service_role` y vuelve a otorgar solo `select, insert`. La limpieza del padre sigue funcionando porque `ON DELETE CASCADE` (migración `20260919185430_...`) corre como dueño de la tabla. El test de integración "keeps the audit immutable even for the service role" lo cubre.
+7. **Intento nuevo tras un conflicto de idempotencia (`2e57ec1`).** El cliente web mantiene un `decisionId` por intento para que los reintentos repliquen de forma segura, pero después de un `idempotency_conflict` arranca un intento nuevo en lugar de reusar el id viejo (RED y GREEN observados).
+
+## 4. Qué quedó probado
+
+| Verificación | Resultado observado | Fuente |
+|---|---|---|
+| `pnpm run verify` | Pasó sobre `268d35a` (lint, typecheck, test, build, boundaries, test:boundaries); boundaries limpio | Bitácora de la Feature, T7 |
+| `pnpm --filter @vaqcrow/web test` | 59 archivos, 317 tests (también después de la corrección `2e57ec1`) | Re-ejecutado en árbol de trabajo |
+| `pnpm --filter @vaqcrow/api test` | 5 archivos, 61 tests | Re-ejecutado en árbol de trabajo |
+| `pnpm --filter @vaqcrow/contracts test` | 5 archivos, 101 tests | Re-ejecutado en árbol de trabajo |
+| `pnpm --filter @vaqcrow/domain test` | 1 archivo, 60 tests | Re-ejecutado en árbol de trabajo |
+| Revisión nativa (RDD), todo evaluado como riesgo medio | Aprobada y reconocida para `f044f2c..d4a8a2b`, `d4a8a2b..268d35a` y la rama acumulada `f044f2c..HEAD` | Bitácora de la Feature, T5/T6, y reporte del orquestador |
+| Commit `2e57ec1` | Medio, 26 líneas, bajo presupuesto, sin revisión debida | Bitácora de la Feature, T6 |
+| Commit `6880eb9` | Bajo presupuesto, sin revisión debida | Bitácora de la Feature, T7 |
+| Suite de integración viva (`pnpm --filter @vaqcrow/api test:integration`) | 2 archivos, 15 tests contra el proyecto Supabase alojado el 2026-09-19: `human-decision-persistence` 8 tests y `application-review-persistence` 7 tests. La corrió el operador con credenciales reales después del merge de la cadena; la salida se aportó como resultado pegado, no re-ejecutado por el asistente | Reporte del operador |
+| Migraciones remotas | Las tres migraciones de decisión humana se aplicaron al proyecto Supabase **alojado** vía MCP (sin Docker local). Una sonda SQL revertida mostró: la RPC aplica, `service_role` tiene denegado update y delete, y borrar un `application_review` cascadea a sus filas de auditoría | Bitácora de la Feature, T7 |
+
+La suite de integración `apps/api/tests/integration/human-decision-persistence.integration.test.ts` contiene 8 bloques `it(...)`: aplicar y registrar exactamente la fila de auditoría, replay, conflicto por payload cambiado, conflicto por estado terminal, no encontrado, denegación con clave publishable y `42501`, inmutabilidad bajo service role, e ids concurrentes.
+
+## 5. Límites operativos vigentes
+
+- **La IA es solo asesora.** La pantalla de evaluación renderiza un fixture congelado (`apps/web/src/application/assessment/simulated-assessment.ts`), rotulado como simulado. Nunca aprueba, calcula una obligación ni mueve fondos. La integración real con LLM es de la Feature [#20](https://github.com/reyduar/Vaqcrow/issues/20).
+- **Sin autenticación.** El actor es un campo de texto editable que por defecto trae un actor de demo (`DEMO_ACTOR`). El actor registrado es, por lo tanto, autodeclarado y no una identidad autenticada. La autenticación está registrada en [#134](https://github.com/reyduar/Vaqcrow/issues/134).
+- **Id de aplicación de marcador.** El workspace usa `DEMO_APPLICATION_ID` (`apps/web/src/application/fixtures/demo-application.ts`) hasta que la Feature #18 aporte un flujo real de solicitudes.
+- **Separación web/dominio.** La web consume solo `packages/contracts`; la decisión la validan y aplican la API y la base de datos.
+- **Sin políticas RLS.** El control de acceso se apoya en los grants (ver la evidencia de #43 y [#134](https://github.com/reyduar/Vaqcrow/issues/134)).
+
+## 6. Resultado visible en la demo
+
+El recorrido visible de esta Feature son dos pantallas consecutivas: la de evaluación muestra la recomendación de IA como bloque de solo lectura, rotulado `SIMULADO` y con la aclaración de que solo asesora; la de aprobación contiene el formulario que es la única vía para registrar una decisión, y la vista de éxito aparece **solo después** de que el backend confirma el registro, mostrando el desenlace, el actor, la razón, el límite aprobado (o su ausencia), la fecha del servidor y el id de correlación. Ningún estado de éxito se muestra para un intento fallido o no confirmado.
+
+## 7. Correcciones aplicadas durante el ciclo
+
+1. **Intento nuevo tras un conflicto de idempotencia (`2e57ec1`).** El cliente reusaba el `decisionId` del intento anterior, así que un conflicto de idempotencia se replicaba para siempre. Ahora arranca un intento nuevo; RED y GREEN observados.
+2. **Inmutabilidad de la auditoría a nivel de GRANT (`6880eb9`).** Los grants por defecto de Supabase dejaban la tabla mutable a través del service role. Corregido revocando todo de `service_role` y re-otorgando solo `select, insert`, con un test de integración que lo cubre.
+3. **Una afirmación de verificación viva que estaba incompleta.** El documento original dejaba la suite de integración como "no ejecutada". El operador la corrió después del merge contra el proyecto alojado y pasó 15 de 15; esta versión registra ese resultado (sección 4) en lugar del límite anterior.
+4. **Idioma y estructura de este documento.** La primera versión estaba en inglés y con la estructura §1–§9, que era la excepción del corpus de evidencia y no su convención. Se reescribió en español con la estructura §1–§10 del resto de los documentos, y la convención quedó explícita en `CLAUDE.md`/`AGENTS.md` para que no dependa de muestrear un solo archivo.
+
+## 8. Mapeo de criterios de aceptación
+
+Criterios citados verbatim de `gh issue view 62`.
+
+| # | Criterio | Resultado | Evidencia |
 |---|---|---|---|
-| 1 | "The behavior described by Feature #19 is implemented within its documented boundary." | Met within the demo boundary | Sections 3 and 7; boundaries check clean in `pnpm run verify` (section 5); web never imports `packages/domain` |
-| 2 | "Allow an operator to review AI evidence and record an explicit approval or rejection with reasons, limits, actor, and timestamp; the AI never makes the final decision." | Met | Evidence and assessment panels (`evidence-review-panel.tsx`, `ai-assessment-panel.tsx`, tests alongside); decision form requires explicit outcome, actor, reason and, for approval, a limit (`decision-form.ts`); server-side `decided_at` default in `human_decision`; the assessment fixture is advisory and has no path to the command (`simulated-assessment.ts`); `changes_requested` is also supported beyond the approve/reject wording |
-| 3 | "Failure paths do not claim success or weaken human-control, simulation, or secret-handling boundaries." | Met | `human-decision-errors.ts` maps each API failure to an explicit non-success message (tests alongside); route returns 4xx/5xx for invalid, missing, conflicting or unavailable cases (`human-decision.route.test.ts`); adapter sanitizes database errors; no secrets, PII or seeds were added |
+| 1 | "The behavior described by Feature #19 is implemented within its documented boundary." | Cumplido dentro del límite de la demo | Secciones 3 y 5; boundaries limpio en `pnpm run verify` (sección 4); la web nunca importa `packages/domain` |
+| 2 | "Allow an operator to review AI evidence and record an explicit approval or rejection with reasons, limits, actor, and timestamp; the AI never makes the final decision." | Cumplido | Paneles de evidencia y evaluación (`evidence-review-panel.tsx`, `ai-assessment-panel.tsx`, con sus tests); el formulario de decisión exige desenlace, actor y razón explícitos y, para aprobar, un límite (`decision-form.ts`); `decided_at` con default del lado del servidor en `human_decision`; el fixture de evaluación es asesor y no tiene ningún camino hacia el comando (`simulated-assessment.ts`); `changes_requested` también está soportado más allá del enunciado de aprobar/rechazar |
+| 3 | "Failure paths do not claim success or weaken human-control, simulation, or secret-handling boundaries." | Cumplido | `human-decision-errors.ts` mapea cada fallo de la API a un mensaje explícito de no-éxito (con sus tests); la ruta devuelve 4xx/5xx para casos inválidos, faltantes, en conflicto o no disponibles (`human-decision.route.test.ts`); el adaptador sanea los errores de base de datos; no se agregaron secretos, PII ni seeds |
 
 Commits: `a2ee438`, `b879602`, `9b63a8e`, `0552b2f`, `d4a8a2b`, `c2c3d6e`, `268d35a`, `2e57ec1`, `6880eb9`.
 
-## 5. Design decisions
+## 9. Riesgos y limitaciones aceptadas
 
-1. **Approved limit invariant.** `approved` requires a positive safe-integer `approvedLimitArs`; `changes_requested` and `rejected` require exactly `null`. Enforced in the contract (`superRefine`, `z.int().positive()`), and again in SQL by `human_decision_approved_limit_check`, so a direct writer cannot bypass it.
-2. **Idempotency by `decisionId`.** The same id with the same business payload (`applicationId`, `outcome`, `actor`, `reason`, `approvedLimitArs`) is a **replay**: the original record is returned (`200`, `applied: false`) with no second row. The same id with a different payload is an **`idempotency_conflict`** (`409`), with no mutation. A new id against an already-terminal application is a `state_conflict`. A `pg_advisory_xact_lock` on the id serializes concurrent requests, so no unique-violation race leaks out.
-3. **One atomic RPC.** `record_human_decision` performs idempotency check, the conditional `human_review` to outcome state transition (`UPDATE ... WHERE state = 'human_review'`) and the audit insert in one transaction. Either both the state change and the audit row exist or neither does.
-4. **`SECURITY INVOKER`, `search_path = ''`.** The function never escalates privileges; execute is revoked from `public, anon, authenticated` and granted to `service_role` only.
-5. **Service-role-only access.** RLS is enabled on `human_decision`, anon/authenticated have no grants, and the API is the only writer.
-6. **Grant-level immutability fix (`6880eb9`).** Supabase grants broad privileges to `service_role` on new tables by default, so revoking from anon/authenticated alone left the audit mutable through the service role. The migration `20260919203900_...` revokes all from `service_role` and re-grants only `select, insert`. Parent cleanup still works because `ON DELETE CASCADE` (migration `20260919185430_...`) runs as the table owner. The integration test "keeps the audit immutable even for the service role" covers it.
-7. **Fresh attempt after an idempotency conflict (`2e57ec1`).** The web client keeps one `decisionId` per attempt so retries replay safely, but after an `idempotency_conflict` it starts a new attempt instead of reusing the stale id (RED then GREEN observed).
+> **Verificación viva.** Después del merge, el operador corrió la suite de integración con credenciales (`pnpm --filter @vaqcrow/api test:integration`) contra el proyecto Supabase alojado: 15 de 15 tests pasaron, incluidos replay, conflicto por payload cambiado, conflicto por estado terminal, `not_found`, denegación con clave publishable y `42501`, inmutabilidad bajo service role e ids concurrentes. Las líneas de `stderr` de esa salida (`23514`, `23505`) vienen de los tests negativos que fuerzan un CHECK y una clave duplicada; el adaptador las registra internamente y no las devuelve a quien llama. Antes de esa corrida, la única evidencia viva era la sonda SQL revertida de la sección 4.
 
-## 6. Verification results
+- **El copy de UI está en español**, siguiendo el copy web existente y `docs/design/demo-ui.md`; el código, los tests y los commits van en inglés, y este documento va en español por la convención de evidencia del repositorio.
+- **El historial remoto de migraciones lista `create_application_review` dos veces.** Es anterior al #62 y no se alteró acá.
+- **Sin políticas RLS.** El control de acceso se apoya en grants (ver la evidencia de #43 y [#134](https://github.com/reyduar/Vaqcrow/issues/134)).
+- **Avisos de revisión no bloqueantes**, dejados para trabajo posterior; las notas de los últimos cinco dan solo el id del hallazgo y su ubicación reportada por el revisor (un aviso anterior, R3-idem-conflict-retry, se corrigió en `2e57ec1`):
 
-| Check | Observed result | Source |
-|---|---|---|
-| `pnpm run verify` | Passed on `268d35a` (lint, typecheck, test, build, boundaries, test:boundaries); boundaries clean | Feature document, T7 |
-| `pnpm --filter @vaqcrow/web test` | 59 files, 317 tests passed (also after the `2e57ec1` fix) | Re-run in this working tree |
-| `pnpm --filter @vaqcrow/api test` | 5 files, 61 tests passed | Re-run in this working tree |
-| `pnpm --filter @vaqcrow/contracts test` | 5 files, 101 tests passed | Re-run in this working tree |
-| `pnpm --filter @vaqcrow/domain test` | 1 file, 60 tests passed | Re-run in this working tree |
-| Native review (RDD), all assessed medium risk | Approved and acknowledged for `f044f2c..d4a8a2b`, `d4a8a2b..268d35a` and the accumulated branch `f044f2c..HEAD` | Feature document, T5/T6, and orchestrator report |
-| Commit `2e57ec1` | Medium, 26 lines, under budget, no review due | Feature document, T6 |
-| Commit `6880eb9` | Under budget, no review due | Feature document, T7 |
-| Live integration suite (`pnpm --filter @vaqcrow/api test:integration`) | 2 files, 15 tests passed against the hosted Supabase project on 2026-09-19: `human-decision-persistence` 8 tests and `application-review-persistence` 7 tests. Run by the operator with real credentials after the chain was merged; output supplied as pasted test results, not re-run by the assistant | Operator report |
-| Remote migrations | The three human-decision migrations were applied to the **hosted** Supabase project through MCP (no local Docker). A rolled-back SQL probe showed: the RPC applies, `service_role` update and delete are denied, and deleting an `application_review` cascades to its audit rows | Feature document, T7 |
-
-Integration suite: `apps/api/tests/integration/human-decision-persistence.integration.test.ts` contains 8 `it(...)` blocks (apply and exact audit record, replay, changed payload conflict, terminal state conflict, not found, publishable-key denial with `42501`, service-role immutability, concurrent ids).
-
-## 7. Simulation boundaries
-
-- **AI is advisory only.** The assessment screen renders a frozen fixture (`apps/web/src/application/assessment/simulated-assessment.ts`), labelled as simulated. It never approves, computes an obligation or moves funds. Feature [#20](https://github.com/reyduar/Vaqcrow/issues/20) owns the real LLM integration.
-- **No authentication.** The actor is an editable text field defaulting to a demo actor (`DEMO_ACTOR`). The recorded actor is therefore self-declared, not an authenticated identity. Authentication is tracked in [#134](https://github.com/reyduar/Vaqcrow/issues/134).
-- **Placeholder application id.** The workspace defaults to `DEMO_APPLICATION_ID` (`apps/web/src/application/fixtures/demo-application.ts`) until Feature #18 supplies a real application flow.
-- **Web/domain separation.** The web consumes `packages/contracts` only; the decision itself is validated and applied by the API and database.
-
-## 8. Limits and accepted risks
-
-> [!info] Live verification
-> After the merge, the operator ran the credential-gated integration suite (`pnpm --filter @vaqcrow/api test:integration`) against the hosted Supabase project: 15 of 15 tests passed, including replay, changed-payload conflict, terminal state conflict, `not_found`, publishable-key denial with `42501`, service-role immutability and concurrent decision ids. The `stderr` lines in that output (`23514`, `23505`) come from the negative tests forcing a CHECK and a duplicate key; the adapter logs them internally and does not return them to callers. Before this run, the only live evidence was the rolled-back SQL probe in section 6.
-
-- **UI copy is Spanish**, matching the existing web copy and `docs/design/demo-ui.md`; code, tests and this document are English.
-- **Remote migration history** lists `create_application_review` twice. This predates #62 and was not altered here.
-- **No RLS policies.** Access control relies on grants (see #43 evidence and #134).
-- **Non-blocking review advisories**, left for later work; notes for the last five give only the finding id and location reported by the reviewer (one earlier advisory, R3-idem-conflict-retry, was fixed in `2e57ec1`):
-
-| Advisory | Note |
+| Aviso | Nota |
 |---|---|
-| R3-zod-parse-throw-state-conflict | Adapter parse of a `state_conflict` row can throw instead of mapping to a sanitized error |
-| R3-route-no-repo-404 | Route wiring has no explicit 404 when no repository is configured |
-| R3-sql-invariant-not-tested | The SQL approved-limit CHECK has no direct test |
-| R3-startup-eager-supabase | Warning on eager Supabase client creation at startup (`apps/api/src/index.ts:5-6`) |
-| R3-domain-decide-unused | Suggestion that `decideApplicationReview` (`packages/domain/src/application-review.ts:65-70`) is not used elsewhere |
-| R3-mapper-throw-swallowed | Suggestion about a mapper throw being swallowed (`supabase-application-review-repository.ts:134-166`) |
-| R3-applicationid-attempt-key | Suggestion about the attempt key (`apps/web/src/application/decision/decision-attempt.ts:17-21`) |
-| R3-attempt-stale-on-conflict | Suggestion about attempt state after conflicts (`apps/web/src/state/use-human-decision.ts:42-52`) |
+| R3-zod-parse-throw-state-conflict | El parseo del adaptador de una fila `state_conflict` puede lanzar en lugar de mapear a un error saneado |
+| R3-route-no-repo-404 | El cableado de la ruta no tiene un 404 explícito cuando no hay repositorio configurado |
+| R3-sql-invariant-not-tested | El CHECK de límite aprobado en SQL no tiene un test directo |
+| R3-startup-eager-supabase | Advertencia sobre la creación ansiosa del cliente Supabase al arrancar (`apps/api/src/index.ts:5-6`) |
+| R3-domain-decide-unused | Sugerencia de que `decideApplicationReview` (`packages/domain/src/application-review.ts:65-70`) no se usa en otro lado |
+| R3-mapper-throw-swallowed | Sugerencia sobre un throw de mapper que se traga (`supabase-application-review-repository.ts:134-166`) |
+| R3-applicationid-attempt-key | Sugerencia sobre la clave del intento (`apps/web/src/application/decision/decision-attempt.ts:17-21`) |
+| R3-attempt-stale-on-conflict | Sugerencia sobre el estado del intento después de conflictos (`apps/web/src/state/use-human-decision.ts:42-52`) |
 
-## 9. Delivery state
+## 10. Estado de entrega
 
-- Branch chain based at `f044f2c`; this document is unit T8 on `Vaqcrow#62_Task_Implement_human_assessment_and_approval-08-evidence-doc`. Push, tracker PR and chained PRs are pending explicit user authorization.
-- Unblocks the test Task [#63](#^issue-63) and then [#64](#^issue-64). `demo-tasks-list.md` is not modified here; roadmap sync belongs to a later commit.
+- La Feature [#19](https://github.com/reyduar/Vaqcrow/issues/19) y sus tres Tasks ([#62](https://github.com/reyduar/Vaqcrow/issues/62), [#63](https://github.com/reyduar/Vaqcrow/issues/63) y [#64](https://github.com/reyduar/Vaqcrow/issues/64)) están **CLOSED**; los PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) están **MERGED** en `main`.
+- Esta versión del documento no cambia ningún hecho ya asentado: alinea el idioma y la estructura con el corpus de evidencia y registra el estado mergeado que el documento original dejaba como pendiente de autorización.
