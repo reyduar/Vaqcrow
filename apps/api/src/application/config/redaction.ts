@@ -14,6 +14,11 @@ import { REDACTED_MARKER, isSecret } from "./secret.js";
  * `applicationId`, transaction hashes) are deliberately left intact: a
  * redaction layer that hides everything is as useless as one that hides
  * nothing.
+ *
+ * Not wired to a consumer yet: the API runs with Fastify's logger disabled, so
+ * the call site belongs to the logging and telemetry work (#31). The contract
+ * is proven here so that step has a verified boundary to call rather than a new
+ * one to invent.
  */
 
 const SENSITIVE_KEY_PATTERN =
