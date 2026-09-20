@@ -249,6 +249,7 @@ scoped to one workspace at a time.
 - **#76** — PR [#194](https://github.com/reyduar/Vaqcrow/pull/194) → `main`, labels `type:task` +
   `area:stellar` + `area:docs`, three commits: `0a8cadb` (runbook), `d68b622` (evidence), `debfa57`
   (this log). This PR closes #76; **#23 is closed manually** once it merges, same pattern as #74.
+  CI run `35538166701` **green**: *Quality gates*, *Playwright*, Vercel.
 - **#75 landed.** PR #193 merged as `24e1ed3`; all six commits are ancestors of `origin/main`, and
   #75 is **CLOSED** as completed. Verified by ancestry and by the issue's own state, not by report.
 
