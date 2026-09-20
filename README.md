@@ -90,8 +90,8 @@ packages/ai · stellar · simulators · db · config · testing · ui
 | Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
 | Stellar | Stellar SDK, Freighter, Horizon y Testnet para XDR, firma no custodial, envío y confirmación |
 | IA | Proveedor LLM por definir, detrás de un adaptador reemplazable y con salida estructurada |
-| Pruebas | Vitest y Testing Library; Playwright previsto para journey crítico |
-| Workspace y CI | pnpm, Turborepo; GitHub Actions previsto (todavía no implementado) |
+| Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el journey crítico en navegador |
+| Workspace y CI | pnpm, Turborepo; GitHub Actions con lockfile congelado y gates de pull request |
 
 ## Despliegue propuesto
 
@@ -104,8 +104,8 @@ No existen despliegues productivos actualmente.
 ## Desarrollo y calidad
 
 - **Estado actual:** `pnpm verify` ejecuta lint, typecheck, pruebas, build y verificación de boundaries entre workspaces. Las pruebas usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
-- **CI:** GitHub Actions está previsto pero aún no implementado. El objetivo es determinismo: instalación con lockfile congelado, lint, typecheck, pruebas, contratos y builds en cada pull request.
-- **Playwright** está previsto para proteger el journey crítico y sus fallbacks esenciales, pero aún no está instalado.
+- **CI:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) corre en cada pull request con `pnpm install --frozen-lockfile`: un job ejecuta `pnpm verify` y otro el journey de Playwright. Ningún job usa servicios externos vivos ni requiere secretos del repositorio.
+- **Playwright:** cubre el journey crítico de la demo —shell guiado de seis pasos y decisión humana— contra un doble local en `apps/web/e2e/`, con navegador Chromium, un solo worker y sin reintentos. Comandos: `pnpm run test:e2e:install` (instala Chromium, una vez) y `pnpm run test:e2e`.
 - **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
 - **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
