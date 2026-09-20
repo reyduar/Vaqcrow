@@ -132,8 +132,8 @@ Slice 1 verifies standalone: `pnpm run verify` passes with no importer, proving 
   - `887ce3d` refactor(api): drive the runtime from validated configuration (6 files, 198+/59−)
 - PR [#183](https://github.com/reyduar/Vaqcrow/pull/183) — slice 1, base `main`, labels `type:task`
   `area:security`.
-- PR [#184](https://github.com/reyduar/Vaqcrow/pull/184) — slice 2, base is slice 1's branch (retarget to
-  `main` after #183 merges), same labels.
+- PR [#184](https://github.com/reyduar/Vaqcrow/pull/184) — slice 2, base was slice 1's branch; it merged into that
+  branch first, and #183 then carried both to `main`. Same labels.
 - **CI on both PRs: every check succeeded on the first run.** Quality gates run
   [`35520508253`](https://github.com/reyduar/Vaqcrow/actions/runs/35520508253) (#183) and
   [`35520521992`](https://github.com/reyduar/Vaqcrow/actions/runs/35520521992) (#184); the Playwright
@@ -143,6 +143,11 @@ Slice 1 verifies standalone: `pnpm run verify` passes with no importer, proving 
   diff shows its parent's work is a branching bug, not a review.
 - #44 closes **manually** once the chain lands on `main` (the repo's existing pattern), and `#45`
   (Test) then unblocks.
-- After #183 merges: retarget #184 to `main` and rebase before merging.
+- **El retarget previsto no hizo falta.** #184 mergeó primero en la rama del slice 1 (15:50:45Z) y #183
+  mergeó esa rama en `main` (15:53:54Z), así que `main` recibió la cadena completa. La instrucción
+  original — retargetear y rebasear antes de mergear — describía el orden de merge, que era el eje
+  equivocado: la propiedad que importa es que los commits del hijo sean alcanzables desde `main`
+  después. Verificado con `git merge-base --is-ancestor` sobre `ff35c05`, `887ce3d` y `0885b68`, no
+  inferido del orden de merge.
 
 
