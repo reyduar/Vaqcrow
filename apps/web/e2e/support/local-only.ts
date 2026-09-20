@@ -1,4 +1,5 @@
 import { expect, test as base } from "@playwright/test";
+import { isLocalRequest } from "./local-hosts";
 
 /**
  * Makes "pull-request verification never touches a live external service" an
@@ -7,17 +8,16 @@ import { expect, test as base } from "@playwright/test";
  *
  * A regression that reaches Stellar, Horizon, Supabase, or an LLM provider during
  * E2E therefore fails the suite, not just a code review.
+ *
+ * The predicate itself lives in `./local-hosts.ts` (no Playwright import) so the
+ * root test suite can exercise its rejection path directly — see issue #48.
  */
-const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
-
 export const test = base.extend<{ externalRequestGuard: void }>({
   externalRequestGuard: [
     async ({ page }, use) => {
       const external: string[] = [];
       page.on("request", (request) => {
-        const url = new URL(request.url());
-        if (url.protocol === "data:" || url.protocol === "blob:") return;
-        if (!LOCAL_HOSTS.has(url.hostname)) external.push(request.url());
+        if (!isLocalRequest(request.url())) external.push(request.url());
       });
 
       await use();
@@ -29,3 +29,4 @@ export const test = base.extend<{ externalRequestGuard: void }>({
 });
 
 export { expect };
+
