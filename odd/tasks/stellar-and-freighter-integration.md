@@ -163,5 +163,6 @@ scoped to one workspace at a time.
 - **Slice 1** — PR [#191](https://github.com/reyduar/Vaqcrow/pull/191) → `main`, labels `type:task` +
   `area:stellar`. CI run `35534904962` **green** on the first attempt: *Quality gates (lint, types,
   tests, build, boundaries)*, *Playwright (deterministic, local double)*, and the Vercel deployment.
-- **Slice 2** — stacked on slice 1; PR pending.
+- **Slice 2** — PR [#192](https://github.com/reyduar/Vaqcrow/pull/192), stacked on slice 1, labels
+  `type:task` + `area:stellar`.
 
