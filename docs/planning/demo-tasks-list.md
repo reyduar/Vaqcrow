@@ -1,14 +1,14 @@
 # Hoja de ruta ejecutable para completar la demo de Vaqcrow
 
-Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026; con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64) y de la configuración de pruebas y gates de CI (#15, #47, #48 y #49), el estado documentado queda en 72 `Backlog`, 1 `Ready` y 35 `Done`. Los conteos reflejan la evidencia versionada en `main`; no implican una consulta nueva al tablero remoto. Los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera de este conteo. El incremento corresponde a [#134](https://github.com/reyduar/Vaqcrow/issues/134), cuya pertenencia y workflow `Backlog` se verificaron directamente en el Project #4.
+Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 108 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features y 76 Tasks. El estado base del inventario se verificó el 18 de septiembre de 2026. Con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), de la configuración de pruebas y gates de CI (#15, #47, #48 y #49) y de la implementación de configuración tipada y límites de secretos ([#44](https://github.com/reyduar/Vaqcrow/issues/44)), el estado queda en 68 `Backlog`, 3 `Ready` y 37 `Done`. Esos conteos provienen de una consulta verificada al Project #4 el 20 de septiembre de 2026, tomada sobre los 108 ítems de este inventario: el tablero tiene 110 y los 2 issues posteriores al inventario, [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`, quedan fuera. El ítem [#134](https://github.com/reyduar/Vaqcrow/issues/134) cuenta como `Done` porque así lo registran su issue (cerrado el 17/09/2026) y el Project #4; sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main`, así que este documento no declara entregada la capa de Auth.js.
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#44 — Implementar configuración tipada y límites de secretos](#^issue-44).**
+> **Unidades actualmente `Ready`: [#14 — Establecer configuración tipada y límites de secretos](#^issue-14), [#26 — Implementar el feed mensual de ventas](#^issue-26) y [#83 — Implementar el feed mensual de ventas](#^issue-83).**
 >
-> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI.**
+> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y [#44](#^issue-44), respaldada por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183) y [#184](https://github.com/reyduar/Vaqcrow/pull/184).**
 >
-> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) sigue disponible; [#15](#^issue-15) quedó completa —sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49) están en `Done`— y se cerró manualmente el 20/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), lo que habilita [#20](#^issue-20) y [#32](#^issue-32).
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) sigue bloqueado por [#23](#^issue-23), aún en `Backlog`. [#30](#^issue-30) sigue bloqueado por [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28), aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) se entregó y cerró el 20/09/2026 mediante una cadena de dos PRs encadenados ([#183](https://github.com/reyduar/Vaqcrow/pull/183) y [#184](https://github.com/reyduar/Vaqcrow/pull/184)), lo que desbloqueó [#45](#^issue-45); [#15](#^issue-15) quedó completa —sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49) están en `Done`— y se cerró manualmente el 20/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), lo que habilita [#20](#^issue-20) y [#32](#^issue-32).
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -52,7 +52,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 0 | [#11 Inicializar workspace pnpm/Turborepo](#^issue-11) | [~~#35 Configurar workspace raíz~~](#^issue-35) → ([~~#110 Scaffold de API~~](#^issue-110) y [~~#111 Scaffold web~~](#^issue-111) en paralelo) → [~~#36 Probar límites~~](#^issue-36) → [~~#37 Documentar evidencia~~](#^issue-37) |
 | 1 | [#12 Definir estados y contratos](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [~~#39 Probar~~](#^issue-39) → [~~#40 Documentar~~](#^issue-40) |
 | 1 | [~~#15 Configurar pruebas y CI~~](#^issue-15) | [~~#47 Implementar~~](#^issue-47) → [~~#48 Probar~~](#^issue-48) → [~~#49 Documentar~~](#^issue-49) |
-| 1 | [#14 Establecer configuración y secretos](#^issue-14) | [#44 Implementar](#^issue-44) → [#45 Probar](#^issue-45) → [#46 Documentar](#^issue-46) |
+| 1 | [#14 Establecer configuración y secretos](#^issue-14) | [~~#44 Implementar~~](#^issue-44) → [#45 Probar](#^issue-45) → [#46 Documentar](#^issue-46) |
 | 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#^issue-116), completada después de #110 y coordinada con #38 |
 | 2 | [#16 Construir shell y navegación](#^issue-16) | [#50 Implementar](#^issue-50) → [#51 Probar](#^issue-51) → [#52 Documentar](#^issue-52) |
 | 2 | [#20 Definir esquema y guardrails de IA](#^issue-20) | [#65 Implementar](#^issue-65) → [#66 Probar](#^issue-66) → [#67 Documentar](#^issue-67) |
@@ -79,7 +79,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Issue | Alcance | Ubicación en la hoja de ruta |
 |---|---|---|
-| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Backlog`, pero fuera de las olas y del camino crítico acotado hasta una promoción explícita de alcance. |
+| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Done` (issue cerrado el 17/09/2026), pero fuera de las olas y del camino crítico acotado: sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main` hasta una promoción explícita de alcance. |
 
 ## Contenedores de planificación
 
@@ -363,7 +363,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-14
 
 - **Título original:** `Feature: Establish typed configuration and secret boundaries`
-- **GitHub y estado:** [issue #14](https://github.com/reyduar/Vaqcrow/issues/14) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #14](https://github.com/reyduar/Vaqcrow/issues/14) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#4](#^issue-4); bloqueada nativamente por [#11](#^issue-11).
 - **Objetivo:** validar valores de entorno y mantener secretos de servidor fuera de bundles de navegador y logs.
 - **Orden:** sigue a [#15](#^issue-15) por cantidad de dependientes y desbloquea [#23](#^issue-23).
@@ -375,12 +375,13 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-44
 
 - **Título original:** `Task: Implement typed configuration and secret boundaries`
-- **GitHub y estado:** [issue #44](https://github.com/reyduar/Vaqcrow/issues/44) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Ready`.
+- **GitHub y estado:** [issue #44](https://github.com/reyduar/Vaqcrow/issues/44) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#14](#^issue-14), que requiere [#11](#^issue-11), ya en `Done`; sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento y el contrato centrales del Feature de configuración y secretos.
-- **Orden:** inicia el Feature y desbloquea [#45](#^issue-45).
+- **Orden:** inició el Feature y desbloqueó [#45](#^issue-45).
+- **Entrega:** configuración tipada y validada al arranque (`parseApiConfig`) con un único `ConfigurationError` que acumula todas las claves ofensivas y nunca repite un valor; `STELLAR_NETWORK` requerido y cerrado a `testnet`, con `APP_ENV=production` rechazado por estar fuera de alcance; envoltura `Secret` y redacción de logs en dos redes independientes (estructura por clave y contenido por forma de token), preservando los identificadores de trazabilidad. Cadena de dos PRs encadenados — [#183](https://github.com/reyduar/Vaqcrow/pull/183) (contrato, 890 líneas) y [#184](https://github.com/reyduar/Vaqcrow/pull/184) (cableado, 257 líneas) —, ambos con CI en verde. Cerrado el 20/09/2026.
 
-**Rama propuesta.** `Vaqcrow#44_Task_Implement_typed_configuration_and_secret_boundaries` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#44_Task_Implement_typed_configuration_and_secret_boundaries` (contrato) y `…-02-wiring` (cableado), mergeadas vía [PR #183](https://github.com/reyduar/Vaqcrow/pull/183) y [PR #184](https://github.com/reyduar/Vaqcrow/pull/184). Registro de la unidad en `odd/tasks/typed-configuration-and-secret-boundaries.md`.
 
 ### #45 — Probar la configuración tipada y los límites de secretos
 
@@ -388,7 +389,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Task: Test establish typed configuration and secret boundaries`
 - **GitHub y estado:** [issue #45](https://github.com/reyduar/Vaqcrow/issues/45) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#14](#^issue-14), que requiere [#11](#^issue-11); bloqueada nativamente por [#44](#^issue-44).
+- **Jerarquía y bloqueos:** padre [#14](#^issue-14), que requiere [#11](#^issue-11); bloqueada nativamente por [#44](#^issue-44), ya en `Done` — sin bloqueos pendientes, aunque el tablero todavía la registra en `Backlog`.
 - **Objetivo:** demostrar el slice mediante pruebas determinísticas focalizadas.
 - **Orden:** valida la implementación y desbloquea [#46](#^issue-46).
 
@@ -773,7 +774,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-26
 
 - **Título original:** `Feature: Implement monthly sales feed`
-- **GitHub y estado:** [issue #26](https://github.com/reyduar/Vaqcrow/issues/26) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #26](https://github.com/reyduar/Vaqcrow/issues/26) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#13](#^issue-13), ya completo — sin bloqueos propios pendientes.
 - **Objetivo:** cargar el siguiente período sintético de ventas con procedencia, anomalía conocida y rotulado simulado explícito.
 - **Orden:** se ejecuta después de los Features `Critical` listos y desbloquea [#27](#^issue-27).
@@ -785,7 +786,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-83
 
 - **Título original:** `Task: Implement monthly sales feed`
-- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); sin bloqueos nativos propios.
 - **Objetivo:** implementar el feed mensual dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#84](#^issue-84).
@@ -1416,7 +1417,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-134
 
 - **Título original:** `[Backlog] Task: Establish Auth.js authentication and session boundaries`
-- **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Backlog` verificado en el Project canónico `Vaqcrow-TFM` #4.
+- **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Done` verificado en el Project canónico `Vaqcrow-TFM` #4 (issue cerrado el 17/09/2026, con sus criterios de aceptación aún sin marcar y sin evidencia de implementación versionada en `main`).
 - **Jerarquía y bloqueos:** sin padre; el cuerpo declara dependencia de [#14](#^issue-14). No se fabrica una relación jerárquica ni una ola.
 - **Objetivo:** establecer [Auth.js v5 / NextAuth](https://authjs.dev/) en el límite server-side de Next.js para autenticación y sesión; el backend conserva autorización, permisos, comandos y decisiones de dominio, y un adaptador server-only conserva registros de autenticación.
 - **Límite de alcance:** deja sin efecto la dirección opcional de Supabase Auth como autoridad de identidad/sesión para este alcance futuro. Supabase puede seguir como PostgreSQL/Storage, sin autoridad paralela. La demo actual conserva identidad sintética y #134 permanece fuera de su camino crítico salvo cambio de alcance explícito.
