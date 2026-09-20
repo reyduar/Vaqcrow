@@ -164,5 +164,9 @@ scoped to one workspace at a time.
   `area:stellar`. CI run `35534904962` **green** on the first attempt: *Quality gates (lint, types,
   tests, build, boundaries)*, *Playwright (deterministic, local double)*, and the Vercel deployment.
 - **Slice 2** — PR [#192](https://github.com/reyduar/Vaqcrow/pull/192), stacked on slice 1, labels
-  `type:task` + `area:stellar`.
+  `type:task` + `area:stellar`. CI run `35535173609` **green**: *Quality gates*, *Playwright*, Vercel.
+- **Neither PR closes #74.** Following the #44 chain (`PR #184`, "completes #44 when the chain lands
+  on `main`"), the Task is closed manually once both slices are on `main` — a child PR merging into
+  its parent branch is not the same event as the work reaching the default branch, and the record
+  should not claim otherwise.
 
