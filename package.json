@@ -11,6 +11,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "test:e2e:install": "pnpm --filter @vaqcrow/web run test:e2e:install",
     "boundaries": "depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs",
     "test:boundaries": "vitest run",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",
