@@ -89,7 +89,7 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
 - [x] T6 Slice 1 GREEN: real `FreighterWallet` adapter over the injected API
 - [x] T7 Slice 2: `stellar-sdk`/Horizon account retrieval behind `LedgerPort`
 - [x] T8 #75: prove the Feature's two invariants — the SDK split and the absence of a key path
-- [ ] T9 #76: evidence document in Spanish, traceable to this log
+- [x] T9 #76: evidence document in Spanish, traceable to this log
 
 ## RED → GREEN
 
@@ -158,6 +158,29 @@ found two of the Feature's invariants had no test at all:
   much a part of "rejection is recoverable" as the recoverable side.
 - **Full gate** — 17:56, `pnpm run verify` → **exit 0**. api **180**, web **330**, root **65** (was
   52), contracts 101, domain 60; boundaries clean at 227 modules / 529 dependencies.
+
+### #76 — closing evidence and the operator runbook
+Two documents, no production code:
+
+- `docs/planning/stellar-and-freighter-integration-evidence.md` — the Spanish §1–§10 closing
+  evidence. Maps all twelve acceptance criteria (Feature #23 plus its three Tasks) verbatim, with
+  every row naming its source: a command re-run in this tree, a CI run cited by identifier, or the
+  working tree of the Task that measured it.
+- `docs/planning/freighter-and-testnet-account-setup.md` — the operator runbook that makes the
+  bounded Testnet check executable. Its claims were verified live on 2026-09-20 rather than cited:
+  Friendbot answers `400` without `addr` and states the requirement itself — `must be a valid G or C
+  address` — which is the cleanest possible confirmation that funding takes a **public address,
+  never a seed**. The Freighter install links come from `docs.freighter.app`, and
+  `lab.stellar.org/account/fund` and `horizon-testnet.stellar.org` both answer `200`.
+
+The runbook exists because **A5 is a real gap, not a formality**: neither the deterministic suite nor
+the evidence can claim a Testnet observation, and the runbook is the path to produce one. The
+evidence restates A5 as a declared limit instead of resolving it.
+
+**Re-verified on `main` = `24e1ed3`** before writing: `pnpm run verify` exit 0, boundaries clean at
+227 modules / 529 dependencies, api 180, web 330, root 65, contracts 101, domain 60. The evidence's
+own sensitive-content scan was run on both documents: clean, with a single 40+ character match that
+is the Freighter extension id inside a Chrome Web Store URL, not a token.
 
 ## Advisories
 - **A1 — `workspace-status.tsx` shows one generic failure state.** A declined request and a missing
