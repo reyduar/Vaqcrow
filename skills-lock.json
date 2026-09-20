@@ -1,6 +1,36 @@
 {
   "version": 1,
   "skills": {
+    "agentic-payments": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/agentic-payments/SKILL.md",
+      "computedHash": "8354397e1c34a81f924561be3fa84d52e02ffa2b3034720a89a8d839d226f151"
+    },
+    "assets": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/assets/SKILL.md",
+      "computedHash": "0956b083414f93df2e2b1015c24558b07b3c51511ef39ed4a9c7d047d06afac3"
+    },
+    "cross-chain": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/cross-chain/SKILL.md",
+      "computedHash": "c71dedb278fda7dad188a9e883b98a23897161a406590dd398739a822bbecc88"
+    },
+    "dapp": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/dapp/SKILL.md",
+      "computedHash": "992c2cbe1eca18e0d98d6cf9ea106c3e0ec1bd0ea37faeef72e20f9675aeb4fe"
+    },
+    "data": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/data/SKILL.md",
+      "computedHash": "0944f2679f533e6898e0425c9d9922c9f287256634d20c90c4c75bc3c331473a"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
@@ -25,6 +55,18 @@
       "skillPath": "skills/heroui-react/SKILL.md",
       "computedHash": "c11684a8843e4c511b03a0c9c5b9cad09eb1babbf23650e1b75c45d387cadd7a"
     },
+    "smart-contracts": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/smart-contracts/SKILL.md",
+      "computedHash": "9e9c55951a4f2253ccf94442df24c5d43f6027d19cdf65241df1ae93af954b3b"
+    },
+    "standards": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/standards/SKILL.md",
+      "computedHash": "357e97b170c760b2caf00e13ac801454a4bdbf9e1416ed2d1d91c1491918e72b"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
@@ -36,6 +78,12 @@
       "sourceType": "github",
       "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
       "computedHash": "e14e276241805c97dbcfe40dcbea1a3035269cc7293cac4b1832dda41a835e60"
+    },
+    "zk-proofs": {
+      "source": "stellar/stellar-dev-skill",
+      "sourceType": "github",
+      "skillPath": "skills/zk-proofs/SKILL.md",
+      "computedHash": "00403ff513e5a9db4a937cd3f71369acf397820141a25e8df068696410813060"
     }
   }
 }
