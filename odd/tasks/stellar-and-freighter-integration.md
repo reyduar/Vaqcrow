@@ -87,7 +87,7 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
 - [x] T4 Verify the real Freighter contract against the installed package and official docs
 - [x] T5 Slice 1 RED: `wallet-port` contract + failing Freighter adapter tests
 - [x] T6 Slice 1 GREEN: real `FreighterWallet` adapter over the injected API
-- [ ] T7 Slice 2: `stellar-sdk`/Horizon account retrieval behind `LedgerPort`
+- [x] T7 Slice 2: `stellar-sdk`/Horizon account retrieval behind `LedgerPort`
 - [ ] T8 #75: focused deterministic suite (Feature-level test Task)
 - [ ] T9 #76: evidence document in Spanish, traceable to this log
 
@@ -108,6 +108,24 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
 - **Full gate** — 17:12, `pnpm run verify`. lint, typecheck, test, build, `boundaries` (223 modules,
   519 dependencies, **0 violations**) and the 52 boundary-rule tests all pass.
 
+### Slice 2 — Horizon account retrieval (`apps/api`)
+- **RED** — 17:16, `pnpm --filter @vaqcrow/api exec vitest run
+  src/infrastructure/adapters/stellar-amounts.test.ts
+  src/infrastructure/adapters/stellar-ledger.test.ts`. **8 failed / 15**, every ledger failure
+  `ledger.getAccount is not a function`. The port contract (envelope outcomes, stroop integers,
+  `not_found` as an expected state) existed before the adapter implementing it did.
+- **GREEN, first attempt — 2 failures that mattered.** Neither was a flaky test:
+  - The SDK refuses a plain-HTTP Horizon URL, which would have made the loopback double #14
+    explicitly admits impossible to construct (A3). Fixed in the adapter.
+  - One of the assertions I wrote was simply wrong: `Number("9223372036854775807") ===
+    9223372036854775807` is `true`, because the numeric literal is already rounded to the same
+    double. Rewritten to compare `BigInt(Number(...))` with the exact value, which is what actually
+    demonstrates the precision loss the helper exists to prevent.
+- **GREEN** — 17:17, same command. **15 passed / 15**.
+- **Full gate** — 17:18, `pnpm run verify` → **exit 0**. api **10 files / 178 tests** (was 8 / 163),
+  `boundaries` clean at **227 modules / 529 dependencies**. The single ESLint warning in
+  `fetch-http-client.ts` is pre-existing and untouched here.
+
 ## Advisories
 - **A1 — `workspace-status.tsx` shows one generic failure state.** A declined request and a missing
   extension are indistinguishable in the UI today. The adapter classifies them; wiring that into
@@ -120,9 +138,30 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
   ordinary recoverable `unavailable` failure. This is product behaviour, not a test concern —
   DEMO.md's "Freighter no disponible" fallback depended on it. Recorded here rather than fixed
   silently because it was not in the Task's stated scope.
+- **A3 — the SDK refuses a plain-HTTP Horizon URL by default.** `new Horizon.Server("http://…")`
+  throws `Cannot connect to insecure horizon server` unless `allowHttp: true` is passed. #14 admits
+  a **loopback** Horizon over HTTP precisely so a local double can stand in for Testnet, so without
+  the flag the sanctioned local setup would have been impossible to construct — the guard in #14 and
+  the guard in the SDK disagreed. The adapter now derives `allowHttp` from the URL scheme, and only
+  a scheme #14 already validated can reach it. Found only because a test built the real client
+  instead of a double.
 
 ## Review size and delivery chain
-_(filled in when each slice is pushed)_
+
+`#74` is larger than one review, so it is delivered as two stacked branches with no tracker branch
+(the #44 precedent):
+
+| Slice | Branch | Base | Commits | Size |
+|---|---|---|---|---|
+| 1 — web | `Vaqcrow#74_Task_Implement_Stellar_and_Freighter_integration` | `main` | `bee07a5`, `95ae734`, `a3c0d2b` | 557 hand-written lines + 181 generated lockfile |
+| 2 — api | `…-02-api-horizon` | slice 1 | `d63390b` + the log commit | 364 lines |
+
+No file is touched by both slices, so the second diff is additive on the first and review stays
+scoped to one workspace at a time.
 
 ## Delivery
-_(PR numbers, CI run ids, merge state)_
+- **Slice 1** — PR [#191](https://github.com/reyduar/Vaqcrow/pull/191) → `main`, labels `type:task` +
+  `area:stellar`. CI run `35534904962` **green** on the first attempt: *Quality gates (lint, types,
+  tests, build, boundaries)*, *Playwright (deterministic, local double)*, and the Vercel deployment.
+- **Slice 2** — stacked on slice 1; PR pending.
+
