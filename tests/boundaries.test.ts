@@ -18,6 +18,8 @@ const CIRCULAR_RULE_NAME = "no-circular";
 const PACKAGES_APPS_RULE_NAME = "packages-never-import-apps";
 const CROSS_APP_RULE_NAME = "no-cross-app-imports";
 const DOMAIN_RULE_NAME = "domain-stays-framework-free";
+const WEB_SERVER_SDK_RULE_NAME = "web-never-imports-server-stellar-sdk";
+const API_WALLET_SDK_RULE_NAME = "api-never-imports-wallet-sdk";
 const WEB_CONSUMER_CONFIG = fileURLToPath(
   new URL("./fixtures/boundaries/apps/web/tsconfig.json", import.meta.url)
 );
@@ -195,6 +197,70 @@ describe("apps/web/src/presentation boundary rule", () => {
   });
 });
 
+describe("Stellar SDK split across workspaces", () => {
+  it("flags a runtime @stellar/stellar-sdk import from apps/web with the named forbidden rule", async () => {
+    const result = await cruiseFixture("apps/web/src/infrastructure/imports-stellar-sdk.fixture.ts", [
+      WEB_MODULES,
+      PROVIDER_STUB_MODULES
+    ]);
+
+    expect(result.summary.error).toBeGreaterThanOrEqual(1);
+    expect(violationsFor(result, WEB_SERVER_SDK_RULE_NAME).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not flag a type-only @stellar/stellar-sdk import from apps/web", async () => {
+    const result = await cruiseFixture(
+      "apps/web/src/infrastructure/imports-stellar-sdk-type-only.fixture.ts",
+      [WEB_MODULES, PROVIDER_STUB_MODULES]
+    );
+
+    expect(violationsFor(result, WEB_SERVER_SDK_RULE_NAME)).toHaveLength(0);
+  });
+
+  it("flags a runtime @stellar/freighter-api import from apps/api with the named forbidden rule", async () => {
+    const result = await cruiseFixture("apps/api/src/infrastructure/imports-freighter-api.fixture.ts", [
+      API_MODULES,
+      PROVIDER_STUB_MODULES
+    ]);
+
+    expect(result.summary.error).toBeGreaterThanOrEqual(1);
+    expect(violationsFor(result, API_WALLET_SDK_RULE_NAME).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not flag a type-only @stellar/freighter-api import from apps/api", async () => {
+    const result = await cruiseFixture(
+      "apps/api/src/infrastructure/imports-freighter-api-type-only.fixture.ts",
+      [API_MODULES, PROVIDER_STUB_MODULES]
+    );
+
+    expect(violationsFor(result, API_WALLET_SDK_RULE_NAME)).toHaveLength(0);
+  });
+
+  it("resolves both SDKs in the real app sources, so the split rules judge real dependencies", async () => {
+    // A rule whose `to` pattern never matches a real resolution is a rule that
+    // silently stops protecting anything. This asserts the two SDKs really are
+    // reached from `apps/*/src` through node_modules — the same shape the rules
+    // above forbid in the other workspace.
+    const { output } = await cruise(
+      ["apps/*/src"],
+      { ...config.options, ruleSet: { forbidden: config.forbidden }, validate: true },
+      { modules: ["node_modules"], bustTheCache: true }
+    );
+
+    if (typeof output !== "object") {
+      throw new Error("expected object output from cruise(), got a string");
+    }
+
+    const resolved = output.modules
+      .flatMap((module) => module.dependencies)
+      .map((dependency) => dependency.resolved)
+      .filter((path): path is string => typeof path === "string");
+
+    expect(resolved.some((path) => path.includes("/@stellar/freighter-api/"))).toBe(true);
+    expect(resolved.some((path) => path.includes("/@stellar/stellar-sdk/"))).toBe(true);
+  });
+});
+
 describe("boundary fixtures stay outside build/typecheck/boundaries globs", () => {
   const FIXTURE_REPO_PATHS = [
     "tests/fixtures/boundaries/packages/contracts/src/imports-node-crypto.fixture.ts",
@@ -215,8 +281,14 @@ describe("boundary fixtures stay outside build/typecheck/boundaries globs", () =
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-contracts-type-only.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-domain.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-api-application.fixture.ts",
+    "tests/fixtures/boundaries/apps/web/src/infrastructure/imports-stellar-sdk.fixture.ts",
+    "tests/fixtures/boundaries/apps/web/src/infrastructure/imports-stellar-sdk-type-only.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/infrastructure/imports-freighter-api.fixture.ts",
+    "tests/fixtures/boundaries/apps/api/src/infrastructure/imports-freighter-api-type-only.fixture.ts",
     "tests/fixtures/boundaries/provider-stubs/node_modules/@supabase/supabase-js/index.ts",
     "tests/fixtures/boundaries/provider-stubs/node_modules/stellar-sdk/index.ts",
+    "tests/fixtures/boundaries/provider-stubs/node_modules/@stellar/stellar-sdk/index.ts",
+    "tests/fixtures/boundaries/provider-stubs/node_modules/@stellar/freighter-api/index.ts",
     "tests/fixtures/boundaries/provider-stubs/node_modules/openai/index.ts"
   ];
 

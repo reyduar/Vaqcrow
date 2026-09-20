@@ -1,6 +1,9 @@
-import { NotFoundError } from "@stellar/stellar-sdk";
+import { Networks, NotFoundError } from "@stellar/stellar-sdk";
 import { describe, expect, it, vi } from "vitest";
-import { parseStellarConfig } from "../../application/config/stellar-config.js";
+import {
+  STELLAR_TESTNET_NETWORK_PASSPHRASE,
+  parseStellarConfig
+} from "../../application/config/stellar-config.js";
 import { StellarLedger } from "./stellar-ledger.js";
 import type { HorizonAccountSource } from "./stellar-ledger.js";
 
@@ -32,6 +35,13 @@ function createSource(overrides: Partial<HorizonAccountSource> = {}): HorizonAcc
 }
 
 describe("StellarLedger network context", () => {
+  it("declares the passphrase the SDK itself uses for Testnet", () => {
+    // The passphrase is hashed into every signature. If the constant drifted
+    // from the real Testnet value, signatures would be built for a network that
+    // does not exist and nothing else in the suite would notice.
+    expect(STELLAR_TESTNET_NETWORK_PASSPHRASE).toBe(Networks.TESTNET);
+  });
+
   it("reports the network it was configured for", () => {
     expect(new StellarLedger(TESTNET_CONFIG, createSource()).network).toBe("testnet");
   });
@@ -140,5 +150,23 @@ describe("StellarLedger.getAccount", () => {
     await ledger.getAccount(PUBLIC_KEY);
 
     expect(loadAccount).toHaveBeenCalledExactlyOnceWith(PUBLIC_KEY);
+  });
+
+  it("refuses to invent a balance when Horizon omits the native line", async () => {
+    // Deliberately not folded into `unavailable`: Horizon answered, and the
+    // answer was wrong. Reporting an outage here would turn a real anomaly into
+    // a fake one and hide it from the correlation id that would surface it.
+    const ledger = new StellarLedger(
+      TESTNET_CONFIG,
+      createSource({
+        loadAccount: vi.fn(async () => ({
+          account_id: PUBLIC_KEY,
+          sequence: SEQUENCE,
+          balances: [{ asset_type: "credit_alphanum4", balance: "50.0000000" }]
+        }))
+      })
+    );
+
+    await expect(ledger.getAccount(PUBLIC_KEY)).rejects.toThrow(/without a native balance/);
   });
 });

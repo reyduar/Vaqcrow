@@ -75,6 +75,21 @@ describe("FreighterWallet.isAvailable", () => {
 
     await expect(wallet.isAvailable()).resolves.toBe(false);
   });
+
+  it("reports false when the probe itself fails", async () => {
+    // An availability probe that raises is not an availability probe. The
+    // extension bridge can reject outright, and the caller must still get an
+    // answer it can act on.
+    const wallet = new FreighterWallet(
+      createApi({
+        isConnected: vi.fn(async () => {
+          throw new Error("extension bridge unavailable");
+        })
+      })
+    );
+
+    await expect(wallet.isAvailable()).resolves.toBe(false);
+  });
 });
 
 describe("FreighterWallet.connect", () => {
@@ -131,6 +146,20 @@ describe("FreighterWallet.connect", () => {
 
     expect(error.kind).toBe("unavailable");
     expect(requestAccess).not.toHaveBeenCalled();
+  });
+
+  it("treats an access grant with no address as an unrecoverable failure", async () => {
+    // Not a rejection and not a missing wallet: the wallet answered, and the
+    // answer was wrong. Nothing the person can do would change the outcome, so
+    // the error must not invite a retry.
+    const wallet = new FreighterWallet(
+      createApi({ requestAccess: vi.fn(async () => ({ address: "" })) })
+    );
+
+    const error = await failureFrom(() => wallet.connect());
+
+    expect(error.kind).toBe("unknown");
+    expect(error.recoverable).toBe(false);
   });
 });
 

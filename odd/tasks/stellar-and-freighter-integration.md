@@ -88,7 +88,7 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
 - [x] T5 Slice 1 RED: `wallet-port` contract + failing Freighter adapter tests
 - [x] T6 Slice 1 GREEN: real `FreighterWallet` adapter over the injected API
 - [x] T7 Slice 2: `stellar-sdk`/Horizon account retrieval behind `LedgerPort`
-- [ ] T8 #75: focused deterministic suite (Feature-level test Task)
+- [x] T8 #75: prove the Feature's two invariants — the SDK split and the absence of a key path
 - [ ] T9 #76: evidence document in Spanish, traceable to this log
 
 ## RED → GREEN
@@ -126,6 +126,39 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
   `boundaries` clean at **227 modules / 529 dependencies**. The single ESLint warning in
   `fetch-http-client.ts` is pre-existing and untouched here.
 
+### #75 — the Feature's invariants (`tests/`)
+The Task's criteria are that deterministic tests demonstrate the Feature's core behaviour, that
+validation/rejection/fallback are covered, and that the suite passes without live services. #74
+already carried the adapter-level behaviour, so recon looked for what was still *unproven* — and
+found two of the Feature's invariants had no test at all:
+
+- **The SDK split was not machine-enforced.** `stellar-blockchain-requirements.md` Parte 4 §2 states
+  that `@stellar/stellar-sdk` must not exist in the frontend and `@stellar/freighter-api` must not
+  exist in the backend. `.dependency-cruiser.cjs` had **no rule for either**, so the split rested
+  entirely on convention.
+- **"No private key path exists" had no test.** It is #23's first acceptance criterion and its
+  strongest claim.
+
+- **RED** — `pnpm run test:boundaries`. **2 failed / 57**: both "flags a runtime …" cases reported
+  `expected 0 to be greater than or equal to 1` — the fixtures imported the SDKs across the split and
+  nothing forbade it. The two type-only cases passed vacuously and the anti-vacuity case passed,
+  which is what proved both SDKs really do resolve from the real `apps/*/src`.
+- **GREEN** — same command after adding `web-never-imports-server-stellar-sdk` and
+  `api-never-imports-wallet-sdk`: **57 passed / 57**, and `pnpm run boundaries` stayed clean on the
+  real source (227 modules, 529 dependencies, 0 violations).
+- **The non-custody scanner: RED by construction.** A text scan was written first and immediately
+  proved useless — it flagged `redaction.ts`'s own sensitive-key pattern and the wallet adapter's own
+  documentation saying it never asks for a seed. Rewritten over the TypeScript AST, which cannot see
+  comments or regex literals. Its *precision* is asserted rather than assumed: `Keypair.fromPublicKey`
+  must stay legal (the funding-intent work verifies signatures against public keys) and prose naming
+  these keys must not flag.
+- **Coverage completion.** Three branches the implementation had added defensively had no test: the
+  availability probe raising, an access grant carrying no address, and Horizon returning an account
+  without a native balance. The last two pin the *non*-recoverable side of the contract, which is as
+  much a part of "rejection is recoverable" as the recoverable side.
+- **Full gate** — 17:56, `pnpm run verify` → **exit 0**. api **180**, web **330**, root **65** (was
+  52), contracts 101, domain 60; boundaries clean at 227 modules / 529 dependencies.
+
 ## Advisories
 - **A1 — `workspace-status.tsx` shows one generic failure state.** A declined request and a missing
   extension are indistinguishable in the UI today. The adapter classifies them; wiring that into
@@ -145,6 +178,19 @@ No MCP server was required for authoring; recorded as `mcp_support: none`.
   the guard in the SDK disagreed. The adapter now derives `allowHttp` from the URL scheme, and only
   a scheme #14 already validated can reach it. Found only because a test built the real client
   instead of a double.
+- **A4 — the passphrase the browser will send to Freighter has no source yet.** `WalletPort.signTransaction`
+  requires it, and nothing calls the port: the funding-intent Feature (#24) decides whether the web
+  app learns it from the backend response or from its own configuration. The invariant that matters
+  is now pinned — the API's declared Testnet passphrase is asserted equal to the SDK's
+  `Networks.TESTNET` — but the seam between the two workspaces is #24's to close, not this Task's.
+- **A5 — the bounded Testnet check in #23's testing strategy has still not been run.** #74's
+  definition-of-ready requires Freighter installed on Testnet with a funded disposable account, and
+  #23's strategy pairs the deterministic suite with "a bounded Testnet check". No live check was
+  performed here, and #76 must either record one or state plainly that the check is a bounded
+  external limitation — not imply it happened.
+- **A6 — `tests/**` still gets no static analysis.** No root `tsconfig.json`, and turbo only walks
+  workspaces, so the new scanner and its fixtures are untypechecked. This is the gap tracked by
+  [#189](https://github.com/reyduar/Vaqcrow/issues/189); the files say so in their own headers.
 
 ## Review size and delivery chain
 
@@ -169,4 +215,12 @@ scoped to one workspace at a time.
   on `main`"), the Task is closed manually once both slices are on `main` — a child PR merging into
   its parent branch is not the same event as the work reaching the default branch, and the record
   should not claim otherwise.
+- **#74 landed.** Both merges are on `main`, in chain order: `72dc211` (slice 2 into its parent
+  branch) then `418bb20` (slice 1 into `main`). Verified by ancestry, not by report — all seven
+  commits are ancestors of `origin/main`. #74's three acceptance criteria were ticked and the Task
+  closed as completed, naming both PRs and this log as its evidence.
+- **#75** — PR [#193](https://github.com/reyduar/Vaqcrow/pull/193) → `main`, labels `type:task` +
+  `area:stellar` + `area:testing`, four commits: `20e4509` (SDK split), `14ea664` (non-custody),
+  `c9dc5c3` (branch coverage), `7cadc53` (this log). CI run `35537237212` **green**: *Quality gates*,
+  *Playwright*, Vercel.
 
