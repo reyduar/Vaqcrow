@@ -112,6 +112,29 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   following the `STELLAR_HORIZON_URL` precedent: absent means the canonical Testnet explorer, present
   must be an absolute `http(s)` URL.
 
+- **D9 — submission goes through `POST /transactions_async`, not `POST /transactions`.** The
+  synchronous endpoint "blocks and waits for the transaction to be ingested in Horizon" (the SDK's
+  own words), which on Testnet means waiting for a ledger to close and on a bad day means waiting
+  until it times out. A bounded, resumable poll must not have a tick that can be held for an
+  unbounded wait, so the asynchronous endpoint — which "relays the response from core directly back
+  to the user" — is the right shape. It is also the architecture `DEMO.md` describes. The cost is
+  explicit and accepted: a submission stops being a verdict, because core can accept a transaction
+  that never reaches a ledger. That is not a hole in the design, it is the reason the poll exists,
+  and the envelope's own `maxTime` (D3) bounds it.
+
+- **D10 — the failure vocabulary is closed at six values, and Horizon's enum never crosses the
+  boundary.** Horizon reports about thirty `tx_*` result codes; passing one through would make a
+  provider's internal enum into Vaqcrow's wire contract, so a Horizon or protocol upgrade could
+  change a value a person reads. The mapping happens once, in the adapter, and anything unmapped is
+  `unsuccessful` — honest about what Vaqcrow knows rather than pretending to precision it lacks. A
+  test pins the closure by rejecting `tx_bad_seq` and friends explicitly.
+
+- **D11 — a transaction Horizon has not ingested is `pending`, not an error.** Horizon serves its
+  lookup from ingested history, so a transaction that has not reached a ledger is simply absent.
+  That is the expected state of every submission for its first few seconds, so `not_found` is an
+  outcome rather than a failure to retry. This is exactly why D3's bound matters: the poll terminates
+  on the envelope's `maxTime`, not on Horizon eventually answering.
+
 ## Tasks
 - [x] T1 Recon: #25/#80/#81/#82, roadmap entries, existing ports/adapters/routes, boundaries, skills
 - [x] T2 Assign #80 (done via the API). Moving #25 and #80 to `In progress` on Project #4 is a
@@ -119,8 +142,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       issue-fields API exposes its `Status` field, so it cannot be set from here.
 - [x] T3 WU1 — the confirmation state vocabulary and persistence contract: migration, contracts,
       repository port and adapter, with focused tests — `f12ed77`, `602a855`, `ae9497d`
-- [ ] T4 WU2 — `StellarTransactionPort` and its Horizon adapter (submit + lookup by hash), with a
-      deterministic double
+- [x] T4 WU2 — `StellarTransactionPort` and its Horizon adapter (submit + lookup by hash), with a
+      deterministic double — `dbc8b31`, `3c68d60`, `be199c2`
 - [ ] T5 WU3 — the bounded, resumable confirmation use case and the in-process scheduler that drives
       it (`apps/api`, per D1)
 - [ ] T6 WU4 — explorer link and sanitised failure reason exposed on the HTTP surface; explorer URL
@@ -202,7 +225,82 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
   constraint. It is corrected in the same commit that widens the CHECK, with the reason recorded
   inline.
 
+### WU2 — the Horizon transaction port and its adapter
+Three commits, each verified individually with `pnpm run verify` → **exit 0**.
+
+- **Recon, because the design turned on it.** Nothing here was taken from memory. The installed
+  `@stellar/stellar-sdk@17.1.0` was read directly: `server.d.ts` for the two submission methods and
+  their documented blocking behaviour, `horizon_api.d.ts` for `SubmitAsyncTransactionResponse` and
+  `TransactionFailedExtras`, `errors/transaction_failed.js` and `errors/wrap_http_error.js` for how a
+  rejection is actually constructed, and the published JSON Schema for the `tx_status` enum. Two
+  facts changed the design and neither is guessable: the async endpoint exists and is explicitly
+  non-blocking, and `toSubmissionError` only produces a `TransactionFailedError` when the body
+  carries `extras.result_codes` — which is what made a single `tx_status` classifier the right shape
+  instead of one rule per HTTP status.
+
+- **RED (contracts)** — `pnpm --filter @vaqcrow/contracts exec vitest run
+  src/stellar-failure-reason.test.ts`. **18 failed / 18** — `Cannot find module`, because the
+  vocabulary did not exist. The suite was written first and encodes the closure: it rejects
+  `tx_bad_seq`, `tx_too_late`, `PENDING` and `TRY_AGAIN_LATER` by name, so re-opening the vocabulary
+  cannot happen silently.
+
+- **RED (adapter)** — `pnpm --filter @vaqcrow/api exec vitest run
+  src/infrastructure/adapters/stellar-transaction.test.ts`. **1 file failed / no tests collected**:
+  `Failed to load url ./stellar-transaction.js`. Same failure mode as #24's work units — the suite
+  encoded the port contract before the adapter existed.
+
+- **GREEN, then one honest correction that was mine.** The first run was **22 passed / 1 failed**, and
+  the failure was a **defect in the test, not the adapter**: `handed.hash().toString("hex")` asserted
+  64 characters and got 114. `hash()` returns a byte array, not a `Buffer`, so `toString("hex")` is
+  silently ignored and the default comma-joined decimal form comes back. The assertion was wrong and
+  was corrected to an explicit `Buffer.from(handed.hash()).toString("hex")` with a hex-shape check —
+  the adapter was never at fault and was not changed to make it pass. Final: **23 passed**.
+
+- **The typechecker caught a real runtime defect before the tests could.** The first draft read
+  `record.ledger` to get the ledger sequence. On `ServerApi.TransactionRecord`, `ledger` is the
+  **link** to the ledger resource — a call function, not a number — and the sequence lives on
+  `ledger_attr`. `String(record.ledger)` would have stringified a function at runtime, producing a
+  `ledgerSequence` that looked plausible and was meaningless. The narrow interface now uses the SDK's
+  own name, so the mistake cannot type-check rather than merely being unlikely.
+
+- **The `never leaks the provider's error message` assertion is not decoration.** It drives a
+  `BadResponseError` carrying a fake stack trace and asserts the result's only key is `code`, matching
+  the sanitisation habit the persistence adapter already has.
+
+- **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **247** (was 229), domain **60**,
+  api **371** (was 348), web **381**, root **74**, `boundaries` clean at **271 modules / 696
+  dependencies**.
+
+- **A shared Horizon factory replaced a duplicated helper rather than copying it.** Both adapters now
+  construct their server through `createHorizonServer`, so the plain-HTTP allowance that lets a
+  loopback double stand in for Testnet is decided in one place. `StellarLedger`'s behaviour is
+  unchanged; its private helper moved.
+
 ## Advisories
+
+- **A4 — the `tx_status` → HTTP-status mapping is inferred, not observed.** The SDK source shows that
+  a non-2xx rejects and is turned into a `TransactionFailedError` only when the body carries
+  `extras.result_codes`; third-party documentation puts `PENDING` at 201, `DUPLICATE` at 409,
+  `TRY_AGAIN_LATER` at 503 and `ERROR` at 400, but the SDK does not state it. The adapter sidesteps
+  the question by classifying on the body's `tx_status` field rather than on the transport status, so
+  it is correct under either behaviour — but which statuses actually accompany which values is
+  unverified, and only a live Horizon can settle it. It does not change any outcome the demo
+  reports: every documented value maps to `accepted`, `rejected` or `unavailable` either way.
+
+- **A5 — an included-but-failed transaction reports `unsuccessful`, not a specific reason.** A
+  transaction that reaches a ledger and is refused by the network comes back from Horizon's lookup as
+  `successful: false` with no decoded result codes — naming the exact cause would mean decoding the
+  operation-level result out of `result_xdr`. The submit path, where the common failures live
+  (`bad_sequence`, `insufficient_fee`, `insufficient_balance`), does give a specific code through
+  `TransactionFailedError`. So the specificity gap is narrow and deliberate, and closing it is a
+  self-contained follow-up if the demo ever needs to explain an execution failure.
+
+- **A6 — `checkMemoRequired` runs before every submission unless it is skipped.** The SDK calls it by
+  default, and it makes its own `loadAccount` round-trip to the destination. That is a second Horizon
+  call inside a poll tick and a second way for a tick to fail — and its failure mode (a
+  `AccountRequiresMemoError`) is a `BadResponseError` subclass the adapter does not model separately,
+  so it currently surfaces as `unavailable` and is retried. Kept at the default because SEP-29's
+  check is a real safety property, not ceremony, but it is worth knowing before the first live run.
 
 - **A1 — the live integration suite does not encode what this work unit verified by hand.** The
   migration's structure, the column-scoped grant and both evidence CHECKs are now *observed* facts
@@ -240,6 +338,13 @@ and the three concerns — schema, contract, persistence — can be read in that
 **already applied to the live Supabase project** (`20260921182333`), verified by query as recorded
 above; the code is therefore in step with the database rather than ahead of it.
 
-The branch is not yet pushed and no PR is open. WU2 (`StellarTransactionPort` and its Horizon
-adapter) is the next unit and depends on neither the Testnet account nor a further migration.
+WU2 is three more: `dbc8b31` (the closed failure vocabulary), `3c68d60` (the shared Horizon factory)
+and `be199c2` (the port and its adapter). Each was verified green on its own. The vocabulary can be
+read without the adapter, the factory is a pure refactor, and the adapter is the only commit that
+depends on both.
+
+The branch is not yet pushed and no PR is open. WU3 — the bounded, resumable confirmation use case and
+the in-process scheduler that drives it — is the next unit. It is the first one that consumes both
+halves already built, and it is where the retry policy, the expiry bound and the wiring in `index.ts`
+land.
 
