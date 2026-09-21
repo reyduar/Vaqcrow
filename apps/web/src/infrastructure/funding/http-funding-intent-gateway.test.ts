@@ -133,7 +133,9 @@ describe("HttpFundingIntentGateway.submit", () => {
   it.each([
     ["a missing applied flag", { intent: snapshot }],
     ["a non-boolean applied flag", { applied: "yes", intent: snapshot }],
-    ["a drifted snapshot", { applied: true, intent: { ...snapshot, state: "confirmed" } }],
+    // `confirmed` is a valid state since #25; the drift has to be a value the
+    // demo genuinely cannot produce, not merely one it could not before.
+    ["a drifted snapshot", { applied: true, intent: { ...snapshot, state: "manual_review" } }],
     ["extra keys", { applied: true, intent: snapshot, extra: 1 }]
   ])("throws on a malformed response: %s", async (_name, body) => {
     const { port } = http(body, 202);

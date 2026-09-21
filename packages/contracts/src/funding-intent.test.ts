@@ -116,15 +116,21 @@ describe("stroopsSchema", () => {
 });
 
 describe("fundingIntentStateSchema", () => {
-  it("accepts exactly the submitted state", () => {
-    expect(fundingIntentStateSchema.options).toEqual(["submitted"]);
+  it("accepts exactly the three states the demo can produce", () => {
+    // #24 could persist only `submitted`; #25 adds the two terminal states
+    // Horizon is the sole authority for. The set is exact — `manual_review`
+    // from product.md §8.1 stays production roadmap, per D2.
+    expect(fundingIntentStateSchema.options).toEqual(["submitted", "confirmed", "failed"]);
     expect(parseFundingIntentState("submitted")).toBe("submitted");
+    expect(parseFundingIntentState("confirmed")).toBe("confirmed");
+    expect(parseFundingIntentState("failed")).toBe("failed");
   });
 
   it.each([
     ["a near-miss casing", "Submitted"],
-    ["a production-roadmap state", "confirmed"],
-    ["a production-roadmap state", "draft"],
+    ["a production-roadmap state", "manual_review"],
+    ["a pre-submission state", "awaiting_signature"],
+    ["a pre-submission state", "draft"],
     ["an unrelated value", "pending"],
     ["a numeric value", 1],
     ["a null value", null]
@@ -408,7 +414,7 @@ describe("fundingIntentSnapshotSchema", () => {
     ["a malformed intent ID", { intentId: "not-a-uuid" }],
     ["a malformed correlation ID", { lastCorrelationId: "not-a-uuid" }],
     ["a malformed application ID", { applicationId: "not-a-uuid" }],
-    ["a state the demo cannot produce", { state: "confirmed" }],
+    ["a state the demo cannot produce", { state: "manual_review" }],
     ["a JSON number amount", { amountStroops: 10_000_000 }],
     ["an empty transaction hash", { transactionHash: "" }],
     ["a datetime without an offset", { createdAt: "2026-09-21T12:00:00" }]

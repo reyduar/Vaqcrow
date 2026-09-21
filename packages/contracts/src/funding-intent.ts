@@ -28,10 +28,20 @@ export const stroopsSchema = z
   .transform((value) => BigInt(value));
 
 /**
- * #24 can persist exactly one state (`D3`, acceptance criterion 3). The table
- * CHECK pins the same fact; #25 widens this union when confirmation lands.
+ * The funding-intent state machine, as the demo can actually produce it.
+ *
+ * #24 could persist exactly one state (`D3`, acceptance criterion 3): the prepare
+ * step is stateless, so a row is only ever written by a verified submission.
+ * #25 adds the two terminal states, and Horizon is the sole authority for both —
+ * nothing in this codebase sets them by hand (`DEMO.md` §11: "No cambiar un
+ * estado a confirmado manualmente").
+ *
+ * The longer machine in `product.md` §8.1 (`draft -> … -> awaiting_signature ->
+ * signed -> submitted -> confirmed`) is the production roadmap beyond the demo,
+ * so `manual_review` and every pre-submission state stay out of this set on
+ * purpose rather than by omission.
  */
-export const fundingIntentStateSchema = z.enum(["submitted"]);
+export const fundingIntentStateSchema = z.enum(["submitted", "confirmed", "failed"]);
 
 export type FundingIntentState = z.infer<typeof fundingIntentStateSchema>;
 
