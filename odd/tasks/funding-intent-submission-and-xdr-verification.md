@@ -113,6 +113,18 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   same invariant; this stops the database accepting what the API would refuse, which is the repo's
   established habit of mirroring contract invariants as CHECKs.
 
+- **D12 — the submit command declares the intent's terms, and verification binds the persisted record
+  to the signed envelope.** The prepare step persists nothing (D2) and the client owns the terms
+  (D4), so at submit the server has no independent memory of what it built. The submit command
+  therefore carries the terms the prepare response returned, and `FundingIntentXdrPort.verify` proves
+  the signed envelope matches them. That makes the guarantee precise rather than tautological: **the
+  audit record Vaqcrow persists cannot disagree with the transaction that was actually signed.** A
+  tampered envelope fails the signature check; an envelope whose source, sequence, destination,
+  amount, memo or timebounds differ from the declared intent is `intent_mismatch`. The terms are
+  exactly the fields an envelope encodes, which is why `applicationId` travels as declared metadata
+  *alongside* them and never inside: no envelope carries it, so folding it in would advertise a check
+  that can never run.
+
 ## Tasks
 - [x] T1 Recon: #24/#77, roadmap entries, existing ports/adapters/routes, boundaries, skills
 - [x] T2 Assign #24 and #77; move both to `In progress` on Project #4
@@ -120,8 +132,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       with focused unit tests — `b03048b`, `8b49649`
 - [x] T4 WU2 — Persistence: `funding_intents` migration (RLS + explicit grants + trigger) and
       `SupabaseFundingIntentRepository`, with unit tests — `af95e55`, `89daba9`
-- [ ] T5 WU3 — Contracts, use cases and HTTP surface (`create` / `submit` / `get`), wiring in
-      `build-app.ts` and `index.ts`
+- [x] T5 WU3 — Contracts, use cases and HTTP surface (`prepare` / `submit` / `get`), wiring in
+      `build-app.ts` and `index.ts` — `0f96092`, `1c772d0`, `b275d1a`
 - [ ] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page
 - [ ] T7 #78 — the ordered test Task: invariants and API integration coverage
 - [ ] T8 #79 — evidence document in Spanish, traceable to this log
@@ -180,6 +192,35 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
 - **Full gate** — `pnpm run verify` → **exit 0**. domain 60, contracts 101, api **239** (was 215),
   web 330, root **67**, `boundaries` clean at **234 modules / 548 dependencies**.
 
+### WU3 — contracts, use cases and the HTTP surface (`packages/contracts`, `apps/api`)
+- **RED** — three layers, three distinct failure modes. Contracts:
+  `pnpm --filter @vaqcrow/contracts test` → **115 failed / 105 passed**, every failure
+  `TypeError: Cannot read properties of undefined (reading 'safeParse')` — the new named exports did
+  not exist in the barrel yet. Use cases: `Cannot find module './prepare-funding-intent.js'`. Route:
+  **35 failed / 38 collected**, all `expected 404 to be 200` — `buildApp` did not register the route,
+  so every request 404'd before reaching a handler.
+- **GREEN** — contracts **227**, api **320** (was 239), `pnpm run verify` **exit 0**; `boundaries`
+  clean at **246 modules / 610 dependencies**.
+- **A defect in this Feature's own brief, caught by the implementation.** The brief's contract list
+  put `applicationId` in the prepare command and the status snapshot but nowhere in between, so the
+  column, FK and index WU2 built for it (D4) would have stayed null forever — an unreachable
+  traceability link. The fix places it as declared metadata **alongside** the terms, never inside
+  them, for the reason D12 gives. A test pins that an application link smuggled into the terms is
+  refused. Commit `1c772d0`.
+- **A contract cap that did not match the envelope.** The memo limit was checked in characters while
+  the SDK measures UTF-8 **bytes** (`stringToUint8Array(value).length`), so a 15-character accented
+  memo would have passed the contract and been refused by the builder — likely rather than
+  theoretical in a Spanish-language demo. The cap is now counted in bytes by a local counter
+  (`@vaqcrow/contracts` compiles against `lib: ["ES2023"]` with neither DOM nor Node types, so
+  `TextEncoder` is not available), with tests pinning `ñ` at two bytes and an emoji at four. Commit
+  `0f96092`.
+- **Three RED → GREEN cycles inside the layers, reported rather than hidden.** Zod 4 runs `.regex()`
+  and `.refine()` independently, so a non-integer string reached `BigInt(value)`; the refinement was
+  made throw-safe rather than the test relaxed. Two fixture bugs — re-parsing an already-parsed
+  command, and a prepared-intent fixture missing the new required key — masked the submit and route
+  behavioural RED behind a collection error. The implementation then satisfied the assertions, but
+  that cycle was not observed directly and is recorded as such rather than claimed.
+
 ## Advisories
 
 - **A1 — the built envelope carries `minTime` = build time.** `build` sets
@@ -201,22 +242,42 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   the column to text on read (the adapter already accepts a decimal string) and verify the cast
   against the live API. #78's integration test should confirm the boundary empirically.
 
+- **A3 — a test must backdate `created_at` to observe the `updated_at` trigger.** `now()` in Postgres
+  is the **transaction start time**, so an insert and an update in the *same* transaction produce
+  `updated_at = created_at`. The first live check of the applied migration read `trigger_moved =
+  false`, and that was the check's fault rather than the trigger's; with `created_at` backdated an
+  hour the trigger is proven to fire. Relevant to #78's test author.
+
+- **A4 — the submission is not bound to the prepare call.** The prepare step persists nothing (D2) and
+  the client owns the terms (D4), so the server keeps no independent record of what it offered.
+  Verification proves the signed envelope matches the terms the submit command declares and that the
+  signature authorizes them; it cannot prove those terms are the ones the person was shown in the
+  browser. Under D4 the client is the source of the terms anyway, so this is a declared limit of the
+  demo's scope rather than a defect — DEMO.md §11's "different from the intent" is enforced against
+  the declared intent, and an envelope altered after signing is refused cryptographically. Closing it
+  would mean persisting the terms at prepare time, which contradicts "initial state is submitted" and
+  would require widening the table CHECK.
+
 ## Review size and delivery chain
-WU1 is three commits: `b03048b` (the scan allowance), `8b49649` (the XDR port, adapter, tests and
-the `stroopsToXlm` helper) and `9c58489` (the WU1 log). WU2 adds `af95e55` (the migration) and
-`89daba9` (the port, adapter and tests). `#77` is still forecast to exceed one review once the HTTP
-work unit lands, so a stacked chain is likely; the split is decided when WU3 is planned.
+Slice 1 is six commits: `b03048b` (the scan allowance), `8b49649` (the XDR engine), `9c58489` (the
+WU1 log), `af95e55` (the migration), `89daba9` (persistence) and `3d19f3f` (the WU2 log). Slice 2
+adds `0f96092` (contracts), `1c772d0` (use cases), `b275d1a` (the HTTP surface and wiring) and this
+log commit. Every commit is a green, reviewable unit, which is what keeps a diff this size reviewable
+at all: the contracts can be read on their own, then the use cases, then the route.
 
 ## Delivery
-- **Slice 1** — PR [#199](https://github.com/reyduar/Vaqcrow/pull/199) → `main`, labels `type:task` +
-  `area:backend` + `area:database` + `area:stellar`, six commits: `b03048b` (scan allowance),
-  `8b49649` (XDR engine), `9c58489` (WU1 log), `af95e55` (migration), `89daba9` (persistence),
-  `3d19f3f` (WU2 log). CI run `35558129485` **green on the first attempt** over those six commits:
-  *Quality gates (lint, types, tests, build, boundaries)*, *Playwright (deterministic, local double)*
-  and the Vercel deployment. This log commit re-runs the same gates; the run id above is the one that
-  validated the code.
-- **The migration is not applied to the live project.** Writing it under `supabase/migrations/` does
-  not execute it, and applying DDL to the real project is a separate, explicitly authorized step.
-  #78's integration test is the natural place to confirm the boundary empirically.
-- **#77 is not closed by this PR.** Slice 2 — the contracts, use cases, HTTP surface and the web
-  slice — completes it.
+- **Slice 1 merged.** PR [#199](https://github.com/reyduar/Vaqcrow/pull/199) is on `main` as
+  `61454c0`, CI green on the final head (run `35558307375`; the six code commits were validated by
+  `35558129485`).
+- **The migration is applied and verified live** on 2026-09-21, as migration `20260921034601` /
+  `create_funding_intent`. Verified by query rather than by the success flag: 16 columns, RLS enabled
+  with zero policies, one trigger, the five intended constraints, and grants exactly as designed —
+  `anon` and `authenticated` hold nothing, `service_role` holds SELECT and INSERT only. Re-running the
+  same SQL left every count unchanged, so it is idempotent; the re-run used a plain statement rather
+  than a second `apply_migration`, which is why the history carries one entry (and why the duplicate
+  `create_application_review` record left by the #41 precedent is not repeated). A rolled-back block
+  additionally proved the constraints bite: a non-`submitted` state and a zero amount are both
+  refused, the `updated_at` trigger fires, and deleting an application keeps the funding row while
+  nulling the link. Nothing was left behind — all three tables are back to 0 rows.
+- **Slice 2** — this branch (`…-02-api-http`), commits `0f96092`, `1c772d0`, `b275d1a`.
+- **#77 is not closed yet.** The web slice (WU4) remains.
