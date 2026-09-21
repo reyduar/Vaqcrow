@@ -135,6 +135,35 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   outcome rather than a failure to retry. This is exactly why D3's bound matters: the poll terminates
   on the envelope's `maxTime`, not on Horizon eventually answering.
 
+- **D12 — the poll owns the submission; the HTTP endpoint does not.** #24's submission endpoint
+  verifies the signed envelope and persists it, and stops there. #25's poll is what hands it to the
+  network. Three reasons, and the first is the one that decides it: keeping the network work out of
+  the endpoint preserves what #24's `submitted` already means — *verified and persisted, awaiting the
+  network* — instead of silently redefining it to *core accepted it*, which would be a contract change
+  made by accident. Second, it keeps the API's write path independent of Horizon's availability, which
+  is what `DEMO.md` §11's contingency asks for: a Horizon outage should leave the intent pending and
+  explainable, not make submission fail. Third, it is what makes the asynchronous design real rather
+  than cosmetic — an endpoint that blocks on Horizon and a poll that confirms is the synchronous
+  design wearing an async label.
+
+- **D13 — the poll re-offers the envelope on every step instead of tracking "already submitted".**
+  The obvious design keeps a local flag and skips the submission later. That flag would be *derived*
+  state: stellar-core already knows whether it holds the transaction and says so — `DUPLICATE` is
+  precisely that answer (D10) — so a local copy could be wrong (a write that failed, a transaction
+  core dropped) while the provider's answer cannot. Re-offering is also what a payment system is
+  supposed to do: it keeps the transaction alive in core's queue until it is included or its `maxTime`
+  passes. The cost is one extra Horizon call per pending intent per step, and `checkMemoRequired`
+  short-circuits entirely when the intent carries a memo. This is why WU1's schema needed no
+  `submitted_at` column, and why the migration already applied stays sufficient.
+
+- **D14 — "bounded" is the batch, the backoff and the envelope's `maxTime`; there is no attempt cap.**
+  The batch bounds one step's work. The backoff doubles and then stops doubling, so load does not grow
+  with the attempt count. `maxTime` is a *real* bound rather than a policy number, because after it
+  Stellar can never include the transaction. An attempt cap is deliberately absent: reaching one would
+  leave an intent in `submitted` with nothing left to do, and the vocabulary has no honest state for
+  "Vaqcrow stopped asking" — a fourth state recording our own impatience would describe Vaqcrow rather
+  than the transaction, which is the opposite of what every state here means.
+
 ## Tasks
 - [x] T1 Recon: #25/#80/#81/#82, roadmap entries, existing ports/adapters/routes, boundaries, skills
 - [x] T2 Assign #80 (done via the API). Moving #25 and #80 to `In progress` on Project #4 is a
@@ -144,8 +173,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       repository port and adapter, with focused tests — `f12ed77`, `602a855`, `ae9497d`
 - [x] T4 WU2 — `StellarTransactionPort` and its Horizon adapter (submit + lookup by hash), with a
       deterministic double — `dbc8b31`, `3c68d60`, `be199c2`
-- [ ] T5 WU3 — the bounded, resumable confirmation use case and the in-process scheduler that drives
-      it (`apps/api`, per D1)
+- [x] T5 WU3 — the bounded, resumable confirmation use case and the in-process scheduler that drives
+      it (`apps/api`, per D1) — `ffeabca`, `ebe700b`, `be91a41`
 - [ ] T6 WU4 — explorer link and sanitised failure reason exposed on the HTTP surface; explorer URL
       configuration
 - [ ] T7 #81 — the ordered test Task: success, failure, timeout and resume against a Horizon double
@@ -276,7 +305,67 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
   loopback double stand in for Testnet is decided in one place. `StellarLedger`'s behaviour is
   unchanged; its private helper moved.
 
+### WU3 — the bounded, resumable use case and its scheduler
+Three commits, each verified individually with `pnpm run verify` → **exit 0**.
+
+- **RED (use case)** — `pnpm --filter @vaqcrow/api exec vitest run
+  src/application/use-cases/confirm-funding-intents.test.ts`. **1 file failed / no tests collected**:
+  the module did not exist. Same failure mode as every other work unit here, and the suite was written
+  first: it pins the expiry bound, the backoff curve and its ceiling, and the rule that a deferral
+  never moves the state.
+
+- **RED (scheduler)** — `… run src/infrastructure/scheduling/confirmation-scheduler.test.ts`. **1 file
+  failed / no tests collected**, then after the implementation **8 failed / 3 passed**.
+
+- **The eight failures were a real defect in the scheduler, and finding it took discipline rather than
+  a guess.** Every failure read `findPending` called 0 times, while one test in the same file passed —
+  the one that registered an `onStep` observer. The tempting move was to assume a fake-timer quirk and
+  relax the assertions. Instead the cause was isolated by elimination, each step a probe rather than a
+  theory: a bare faked `setTimeout` fires (so the clock works), the timer registers on the fake clock
+  with the right delay and the same shape as a working one (so scheduling works), the callback fires
+  and re-arms (so the loop works), `runOnce()` called directly works and reaches the port (so the use
+  case and its dependencies work), and instrumenting the `catch` showed it was never entered — so
+  nothing threw, and the step body simply never ran.
+
+  **The cause was one line:** `this.options.onStep?.(await this.runOnce())`. That reads as "run the
+  step, then report it", and is not: an optional call **short-circuits the evaluation of its
+  arguments**, so with no observer registered `runOnce()` was never invoked at all. In production the
+  scheduler would have ticked every five seconds forever and confirmed nothing — and every test that
+  registers an observer would still have passed. The step now runs first and is reported second, with
+  the reasoning recorded at the call site so the shorter form is not restored as a tidy-up. The test
+  that caught it is the one that asserts `findPending` was called **without** registering an observer;
+  it exists because asserting on the observer alone would have hidden the whole thing.
+
+- **GREEN** — the use case **25 passed**; the scheduler **12 passed**. One further failure on the way
+  was a defect in the test, not the code: the overlap test's second tick parked on an unresolved
+  promise, so `stop()` — which waits for the tick in flight, by design — hung until the test timed
+  out. Releasing the second tick fixed it; the assertion that proved the property (four intervals of
+  elapsed time produced exactly one call) was correct and unchanged.
+
+- **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **247**, domain **60**, api **408**
+  (was 371), web **381**, root **74**, `boundaries` clean at **275 modules / 718 dependencies**.
+
+- **`onError` was added because a swallowed failure is invisible.** The loop must survive a throwing
+  tick, but the first version caught and discarded, which is indistinguishable from a loop that is
+  working. The composition root now logs it, and `onStep` carries per-intent outcomes separately —
+  those are results, not failures of the tick.
+
 ## Advisories
+
+- **A7 — the loop assumes a single API instance, and that is the first thing that breaks on scale
+  out.** Every process that starts a scheduler polls the same `submitted` rows. The *writes* stay
+  correct — a conditional update on `state = 'submitted'` makes a second writer a non-application
+  rather than a double-apply, which is what WU1 built — but the Horizon calls would be duplicated per
+  instance and the attempt counts would race, so the backoff could be advanced twice for one step. For
+  the demo there is one instance and this is invisible. A real deployment needs either a single
+  designated poller or a claim (a `SELECT … FOR UPDATE SKIP LOCKED`-shaped read, or a lease column).
+  Recorded because it is a scaling property of the chosen placement (D1), not a defect of the code:
+  the design deliberately traded multi-instance safety for not adding a workspace.
+
+- **A8 — a step is sequential over its batch.** One slow Horizon call delays the rest of the batch,
+  bounded by `batchSize` (20) and by Horizon's own timeouts. That is the right shape for a demo — it
+  keeps the load predictable and the failure modes simple — but a large batch would want bounded
+  concurrency instead. Worth knowing before anyone raises `batchSize` to compensate for a backlog.
 
 - **A4 — the `tx_status` → HTTP-status mapping is inferred, not observed.** The SDK source shows that
   a non-2xx rejects and is turned into a `TransactionFailedError` only when the body carries
@@ -343,8 +432,13 @@ and `be199c2` (the port and its adapter). Each was verified green on its own. Th
 read without the adapter, the factory is a pure refactor, and the adapter is the only commit that
 depends on both.
 
-The branch is not yet pushed and no PR is open. WU3 — the bounded, resumable confirmation use case and
-the in-process scheduler that drives it — is the next unit. It is the first one that consumes both
-halves already built, and it is where the retry policy, the expiry bound and the wiring in `index.ts`
-land.
+WU3 is three more: `ffeabca` (the use case), `ebe700b` (the scheduler) and `be91a41` (the wiring).
+Each was verified green on its own. The use case is pure and can be read without any timer; the
+scheduler is a loop around it and nothing else; the wiring is the only commit that touches the
+composition root.
+
+The branch is not yet pushed and no PR is open. WU4 — the explorer link, the sanitised failure reason
+and the explorer URL configuration — is the next unit. It is the only one that changes the HTTP
+surface, so it is also where the wire contract grows the two fields the third acceptance criterion
+names.
 
