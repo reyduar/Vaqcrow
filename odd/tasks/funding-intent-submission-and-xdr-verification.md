@@ -134,7 +134,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       `SupabaseFundingIntentRepository`, with unit tests — `af95e55`, `89daba9`
 - [x] T5 WU3 — Contracts, use cases and HTTP surface (`prepare` / `submit` / `get`), wiring in
       `build-app.ts` and `index.ts` — `0f96092`, `1c772d0`, `b275d1a`
-- [ ] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page
+- [x] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page —
+      `5d2bf8b`, `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476`
 - [ ] T7 #78 — the ordered test Task: invariants and API integration coverage
 - [ ] T8 #79 — evidence document in Spanish, traceable to this log
 
@@ -221,6 +222,27 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   behavioural RED behind a collection error. The implementation then satisfied the assertions, but
   that cycle was not observed directly and is recorded as such rather than claimed.
 
+### WU4 — the web slice (`apps/web`, `tests/`)
+- **RED** — `pnpm --filter @vaqcrow/web test` → **7 files failed / 58 passed**, **1 failed / 329
+  passed**: six layers failed to resolve (`Cannot find module` for each new module) and
+  `funding/page.test.tsx` failed semantically, because the placeholder heading was still rendered.
+- **GREEN** — web **381** (was 330), root **74**, `pnpm run verify` **exit 0**; `boundaries` clean at
+  **264 modules / 662 dependencies**.
+- **Decision A is proven in code, not asserted.** `use-funding-intent` is the repository's only caller
+  of `WalletPort.signTransaction`, and it passes `attempt.prepared.networkPassphrase` — the value the
+  prepare response returned. A test asserts exactly that, so the browser cannot disagree with the
+  backend about what a signature means, because it holds no opinion of its own.
+- **D1 was a convention; it is machine-checked now.**
+  `tests/web-holds-no-network-passphrase.test.ts` walks `apps/web/src/**` and refuses either real
+  passphrase, or anything matching the passphrase's shape, with probes proving detection and an
+  anti-vacuity assertion.
+- **A correction that made the guard unconditional.** The wallet adapter's test double (from #23)
+  embedded the **real** Testnet passphrase as a fixture, and nothing asserted anything about its
+  value. The first version of the invariant test therefore needed a per-file allowance — which would
+  have let a future contributor hide a real passphrase in any test file. A double needs two *distinct*
+  passphrases, not the real ones, so the fixture is synthetic and the guard carries no exemptions at
+  all: a stricter invariant with less machinery. Commit `a0d7476`.
+
 ## Advisories
 
 - **A1 — the built envelope carries `minTime` = build time.** `build` sets
@@ -261,9 +283,11 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
 ## Review size and delivery chain
 Slice 1 is six commits: `b03048b` (the scan allowance), `8b49649` (the XDR engine), `9c58489` (the
 WU1 log), `af95e55` (the migration), `89daba9` (persistence) and `3d19f3f` (the WU2 log). Slice 2
-adds `0f96092` (contracts), `1c772d0` (use cases), `b275d1a` (the HTTP surface and wiring) and this
-log commit. Every commit is a green, reviewable unit, which is what keeps a diff this size reviewable
-at all: the contracts can be read on their own, then the use cases, then the route.
+adds `0f96092` (contracts), `1c772d0` (use cases), `b275d1a` (the HTTP surface and wiring) and
+`a861329` (its log). Slice 3 adds `5d2bf8b` (the XLM amount), `a4c8a00` (the gateway layer),
+`76914ed` (the hook), `8a97aaf` (the demo step) and `a0d7476` (the D1 guard), plus this log commit.
+Every commit is a green, reviewable unit, which is what keeps a diff this size reviewable at all: the
+contracts can be read on their own, then the use cases, then the route, then the browser.
 
 ## Delivery
 - **Slice 1 merged.** PR [#199](https://github.com/reyduar/Vaqcrow/pull/199) is on `main` as
@@ -279,5 +303,11 @@ at all: the contracts can be read on their own, then the use cases, then the rou
   additionally proved the constraints bite: a non-`submitted` state and a zero amount are both
   refused, the `updated_at` trigger fires, and deleting an application keeps the funding row while
   nulling the link. Nothing was left behind — all three tables are back to 0 rows.
-- **Slice 2** — this branch (`…-02-api-http`), commits `0f96092`, `1c772d0`, `b275d1a`.
-- **#77 is not closed yet.** The web slice (WU4) remains.
+- **Slice 2 merged.** PR [#200](https://github.com/reyduar/Vaqcrow/pull/200) is on `main` as
+  `e591489`, commits `0f96092`, `1c772d0`, `b275d1a`, `a861329`.
+- **Slice 3** — PR [#201](https://github.com/reyduar/Vaqcrow/pull/201) → `main`, commits `5d2bf8b`,
+  `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476` and this log commit. It was opened stacked on slice 2's
+  branch so its diff stayed scoped to the web slice, then retargeted to `main` once slice 2 landed;
+  the diff is clean either way, because slice 3 is based on slice 2's head.
+- **The implementation is complete; #77 is not closed yet.** The ordered test Task (#78) and the
+  Spanish evidence document (#79) remain, and #77 closes once slice 3 is on `main`.

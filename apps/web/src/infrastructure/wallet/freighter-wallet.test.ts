@@ -11,7 +11,9 @@ import type { FreighterApi } from "./freighter-wallet";
  * its official docs document; the package resolves `{ error }` instead of
  * throwing, so these are the only signals available to classify a failure.
  */
-const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
+// Synthetic and deliberately not a real network passphrase: the adapter only
+// compares it for identity, and the web is never allowed to own the real value.
+const WALLET_PASSPHRASE = "synthetic-wallet-passphrase";
 const PUBLIC_KEY = "GDVEU3DDJGBXQKZTPJ7Q2PLZRZXQ4OBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 const XDR = "AAAAAgAAAAA...unsigned";
 const SIGNED_XDR = "AAAAAgAAAAA...signed";
@@ -28,7 +30,7 @@ function createApi(overrides: Partial<FreighterApi> = {}): FreighterApi {
     requestAccess: vi.fn(async () => ({ address: PUBLIC_KEY })),
     getNetwork: vi.fn(async () => ({
       network: "TESTNET",
-      networkPassphrase: TESTNET_PASSPHRASE
+      networkPassphrase: WALLET_PASSPHRASE
     })),
     signTransaction: vi.fn(async () => ({
       signedTxXdr: SIGNED_XDR,
@@ -167,7 +169,7 @@ describe("FreighterWallet.signTransaction", () => {
   it("returns the signed XDR for a Testnet transaction", async () => {
     const wallet = new FreighterWallet(createApi());
 
-    await expect(wallet.signTransaction(XDR, TESTNET_PASSPHRASE)).resolves.toBe(SIGNED_XDR);
+    await expect(wallet.signTransaction(XDR, WALLET_PASSPHRASE)).resolves.toBe(SIGNED_XDR);
   });
 
   it("sends the explicit passphrase and no key material to the wallet", async () => {
@@ -177,10 +179,10 @@ describe("FreighterWallet.signTransaction", () => {
     }));
     const wallet = new FreighterWallet(createApi({ signTransaction }));
 
-    await wallet.signTransaction(XDR, TESTNET_PASSPHRASE);
+    await wallet.signTransaction(XDR, WALLET_PASSPHRASE);
 
     expect(signTransaction).toHaveBeenCalledExactlyOnceWith(XDR, {
-      networkPassphrase: TESTNET_PASSPHRASE
+      networkPassphrase: WALLET_PASSPHRASE
     });
   });
 
@@ -195,7 +197,7 @@ describe("FreighterWallet.signTransaction", () => {
       })
     );
 
-    const error = await failureFrom(() => wallet.signTransaction(XDR, TESTNET_PASSPHRASE));
+    const error = await failureFrom(() => wallet.signTransaction(XDR, WALLET_PASSPHRASE));
 
     expect(error.kind).toBe("rejected");
     expect(error.recoverable).toBe(true);
@@ -210,13 +212,15 @@ describe("FreighterWallet.signTransaction", () => {
       createApi({
         getNetwork: vi.fn(async () => ({
           network: "PUBLIC",
-          networkPassphrase: "Public Global Stellar Network ; September 2015"
+          // A second synthetic value, distinct from WALLET_PASSPHRASE: the
+          // adapter must refuse before asking for a signature.
+          networkPassphrase: "synthetic-other-network-passphrase"
         })),
         signTransaction
       })
     );
 
-    const error = await failureFrom(() => wallet.signTransaction(XDR, TESTNET_PASSPHRASE));
+    const error = await failureFrom(() => wallet.signTransaction(XDR, WALLET_PASSPHRASE));
 
     expect(error.kind).toBe("network_mismatch");
     expect(error.recoverable).toBe(true);
@@ -245,7 +249,7 @@ describe("FreighterWallet.signTransaction", () => {
       .mockResolvedValueOnce({ signedTxXdr: SIGNED_XDR, signerAddress: PUBLIC_KEY });
     const wallet = new FreighterWallet(createApi({ signTransaction }));
 
-    await expect(wallet.signTransaction(XDR, TESTNET_PASSPHRASE)).rejects.toBeInstanceOf(WalletError);
-    await expect(wallet.signTransaction(XDR, TESTNET_PASSPHRASE)).resolves.toBe(SIGNED_XDR);
+    await expect(wallet.signTransaction(XDR, WALLET_PASSPHRASE)).rejects.toBeInstanceOf(WalletError);
+    await expect(wallet.signTransaction(XDR, WALLET_PASSPHRASE)).resolves.toBe(SIGNED_XDR);
   });
 });
