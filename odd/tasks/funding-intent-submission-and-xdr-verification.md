@@ -303,9 +303,11 @@ contracts can be read on their own, then the use cases, then the route, then the
   additionally proved the constraints bite: a non-`submitted` state and a zero amount are both
   refused, the `updated_at` trigger fires, and deleting an application keeps the funding row while
   nulling the link. Nothing was left behind — all three tables are back to 0 rows.
-- **Slice 2** — PR [#200](https://github.com/reyduar/Vaqcrow/pull/200) → `main`, commits `0f96092`,
-  `1c772d0`, `b275d1a`, `a861329`.
-- **Slice 3** — PR [#201](https://github.com/reyduar/Vaqcrow/pull/201), stacked on slice 2's branch so
-  its diff is the web slice alone, commits `5d2bf8b`, `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476`.
+- **Slice 2 merged.** PR [#200](https://github.com/reyduar/Vaqcrow/pull/200) is on `main` as
+  `e591489`, commits `0f96092`, `1c772d0`, `b275d1a`, `a861329`.
+- **Slice 3** — PR [#201](https://github.com/reyduar/Vaqcrow/pull/201) → `main`, commits `5d2bf8b`,
+  `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476` and this log commit. It was opened stacked on slice 2's
+  branch so its diff stayed scoped to the web slice, then retargeted to `main` once slice 2 landed;
+  the diff is clean either way, because slice 3 is based on slice 2's head.
 - **The implementation is complete; #77 is not closed yet.** The ordered test Task (#78) and the
-  Spanish evidence document (#79) remain, and #77 closes once the slices are on `main`.
+  Spanish evidence document (#79) remain, and #77 closes once slice 3 is on `main`.
