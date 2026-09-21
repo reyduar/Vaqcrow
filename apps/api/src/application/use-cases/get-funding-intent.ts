@@ -1,5 +1,6 @@
 import { parseFundingIntentSnapshot } from "@vaqcrow/contracts";
 import type { FundingIntentId, FundingIntentSnapshot } from "@vaqcrow/contracts";
+import { transactionExplorerUrl } from "../explorer-url.js";
 import type {
   FundingIntentRecord,
   FundingIntentRepositoryPort
@@ -34,11 +35,17 @@ export type GetFundingIntentResult =
  */
 export type FundingIntentLookup = Pick<FundingIntentRepositoryPort, "findById">;
 
+export interface GetFundingIntentDeps {
+  readonly repository: FundingIntentLookup;
+  /** The base a transaction link is built from. Normalised by configuration. */
+  readonly explorerBaseUrl: string;
+}
+
 export async function getFundingIntent(
-  repository: FundingIntentLookup,
+  deps: GetFundingIntentDeps,
   intentId: FundingIntentId
 ): Promise<GetFundingIntentResult> {
-  const found = await repository.findById(intentId);
+  const found = await deps.repository.findById(intentId);
 
   if (!found.ok) {
     return found.error.code === "not_found"
@@ -47,7 +54,7 @@ export async function getFundingIntent(
   }
 
   try {
-    return { ok: true, value: toFundingIntentSnapshot(found.value) };
+    return { ok: true, value: toFundingIntentSnapshot(found.value, deps.explorerBaseUrl) };
   } catch {
     return { ok: false, error: { code: "unavailable" } };
   }
@@ -57,9 +64,12 @@ export async function getFundingIntent(
  * The one projection from a persisted record to the reported snapshot. Kept
  * module-private because this repo's use cases depend only on ports and
  * contracts — never on each other — and that isolation is worth a repeated
- * fifteen-line pure function.
+ * twenty-line pure function.
  */
-function toFundingIntentSnapshot(record: FundingIntentRecord): FundingIntentSnapshot {
+function toFundingIntentSnapshot(
+  record: FundingIntentRecord,
+  explorerBaseUrl: string
+): FundingIntentSnapshot {
   return parseFundingIntentSnapshot({
     intentId: record.intentId,
     network: record.network,
@@ -75,6 +85,8 @@ function toFundingIntentSnapshot(record: FundingIntentRecord): FundingIntentSnap
     state: record.state,
     transactionHash: record.transactionHash,
     applicationId: record.applicationId ?? null,
+    explorerUrl: transactionExplorerUrl(explorerBaseUrl, record.transactionHash),
+    failureReason: record.failureReason ?? null,
     lastCorrelationId: record.lastCorrelationId,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt
