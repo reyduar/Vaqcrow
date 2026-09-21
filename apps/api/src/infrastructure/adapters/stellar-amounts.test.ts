@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { xlmToStroops } from "./stellar-amounts.js";
+import { stroopsToXlm, xlmToStroops } from "./stellar-amounts.js";
 
 describe("xlmToStroops", () => {
   it("converts a whole balance into stroops", () => {
@@ -35,5 +35,29 @@ describe("xlmToStroops", () => {
     expect(() => xlmToStroops("not-an-amount")).toThrow(/Malformed Stellar amount/);
     expect(() => xlmToStroops("")).toThrow(/Malformed Stellar amount/);
     expect(() => xlmToStroops("1e7")).toThrow(/Malformed Stellar amount/);
+  });
+});
+
+describe("stroopsToXlm", () => {
+  it("writes a whole amount with the full seven decimals", () => {
+    expect(stroopsToXlm(100000000000n)).toBe("10000.0000000");
+  });
+
+  it("writes the smallest representable amount", () => {
+    expect(stroopsToXlm(1n)).toBe("0.0000001");
+  });
+
+  it("writes zero", () => {
+    expect(stroopsToXlm(0n)).toBe("0.0000000");
+  });
+
+  it("keeps full precision past the range of a JavaScript number", () => {
+    expect(stroopsToXlm(9223372036854775807n)).toBe("922337203685.4775807");
+  });
+
+  it("round-trips every amount through the parser", () => {
+    for (const stroops of [0n, 1n, 9999999n, 10000000n, 123456789n, 9223372036854775807n]) {
+      expect(xlmToStroops(stroopsToXlm(stroops))).toBe(stroops);
+    }
   });
 });

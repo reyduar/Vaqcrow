@@ -29,3 +29,21 @@ export function xlmToStroops(amount: string): bigint {
 
   return sign === "-" ? -stroops : stroops;
 }
+
+/**
+ * Converts a stroop count into the decimal amount string the XDR carries — the
+ * inverse of {@link xlmToStroops}, and equally float-free.
+ *
+ * The result always carries the full seven decimals (`"10.0000000"`), which is
+ * the canonical form `Operation.payment` accepts and the form
+ * `xlmToStroops` round-trips. Whole and fractional parts are split with
+ * `BigInt` division and remainder, so no magnitude loses precision.
+ */
+export function stroopsToXlm(stroops: bigint): string {
+  const negative = stroops < 0n;
+  const absolute = negative ? -stroops : stroops;
+  const whole = absolute / STROOPS_PER_UNIT;
+  const fraction = (absolute % STROOPS_PER_UNIT).toString().padStart(STROOPS_DECIMALS, "0");
+
+  return `${negative ? "-" : ""}${whole}.${fraction}`;
+}
