@@ -2,6 +2,7 @@ import { z } from "zod";
 import { applicationIdSchema } from "./application-id.js";
 import { correlationIdSchema } from "./correlation-id.js";
 import { fundingIntentIdSchema } from "./funding-intent-id.js";
+import { stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 
 /**
  * Funding-intent wire contract.
@@ -28,10 +29,20 @@ export const stroopsSchema = z
   .transform((value) => BigInt(value));
 
 /**
- * #24 can persist exactly one state (`D3`, acceptance criterion 3). The table
- * CHECK pins the same fact; #25 widens this union when confirmation lands.
+ * The funding-intent state machine, as the demo can actually produce it.
+ *
+ * #24 could persist exactly one state (`D3`, acceptance criterion 3): the prepare
+ * step is stateless, so a row is only ever written by a verified submission.
+ * #25 adds the two terminal states, and Horizon is the sole authority for both —
+ * nothing in this codebase sets them by hand (`DEMO.md` §11: "No cambiar un
+ * estado a confirmado manualmente").
+ *
+ * The longer machine in `product.md` §8.1 (`draft -> … -> awaiting_signature ->
+ * signed -> submitted -> confirmed`) is the production roadmap beyond the demo,
+ * so `manual_review` and every pre-submission state stay out of this set on
+ * purpose rather than by omission.
  */
-export const fundingIntentStateSchema = z.enum(["submitted"]);
+export const fundingIntentStateSchema = z.enum(["submitted", "confirmed", "failed"]);
 
 export type FundingIntentState = z.infer<typeof fundingIntentStateSchema>;
 
@@ -192,17 +203,43 @@ export type SubmitFundingIntentCommand = z.infer<typeof submitFundingIntentComma
  * signed envelope: a status read reports what was authorized, not the artifact
  * the caller already holds. `applicationId` is nullable because #24 does not
  * require an approved application (`D4`) — the link is traceability only.
+ *
+ * Two fields are derived rather than stored, and both are here because the third
+ * acceptance criterion needs them visible:
+ *
+ *   * `explorerUrl` is built from the hash the API already persists. Storing it
+ *     would be a second source of truth for a fact the hash determines, and it
+ *     cannot live in the browser instead — the web holds no opinion about the
+ *     network (`D1`), so it is told where a hash opens rather than deciding.
+ *   * `failureReason` carries the closed vocabulary from
+ *     `stellar-failure-reason.ts`, never Horizon's own result code.
  */
-export const fundingIntentSnapshotSchema = z.strictObject({
-  intentId: fundingIntentIdSchema,
-  ...fundingIntentTermsShape,
-  state: fundingIntentStateSchema,
-  transactionHash: z.string().trim().min(1),
-  applicationId: applicationIdSchema.nullable(),
-  lastCorrelationId: correlationIdSchema,
-  createdAt: z.iso.datetime({ offset: true }),
-  updatedAt: z.iso.datetime({ offset: true })
-});
+export const fundingIntentSnapshotSchema = z
+  .strictObject({
+    intentId: fundingIntentIdSchema,
+    ...fundingIntentTermsShape,
+    state: fundingIntentStateSchema,
+    transactionHash: z.string().trim().min(1),
+    applicationId: applicationIdSchema.nullable(),
+    explorerUrl: z.url(),
+    failureReason: stellarFailureReasonSchema.nullable(),
+    lastCorrelationId: correlationIdSchema,
+    createdAt: z.iso.datetime({ offset: true }),
+    updatedAt: z.iso.datetime({ offset: true })
+  })
+  .superRefine((value, context) => {
+    // The equivalence form, mirroring the table's CHECK in the migration: a
+    // failed intent must say why, and no other state may carry a reason for a
+    // state it is not in. Leaving this to the reader would let a `submitted`
+    // snapshot advertise a failure that has not happened.
+    if ((value.state === "failed") !== (value.failureReason !== null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["failureReason"],
+        message: "A failure reason is present exactly when the state is failed"
+      });
+    }
+  });
 
 export type FundingIntentSnapshot = z.infer<typeof fundingIntentSnapshotSchema>;
 

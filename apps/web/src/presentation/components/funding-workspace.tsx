@@ -2,6 +2,7 @@
 
 import { Button, Input, Label } from "@heroui/react";
 import { useId, useState } from "react";
+import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { FundingIntentGateway } from "@/application/ports/funding-intent-gateway";
 import type { WalletPort } from "@/application/ports/wallet-port";
@@ -160,7 +161,30 @@ export function FundingWorkspace({
             <dt>Estado</dt>
             <dd>{result.intent.state}</dd>
             <dt>Hash de la transacción</dt>
-            <dd>{result.intent.transactionHash}</dd>
+            <dd className="break-all">{result.intent.transactionHash}</dd>
+            <dt>Explorador Testnet</dt>
+            <dd>
+              {/* The API supplies the link because the browser holds no opinion
+                  about the network (`D1`); composing it here would mean the web
+                  knowing where a Testnet hash opens. */}
+              <a
+                className="underline"
+                href={result.intent.explorerUrl}
+                rel="noreferrer noopener"
+                target="_blank"
+              >
+                Ver la transacción en el explorador
+              </a>
+            </dd>
+            {result.intent.failureReason === null ? null : (
+              <>
+                <dt>Motivo del fallo</dt>
+                <dd>
+                  {failureReasonCopy(result.intent.failureReason)}{" "}
+                  <code className="text-xs opacity-70">{result.intent.failureReason}</code>
+                </dd>
+              </>
+            )}
             <dt>Identificador del envío</dt>
             <dd>{result.intent.intentId}</dd>
           </dl>

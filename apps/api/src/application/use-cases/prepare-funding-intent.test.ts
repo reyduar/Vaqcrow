@@ -76,14 +76,14 @@ function xdrBuilding(
   return { build: vi.fn().mockReturnValue(result), verify: vi.fn() };
 }
 
-function repositoryDouble(): FundingIntentRepositoryPort {
-  return { submit: vi.fn(), findById: vi.fn() };
+function repositoryDouble(): Pick<FundingIntentRepositoryPort, "submit"> {
+  return { submit: vi.fn() };
 }
 
 function depsFor(input: {
   ledger: LedgerPort;
   xdr: FundingIntentXdrPort;
-  repository: FundingIntentRepositoryPort;
+  repository: Pick<FundingIntentRepositoryPort, "submit">;
 }) {
   return {
     ledger: input.ledger,
@@ -128,8 +128,10 @@ describe("prepareFundingIntent", () => {
       amountStroops: 10_000_000n,
       maxTimeUnixSeconds: NOW_SECONDS + VALIDITY_SECONDS
     });
+    // The double is in scope on purpose and must stay untouched. It carries only
+    // the write operation, so a prepare step that reached for the confirmation
+    // surface #25 adds could not even type-check against it.
     expect(repository.submit).not.toHaveBeenCalled();
-    expect(repository.findById).not.toHaveBeenCalled();
   });
 
   it("forwards a present memo to the builder", async () => {

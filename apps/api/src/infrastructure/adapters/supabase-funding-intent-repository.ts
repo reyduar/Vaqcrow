@@ -2,13 +2,15 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { parseCorrelationId } from "@vaqcrow/contracts";
 import type { CorrelationId } from "@vaqcrow/contracts";
 import type {
+  FundingIntentConfirmation,
   FundingIntentRecord,
   FundingIntentRepositoryError,
   FundingIntentRepositoryPort,
   FundingIntentRepositoryResult,
   FundingIntentState,
   FundingIntentSubmission,
-  FundingIntentSubmissionOutcome
+  FundingIntentSubmissionOutcome,
+  FundingIntentTransition
 } from "../../application/ports/funding-intent-repository-port.js";
 
 const TABLE = "funding_intent";
@@ -22,11 +24,13 @@ const TABLE = "funding_intent";
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 
 /**
- * #24 can persist exactly one state (acceptance criterion 3, D3). The table
- * CHECK enforces the same fact, so this constant and the constraint cannot
- * drift apart silently.
+ * A verified submission can only ever produce this state, so the insert pins it.
+ * Every other state is reached by a transition, never by a write.
  */
 const SUBMITTED_STATE: FundingIntentState = "submitted";
+
+/** The states the table's CHECK admits, for decoding a row back. */
+const PERSISTED_STATES: readonly FundingIntentState[] = ["submitted", "confirmed", "failed"];
 
 export class SupabaseFundingIntentRepository implements FundingIntentRepositoryPort {
   constructor(private readonly client: SupabaseClient) {}
@@ -76,6 +80,131 @@ export class SupabaseFundingIntentRepository implements FundingIntentRepositoryP
       }
 
       return { ok: true, value: this.toRecord(data) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async recordAttempt(input: {
+    intentId: string;
+    attempts: number;
+    nextAttemptAt: string;
+    correlationId: CorrelationId;
+  }): Promise<FundingIntentRepositoryResult<FundingIntentTransition>> {
+    return this.transition({
+      intentId: input.intentId,
+      // No `state` key: an inconclusive attempt leaves the intent `submitted`
+      // and only moves the schedule forward, which is what makes the next run a
+      // resumption (D3).
+      update: {
+        confirmation_attempts: input.attempts,
+        next_attempt_at: input.nextAttemptAt
+      },
+      correlationId: input.correlationId
+    });
+  }
+
+  async recordConfirmation(input: {
+    intentId: string;
+    confirmation: FundingIntentConfirmation;
+    correlationId: CorrelationId;
+  }): Promise<FundingIntentRepositoryResult<FundingIntentTransition>> {
+    const { confirmation } = input;
+
+    // The union is exhaustive, so a terminal state can never be written without
+    // the evidence it claims: `confirmed` always carries its ledger, `failed`
+    // always carries its reason. The table's CHECK pins the same invariant, so
+    // the adapter and the database cannot drift apart silently.
+    const update =
+      confirmation.outcome === "confirmed"
+        ? {
+            state: "confirmed",
+            confirmed_at: confirmation.confirmedAt,
+            ledger_sequence: confirmation.ledgerSequence
+          }
+        : { state: "failed", failure_reason: confirmation.reason };
+
+    return this.transition({
+      intentId: input.intentId,
+      update,
+      correlationId: input.correlationId
+    });
+  }
+
+  async findPending(input: {
+    now: string;
+    limit: number;
+  }): Promise<FundingIntentRepositoryResult<readonly FundingIntentRecord[]>> {
+    try {
+      const { data, error } = await this.client
+        .from(TABLE)
+        .select()
+        // Only a row still awaiting an outcome is pending; a terminal row is
+        // never polled again, and the partial index matches this predicate.
+        .eq("state", SUBMITTED_STATE)
+        .lte("next_attempt_at", input.now)
+        .order("next_attempt_at", { ascending: true })
+        .limit(input.limit);
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error, undefined, undefined) };
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("Malformed pending read");
+      }
+
+      // Strict on purpose: one malformed row makes the whole read `unavailable`
+      // rather than being skipped. A skipped row would silently stop being
+      // polled, which is indistinguishable from a confirmation that never came.
+      return { ok: true, value: data.map((row) => this.toRecord(row)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * Applies a state-machine transition, conditionally on the row still awaiting
+   * an outcome.
+   *
+   * `WHERE intent_id = $1 AND state = 'submitted'` is what makes a replayed
+   * confirmation a non-application instead of a double-apply — the same
+   * conditional-update shape `recordHumanDecision` uses, and the reason this is
+   * not an upsert. A zero-row match is ambiguous between "already terminal" and
+   * "no such intent", so one follow-up read tells the two apart, exactly as
+   * `resolveDuplicateSubmission` disambiguates a lost insert race.
+   */
+  private async transition(input: {
+    intentId: string;
+    update: Record<string, unknown>;
+    correlationId: CorrelationId;
+  }): Promise<FundingIntentRepositoryResult<FundingIntentTransition>> {
+    const { intentId, update, correlationId } = input;
+
+    try {
+      const { data, error } = await this.client
+        .from(TABLE)
+        .update({ ...update, last_correlation_id: correlationId })
+        .eq("intent_id", intentId)
+        .eq("state", SUBMITTED_STATE)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error, correlationId, intentId) };
+      }
+
+      if (data) {
+        return { ok: true, value: { record: this.toRecord(data), applied: true } };
+      }
+
+      const existing = await this.findById(intentId);
+
+      if (!existing.ok) {
+        return existing;
+      }
+
+      return { ok: true, value: { record: existing.value, applied: false } };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
     }
@@ -155,6 +284,9 @@ export class SupabaseFundingIntentRepository implements FundingIntentRepositoryP
     const value = row as Record<string, unknown>;
     const memo = value.memo;
     const applicationId = value.application_id;
+    const confirmedAt = value.confirmed_at;
+    const ledgerSequence = value.ledger_sequence;
+    const failureReason = value.failure_reason;
 
     return {
       intentId: this.toText(value.intent_id),
@@ -173,6 +305,20 @@ export class SupabaseFundingIntentRepository implements FundingIntentRepositoryP
         ? {}
         : { applicationId: this.toText(applicationId) }),
       lastCorrelationId: parseCorrelationId(value.last_correlation_id),
+      confirmationAttempts: this.toAttempts(value.confirmation_attempts),
+      nextAttemptAt: this.toText(value.next_attempt_at),
+      // Each optional field is absent rather than null when the column is null,
+      // matching how `memo` and `applicationId` already cross this boundary. A
+      // present-but-empty reason is malformed, not an absent one.
+      ...(confirmedAt === null || confirmedAt === undefined
+        ? {}
+        : { confirmedAt: this.toText(confirmedAt) }),
+      ...(ledgerSequence === null || ledgerSequence === undefined
+        ? {}
+        : { ledgerSequence: this.toBigint(ledgerSequence).toString() }),
+      ...(failureReason === null || failureReason === undefined
+        ? {}
+        : { failureReason: this.toText(failureReason) }),
       createdAt: this.toText(value.created_at),
       updatedAt: this.toText(value.updated_at)
     };
@@ -202,13 +348,28 @@ export class SupabaseFundingIntentRepository implements FundingIntentRepositoryP
   }
 
   private toState(value: unknown): FundingIntentState {
-    // #24's vocabulary is exactly one state; a row holding anything else means
-    // the shape changed underneath this adapter (#25 widens it deliberately).
-    if (value !== SUBMITTED_STATE) {
+    // A row holding anything outside the three demo states means the shape
+    // changed underneath this adapter. That is a corrupt read, not a state to
+    // pass through — `manual_review` and the pre-submission states of
+    // product.md §8.1 are production roadmap, so they are refused here too.
+    if (typeof value !== "string" || !PERSISTED_STATES.includes(value as FundingIntentState)) {
       throw new Error("Unexpected funding intent state");
     }
 
-    return SUBMITTED_STATE;
+    return value as FundingIntentState;
+  }
+
+  /**
+   * A non-negative safe integer. PostgREST renders `integer` as a JSON number,
+   * so the count is checked rather than trusted: a negative or fractional
+   * attempt count is a malformed row, not a schedule to act on.
+   */
+  private toAttempts(value: unknown): number {
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+      throw new Error("Malformed confirmation attempt count");
+    }
+
+    return value;
   }
 
   private toBigint(value: unknown): bigint {

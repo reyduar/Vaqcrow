@@ -22,12 +22,32 @@ export type StellarNetwork = typeof SUPPORTED_STELLAR_NETWORK;
 export const STELLAR_TESTNET_HORIZON_URL = "https://horizon-testnet.stellar.org";
 export const STELLAR_TESTNET_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 
+/**
+ * The canonical Testnet explorer, used when `STELLAR_EXPLORER_URL` is absent.
+ *
+ * `DEMO.md` §7 line 277 lists "URL del explorador" among the minimum variables, so
+ * it is configurable — but a demo that forgot to set it should still produce a
+ * working link rather than none.
+ */
+export const STELLAR_TESTNET_EXPLORER_URL = "https://stellar.expert/explorer/testnet";
+
 const TESTNET_HORIZON_HOST = "horizon-testnet.stellar.org";
 
 export type StellarConfig = {
   readonly network: StellarNetwork;
   readonly horizonUrl: string;
   readonly networkPassphrase: string;
+  /**
+   * The base for a transaction link, without a trailing slash.
+   *
+   * Unlike `horizonUrl`, this is **not** closed to Testnet, and the difference is
+   * deliberate: a Horizon endpoint decides where a signed envelope is submitted,
+   * so pointing it at another network is a security boundary. An explorer base
+   * only decides which page a hash opens, so a wrong one produces a broken link
+   * and nothing else. Validating it as strictly as Horizon would buy no safety and
+   * would refuse a legitimate self-hosted explorer.
+   */
+  readonly explorerUrl: string;
 };
 
 export function parseStellarConfig(env: EnvSource): StellarConfig {
@@ -56,6 +76,7 @@ export function parseStellarConfigResult(env: EnvSource): ParseResult<StellarCon
   }
 
   const horizonUrl = resolveHorizonUrl(env, issues);
+  const explorerUrl = resolveExplorerUrl(env, issues);
 
   if (issues.length > 0) {
     return { ok: false, issues };
@@ -66,9 +87,41 @@ export function parseStellarConfigResult(env: EnvSource): ParseResult<StellarCon
     value: Object.freeze({
       network: SUPPORTED_STELLAR_NETWORK,
       horizonUrl,
-      networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE
+      networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE,
+      explorerUrl
     })
   };
+}
+
+/**
+ * Resolves the explorer base. Absent means the canonical Testnet explorer; a
+ * present value must be an absolute `http(s)` URL, because the link is built by
+ * appending a path to it and a relative base could not produce one.
+ *
+ * A trailing slash is stripped rather than tolerated: leaving it would produce
+ * `…/testnet//tx/<hash>` in every link, which is a doubled separator nobody would
+ * notice until they looked.
+ */
+function resolveExplorerUrl(env: EnvSource, issues: ConfigIssue[]): string {
+  const configured = readPresent(env, "STELLAR_EXPLORER_URL");
+
+  if (configured === undefined) {
+    return STELLAR_TESTNET_EXPLORER_URL;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(configured);
+  } catch {
+    issues.push(invalidIssue("STELLAR_EXPLORER_URL", "must be an absolute URL"));
+    return STELLAR_TESTNET_EXPLORER_URL;
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    issues.push(invalidIssue("STELLAR_EXPLORER_URL", "must use http or https"));
+  }
+
+  return configured.replace(/\/+$/, "");
 }
 
 /**

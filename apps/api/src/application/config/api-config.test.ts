@@ -8,7 +8,7 @@ import {
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import type { EnvSource } from "./env-source.js";
-import { parseStellarConfig, STELLAR_TESTNET_NETWORK_PASSPHRASE } from "./stellar-config.js";
+import { parseStellarConfig, STELLAR_TESTNET_EXPLORER_URL, STELLAR_TESTNET_NETWORK_PASSPHRASE } from "./stellar-config.js";
 import { parseSupabaseConfig } from "./supabase-config.js";
 
 /** A complete, valid environment. Values are synthetic fixtures, not credentials. */
@@ -52,6 +52,14 @@ describe("parseApiConfig — accepted configuration", () => {
     expect(config.stellar.networkPassphrase).toBe(STELLAR_TESTNET_NETWORK_PASSPHRASE);
   });
 
+  it("defaults the explorer URL to the canonical Testnet explorer", () => {
+    // The constant is pinned by its own literal, not only compared against the
+    // parsed value: two `undefined`s would satisfy that comparison while proving
+    // nothing at all.
+    expect(STELLAR_TESTNET_EXPLORER_URL).toBe("https://stellar.expert/explorer/testnet");
+    expect(parseApiConfig(VALID_ENV).stellar.explorerUrl).toBe(STELLAR_TESTNET_EXPLORER_URL);
+  });
+
   it("accepts an explicit port and log level", () => {
     const config = parseApiConfig({ ...VALID_ENV, PORT: "8080", LOG_LEVEL: "debug" });
 
@@ -63,6 +71,29 @@ describe("parseApiConfig — accepted configuration", () => {
     const config = parseApiConfig({ ...VALID_ENV, STELLAR_HORIZON_URL: "http://127.0.0.1:8001" });
 
     expect(config.stellar.horizonUrl).toBe("http://127.0.0.1:8001");
+  });
+
+  it("accepts an explicit explorer URL and strips its trailing slashes", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      STELLAR_EXPLORER_URL: "https://stellar.expert/explorer/testnet/"
+    });
+
+    // Normalised here rather than at every use: the link is built by appending a
+    // path, so a base that kept its slash would produce a doubled one.
+    expect(config.stellar.explorerUrl).toBe("https://stellar.expert/explorer/testnet");
+  });
+
+  it("accepts an explorer that is not the canonical Testnet one", () => {
+    // Deliberately unlike the Horizon URL. A Horizon endpoint decides where money
+    // is submitted, so it is closed to Testnet; the explorer is a display link, so
+    // pointing it elsewhere cannot move anything.
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      STELLAR_EXPLORER_URL: "https://example.invalid/explorer"
+    });
+
+    expect(config.stellar.explorerUrl).toBe("https://example.invalid/explorer");
   });
 
   it.each(["local", "ci", "preview", "demo"])("accepts the %s environment", (environment) => {
@@ -194,6 +225,16 @@ describe("parseStellarConfig — the Testnet boundary", () => {
     );
 
     expect(issue?.code).toBe("invalid");
+  });
+
+  it.each([
+    ["a relative explorer URL", "/explorer"],
+    ["an explorer URL with no scheme", "stellar.expert/explorer/testnet"],
+    ["an explorer URL on a non-http scheme", "ftp://stellar.expert/explorer/testnet"]
+  ])("rejects %s", (_description, explorerUrl) => {
+    expect(issueFor({ ...VALID_ENV, STELLAR_EXPLORER_URL: explorerUrl }, "STELLAR_EXPLORER_URL")?.code).toBe(
+      "invalid"
+    );
   });
 });
 

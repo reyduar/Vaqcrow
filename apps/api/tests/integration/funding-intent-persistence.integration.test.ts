@@ -42,16 +42,19 @@ import { syntheticFundingIntentId } from "./support/synthetic-id.js";
  * WHAT IS ALREADY LIVE-VERIFIED OUTSIDE THIS SUITE
  *
  * On 2026-09-21 the funding-intent persistence layer was verified by direct
- * query against the live project, before this Task: the migration's structure
- * (16 columns, RLS enabled with zero policies, one trigger, the five intended
- * constraints), its grants, and its own idempotency (re-running the SQL left
- * every count unchanged). A rolled-back block proved every constraint bites —
- * a non-`submitted` state and a zero amount are both refused, the `updated_at`
- * trigger fires, and deleting an application keeps the funding row while
- * nulling the link. PostgREST's decimal-string-to-`bigint` coercion was
- * confirmed the same way (advisory A2). Those were one-shot operational checks,
- * not a repeatable suite, and they are recorded in the Feature's iteration log;
- * this file does not pretend to replace them.
+ * query against the live project, before this Task: the migration's structure,
+ * its grants, and its own idempotency (re-running the SQL left every count
+ * unchanged). A rolled-back block proved every constraint bites, and PostgREST's
+ * decimal-string-to-`bigint` coercion was confirmed the same way (advisory A2).
+ * Those were one-shot operational checks, not a repeatable suite.
+ *
+ * The probes below are the part of that work that can be repeatable, and they
+ * were added when #25's own migration landed: the confirmation columns exist, the
+ * three new CHECKs bite in both directions, and the column-scoped UPDATE grant
+ * lets the API move `state` while refusing to rewrite the financial evidence.
+ * Everything here is residue-free by construction — a refused write persists
+ * nothing, and a privilege check runs before row matching, so a non-existent id
+ * still exercises the grant.
  */
 
 const FUNDING_INTENT_TABLE = "funding_intent";
@@ -99,12 +102,17 @@ describe.skipIf(!hasIntegrationCredentials())("funding intent persistence (live 
     expect(inserted.error?.code).toBe("42501");
   });
 
-  it("refuses a state outside #24's vocabulary at the CHECK constraint", async () => {
+  it("refuses a state outside the demo's vocabulary at the CHECK constraint", async () => {
     const intentId = syntheticFundingIntentId();
 
+    // `manual_review` is the production-roadmap state product.md §8.1 names, and
+    // it stays outside the vocabulary #25 admits. `confirmed` was this fixture's
+    // invalid value until #25 made it a real state; using it now would still be
+    // refused, but by the terminal-evidence CHECK rather than the vocabulary one,
+    // so the assertion would pass while testing something else.
     const refused = await getServiceRoleClient()
       .from(FUNDING_INTENT_TABLE)
-      .insert(rawFundingRow({ intent_id: intentId, state: "confirmed" }));
+      .insert(rawFundingRow({ intent_id: intentId, state: "manual_review" }));
 
     expect(refused.status).toBe(400);
     expect(refused.error?.code).toBe("23514");
@@ -131,6 +139,106 @@ describe.skipIf(!hasIntegrationCredentials())("funding intent persistence (live 
       .select("intent_id")
       .eq("intent_id", intentId);
     expect(residue.data).toEqual([]);
+  });
+
+  it("exposes the confirmation columns #25 added", async () => {
+    const { data, error } = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .select("confirmation_attempts, next_attempt_at, confirmed_at, ledger_sequence, failure_reason")
+      .limit(1);
+
+    // PostgREST answers a missing column with 42703, so an empty list and no error
+    // is the residue-free way to assert the shape: it proves the columns exist
+    // without needing a row to read.
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
+
+  it("refuses a confirmed state without its ledger evidence", async () => {
+    const intentId = syntheticFundingIntentId();
+
+    const refused = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .insert(rawFundingRow({ intent_id: intentId, state: "confirmed" }));
+
+    expect(refused.status).toBe(400);
+    expect(refused.error?.code).toBe("23514");
+    expect(refused.error?.message).toContain("funding_intent_confirmed_evidence_check");
+
+    const residue = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .select("intent_id")
+      .eq("intent_id", intentId);
+    expect(residue.data).toEqual([]);
+  });
+
+  it("refuses a submitted state that carries confirmed evidence", async () => {
+    const intentId = syntheticFundingIntentId();
+
+    // The equivalence form, in the direction a one-directional CHECK would have
+    // missed: a non-terminal row holding evidence for a state it is not in is
+    // incoherent rather than merely untidy.
+    const refused = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .insert(
+        rawFundingRow({
+          intent_id: intentId,
+          state: "submitted",
+          confirmed_at: EXPIRES_AT,
+          ledger_sequence: 1234567
+        })
+      );
+
+    expect(refused.status).toBe(400);
+    expect(refused.error?.code).toBe("23514");
+    expect(refused.error?.message).toContain("funding_intent_confirmed_evidence_check");
+  });
+
+  it("refuses a failed state without a reason", async () => {
+    const intentId = syntheticFundingIntentId();
+
+    const refused = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .insert(rawFundingRow({ intent_id: intentId, state: "failed" }));
+
+    expect(refused.status).toBe(400);
+    expect(refused.error?.code).toBe("23514");
+    expect(refused.error?.message).toContain("funding_intent_failed_evidence_check");
+  });
+
+  it("refuses a negative confirmation attempt count", async () => {
+    const intentId = syntheticFundingIntentId();
+
+    const refused = await getServiceRoleClient()
+      .from(FUNDING_INTENT_TABLE)
+      .insert(rawFundingRow({ intent_id: intentId, confirmation_attempts: -1 }));
+
+    expect(refused.status).toBe(400);
+    expect(refused.error?.code).toBe("23514");
+    expect(refused.error?.message).toContain("funding_intent_attempts_check");
+  });
+
+  it("lets the API move the state while refusing to rewrite the financial evidence", async () => {
+    const unknown = syntheticFundingIntentId();
+    const client = getServiceRoleClient();
+
+    // A privilege check runs before row matching, so a non-existent id still
+    // exercises the grant and leaves nothing behind. This is the behavioural form
+    // of the column-scoped grant — stronger than reading the catalogue, because it
+    // is PostgREST's own enforcement that answers.
+    const financial = await client
+      .from(FUNDING_INTENT_TABLE)
+      .update({ amount_stroops: 1 })
+      .eq("intent_id", unknown);
+
+    expect(financial.error?.code).toBe("42501");
+
+    const transition = await client
+      .from(FUNDING_INTENT_TABLE)
+      .update({ state: "submitted", confirmation_attempts: 0 })
+      .eq("intent_id", unknown);
+
+    expect(transition.error).toBeNull();
   });
 
   it("reports not_found for an unknown intent id", async () => {
