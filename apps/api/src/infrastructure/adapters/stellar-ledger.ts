@@ -1,6 +1,7 @@
-import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
+import { NotFoundError } from "@stellar/stellar-sdk";
 import type { StellarConfig, StellarNetwork } from "../../application/config/stellar-config.js";
 import type { LedgerAccount, LedgerPort, LedgerResult } from "../../application/ports/ledger-port.js";
+import { createHorizonServer } from "./stellar-horizon.js";
 import { xlmToStroops } from "./stellar-amounts.js";
 
 /**
@@ -44,13 +45,7 @@ export class StellarLedger implements LedgerPort {
 
   constructor(config: StellarConfig, accounts?: HorizonAccountSource) {
     this.network = config.network;
-    // #14 admits a loopback Horizon over plain HTTP so a local double can stand
-    // in for Testnet. The SDK refuses an insecure URL unless the caller says it
-    // meant it, so the scheme decides — and only the scheme #14 already
-    // validated can reach here.
-    this.accounts =
-      accounts ??
-      new Horizon.Server(config.horizonUrl, { allowHttp: usesPlainHttp(config.horizonUrl) });
+    this.accounts = accounts ?? createHorizonServer(config);
   }
 
   async getAccount(accountId: string): Promise<LedgerResult<LedgerAccount>> {
@@ -74,11 +69,6 @@ export class StellarLedger implements LedgerPort {
     // difference would make a real anomaly look like a transient outage.
     return { ok: true, value: toLedgerAccount(account) };
   }
-}
-
-/** `https://` does not match this prefix; only a genuinely plain-HTTP URL does. */
-function usesPlainHttp(url: string): boolean {
-  return url.startsWith("http://");
 }
 
 function toLedgerAccount(account: HorizonAccountRecord): LedgerAccount {

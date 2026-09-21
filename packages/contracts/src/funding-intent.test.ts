@@ -76,6 +76,12 @@ const validSnapshot = {
   state: "submitted",
   transactionHash: "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
   applicationId: null,
+  // Derived by the API from the hash it already persists, never stored: a stored
+  // link would be a second source of truth for a fact the hash determines.
+  explorerUrl: "https://stellar.expert/explorer/testnet/tx/d0a1b2c3",
+  // Absent unless the intent failed, which the schema enforces in both
+  // directions rather than leaving to the reader.
+  failureReason: null,
   lastCorrelationId: VALID_CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
@@ -116,15 +122,21 @@ describe("stroopsSchema", () => {
 });
 
 describe("fundingIntentStateSchema", () => {
-  it("accepts exactly the submitted state", () => {
-    expect(fundingIntentStateSchema.options).toEqual(["submitted"]);
+  it("accepts exactly the three states the demo can produce", () => {
+    // #24 could persist only `submitted`; #25 adds the two terminal states
+    // Horizon is the sole authority for. The set is exact — `manual_review`
+    // from product.md §8.1 stays production roadmap, per D2.
+    expect(fundingIntentStateSchema.options).toEqual(["submitted", "confirmed", "failed"]);
     expect(parseFundingIntentState("submitted")).toBe("submitted");
+    expect(parseFundingIntentState("confirmed")).toBe("confirmed");
+    expect(parseFundingIntentState("failed")).toBe("failed");
   });
 
   it.each([
     ["a near-miss casing", "Submitted"],
-    ["a production-roadmap state", "confirmed"],
-    ["a production-roadmap state", "draft"],
+    ["a production-roadmap state", "manual_review"],
+    ["a pre-submission state", "awaiting_signature"],
+    ["a pre-submission state", "draft"],
     ["an unrelated value", "pending"],
     ["a numeric value", 1],
     ["a null value", null]
@@ -408,14 +420,59 @@ describe("fundingIntentSnapshotSchema", () => {
     ["a malformed intent ID", { intentId: "not-a-uuid" }],
     ["a malformed correlation ID", { lastCorrelationId: "not-a-uuid" }],
     ["a malformed application ID", { applicationId: "not-a-uuid" }],
-    ["a state the demo cannot produce", { state: "confirmed" }],
+    ["a state the demo cannot produce", { state: "manual_review" }],
     ["a JSON number amount", { amountStroops: 10_000_000 }],
     ["an empty transaction hash", { transactionHash: "" }],
+    ["a relative explorer link", { explorerUrl: "/explorer/testnet/tx/abc" }],
+    ["an explorer link that is not a URL", { explorerUrl: "stellar.expert" }],
     ["a datetime without an offset", { createdAt: "2026-09-21T12:00:00" }]
   ])("rejects %s", (_description, override) => {
     expect(fundingIntentSnapshotSchema.safeParse({ ...validSnapshot, ...override }).success).toBe(
       false
     );
+  });
+
+  it("accepts a failed intent that carries a reason", () => {
+    const parsed = parseFundingIntentSnapshot({
+      ...validSnapshot,
+      state: "failed",
+      failureReason: "insufficient_balance"
+    });
+
+    expect(parsed.state).toBe("failed");
+    expect(parsed.failureReason).toBe("insufficient_balance");
+  });
+
+  it("accepts a confirmed intent, which carries no reason", () => {
+    const parsed = parseFundingIntentSnapshot({ ...validSnapshot, state: "confirmed" });
+
+    expect(parsed.state).toBe("confirmed");
+    expect(parsed.failureReason).toBeNull();
+  });
+
+  it.each([
+    ["a failed intent with no reason", { state: "failed", failureReason: null }],
+    ["a submitted intent that carries a reason", { state: "submitted", failureReason: "expired" }],
+    ["a confirmed intent that carries a reason", { state: "confirmed", failureReason: "expired" }]
+  ])("rejects %s", (_description, override) => {
+    // The equivalence form, mirroring the table's CHECK: a terminal row without
+    // its evidence and a non-terminal row carrying evidence for a state it is not
+    // in are both incoherent, and neither is merely untidy.
+    expect(fundingIntentSnapshotSchema.safeParse({ ...validSnapshot, ...override }).success).toBe(
+      false
+    );
+  });
+
+  it("refuses Horizon's own result code as a reason", () => {
+    // The vocabulary is closed at the adapter (D10). A raw code reaching the wire
+    // would mean the mapping was bypassed somewhere, so it is refused here too.
+    expect(
+      fundingIntentSnapshotSchema.safeParse({
+        ...validSnapshot,
+        state: "failed",
+        failureReason: "tx_bad_seq"
+      }).success
+    ).toBe(false);
   });
 
   it("rejects unknown keys", () => {

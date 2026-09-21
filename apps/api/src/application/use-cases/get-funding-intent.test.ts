@@ -5,7 +5,7 @@ import type {
   FundingIntentRepositoryPort,
   FundingIntentRepositoryResult
 } from "../ports/funding-intent-repository-port.js";
-import { getFundingIntent } from "./get-funding-intent.js";
+import { getFundingIntent, type FundingIntentLookup } from "./get-funding-intent.js";
 
 const INTENT_ID = "123e4567-e89b-42d3-a456-426614174000";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -15,6 +15,8 @@ const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 const SIGNED_XDR = "AAAAAgAAAABfakeSignedEnvelope";
 const TRANSACTION_HASH = "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
 const EXPIRES_AT = "2026-09-21T12:00:00.000Z";
+const EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
+const NEXT_ATTEMPT_AT = "2026-09-21T12:00:10.000Z";
 
 const intentId = parseFundingIntentId(INTENT_ID);
 const correlationId = parseCorrelationId(CORRELATION_ID);
@@ -32,6 +34,10 @@ const record: FundingIntentRecord = {
   transactionHash: TRANSACTION_HASH,
   state: "submitted",
   lastCorrelationId: correlationId,
+  // The confirmation schedule #25 persists. A status read reports state and
+  // ignores these, but the record mirrors the row, so they are present.
+  confirmationAttempts: 0,
+  nextAttemptAt: NEXT_ATTEMPT_AT,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
 };
@@ -49,6 +55,8 @@ const expectedSnapshot = parseFundingIntentSnapshot({
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
   applicationId: null,
+  explorerUrl: `${EXPLORER_BASE_URL}/tx/${TRANSACTION_HASH}`,
+  failureReason: null,
   lastCorrelationId: CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
@@ -57,19 +65,21 @@ const expectedSnapshot = parseFundingIntentSnapshot({
 function repositoryReturning(
   result: FundingIntentRepositoryResult<FundingIntentRecord>
 ): {
-  repository: FundingIntentRepositoryPort;
+  repository: FundingIntentLookup;
   findById: ReturnType<typeof vi.fn<FundingIntentRepositoryPort["findById"]>>;
 } {
   const findById = vi.fn<FundingIntentRepositoryPort["findById"]>().mockResolvedValue(result);
 
-  return { repository: { submit: vi.fn(), findById }, findById };
+  // Only the lookup operation: the port's wider surface is deliberately not
+  // required here, so a status read cannot quietly grow a dependency on it.
+  return { repository: { findById }, findById };
 }
 
 describe("getFundingIntent", () => {
   it("returns the persisted intent as a snapshot", async () => {
     const { repository } = repositoryReturning({ ok: true, value: record });
 
-    const result = await getFundingIntent(repository, intentId);
+    const result = await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(result).toEqual({ ok: true, value: expectedSnapshot });
   });
@@ -77,7 +87,7 @@ describe("getFundingIntent", () => {
   it("looks the intent up by the id it was given", async () => {
     const { repository, findById } = repositoryReturning({ ok: true, value: record });
 
-    await getFundingIntent(repository, intentId);
+    await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(findById).toHaveBeenCalledOnce();
     expect(findById).toHaveBeenCalledWith(INTENT_ID);
@@ -89,7 +99,7 @@ describe("getFundingIntent", () => {
       value: { ...record, applicationId: "87654321-4321-4abc-8def-123456789abc" }
     });
 
-    const result = await getFundingIntent(repository, intentId);
+    const result = await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(result.ok && result.value.applicationId).toBe("87654321-4321-4abc-8def-123456789abc");
   });
@@ -97,7 +107,7 @@ describe("getFundingIntent", () => {
   it("drops the signed envelope from the reported snapshot", async () => {
     const { repository } = repositoryReturning({ ok: true, value: record });
 
-    const result = await getFundingIntent(repository, intentId);
+    const result = await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(result.ok && "signedXdr" in result.value).toBe(false);
   });
@@ -113,7 +123,7 @@ describe("getFundingIntent", () => {
   ])("maps %s", async (_description, repositoryResult, expectedCode) => {
     const { repository } = repositoryReturning(repositoryResult);
 
-    const result = await getFundingIntent(repository, intentId);
+    const result = await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(result).toEqual({ ok: false, error: { code: expectedCode } });
   });
@@ -124,7 +134,7 @@ describe("getFundingIntent", () => {
       value: { ...record, transactionHash: "" }
     });
 
-    const result = await getFundingIntent(repository, intentId);
+    const result = await getFundingIntent({ repository, explorerBaseUrl: EXPLORER_BASE_URL }, intentId);
 
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
   });

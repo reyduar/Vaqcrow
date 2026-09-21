@@ -38,6 +38,8 @@ const snapshot = {
   state: "submitted",
   transactionHash: "TRANSACTION-HASH",
   applicationId: null,
+  explorerUrl: "https://stellar.expert/explorer/testnet/tx/TRANSACTION-HASH",
+  failureReason: null,
   lastCorrelationId: CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:00.000Z"
@@ -120,6 +122,48 @@ describe("FundingWorkspace", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/Env[ií]o registrado/i);
     expect(screen.getByText("TRANSACTION-HASH")).toBeInTheDocument();
+  });
+
+  it("shows the explorer link the server supplied, rather than composing one", async () => {
+    render(<FundingWorkspace gateway={createGateway()} wallet={createWallet()} applicationId={null} />);
+    await fillAndConnect();
+    fillForm();
+
+    submit();
+
+    // The third acceptance criterion. The href is asserted against the snapshot's
+    // own value on purpose: the browser must render where the API pointed, not
+    // rebuild the link from a network convention it would have to know.
+    const link = await screen.findByRole("link", { name: /explorador/i });
+    expect(link).toHaveAttribute("href", snapshot.explorerUrl);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("rel")).toContain("noreferrer");
+  });
+
+  it("shows why a failed transaction failed, in words and in the contract's own value", async () => {
+    const failed = { ...snapshot, state: "failed" as const, failureReason: "insufficient_balance" as const };
+    const gateway = createGateway({
+      submit: vi.fn().mockResolvedValue({ applied: true, intent: failed })
+    });
+    render(<FundingWorkspace gateway={gateway} wallet={createWallet()} applicationId={null} />);
+    await fillAndConnect();
+    fillForm();
+
+    submit();
+
+    expect(await screen.findByText(/no alcanza a cubrir el monto/i)).toBeInTheDocument();
+    expect(screen.getByText("insufficient_balance")).toBeInTheDocument();
+  });
+
+  it("shows no failure reason while the intent has not failed", async () => {
+    render(<FundingWorkspace gateway={createGateway()} wallet={createWallet()} applicationId={null} />);
+    await fillAndConnect();
+    fillForm();
+
+    submit();
+
+    await screen.findByRole("status");
+    expect(screen.queryByText(/Motivo del fallo/i)).not.toBeInTheDocument();
   });
 
   it("distinguishes an exact replay from a first submission", async () => {

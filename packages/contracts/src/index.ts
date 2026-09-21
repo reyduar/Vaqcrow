@@ -79,3 +79,6 @@ export type {
   SalesPeriodStatus,
   SmeRequest
 } from "./sme-evidence.js";
+
+export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar-failure-reason.js";
+export type { StellarFailureReason } from "./stellar-failure-reason.js";

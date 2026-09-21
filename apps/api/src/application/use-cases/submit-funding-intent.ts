@@ -10,6 +10,7 @@ import type {
   FundingIntentRecord,
   FundingIntentRepositoryPort
 } from "../ports/funding-intent-repository-port.js";
+import { transactionExplorerUrl } from "../explorer-url.js";
 
 /**
  * Verifies a signed envelope against the intent it claims to be, then persists
@@ -31,7 +32,14 @@ import type {
 
 export interface SubmitFundingIntentDeps {
   readonly xdr: FundingIntentXdrPort;
-  readonly repository: FundingIntentRepositoryPort;
+  /**
+   * A verified submission writes one row and reads nothing back, so that is the
+   * whole repository surface it depends on — `#25`'s confirmation operations are
+   * not part of this use case's contract.
+   */
+  readonly repository: Pick<FundingIntentRepositoryPort, "submit">;
+  /** The base a transaction link is built from. Normalised by configuration. */
+  readonly explorerBaseUrl: string;
 }
 
 export type SubmitFundingIntentError =
@@ -114,7 +122,7 @@ export async function submitFundingIntent(
     return {
       ok: true,
       value: {
-        intent: toFundingIntentSnapshot(submitted.value.record),
+        intent: toFundingIntentSnapshot(submitted.value.record, deps.explorerBaseUrl),
         applied: submitted.value.applied
       }
     };
@@ -127,9 +135,12 @@ export async function submitFundingIntent(
  * The one projection from a persisted record to the reported snapshot. Kept
  * module-private because this repo's use cases depend only on ports and
  * contracts — never on each other — and that isolation is worth a repeated
- * fifteen-line pure function.
+ * twenty-line pure function.
  */
-function toFundingIntentSnapshot(record: FundingIntentRecord): FundingIntentSnapshot {
+function toFundingIntentSnapshot(
+  record: FundingIntentRecord,
+  explorerBaseUrl: string
+): FundingIntentSnapshot {
   return parseFundingIntentSnapshot({
     intentId: record.intentId,
     network: record.network,
@@ -145,6 +156,8 @@ function toFundingIntentSnapshot(record: FundingIntentRecord): FundingIntentSnap
     state: record.state,
     transactionHash: record.transactionHash,
     applicationId: record.applicationId ?? null,
+    explorerUrl: transactionExplorerUrl(explorerBaseUrl, record.transactionHash),
+    failureReason: record.failureReason ?? null,
     lastCorrelationId: record.lastCorrelationId,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt

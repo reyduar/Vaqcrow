@@ -40,6 +40,7 @@ import type { FundingIntentRouteDependencies } from "./routes/funding-intent.rou
 
 const NETWORK = "testnet";
 const NETWORK_PASSPHRASE = Networks.TESTNET;
+const EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
 /** A passphrase the prepared envelope is deliberately *not* signed for. */
 const OTHER_NETWORK_PASSPHRASE = "Vaqcrow Test Network ; September 2026";
 
@@ -124,7 +125,9 @@ function ledger(): LedgerPort {
  * identical submission returns the original row with `applied: false`) while
  * every verified fact it stores comes from what the real use case submitted.
  */
-function inMemoryRepository(submissions: CapturedSubmission[]): FundingIntentRepositoryPort {
+function inMemoryRepository(
+  submissions: CapturedSubmission[]
+): Pick<FundingIntentRepositoryPort, "submit" | "findById"> {
   const byIntentId = new Map<string, FundingIntentRecord>();
   const hashOwners = new Map<string, string>();
 
@@ -148,6 +151,10 @@ function inMemoryRepository(submissions: CapturedSubmission[]): FundingIntentRep
         ...record,
         state: "submitted",
         lastCorrelationId: correlationId,
+        // The confirmation schedule #25 persists. A fresh row is due
+        // immediately, which is what the database default supplies.
+        confirmationAttempts: 0,
+        nextAttemptAt: CREATED_AT,
         createdAt: CREATED_AT,
         updatedAt: UPDATED_AT
       };
@@ -181,6 +188,7 @@ function start(): Harness {
     xdr: new StellarFundingIntentXdr(),
     repository: inMemoryRepository(submissions),
     network: { network: NETWORK, networkPassphrase: NETWORK_PASSPHRASE },
+    explorerBaseUrl: EXPLORER_BASE_URL,
     generateIntentId: () => parseFundingIntentId(INTENT_ID)
   };
   const app = buildApp({ fundingIntent: dependencies });
@@ -374,6 +382,12 @@ describe("funding intent sequence (real XDR verifier, real HTTP surface)", () =>
         state: "submitted",
         transactionHash: expectedHash,
         applicationId: null,
+        // Derived from the hash on the way out, never stored: the API is the only
+        // side that knows where a hash opens (`D1`).
+        explorerUrl: `${EXPLORER_BASE_URL}/tx/${expectedHash}`,
+        // A submitted intent is not a failed one, and the contract enforces the
+        // equivalence in both directions.
+        failureReason: null,
         lastCorrelationId: expect.any(String),
         createdAt: CREATED_AT,
         updatedAt: UPDATED_AT

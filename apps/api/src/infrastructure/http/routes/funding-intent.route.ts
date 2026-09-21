@@ -41,9 +41,20 @@ const SUBMIT_BODY_KEYS = new Set(["signedXdr", "intent", "applicationId"]);
 export interface FundingIntentRouteDependencies {
   readonly ledger: LedgerPort;
   readonly xdr: FundingIntentXdrPort;
-  readonly repository: FundingIntentRepositoryPort;
+  /**
+   * The route submits and reports, so it depends on those two operations only.
+   * The confirmation surface #25 adds belongs to the poll, not to this route.
+   */
+  readonly repository: Pick<FundingIntentRepositoryPort, "submit" | "findById">;
   readonly network: { readonly network: string; readonly networkPassphrase: string };
   readonly generateIntentId: () => FundingIntentId;
+  /**
+   * The base a transaction link is built from, normalised by configuration.
+   *
+   * It arrives here rather than in the web because the browser holds no opinion
+   * about the network (`D1`): it is told where a hash opens instead of deciding.
+   */
+  readonly explorerBaseUrl: string;
 }
 
 function hasExactBodyKeys(
@@ -169,7 +180,13 @@ export function registerFundingIntentRoute(
       return reply.code(400).send({ code: "invalid_request" });
     }
 
-    const result = await getFundingIntent(dependencies.repository, intentId);
+    const result = await getFundingIntent(
+      {
+        repository: dependencies.repository,
+        explorerBaseUrl: dependencies.explorerBaseUrl
+      },
+      intentId
+    );
 
     if (result.ok) {
       return reply.code(200).send({ intent: toWire<FundingIntentSnapshot>(result.value) });
