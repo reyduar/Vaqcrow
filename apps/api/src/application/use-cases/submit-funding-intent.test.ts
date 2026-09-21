@@ -28,6 +28,7 @@ const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 const SIGNED_XDR = "AAAAAgAAAABfakeSignedEnvelope";
 const TRANSACTION_HASH = "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
 const EXPIRES_AT = "2026-09-21T12:00:00.000Z";
+const EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
 
 const intentId = parseFundingIntentId(INTENT_ID);
 const correlationId = parseCorrelationId(CORRELATION_ID);
@@ -104,6 +105,8 @@ const expectedSnapshot = parseFundingIntentSnapshot({
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
   applicationId: null,
+  explorerUrl: `${EXPLORER_BASE_URL}/tx/${TRANSACTION_HASH}`,
+  failureReason: null,
   lastCorrelationId: CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
@@ -136,7 +139,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(xdr.verify).toHaveBeenCalledOnce();
     expect(xdr.verify).toHaveBeenCalledWith({
@@ -157,7 +160,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(submit).toHaveBeenCalledOnce();
     const input = submit.mock.calls[0]?.[0];
@@ -175,7 +178,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied }
     });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result).toEqual({ ok: true, value: { intent: expectedSnapshot, applied } });
   });
@@ -188,7 +191,7 @@ describe("submitFundingIntent", () => {
     });
 
     await submitFundingIntent(
-      { xdr, repository },
+      { xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL },
       { intentId, command: commandWithApplication, correlationId }
     );
 
@@ -206,7 +209,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     const input = submit.mock.calls[0]?.[0];
     expect(input?.record).not.toHaveProperty("applicationId");
@@ -216,7 +219,7 @@ describe("submitFundingIntent", () => {
     const xdr = xdrVerifying({ ok: true, value: verified });
     const { repository } = repositoryReturning({ ok: true, value: { record, applied: true } });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result.ok && "signedXdr" in result.value.intent).toBe(false);
   });
@@ -239,7 +242,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result).toEqual({ ok: false, error: { code: "xdr_rejected", reason } });
     expect(submit).not.toHaveBeenCalled();
@@ -249,7 +252,7 @@ describe("submitFundingIntent", () => {
     const xdr = xdrVerifying({ ok: false, error: { code: "malformed_xdr" } });
     const { repository } = repositoryReturning({ ok: true, value: { record, applied: true } });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result).toEqual({ ok: false, error: { code: "xdr_rejected", reason: "malformed_xdr" } });
   });
@@ -262,7 +265,7 @@ describe("submitFundingIntent", () => {
     const xdr = xdrVerifying({ ok: true, value: verified });
     const { repository } = repositoryReturning({ ok: false, error });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result).toEqual({ ok: false, error: { code: expectedCode } });
   });
@@ -274,7 +277,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(submit).not.toHaveBeenCalled();
   });
@@ -286,7 +289,7 @@ describe("submitFundingIntent", () => {
       value: { record: { ...record, intentId: "not-a-uuid" }, applied: true }
     });
 
-    const result = await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    const result = await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
   });
@@ -298,7 +301,7 @@ describe("submitFundingIntent", () => {
       value: { record, applied: true }
     });
 
-    await submitFundingIntent({ xdr, repository }, { intentId, command, correlationId });
+    await submitFundingIntent({ xdr, repository, explorerBaseUrl: EXPLORER_BASE_URL }, { intentId, command, correlationId });
 
     const payload = submit.mock.calls[0]?.[0].record as FundingIntentSubmission;
     expect(payload).not.toHaveProperty("state");

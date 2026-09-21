@@ -164,6 +164,23 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   "Vaqcrow stopped asking" — a fourth state recording our own impatience would describe Vaqcrow rather
   than the transaction, which is the opposite of what every state here means.
 
+- **D15 — the explorer base is configurable but *not* closed to Testnet, unlike the Horizon URL.**
+  `DEMO.md` §7 line 277 lists "URL del explorador" among the minimum variables, so it is configurable,
+  and absent means the canonical Testnet explorer so a demo that forgot it still produces a link. The
+  asymmetry with `horizonUrl` is the point: a Horizon endpoint decides where a signed envelope is
+  *submitted*, so pointing it at another network is a security boundary and the config refuses it. An
+  explorer base only decides which page a hash *opens*, so a wrong one produces a broken link and
+  nothing else. Validating it as strictly would buy no safety and would refuse a legitimate
+  self-hosted explorer.
+
+- **D16 — the wire carries a failure *value*, and the sentence is composed in the browser.** The API
+  reports one of six closed reasons (`D10`), not a sentence and not Horizon's code. Turning that value
+  into words a person reads is presentation, so it lives in `apps/web/src/application/funding/` and the
+  map is `Record<StellarFailureReason, string>` — exhaustive by type, so a new reason cannot reach the
+  screen untranslated and there is no fallback branch anyone can forget to write. The same reasoning
+  puts `explorerUrl` on the wire rather than in the browser: the web is *told* where a hash opens,
+  because it holds no opinion about the network (`D1`).
+
 ## Tasks
 - [x] T1 Recon: #25/#80/#81/#82, roadmap entries, existing ports/adapters/routes, boundaries, skills
 - [x] T2 Assign #80 (done via the API). Moving #25 and #80 to `In progress` on Project #4 is a
@@ -175,9 +192,10 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       deterministic double — `dbc8b31`, `3c68d60`, `be199c2`
 - [x] T5 WU3 — the bounded, resumable confirmation use case and the in-process scheduler that drives
       it (`apps/api`, per D1) — `ffeabca`, `ebe700b`, `be91a41`
-- [ ] T6 WU4 — explorer link and sanitised failure reason exposed on the HTTP surface; explorer URL
-      configuration
-- [ ] T7 #81 — the ordered test Task: success, failure, timeout and resume against a Horizon double
+- [x] T6 WU4 — explorer link and sanitised failure reason exposed on the HTTP surface; explorer URL
+      configuration — `f8017e9`, `cfe313b`, `9820d08`
+- [x] T7 #81 — the ordered test Task: the end-to-end sequence suite and the live probes that close A1
+      — `e8dd962`, `f3a369b`
 - [ ] T8 #82 — evidence document in Spanish, traceable to this log
 
 ## RED → GREEN
@@ -350,7 +368,135 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
   working. The composition root now logs it, and `onStep` carries per-intent outcomes separately —
   those are results, not failures of the tick.
 
+### WU4 — the explorer link, the failure reason and the explorer URL
+Three commits, each verified green in isolation (see the method below).
+
+- **RED (config)** — `pnpm --filter @vaqcrow/api exec vitest run src/application/config/api-config.test.ts`.
+  **5 failed**: three rejections that did not reject (`expected parseApiConfig to reject this
+  environment`) and two accepted cases reading `undefined`.
+
+- **One of those five passed *vacuously*, and the test was fixed rather than the code.** The default
+  assertion compared `config.stellar.explorerUrl` against the imported constant, and at RED both were
+  `undefined` — a passing assertion proving nothing. It now pins the constant by its own literal, so
+  the two cannot be equal-by-accident. That is the same anti-vacuity habit #24's D1 guard used.
+
+- **RED (contract)** — `pnpm --filter @vaqcrow/contracts exec vitest run src/funding-intent.test.ts`.
+  **4 failed / 128 passed**: every fixture that builds a snapshot stopped parsing the moment
+  `explorerUrl` and `failureReason` became required. The rejection cases passed vacuously at that point,
+  which is expected and is why the acceptance cases are the ones that carry the RED.
+
+- **The ripple was the interesting part, and it was not mechanical.** Widening the contract broke five
+  API test files and three web ones, and two of the failures were not type errors at all: the route and
+  the sequence suite answered **503** instead of 202/200, because the projection threw inside the use
+  case's own `try` and was reported as `unavailable`. That is the sanitisation working exactly as
+  designed — a corrupt projection is not a half-reported intent — and it is worth knowing that a
+  contract change surfaces as a 503 rather than as a stack trace.
+
+- **A stale-build trap, found and not papered over.** `pnpm --filter @vaqcrow/api test` failed with
+  `unrecognized_keys: explorerUrl, failureReason` while the contracts suite passed with the same
+  schema. The cause is not a schema problem: `apps/api` resolves `@vaqcrow/contracts` through its built
+  `dist/`, and running vitest directly does **not** rebuild the dependency — turbo does, because `test`
+  declares `dependsOn: ["^build"]`. So a filtered run tests against the previously built contract. The
+  fix is to build the dependency first; the trap is that the stack trace is source-mapped and points at
+  `packages/contracts/src/`, which makes it look like a source problem.
+
+- **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **257** (was 247), domain **60**,
+  api **414**, web **384** (was 381), root **74**, `boundaries` clean at **278 modules / 723
+  dependencies**.
+
+- **The first split of this unit was wrong, and checking rather than assuming is what caught it.**
+  `facd954` did not typecheck (widening `StellarConfig` made the adapter test's fixture incomplete, and
+  that fixture was in the next commit) and `c950ae1` failed two web tests (the new component assertions
+  were in the commit *before* the component that satisfies them). Both were reordered so each commit is
+  genuinely green, and the reordering is recorded in the commit messages rather than left as a mystery.
+
+### #81 — the ordered test Task
+Two commits, each verified green in isolation.
+
+- **The gap was observational, and worth stating precisely.** #80's suites each prove one layer with
+  the others doubled: the use case against mock ports, the adapters against hand-written responses,
+  the route against a fake repository. Nothing observed a persisted intent being advanced by a poll and
+  read back over HTTP, so nothing would have caught a disagreement *between* the layers — a payload the
+  repository cannot decode, a state the contract and the adapter spell differently, an explorer link
+  derived from the wrong hash. That is the same shape as #78's gap for #24, and the same answer: wire
+  the real pieces together and double only the provider edges.
+
+- **The suite runs everything Vaqcrow wrote** — `StellarTransaction`, `SupabaseFundingIntentRepository`,
+  `confirmFundingIntents`, `ConfirmationScheduler`, the Fastify route — with a double only at the
+  Supabase client and at Horizon. Its four scenarios are the ones the Feature's own testing strategy
+  names: **success**, **failure**, **timeout** and **resume**. Resume is the one that most needed
+  observing and had none: a second process, with its own repository, adapter and scheduler and no
+  shared memory beyond the database, continues from the persisted attempt count instead of restarting
+  it.
+
+- **Two findings, and in both the code was right and the test was wrong.** The harness first seeded a
+  placeholder XDR string, so every scenario expecting a submission came back `failed` / `unsuccessful`:
+  the adapter decodes the envelope for real and correctly reported `invalid_input`. The fixture changed.
+  Then the widening-interval test failed with one attempt instead of three, because the second step ran
+  before `next_attempt_at` was due and correctly found nothing — that is the schedule gating the work,
+  which is half of what "bounded" means. The test now advances the clock and asserts the gating
+  explicitly, rather than stepping around the behaviour it was supposed to be measuring.
+
+- **The in-memory PostgREST double is a mirror, and mirrors are a risk.** It reproduces the column
+  defaults and the conditional update, so a divergence from the migration would let the suite pass
+  while production failed. That is why the live probes exist in the same Task: the mirror is verified
+  from the other side rather than trusted. Recorded as A11.
+
+- **The live probes were run against the real project**, not merely written: **10 passed** on
+  2026-09-21, with `funding_intent` back to **0 rows** afterwards. This closes A1.
+
+- **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **257**, domain **60**, api **420**
+  (was 414), web **384**, root **74**, `boundaries` clean at **279 modules / 739 dependencies**.
+
+## Per-commit verification, and a correction
+
+**All fourteen code commits are verified green in isolation**, by checking each one out detached and
+running `pnpm run verify`:
+
+| work unit | commits | result |
+|---|---|---|
+| WU1 | `f12ed77`, `602a855`, `ae9497d` | exit 0 each |
+| WU2 | `dbc8b31`, `3c68d60`, `be199c2` | exit 0 each |
+| WU3 | `ffeabca`, `ebe700b`, `be91a41` | exit 0 each |
+| WU4 | `f8017e9`, `cfe313b`, `9820d08` | exit 0 each |
+| #81 | `e8dd962`, `f3a369b` | exit 0 each |
+
+**A correction, because the earlier claim in this log was not true when it was written.** WU1, WU2 and
+WU3 each said their commits "were verified green on their own". They were not: `pnpm run verify`
+validates the **working tree**, and the working tree still held the rest of the work unit when each of
+those runs happened. So what was actually verified was the *complete unit* three times over, not its
+three commits. The claim has been made true by redoing the check the only way that means anything — a
+detached checkout per commit — and the discrepancy is recorded here rather than quietly fixed, because
+the difference between "I ran the gate" and "the commit passes the gate" is exactly the kind of thing
+this log exists to keep straight.
+
+The four `docs(odd)` commits are not in the table on purpose: they touch only Markdown, which neither
+ESLint nor any test reads, so the gate cannot differ at them. That is reasoning, not a measurement, and
+it is labelled as such.
+
 ## Advisories
+
+- **A11 — the sequence suite's PostgREST double is a mirror of the migration, and a mirror can drift.**
+  It reproduces the column defaults (`confirmation_attempts`, `next_attempt_at`, the nullable evidence
+  columns) and the conditional update that matches on `state`, because the adapter relies on both and
+  cannot provide either itself. If the migration changed and the double did not, the suite would keep
+  passing while production failed. The mitigation is not a stronger double — it is the live probes,
+  which assert the real columns exist and that the real CHECKs and grants behave, so the mirror is
+  checked from the other side. A future change to `funding_intent` should touch both files.
+
+- **A9 — `pnpm run verify` validates the working tree, not the commit you just made.** After a `git
+  commit`, the working tree still contains whatever else is uncommitted, so a gate run at that moment
+  says nothing about the commit in isolation. Verifying a commit means checking it out detached
+  (`git checkout <sha>` — `node_modules` is untracked and survives, so no reinstall is needed) and
+  running the gate there. Recorded because it silently inflated this log's own claims for three work
+  units, and because the failure mode is invisible: the gate is green, so nothing looks wrong.
+
+- **A10 — a filtered test run does not rebuild workspace dependencies.** `pnpm --filter @vaqcrow/api
+  test` resolves `@vaqcrow/contracts` through its built `dist/`, and only turbo rebuilds it, because
+  `test` declares `dependsOn: ["^build"]`. So a contract change appears not to exist until the
+  dependency is built — and the source-mapped stack trace points into `packages/contracts/src/`, which
+  makes it look like a source problem rather than a stale artifact. Build the dependency, or run the
+  gate through turbo.
 
 - **A7 — the loop assumes a single API instance, and that is the first thing that breaks on scale
   out.** Every process that starts a scheduler polls the same `submitted` rows. The *writes* stay
@@ -391,14 +537,15 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
   so it currently surfaces as `unavailable` and is retried. Kept at the default because SEP-29's
   check is a real safety property, not ceremony, but it is worth knowing before the first live run.
 
-- **A1 — the live integration suite does not encode what this work unit verified by hand.** The
-  migration's structure, the column-scoped grant and both evidence CHECKs are now *observed* facts
-  (above), but they live in this log rather than in
-  `apps/api/tests/integration/funding-intent-persistence.integration.test.ts`, so nothing re-checks
-  them on a future run. #81 owns closing that. The pattern is already proven and residue-free: use
-  `has_table_privilege`/`has_column_privilege` for the grant (no role change and no row needed), and
-  assert only on **failing** inserts for the CHECKs, since the table is append-only for the API role
-  (A5 of #24) and a successful insert could never be cleaned up.
+- **A1 — CLOSED by #81.** The live integration suite now encodes the confirmation migration's
+  repeatable observations: the five new columns exist, the three new CHECKs bite (including the
+  equivalence in the direction a one-directional CHECK would have missed), and the column-scoped grant
+  is asserted behaviourally — an UPDATE to `amount_stroops` refused with `42501` while one to `state`
+  is accepted. Run against the live project on 2026-09-21: **10 passed**, and `funding_intent` was back
+  to 0 rows afterwards, so nothing was owed to cleanup. What remains outside any suite is the
+  one-shot structural verification of 2026-09-21 (column and constraint counts, migration idempotency),
+  which is recorded above and is not something a repeatable suite can own: re-running a migration to
+  prove it is re-runnable is an operational act, not an assertion.
 
 - **A2 — whether the `updated_at` grant is *necessary* is still open, and cannot be settled
   residue-free.** The granted columns are proven to work (A1 above), so this is a tightening
@@ -422,23 +569,29 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
 ## Review size and delivery chain
 WU1 is three commits: `f12ed77` (the migration and the live fixture it invalidates), `602a855` (the
 contract vocabulary and the two fixtures it invalidates) and `ae9497d` (the port, the adapter, the
-interface narrowing and the tests). Each was verified green on its own, so `git bisect` stays usable
+interface narrowing and the tests). Each is verified green in isolation — by a detached checkout, per
+the per-commit verification section below, which also records why the first version of this sentence
+was wrong — so `git bisect` stays usable
 and the three concerns — schema, contract, persistence — can be read in that order. The migration is
 **already applied to the live Supabase project** (`20260921182333`), verified by query as recorded
 above; the code is therefore in step with the database rather than ahead of it.
 
 WU2 is three more: `dbc8b31` (the closed failure vocabulary), `3c68d60` (the shared Horizon factory)
-and `be199c2` (the port and its adapter). Each was verified green on its own. The vocabulary can be
+and `be199c2` (the port and its adapter). Each is verified green in isolation. The vocabulary can be
 read without the adapter, the factory is a pure refactor, and the adapter is the only commit that
 depends on both.
 
 WU3 is three more: `ffeabca` (the use case), `ebe700b` (the scheduler) and `be91a41` (the wiring).
-Each was verified green on its own. The use case is pure and can be read without any timer; the
+Each is verified green in isolation. The use case is pure and can be read without any timer; the
 scheduler is a loop around it and nothing else; the wiring is the only commit that touches the
 composition root.
 
-The branch is not yet pushed and no PR is open. WU4 — the explorer link, the sanitised failure reason
-and the explorer URL configuration — is the next unit. It is the only one that changes the HTTP
-surface, so it is also where the wire contract grows the two fields the third acceptance criterion
-names.
+WU4 is three more: `f8017e9` (the explorer URL in configuration), `cfe313b` (the contract fields, the
+API's projection and every fixture that depends on them) and `9820d08` (the browser rendering). Each is
+verified green in isolation. The contract commit is the largest of the three and deliberately carries
+its consumers: a required field and the fixtures that build it cannot be separated without producing a
+commit that does not run.
+
+The branch is not yet pushed and no PR is open. Four work units and the ordered test Task are complete;
+what remains is #82 — the evidence document in Spanish, the roadmap sync, and the Feature's closure.
 

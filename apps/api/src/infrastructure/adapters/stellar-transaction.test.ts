@@ -11,7 +11,10 @@ import {
 } from "@stellar/stellar-sdk";
 import type { Transaction } from "@stellar/stellar-sdk";
 import { describe, expect, it, vi } from "vitest";
-import { STELLAR_TESTNET_NETWORK_PASSPHRASE } from "../../application/config/stellar-config.js";
+import {
+  STELLAR_TESTNET_EXPLORER_URL,
+  STELLAR_TESTNET_NETWORK_PASSPHRASE
+} from "../../application/config/stellar-config.js";
 import type { StellarConfig } from "../../application/config/stellar-config.js";
 import { StellarTransaction } from "./stellar-transaction.js";
 import type {
@@ -30,7 +33,8 @@ import type {
 const CONFIG: StellarConfig = {
   network: "testnet",
   horizonUrl: "https://horizon-testnet.stellar.org",
-  networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE
+  networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE,
+  explorerUrl: STELLAR_TESTNET_EXPLORER_URL
 };
 
 const TRANSACTION_HASH = "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
