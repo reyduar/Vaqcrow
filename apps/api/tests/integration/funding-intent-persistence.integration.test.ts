@@ -99,12 +99,17 @@ describe.skipIf(!hasIntegrationCredentials())("funding intent persistence (live 
     expect(inserted.error?.code).toBe("42501");
   });
 
-  it("refuses a state outside #24's vocabulary at the CHECK constraint", async () => {
+  it("refuses a state outside the demo's vocabulary at the CHECK constraint", async () => {
     const intentId = syntheticFundingIntentId();
 
+    // `manual_review` is the production-roadmap state product.md §8.1 names, and
+    // it stays outside the vocabulary #25 admits. `confirmed` was this fixture's
+    // invalid value until #25 made it a real state; using it now would still be
+    // refused, but by the terminal-evidence CHECK rather than the vocabulary one,
+    // so the assertion would pass while testing something else.
     const refused = await getServiceRoleClient()
       .from(FUNDING_INTENT_TABLE)
-      .insert(rawFundingRow({ intent_id: intentId, state: "confirmed" }));
+      .insert(rawFundingRow({ intent_id: intentId, state: "manual_review" }));
 
     expect(refused.status).toBe(400);
     expect(refused.error?.code).toBe("23514");
