@@ -65,7 +65,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 4 | [#27 Calcular revenue share](#^issue-27) | [#86 Implementar](#^issue-86) → [#87 Probar](#^issue-87) → [#88 Documentar](#^issue-88) |
 | 4 | [~~#18 Implementar solicitud y revisión~~](#^issue-18) | [~~#56 Implementar~~](#^issue-56) → [~~#57 Probar~~](#^issue-57) → [~~#58 Documentar~~](#^issue-58) |
 | 4 | [#22 Derivar fallos de IA](#^issue-22) | [#71 Implementar](#^issue-71) → [#72 Probar](#^issue-72) → [#73 Documentar](#^issue-73) |
-| 4 | [#25 Confirmar transacciones](#^issue-25) | [#80 Implementar](#^issue-80) → [#81 Probar](#^issue-81) → [#82 Documentar](#^issue-82) |
+| 4 | [~~#25 Confirmar transacciones~~](#^issue-25) | [~~#80 Implementar~~](#^issue-80) → [~~#81 Probar~~](#^issue-81) → [~~#82 Documentar~~](#^issue-82) |
 | 5 | [#28 Distribuir revenue share](#^issue-28) | [#89 Implementar](#^issue-89) → [#90 Probar](#^issue-90) → [#91 Documentar](#^issue-91) |
 | 5 | [~~#19 Implementar aprobación humana~~](#^issue-19) | [~~#62 Implementar~~](#^issue-62) → [~~#63 Probar~~](#^issue-63) → [~~#64 Documentar~~](#^issue-64) |
 | 6 | [#30 Integrar el recorrido vertical](#^issue-30) | [#95 Implementar](#^issue-95) → [#96 Probar](#^issue-96) → [#97 Documentar](#^issue-97) |
@@ -976,53 +976,55 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#73_Task_Document_evidence_for_AI_failure_routing_to_manual_review` es una unidad de documentación revisable.
 
-### #25 — Confirmar transacciones Stellar de forma asíncrona
+### ~~#25 — Confirmar transacciones Stellar de forma asíncrona~~
 
 ^issue-25
 
 - **Título original:** `Feature: Confirm Stellar transactions asynchronously`
-- **GitHub y estado:** [issue #25](https://github.com/reyduar/Vaqcrow/issues/25) · Tipo `Feature` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#7](#^issue-7); bloqueada nativamente por [#24](#^issue-24).
+- **GitHub y estado:** [issue #25](https://github.com/reyduar/Vaqcrow/issues/25) · Tipo `Feature` · Área `stellar` · Prioridad `High` · Workflow `Done`.
+- **Jerarquía y bloqueos:** padre [#7](#^issue-7); bloqueada nativamente por [#24](#^issue-24), ya en `Done` — sin bloqueos pendientes.
 - **Objetivo:** consultar Horizon después del envío y exponer estados `submitted`, `confirmed` y `failed`.
 - **Orden:** por desempate numérico sigue a [#22](#^issue-22) y desbloquea [#28](#^issue-28).
+- **Entrega:** sus tres Tasks completas — [#80](#^issue-80), [#81](#^issue-81) y [#82](#^issue-82) — entregadas mediante una cadena de seis PRs apilados ([#205](https://github.com/reyduar/Vaqcrow/pull/205), [#206](https://github.com/reyduar/Vaqcrow/pull/206), [#207](https://github.com/reyduar/Vaqcrow/pull/207), [#208](https://github.com/reyduar/Vaqcrow/pull/208), [#209](https://github.com/reyduar/Vaqcrow/pull/209) y [#210](https://github.com/reyduar/Vaqcrow/pull/210)) dentro de su rama de integración, y luego el PR de cierre [#211](https://github.com/reyduar/Vaqcrow/pull/211) (`#25 → main`, merge `ab427e8`), que es el que cerró las cuatro issues automáticamente. `main` quedó verificado en `ab427e8`. Evidencia en [`asynchronous-stellar-confirmation-evidence.md`](./asynchronous-stellar-confirmation-evidence.md). Desbloquea [#28](#^issue-28).
+- **Límites declarados:** la *bounded Testnet check* **no se ejecutó** — no existe ninguna observación en vivo de una transacción confirmada en Testnet, y `DEMO.md` §11 la exige para la demo; necesita la billetera Freighter del operador y una cuenta descartable fondeada, y se difirió deliberadamente a una versión desplegada y estable. El adaptador de Horizon está validado sólo contra un doble escrito a mano, y el loop de confirmación asume una sola instancia de la API. Todo se declara en la sección 5 de la evidencia.
 
-**Rama propuesta.** `Vaqcrow#25_Feat_Confirm_Stellar_transactions_asynchronously` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#25_Feat_Confirm_Stellar_transactions_asynchronously` se usó como rama de integración: los seis slices apuntaron a ella —y cada uno a su predecesor—, y el PR de cierre la llevó a `main`. El diff de cada slice contra su base muestra sólo ese slice.
 
-### #80 — Implementar la confirmación asíncrona de Stellar
+### ~~#80 — Implementar la confirmación asíncrona de Stellar~~
 
 ^issue-80
 
 - **Título original:** `Task: Implement asynchronous Stellar confirmation`
-- **GitHub y estado:** [issue #80](https://github.com/reyduar/Vaqcrow/issues/80) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #80](https://github.com/reyduar/Vaqcrow/issues/80) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#25](#^issue-25), que requiere [#24](#^issue-24); sin bloqueos nativos propios.
 - **Objetivo:** implementar la confirmación asíncrona dentro de la arquitectura delimitada.
 - **Orden:** inicia el Feature y desbloquea [#81](#^issue-81).
 
-**Rama propuesta.** `Vaqcrow#80_Task_Implement_asynchronous_Stellar_confirmation` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#80_Task_Implement_asynchronous_Stellar_confirmation` con sus hermanas `…-02-horizon-port`, `…-03-confirmation-poll` y `…-04-explorer-exposure`, entregadas como los cuatro primeros slices de la cadena ([PR #205](https://github.com/reyduar/Vaqcrow/pull/205) a [PR #208](https://github.com/reyduar/Vaqcrow/pull/208)). El Feature resolvió acá la decisión abierta P1 de `DEMO.md` (línea 413) del lado "sin `apps/worker` separado", contra el criterio que fija su línea 150. Cerrada por [PR #211](https://github.com/reyduar/Vaqcrow/pull/211) al mergear contra `main`; las palabras clave `Closes` de [#208](https://github.com/reyduar/Vaqcrow/pull/208) no surtieron efecto porque ese PR mergeó contra una rama de la cadena y no contra la rama por defecto.
 
-### #81 — Probar la confirmación asíncrona de Stellar
+### ~~#81 — Probar la confirmación asíncrona de Stellar~~
 
 ^issue-81
 
 - **Título original:** `Task: Test asynchronous Stellar confirmation`
-- **GitHub y estado:** [issue #81](https://github.com/reyduar/Vaqcrow/issues/81) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #81](https://github.com/reyduar/Vaqcrow/issues/81) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#25](#^issue-25), que requiere [#24](#^issue-24); bloqueada nativamente por [#80](#^issue-80).
 - **Objetivo:** demostrar la confirmación con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#82](#^issue-82).
 
-**Rama propuesta.** `Vaqcrow#81_Task_Test_asynchronous_Stellar_confirmation` es una unidad de pruebas revisable.
+**Rama e implementación.** Su trabajo viajó como el quinto slice de la cadena ([PR #209](https://github.com/reyduar/Vaqcrow/pull/209)), sobre la rama `Vaqcrow#80_Task_Implement_asynchronous_Stellar_confirmation-05-confirmation-sequence` y **no** sobre la rama que este documento le prescribe: la cadena se armó por unidad de trabajo, y cortar por Task habría separado la suite de lo que verifica. Su aporte real fue cerrar un hueco de **observación**, no de comportamiento: hasta entonces cada test ejercía *una* capa con las otras dobladas, y ninguno observaba una intención persistida avanzada por un poll y leída de vuelta por HTTP.
 
-### #82 — Documentar evidencia de la confirmación asíncrona de Stellar
+### ~~#82 — Documentar evidencia de la confirmación asíncrona de Stellar~~
 
 ^issue-82
 
 - **Título original:** `Task: Document evidence for asynchronous Stellar confirmation`
-- **GitHub y estado:** [issue #82](https://github.com/reyduar/Vaqcrow/issues/82) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #82](https://github.com/reyduar/Vaqcrow/issues/82) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#25](#^issue-25), que requiere [#24](#^issue-24); bloqueada nativamente por [#81](#^issue-81).
 - **Objetivo:** documentar evidencia reproducible de finalización de la confirmación.
 - **Orden:** cierra [#25](#^issue-25) y habilita [#28](#^issue-28).
 
-**Rama propuesta.** `Vaqcrow#82_Task_Document_evidence_for_asynchronous_Stellar_confirmation` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#82_Task_Document_evidence_for_asynchronous_Stellar_confirmation`, entregada como el sexto slice de la cadena ([PR #210](https://github.com/reyduar/Vaqcrow/pull/210)). Su entrega es [`asynchronous-stellar-confirmation-evidence.md`](./asynchronous-stellar-confirmation-evidence.md).
 
 ## Ola 5 — Distribución y decisión humana
 
