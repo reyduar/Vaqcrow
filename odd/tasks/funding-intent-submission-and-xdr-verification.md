@@ -137,7 +137,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
 - [x] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page —
       `5d2bf8b`, `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476`
 - [x] T7 #78 — the ordered test Task: invariants and API integration coverage — `16aaced`, `3e2e18d`
-- [ ] T8 #79 — evidence document in Spanish, traceable to this log
+- [x] T8 #79 — evidence document in Spanish, traceable to this log — `b9bf0b1`,
+      `docs/planning/funding-intent-submission-and-xdr-verification-evidence.md`
 
 ## RED → GREEN
 
@@ -350,8 +351,13 @@ contracts can be read on their own, then the use cases, then the route, then the
   `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476` and this log commit. It was opened stacked on slice 2's
   branch so its diff stayed scoped to the web slice, then retargeted to `main` once slice 2 landed;
   the diff is clean either way, because slice 3 is based on slice 2's head.
-- **Slice 4 / Task #78** — PR [#202](https://github.com/reyduar/Vaqcrow/pull/202) → `main`, commits
-  `16aaced`, `3e2e18d` and this log commit.
-- **#77's work is entirely on `main`** (slices 1–3, PRs #199, #200, #201), though the Task itself is not
-  yet closed on the board. What remains for the Feature is the evidence document (#79), and #24 closes
-  once slice 4 lands and the evidence is written.
+- **Slice 4 / Task #78** — PR [#202](https://github.com/reyduar/Vaqcrow/pull/202) → `main`, merged as
+  `2584094`, commits `16aaced`, `3e2e18d` and the #78 log commit.
+- **Task #79** — PR [#203](https://github.com/reyduar/Vaqcrow/pull/203) → `main`, commit `b9bf0b1`
+  (the closing evidence) and this log commit. The document is
+  `docs/planning/funding-intent-submission-and-xdr-verification-evidence.md`.
+- **All three Tasks' work is on `main`.** What remains is administrative: #77, #78 and #79 close when
+  PR #203 merges, and Feature #24 closes manually afterwards — GitHub does not close a Feature when its
+  sub-issues complete, the same pattern as Features #11–#19 and #23. `docs/planning/demo-tasks-list.md`
+  is deliberately not touched here; the roadmap sync is a later commit, once the Feature is actually
+  closed.
