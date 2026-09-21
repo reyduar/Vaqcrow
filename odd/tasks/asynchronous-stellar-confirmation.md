@@ -152,6 +152,32 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
 - **GREEN** — contracts **122 passed**; the persistence suite **39 passed** (it was 22 when #24 closed
   its WU2, per that log). No test was weakened.
 
+- **The migration is applied and verified live** on 2026-09-21, as
+  `20260921182333 / widen_funding_intent_confirmation`. Verified by query rather than by the success
+  flag, because the three things this migration could get wrong are not observable locally:
+
+  1. **Structure.** 21 columns (16 + the 5 new ones), 8 constraints (the 5 original plus
+     `funding_intent_attempts_check`, `funding_intent_confirmed_evidence_check` and
+     `funding_intent_failed_evidence_check`), 4 indexes (primary key, `transaction_hash` unique,
+     `application_id`, and the new partial `funding_intent_pending_idx`), 0 rows.
+  2. **The column-scoped grant, which was the real risk.** `has_table_privilege('service_role', …,
+     'UPDATE')` → **false**, so the table-level revoke held and no broad UPDATE survived alongside
+     the precise one. `has_column_privilege` → **true** for `state` and `confirmation_attempts`, and
+     **false** for `amount_stroops`, `transaction_hash`, `signed_xdr` and `source_sequence`. That is
+     the boundary working as designed: the confirmation poll can move the state and cannot rewrite
+     the financial evidence. `anon` and `authenticated` hold neither UPDATE nor SELECT.
+  3. **The CHECKs bite, in both directions.** Four residue-free failing inserts, each refused with
+     `23514` by exactly the intended constraint: `confirmed` without its ledger evidence →
+     `funding_intent_confirmed_evidence_check`; `submitted` **carrying** confirmed evidence → the
+     same constraint, which is the equivalence form doing the work a one-directional CHECK would have
+     missed; `manual_review` → `funding_intent_state_check`; a negative attempt count →
+     `funding_intent_attempts_check`. A count afterwards read **0 rows**, so nothing was left behind.
+
+- **Re-runnable, and proven by re-running.** The migration SQL was executed a second time through a
+  plain statement rather than a second `apply_migration`, so the history carries one entry — the
+  lesson #24 recorded after its duplicate `create_application_review` record. Every count was
+  unchanged afterwards: 21 columns, 8 constraints, 4 indexes, 0 rows, the same 8 granted columns.
+
 - **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **229**, domain **60**, api
   **348**, web **381**, root **74**, `boundaries` clean at **265 modules / 674 dependencies**. The
   single ESLint error caught on the first run was a now-unused import left by the interface
@@ -178,20 +204,26 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
 
 ## Advisories
 
-- **A1 — the live integration suite does not yet cover what this migration added.** The two new
-  evidence CHECKs (`funding_intent_confirmed_evidence_check`, `funding_intent_failed_evidence_check`)
-  and the column-scoped UPDATE grant are verified structurally here but have no live observation.
-  The column-scoped grant in particular is worth an empirical check when the migration is applied:
-  the adapter sends only granted columns, but a live probe should confirm that an UPDATE touching
-  `amount_stroops` is refused with `42501` while one touching `state` succeeds. #81 owns this; it is
-  listed here so the evidence Task does not have to rediscover it.
+- **A1 — the live integration suite does not encode what this work unit verified by hand.** The
+  migration's structure, the column-scoped grant and both evidence CHECKs are now *observed* facts
+  (above), but they live in this log rather than in
+  `apps/api/tests/integration/funding-intent-persistence.integration.test.ts`, so nothing re-checks
+  them on a future run. #81 owns closing that. The pattern is already proven and residue-free: use
+  `has_table_privilege`/`has_column_privilege` for the grant (no role change and no row needed), and
+  assert only on **failing** inserts for the CHECKs, since the table is append-only for the API role
+  (A5 of #24) and a successful insert could never be cleaned up.
 
-- **A2 — `updated_at` is granted to `service_role` although the trigger owns it.** The trigger
-  `set_funding_intent_updated_at` is SECURITY INVOKER and writes `new.updated_at` on every update.
-  Whether a BEFORE trigger's `NEW` assignment requires the caller to hold UPDATE on that column is
-  not obvious from the documentation, so the column is granted and the trigger overwrites whatever
-  arrives. This is inert rather than permissive — the adapter never sends it — but if a live probe
-  shows the grant is unnecessary, removing it would tighten the boundary by one column.
+- **A2 — whether the `updated_at` grant is *necessary* is still open, and cannot be settled
+  residue-free.** The granted columns are proven to work (A1 above), so this is a tightening
+  opportunity rather than a risk: the trigger `set_funding_intent_updated_at` is SECURITY INVOKER and
+  writes `new.updated_at` on every update, and it is not obvious from the documentation whether a
+  BEFORE trigger's `NEW` assignment requires the caller to hold UPDATE on that column. Two obstacles
+  stop a residue-free probe: a trigger only fires for a *matched* row, so a zero-row UPDATE never
+  reaches the write and the privilege is never checked; and `now()` is transaction-scoped (#24's A3),
+  so an insert and an update inside one rolled-back block cannot even show the trigger moving. A
+  real two-transaction probe would leave a permanent row, which the API role cannot delete (A5 of
+  #24). The column is granted and the adapter never sends it, so the grant is inert; removing it
+  would tighten the boundary by one column and needs a disposable table to prove first.
 
 - **A3 — the port's read shape now carries scheduling facts its readers ignore.** `findById` returns
   `confirmationAttempts` and `nextAttemptAt` because `FundingIntentRecord` mirrors the row, and a
@@ -204,5 +236,10 @@ Three commits, each verified individually with `pnpm run verify` → **exit 0**.
 WU1 is three commits: `f12ed77` (the migration and the live fixture it invalidates), `602a855` (the
 contract vocabulary and the two fixtures it invalidates) and `ae9497d` (the port, the adapter, the
 interface narrowing and the tests). Each was verified green on its own, so `git bisect` stays usable
-and the three concerns — schema, contract, persistence — can be read in that order.
+and the three concerns — schema, contract, persistence — can be read in that order. The migration is
+**already applied to the live Supabase project** (`20260921182333`), verified by query as recorded
+above; the code is therefore in step with the database rather than ahead of it.
+
+The branch is not yet pushed and no PR is open. WU2 (`StellarTransactionPort` and its Horizon
+adapter) is the next unit and depends on neither the Testnet account nor a further migration.
 
