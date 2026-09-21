@@ -49,21 +49,21 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Ola | Features, en orden dentro de la ola | Tasks del Feature |
 |---:|---|---|
-| 0 | [#11 Inicializar workspace pnpm/Turborepo](#^issue-11) | [~~#35 Configurar workspace raíz~~](#^issue-35) → ([~~#110 Scaffold de API~~](#^issue-110) y [~~#111 Scaffold web~~](#^issue-111) en paralelo) → [~~#36 Probar límites~~](#^issue-36) → [~~#37 Documentar evidencia~~](#^issue-37) |
-| 1 | [#12 Definir estados y contratos](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [~~#39 Probar~~](#^issue-39) → [~~#40 Documentar~~](#^issue-40) |
+| 0 | [~~#11 Inicializar workspace pnpm/Turborepo~~](#^issue-11) | [~~#35 Configurar workspace raíz~~](#^issue-35) → ([~~#110 Scaffold de API~~](#^issue-110) y [~~#111 Scaffold web~~](#^issue-111) en paralelo) → [~~#36 Probar límites~~](#^issue-36) → [~~#37 Documentar evidencia~~](#^issue-37) |
+| 1 | [~~#12 Definir estados y contratos~~](#^issue-12) | [~~#38 Implementar ciclo mínimo de revisión~~](#^issue-38) → [~~#39 Probar~~](#^issue-39) → [~~#40 Documentar~~](#^issue-40) |
 | 1 | [~~#15 Configurar pruebas y CI~~](#^issue-15) | [~~#47 Implementar~~](#^issue-47) → [~~#48 Probar~~](#^issue-48) → [~~#49 Documentar~~](#^issue-49) |
 | 1 | [~~#14 Establecer configuración y secretos~~](#^issue-14) | [~~#44 Implementar~~](#^issue-44) → [~~#45 Probar~~](#^issue-45) → [~~#46 Documentar~~](#^issue-46) |
 | 1 | Task sin padre | [~~#116 Agregar una utilidad de identificador de correlación a `packages/contracts`~~](#^issue-116), completada después de #110 y coordinada con #38 |
-| 2 | [#16 Construir shell y navegación](#^issue-16) | [#50 Implementar](#^issue-50) → [#51 Probar](#^issue-51) → [#52 Documentar](#^issue-52) |
+| 2 | [~~#16 Construir shell y navegación~~](#^issue-16) | [~~#50 Implementar~~](#^issue-50) → [~~#51 Probar~~](#^issue-51) → [~~#52 Documentar~~](#^issue-52) |
 | 2 | [#20 Definir esquema y guardrails de IA](#^issue-20) | [#65 Implementar](#^issue-65) → [#66 Probar](#^issue-66) → [#67 Documentar](#^issue-67) |
 | 2 | [~~#23 Encapsular Stellar y Freighter~~](#^issue-23) | [~~#74 Implementar~~](#^issue-74) → [~~#75 Probar~~](#^issue-75) → [~~#76 Documentar~~](#^issue-76) |
 | 2 | [~~#13 Crear persistencia en Supabase~~](#^issue-13) | [~~#41 Implementar~~](#^issue-41) → [~~#42 Probar~~](#^issue-42) → [~~#43 Documentar~~](#^issue-43) |
 | 3 | [#24 Construir y enviar intención de fondeo](#^issue-24) | [#77 Implementar](#^issue-77) → [#78 Probar](#^issue-78) → [#79 Documentar](#^issue-79) |
-| 3 | [#17 Implementar avisos y fixtures](#^issue-17) | [#53 Implementar](#^issue-53) → [#54 Probar](#^issue-54) → [#55 Documentar](#^issue-55) |
+| 3 | [~~#17 Implementar avisos y fixtures~~](#^issue-17) | [~~#53 Implementar~~](#^issue-53) → [~~#54 Probar~~](#^issue-54) → [~~#55 Documentar~~](#^issue-55) |
 | 3 | [#21 Implementar adaptador LLM](#^issue-21) | [#68 Implementar](#^issue-68) → [#69 Probar](#^issue-69) → [#70 Documentar](#^issue-70) |
 | 3 | [#26 Implementar feed mensual](#^issue-26) | [#83 Implementar](#^issue-83) → [#84 Probar](#^issue-84) → [#85 Documentar](#^issue-85) |
 | 4 | [#27 Calcular revenue share](#^issue-27) | [#86 Implementar](#^issue-86) → [#87 Probar](#^issue-87) → [#88 Documentar](#^issue-88) |
-| 4 | [#18 Implementar solicitud y revisión](#^issue-18) | [#56 Implementar](#^issue-56) → [#57 Probar](#^issue-57) → [#58 Documentar](#^issue-58) |
+| 4 | [~~#18 Implementar solicitud y revisión~~](#^issue-18) | [~~#56 Implementar~~](#^issue-56) → [~~#57 Probar~~](#^issue-57) → [~~#58 Documentar~~](#^issue-58) |
 | 4 | [#22 Derivar fallos de IA](#^issue-22) | [#71 Implementar](#^issue-71) → [#72 Probar](#^issue-72) → [#73 Documentar](#^issue-73) |
 | 4 | [#25 Confirmar transacciones](#^issue-25) | [#80 Implementar](#^issue-80) → [#81 Probar](#^issue-81) → [#82 Documentar](#^issue-82) |
 | 5 | [#28 Distribuir revenue share](#^issue-28) | [#89 Implementar](#^issue-89) → [#90 Probar](#^issue-90) → [#91 Documentar](#^issue-91) |
@@ -183,7 +183,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 ## Ola 0 — Bootstrap ejecutable
 
-### #11 — Inicializar el workspace pnpm/Turborepo
+### ~~#11 — Inicializar el workspace pnpm/Turborepo~~
 
 ^issue-11
 
@@ -258,7 +258,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 ## Ola 1 — Contratos, calidad y configuración
 
-### #12 — Definir estados de dominio y contratos compartidos
+### ~~#12 — Definir estados de dominio y contratos compartidos~~
 
 ^issue-12
 
@@ -307,7 +307,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#40_Task_Document_evidence_for_domain_states_and_shared_contracts`, mergeada vía [PR #127](https://github.com/reyduar/Vaqcrow/pull/127). Ciclo SDD completo (explore→propose→spec→design→tasks→apply→verify→archive) con `sdd-verify` independiente en PASS (0 crítico/0 warning/2 sugerencias no bloqueantes). Cambio solo de documentación, sin modificaciones a código de producción. Evidencia completa en [`domain-states-and-shared-contracts-evidence.md`](./domain-states-and-shared-contracts-evidence.md).
 
-### #15 — Configurar pruebas determinísticas y gates de CI
+### ~~#15 — Configurar pruebas determinísticas y gates de CI~~
 
 ^issue-15
 
@@ -320,7 +320,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#15_Feat_Set_up_deterministic_testing_and_CI_gates`, entregada mediante sus Tasks y los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179).
 
-### #47 — Implementar la configuración de pruebas determinísticas y gates de CI
+### ~~#47 — Implementar la configuración de pruebas determinísticas y gates de CI~~
 
 ^issue-47
 
@@ -334,7 +334,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#47_Task_Implement_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #176](https://github.com/reyduar/Vaqcrow/pull/176).
 
-### #48 — Probar la configuración de pruebas determinísticas y gates de CI
+### ~~#48 — Probar la configuración de pruebas determinísticas y gates de CI~~
 
 ^issue-48
 
@@ -347,7 +347,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#48_Task_Test_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #178](https://github.com/reyduar/Vaqcrow/pull/178).
 
-### #49 — Documentar evidencia de pruebas determinísticas y gates de CI
+### ~~#49 — Documentar evidencia de pruebas determinísticas y gates de CI~~
 
 ^issue-49
 
@@ -360,7 +360,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#49_Task_Document_evidence_set_up_deterministic_testing_and_ci_gates`, mergeada vía [PR #179](https://github.com/reyduar/Vaqcrow/pull/179).
 
-### #14 — Establecer configuración tipada y límites de secretos
+### ~~#14 — Establecer configuración tipada y límites de secretos~~
 
 ^issue-14
 
@@ -373,7 +373,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** La Feature no usó rama de integración: sus Tasks se entregaron a `main` mediante PRs, con [#183](https://github.com/reyduar/Vaqcrow/pull/183)/[#184](https://github.com/reyduar/Vaqcrow/pull/184) como cadena apilada. La rama propuesta `Vaqcrow#14_Feat_Establish_typed_configuration_and_secret_boundaries` nunca se creó, igual que la de la Feature [#15](#^issue-15).
 
-### #44 — Implementar configuración tipada y límites de secretos
+### ~~#44 — Implementar configuración tipada y límites de secretos~~
 
 ^issue-44
 
@@ -386,7 +386,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#44_Task_Implement_typed_configuration_and_secret_boundaries` (contrato) y `…-02-wiring` (cableado), mergeadas vía [PR #183](https://github.com/reyduar/Vaqcrow/pull/183) y [PR #184](https://github.com/reyduar/Vaqcrow/pull/184). Registro de la unidad en `odd/tasks/typed-configuration-and-secret-boundaries.md`.
 
-### #45 — Probar la configuración tipada y los límites de secretos
+### ~~#45 — Probar la configuración tipada y los límites de secretos~~
 
 ^issue-45
 
@@ -399,7 +399,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#45_Task_Test_establish_typed_configuration_and_secret_boundaries`, mergeada vía [PR #187](https://github.com/reyduar/Vaqcrow/pull/187). Registro de la unidad en `odd/tasks/typed-configuration-and-secret-boundaries-testing.md`.
 
-### #46 — Documentar evidencia de configuración tipada y límites de secretos
+### ~~#46 — Documentar evidencia de configuración tipada y límites de secretos~~
 
 ^issue-46
 
@@ -426,7 +426,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 ## Ola 2 — Shell, IA, Stellar y persistencia
 
-### #16 — Construir la estructura guiada y la navegación de la demo
+### ~~#16 — Construir la estructura guiada y la navegación de la demo~~
 
 ^issue-16
 
@@ -439,7 +439,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#16_Feat_Build_guided_demo_shell_and_navigation` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
-### #50 — Implementar la estructura guiada y la navegación de la demo
+### ~~#50 — Implementar la estructura guiada y la navegación de la demo~~
 
 ^issue-50
 
@@ -452,7 +452,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#50_Task_Implement_build_guided_demo_shell_and_navigation` es una unidad de implementación revisable.
 
-### #51 — Probar la estructura guiada y la navegación de la demo
+### ~~#51 — Probar la estructura guiada y la navegación de la demo~~
 
 ^issue-51
 
@@ -465,7 +465,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#51_Task_Test_build_guided_demo_shell_and_navigation` es una unidad de pruebas revisable.
 
-### #52 — Documentar evidencia de la estructura guiada y la navegación
+### ~~#52 — Documentar evidencia de la estructura guiada y la navegación~~
 
 ^issue-52
 
@@ -526,7 +526,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#67_Task_Document_evidence_for_AI_assessment_schema_and_guardrails` es una unidad de documentación revisable.
 
-### #23 — Encapsular la integración de Stellar y Freighter
+### ~~#23 — Encapsular la integración de Stellar y Freighter~~
 
 ^issue-23
 
@@ -541,7 +541,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** La Feature no usó rama de integración: sus Tasks se entregaron a `main` mediante PRs, con [#191](https://github.com/reyduar/Vaqcrow/pull/191)/[#192](https://github.com/reyduar/Vaqcrow/pull/192) como cadena apilada. La rama propuesta `Vaqcrow#23_Feat_Encapsulate_Stellar_and_Freighter_integration` nunca se creó, igual que las de las Features [#14](#^issue-14) y [#15](#^issue-15). La rama propuesta de [#74](#^issue-74) se usó, y se sumó su hermana `…-02-api-horizon` para la segunda slice.
 
-### #74 — Implementar la integración de Stellar y Freighter
+### ~~#74 — Implementar la integración de Stellar y Freighter~~
 
 ^issue-74
 
@@ -553,7 +553,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#74_Task_Implement_Stellar_and_Freighter_integration` y su hermana `…-02-api-horizon`, mergeadas mediante [PR #191](https://github.com/reyduar/Vaqcrow/pull/191) y [PR #192](https://github.com/reyduar/Vaqcrow/pull/192) como cadena apilada: el slice 1 (web, adaptador de Freighter) sobre `main` y el slice 2 (api, adaptador de Horizon) sobre el slice 1. Cerrada manualmente al aterrizar la cadena.
 
-### #75 — Probar la integración de Stellar y Freighter
+### ~~#75 — Probar la integración de Stellar y Freighter~~
 
 ^issue-75
 
@@ -565,7 +565,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#75_Task_Test_Stellar_and_Freighter_integration`, mergeada vía [PR #193](https://github.com/reyduar/Vaqcrow/pull/193).
 
-### #76 — Documentar evidencia de la integración de Stellar y Freighter
+### ~~#76 — Documentar evidencia de la integración de Stellar y Freighter~~
 
 ^issue-76
 
@@ -677,7 +677,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#79_Task_Document_evidence_for_funding_intent_submission_and_XDR_verification` es una unidad de documentación revisable.
 
-### #17 — Implementar avisos de confianza y fixtures sintéticos
+### ~~#17 — Implementar avisos de confianza y fixtures sintéticos~~
 
 ^issue-17
 
@@ -690,7 +690,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#17_Feat_Implement_trust_disclosures_and_synthetic_fixtures` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
-### #53 — Implementar avisos de confianza y fixtures sintéticos
+### ~~#53 — Implementar avisos de confianza y fixtures sintéticos~~
 
 ^issue-53
 
@@ -704,7 +704,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#53_Task_Implement_implement_trust_disclosures_and_synthetic_fixtures` es una unidad de implementación revisable; conserva literalmente la duplicación `Implement implement` del título original.
 
-### #54 — Probar avisos de confianza y fixtures sintéticos
+### ~~#54 — Probar avisos de confianza y fixtures sintéticos~~
 
 ^issue-54
 
@@ -717,7 +717,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#54_Task_Test_trust_disclosures_and_synthetic_fixtures` es una unidad de pruebas revisable.
 
-### #55 — Documentar evidencia de avisos de confianza y fixtures sintéticos
+### ~~#55 — Documentar evidencia de avisos de confianza y fixtures sintéticos~~
 
 ^issue-55
 
@@ -876,7 +876,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#88_Task_Document_evidence_for_deterministic_revenue_share_calculation` es una unidad de documentación revisable.
 
-### #18 — Implementar la solicitud de PyME y la revisión de evidencia
+### ~~#18 — Implementar la solicitud de PyME y la revisión de evidencia~~
 
 ^issue-18
 
@@ -1072,7 +1072,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#91_Task_Document_evidence_for_Testnet_revenue_share_distribution` es una unidad de documentación revisable.
 
-### #19 — Implementar la evaluación y aprobación humanas
+### ~~#19 — Implementar la evaluación y aprobación humanas~~
 
 ^issue-19
 
@@ -1085,7 +1085,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#19_Feat_Implement_human_assessment_and_approval`, entregada mediante la cadena de Tasks y PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175).
 
-### #62 — Implementar la evaluación y aprobación humanas
+### ~~#62 — Implementar la evaluación y aprobación humanas~~
 
 ^issue-62
 
@@ -1097,7 +1097,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#62_Task_Implement_human_assessment_and_approval`, entregada por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#173](https://github.com/reyduar/Vaqcrow/pull/173).
 
-### #63 — Probar la evaluación y aprobación humanas
+### ~~#63 — Probar la evaluación y aprobación humanas~~
 
 ^issue-63
 
@@ -1110,7 +1110,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#63_Task_Test_human_assessment_and_approval`, cubierta por PRs [#170](https://github.com/reyduar/Vaqcrow/pull/170) y [#175](https://github.com/reyduar/Vaqcrow/pull/175).
 
-### #64 — Documentar evidencia de la evaluación y aprobación humanas
+### ~~#64 — Documentar evidencia de la evaluación y aprobación humanas~~
 
 ^issue-64
 
