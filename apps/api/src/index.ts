@@ -33,6 +33,7 @@ const app = buildApp({
       network: config.stellar.network,
       networkPassphrase: config.stellar.networkPassphrase
     },
+    explorerBaseUrl: config.stellar.explorerUrl,
     generateIntentId: () => parseFundingIntentId(crypto.randomUUID())
   }
 });

@@ -31,6 +31,8 @@ const snapshot = {
   state: "submitted",
   transactionHash: "TRANSACTION-HASH",
   applicationId: null,
+  explorerUrl: "https://stellar.expert/explorer/testnet/tx/TRANSACTION-HASH",
+  failureReason: null,
   lastCorrelationId: CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:00.000Z"
