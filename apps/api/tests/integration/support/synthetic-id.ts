@@ -1,5 +1,5 @@
-import { parseApplicationId } from "@vaqcrow/contracts";
-import type { ApplicationId } from "@vaqcrow/contracts";
+import { parseApplicationId, parseFundingIntentId } from "@vaqcrow/contracts";
+import type { ApplicationId, FundingIntentId } from "@vaqcrow/contracts";
 
 const SYNTHETIC_PREFIX = "deadbeef";
 
@@ -35,4 +35,18 @@ export function registeredSyntheticApplicationIds(): readonly ApplicationId[] {
 /** Clears the registry. Call after cleanup has deleted the corresponding rows. */
 export function clearRegisteredSyntheticApplicationIds(): void {
   registeredSyntheticIds.clear();
+}
+
+/**
+ * Mints a valid UUIDv4 `FundingIntentId` inside the same reserved `deadbeef-…`
+ * range, so a funding-intent id is recognisably synthetic too.
+ *
+ * Deliberately not registered for cleanup: no live test creates a
+ * `funding_intent` row. The table is append-only for the API role and its FK
+ * does not cascade (D10), so a row written by a test could never be deleted —
+ * which is exactly why the write path has no live suite. The surviving tests
+ * use this id only for reads and for writes the database refuses.
+ */
+export function syntheticFundingIntentId(): FundingIntentId {
+  return parseFundingIntentId(`${SYNTHETIC_PREFIX}-0000-4000-8000-${randomUuidTail()}`);
 }

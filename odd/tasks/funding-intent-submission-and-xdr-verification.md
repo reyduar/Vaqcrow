@@ -136,7 +136,7 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       `build-app.ts` and `index.ts` — `0f96092`, `1c772d0`, `b275d1a`
 - [x] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page —
       `5d2bf8b`, `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476`
-- [ ] T7 #78 — the ordered test Task: invariants and API integration coverage
+- [x] T7 #78 — the ordered test Task: invariants and API integration coverage — `16aaced`, `3e2e18d`
 - [ ] T8 #79 — evidence document in Spanish, traceable to this log
 
 ## RED → GREEN
@@ -243,6 +243,25 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   passphrases, not the real ones, so the fixture is synthetic and the guard carries no exemptions at
   all: a stricter invariant with less machinery. Commit `a0d7476`.
 
+### #78 — the ordered test Task (`apps/api`, `tests/`)
+- **No behavioural RED, recorded honestly.** The Task's real deliverable was an **observational** gap:
+  every funding-intent test used *either* the real verifier with no HTTP surface, *or* the HTTP surface
+  with a fake verifier, so "altered XDR rejects" was proven at the adapter level and asserted at the
+  route level but never observed end to end. The equivalent RED is `No test files found`. Manufacturing a
+  behavioural failure by weakening an expectation would have been dishonest, so it is recorded as what it
+  was.
+- **GREEN** — the sequence suite **13 passed**, api **333** (was 320), `pnpm run verify` **exit 0**;
+  `boundaries` clean at **265 modules / 674 dependencies**.
+- **The sequence test wires the real verifier into the real route.** Both halves of criterion 1 are
+  observed: declaring the original terms exercises every field comparison, declaring the altered terms
+  forces the cryptographic `invalid_signature` path. Each altered envelope is built by a second real
+  adapter, so its shape is the production one, and the original signature is grafted on with
+  `addDecoratedSignature` — which is what makes every alteration a post-signature one.
+- **A coverage audit, reported rather than padded.** Contracts, the XDR adapter, the route, the use cases
+  and the repository were already covered; the genuine gaps were the real-verifier × real-route pair and
+  every live-DB observation. Nothing was added that merely restates an existing assertion.
+- **The live suite found a limit and did not paper over it** — advisory A5.
+
 ## Advisories
 
 - **A1 — the built envelope carries `minTime` = build time.** `build` sets
@@ -280,6 +299,28 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   would mean persisting the terms at prepare time, which contradicts "initial state is submitted" and
   would require widening the table CHECK.
 
+- **A5 — the `funding_intent` write path has no repeatable live suite, and cannot have one.** The table is
+  append-only for the API role (`grant select, insert` only) and its application FK is `on delete set
+  null` (D10), so a synthetic row written by a live test could never be removed — not by the suite, and
+  not through the parent either. The repository's own pattern for an append-only child is cleanup
+  **through the cascade**, and D10 deliberately breaks it: `human_decision` carries the same narrow grant
+  but a `CASCADE` FK, and `application_review` is the only table granted DELETE. The live file therefore
+  keeps only residue-free observations — a grant denial, two CHECK refusals, an unknown-id read — and
+  states in its header what it does not cover and why. Granting DELETE or UPDATE to make cleanup
+  convenient would contradict both the repository's immutability practice
+  (`20260919203900_enforce_human_decision_grant_immutability.sql`) and D10's rationale: the test bends to
+  the design, not the other way round. What *was* verified live by direct query on 2026-09-21 — the
+  migration's structure, grants and idempotency, every constraint biting, and PostgREST's
+  decimal-string-to-`bigint` coercion — is listed in the file so the record reads as complete rather than
+  as a gap.
+
+- **A6 — `pnpm --filter @vaqcrow/api test:integration` does not skip in a working checkout.** There is no
+  root `.env`, but there **is** a root `.env.local`, and `vitest.integration.config.ts` calls Vite's
+  `loadEnv`, which picks up all three Supabase variables. So the command runs the two sibling live suites
+  against the real project. That is its documented behaviour rather than a defect, but it is worth
+  knowing before running it — and it is why #78's live file was verified by a credentials-absent
+  collection check instead of by running the command.
+
 ## Review size and delivery chain
 Slice 1 is six commits: `b03048b` (the scan allowance), `8b49649` (the XDR engine), `9c58489` (the
 WU1 log), `af95e55` (the migration), `89daba9` (persistence) and `3d19f3f` (the WU2 log). Slice 2
@@ -309,5 +350,8 @@ contracts can be read on their own, then the use cases, then the route, then the
   `a4c8a00`, `76914ed`, `8a97aaf`, `a0d7476` and this log commit. It was opened stacked on slice 2's
   branch so its diff stayed scoped to the web slice, then retargeted to `main` once slice 2 landed;
   the diff is clean either way, because slice 3 is based on slice 2's head.
-- **The implementation is complete; #77 is not closed yet.** The ordered test Task (#78) and the
-  Spanish evidence document (#79) remain, and #77 closes once slice 3 is on `main`.
+- **Slice 4 / Task #78** — PR [#202](https://github.com/reyduar/Vaqcrow/pull/202) → `main`, commits
+  `16aaced`, `3e2e18d` and this log commit.
+- **#77's work is entirely on `main`** (slices 1–3, PRs #199, #200, #201), though the Task itself is not
+  yet closed on the board. What remains for the Feature is the evidence document (#79), and #24 closes
+  once slice 4 lands and the evidence is written.
