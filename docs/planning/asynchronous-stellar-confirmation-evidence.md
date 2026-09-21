@@ -159,14 +159,16 @@ Criterios citados verbatim de `gh issue view 25, 80, 81 y 82`.
 - El trabajo vive en `Vaqcrow#80_Task_Implement_asynchronous_Stellar_confirmation`, apilada sobre `Vaqcrow#25_Feat_Confirm_Stellar_transactions_asynchronously`, que sale de `main` en `4d3c6ce`. **Al escribir esto ningún PR está mergeado**: la cadena se abre con la entrega de esta Task.
 - La entrega se hace como **cadena de PRs apilados**, no como un PR único: el cambio completo es de más de cuatro mil líneas, y la skill `chained-pr` del propio repositorio marca el umbral de revisión en torno a las cuatrocientas. Las rebanadas siguen los cuatro work units más la Task de tests y la de evidencia, y **cada commit de código pasó el gate en aislamiento**, así que cualquier frontera entre commits es un estado que corre.
 
-| Rebanada | Contenido | Commits |
-|---|---|---|
-| 1 | El vocabulario de estados y el contrato de persistencia | `f12ed77`, `602a855`, `ae9497d`, `60f8690`, `4941129` |
-| 2 | El puerto de Horizon y su adaptador | `dbc8b31`, `3c68d60`, `be199c2`, `b267ceb` |
-| 3 | El poll acotado y el scheduler | `ffeabca`, `ebe700b`, `be91a41`, `6275c16` |
-| 4 | El enlace al explorador y el motivo de falla | `f8017e9`, `cfe313b`, `9820d08`, `8dcfde9` |
-| 5 | La suite de secuencia y los probes vivos | `e8dd962`, `f3a369b`, `21762f4` |
-| 6 | Este documento | — |
+| Rebanada | PR | Contenido | Commits |
+|---|---|---|---|
+| 1 | [#205](https://github.com/reyduar/Vaqcrow/pull/205) | El vocabulario de estados y el contrato de persistencia | `f12ed77`, `602a855`, `ae9497d`, `60f8690`, `4941129` |
+| 2 | [#206](https://github.com/reyduar/Vaqcrow/pull/206) | El puerto de Horizon y su adaptador | `dbc8b31`, `3c68d60`, `be199c2`, `b267ceb` |
+| 3 | [#207](https://github.com/reyduar/Vaqcrow/pull/207) | El poll acotado y el scheduler | `ffeabca`, `ebe700b`, `be91a41`, `6275c16` |
+| 4 | [#208](https://github.com/reyduar/Vaqcrow/pull/208) | El enlace al explorador y el motivo de falla | `f8017e9`, `cfe313b`, `9820d08`, `8dcfde9` |
+| 5 | [#209](https://github.com/reyduar/Vaqcrow/pull/209) | La suite de secuencia y los probes vivos | `e8dd962`, `f3a369b`, `21762f4` |
+| 6 | [#210](https://github.com/reyduar/Vaqcrow/pull/210) | Este documento | `f145a03` |
+
+Cada rebanada apunta a la anterior, y la primera a `#25`: el diff de cada PR muestra **sólo** su rebanada, verificado con `git diff --shortstat` contra su base. Los seis PRs tienen `Quality gates`, `Playwright` y Vercel en verde.
 - **#82 se cierra con este documento.** El cierre de las Tasks en el Project #4 queda como acción manual, igual que el de la Feature: GitHub no cierra una Feature al completarse sus sub-issues, mismo patrón que las Features #11 a #19, #23 y #24.
 - **La Feature #25 queda pendiente de cierre manual** al mergear la cadena, no antes.
 - `docs/planning/demo-tasks-list.md` **no se toca en este cambio**, siguiendo el precedente que la evidencia de #24 registra en su sección 10: el sync del roadmap pertenece a un commit posterior, cuando la Feature esté efectivamente cerrada.
