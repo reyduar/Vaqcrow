@@ -30,6 +30,34 @@ export type {
   HumanDecisionRecord
 } from "./application-review.js";
 
+export { fundingIntentIdSchema, parseFundingIntentId } from "./funding-intent-id.js";
+export type { FundingIntentId } from "./funding-intent-id.js";
+
+export {
+  fundingIntentSnapshotSchema,
+  fundingIntentStateSchema,
+  fundingIntentTermsSchema,
+  parseFundingIntentSnapshot,
+  parseFundingIntentState,
+  parseFundingIntentTerms,
+  parsePrepareFundingIntentCommand,
+  parsePreparedFundingIntent,
+  parseStroops,
+  parseSubmitFundingIntentCommand,
+  prepareFundingIntentCommandSchema,
+  preparedFundingIntentSchema,
+  stroopsSchema,
+  submitFundingIntentCommandSchema
+} from "./funding-intent.js";
+export type {
+  FundingIntentSnapshot,
+  FundingIntentState,
+  FundingIntentTerms,
+  PrepareFundingIntentCommand,
+  PreparedFundingIntent,
+  SubmitFundingIntentCommand
+} from "./funding-intent.js";
+
 export {
   evidenceReferenceSchema,
   parseReviewFinding,
