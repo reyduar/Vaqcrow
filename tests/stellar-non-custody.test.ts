@@ -53,8 +53,21 @@ export interface Offence {
   readonly detail: string;
 }
 
+/**
+ * `allowEphemeralSigners` is the only concession this scan makes, and it is
+ * opt-in per file. A test proves a cryptographic property with an in-memory
+ * keypair that never touches a real account and is never persisted, so
+ * `Keypair.random()` is legitimate there. Everything else — a hardcoded seed
+ * literal, a secret-bearing identifier, `fromSecret` — stays flagged in test
+ * files too, because a fixture is as much a place for a leaked key as shipped
+ * code is.
+ */
+export interface ScanOptions {
+  readonly allowEphemeralSigners?: boolean;
+}
+
 /** Key material this source text would handle, as code — comments and prose are invisible to it. */
-export function offencesIn(file: string, text: string): readonly Offence[] {
+export function offencesIn(file: string, text: string, options: ScanOptions = {}): readonly Offence[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const found: Offence[] = [];
 
@@ -68,7 +81,9 @@ export function offencesIn(file: string, text: string): readonly Offence[] {
       const member = node.name.text;
 
       if (KEYPAIR_SECRET_MEMBERS.has(member) && ts.isIdentifier(node.expression) && node.expression.text === "Keypair") {
-        report(`Keypair.${member}`, node);
+        if (!(options.allowEphemeralSigners && member === "random")) {
+          report(`Keypair.${member}`, node);
+        }
       }
 
       if (SECRET_BEARING_NAMES.has(member)) {
@@ -96,6 +111,13 @@ export function offencesIn(file: string, text: string): readonly Offence[] {
   visit(source);
   return found;
 }
+
+/**
+ * Test files are scanned like any other source file — a hardcoded seed in a
+ * fixture is as much a leak as one in shipped code. The only difference is that
+ * they opt in to ephemeral signers (see `ScanOptions`).
+ */
+const TEST_FILE = /\.test\.tsx?$/;
 
 function sourceFiles(root: string): readonly string[] {
   const found: string[] = [];
@@ -127,6 +149,33 @@ describe("the scanner itself", () => {
 
   it("flags a Keypair call that generates a new key", () => {
     expect(offencesIn("probe.ts", "const pair = Keypair.random();")).toHaveLength(1);
+  });
+
+  it("allows an ephemeral signer only where the caller opts in for it", () => {
+    // Shipped code never generates key material, so the default stays strict.
+    expect(offencesIn("probe.ts", "const pair = Keypair.random();")).toHaveLength(1);
+    expect(
+      offencesIn("probe.test.ts", "const pair = Keypair.random();", { allowEphemeralSigners: true })
+    ).toEqual([]);
+  });
+
+  it("still flags every other key-material shape in a test file", () => {
+    // The ephemeral allowance is narrow on purpose: a test is a place a leaked
+    // key can hide just as easily as shipped code.
+    const options = { allowEphemeralSigners: true } as const;
+    const seed = "SUJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT7V4S";
+
+    expect(
+      offencesIn("probe.test.ts", `const pair = Keypair.fromSecret("${seed}");`, options).some((offence) =>
+        offence.detail.includes("Keypair.fromSecret")
+      )
+    ).toBe(true);
+    expect(
+      offencesIn("probe.test.ts", `const leaked = "${seed}";`, options).some(
+        (offence) => offence.detail === "Stellar secret seed literal at line 1"
+      )
+    ).toBe(true);
+    expect(offencesIn("probe.test.ts", "const privateKey = readFromDisk();", options).length).toBeGreaterThanOrEqual(1);
   });
 
   it("flags a hardcoded Stellar secret seed", () => {
@@ -172,7 +221,9 @@ describe("the scanned surface", () => {
 describe("no private key path exists", () => {
   it("handles no key material anywhere in apps/web/src or apps/api/src", () => {
     const offences = APP_SOURCE_FILES.flatMap(({ root, file }) =>
-      offencesIn(relative(root, file), readFileSync(file, "utf8"))
+      offencesIn(relative(root, file), readFileSync(file, "utf8"), {
+        allowEphemeralSigners: TEST_FILE.test(file)
+      })
     );
 
     expect(
