@@ -31,7 +31,12 @@ import type {
 
 export interface SubmitFundingIntentDeps {
   readonly xdr: FundingIntentXdrPort;
-  readonly repository: FundingIntentRepositoryPort;
+  /**
+   * A verified submission writes one row and reads nothing back, so that is the
+   * whole repository surface it depends on — `#25`'s confirmation operations are
+   * not part of this use case's contract.
+   */
+  readonly repository: Pick<FundingIntentRepositoryPort, "submit">;
 }
 
 export type SubmitFundingIntentError =

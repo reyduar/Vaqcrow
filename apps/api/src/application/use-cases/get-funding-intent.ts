@@ -26,8 +26,16 @@ export type GetFundingIntentResult =
   | { readonly ok: true; readonly value: FundingIntentSnapshot }
   | { readonly ok: false; readonly error: GetFundingIntentError };
 
+/**
+ * A status read needs exactly one repository operation, so it depends on exactly
+ * that one. Widening `FundingIntentRepositoryPort` for confirmation (#25) must
+ * not oblige a caller that only reports state to know about the polling surface
+ * it will never use.
+ */
+export type FundingIntentLookup = Pick<FundingIntentRepositoryPort, "findById">;
+
 export async function getFundingIntent(
-  repository: FundingIntentRepositoryPort,
+  repository: FundingIntentLookup,
   intentId: FundingIntentId
 ): Promise<GetFundingIntentResult> {
   const found = await repository.findById(intentId);

@@ -12,10 +12,7 @@ import type {
   FundingIntentXdrResult,
   VerifiedFundingIntentXdr
 } from "../../../application/ports/funding-intent-xdr-port.js";
-import type {
-  FundingIntentRecord,
-  FundingIntentRepositoryPort
-} from "../../../application/ports/funding-intent-repository-port.js";
+import type { FundingIntentRecord } from "../../../application/ports/funding-intent-repository-port.js";
 import type {
   LedgerAccount,
   LedgerPort,
@@ -101,6 +98,11 @@ const snapshot: FundingIntentRecord = {
   transactionHash: TRANSACTION_HASH,
   state: "submitted",
   lastCorrelationId: parseCorrelationId(CORRELATION_ID),
+  // The confirmation schedule #25 persists. The route's wire snapshot is
+  // deliberately unchanged by it — these are persistence facts, not reported
+  // ones — but the record mirrors the row, so they are present.
+  confirmationAttempts: 0,
+  nextAttemptAt: "2026-09-21T12:00:10.000Z",
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
 };
@@ -143,7 +145,7 @@ function repositoryDouble(
     submit?: unknown;
     findById?: unknown;
   } = {}
-): FundingIntentRepositoryPort {
+): FundingIntentRouteDependencies["repository"] {
   return {
     submit: vi
       .fn()
@@ -156,7 +158,7 @@ function deps(
   overrides: {
     ledger?: LedgerPort;
     xdr?: FundingIntentXdrPort;
-    repository?: FundingIntentRepositoryPort;
+    repository?: FundingIntentRouteDependencies["repository"];
   } = {}
 ): FundingIntentRouteDependencies {
   return {

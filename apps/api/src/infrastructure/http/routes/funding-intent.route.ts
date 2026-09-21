@@ -41,7 +41,11 @@ const SUBMIT_BODY_KEYS = new Set(["signedXdr", "intent", "applicationId"]);
 export interface FundingIntentRouteDependencies {
   readonly ledger: LedgerPort;
   readonly xdr: FundingIntentXdrPort;
-  readonly repository: FundingIntentRepositoryPort;
+  /**
+   * The route submits and reports, so it depends on those two operations only.
+   * The confirmation surface #25 adds belongs to the poll, not to this route.
+   */
+  readonly repository: Pick<FundingIntentRepositoryPort, "submit" | "findById">;
   readonly network: { readonly network: string; readonly networkPassphrase: string };
   readonly generateIntentId: () => FundingIntentId;
 }

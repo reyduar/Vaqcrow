@@ -124,7 +124,9 @@ function ledger(): LedgerPort {
  * identical submission returns the original row with `applied: false`) while
  * every verified fact it stores comes from what the real use case submitted.
  */
-function inMemoryRepository(submissions: CapturedSubmission[]): FundingIntentRepositoryPort {
+function inMemoryRepository(
+  submissions: CapturedSubmission[]
+): Pick<FundingIntentRepositoryPort, "submit" | "findById"> {
   const byIntentId = new Map<string, FundingIntentRecord>();
   const hashOwners = new Map<string, string>();
 
@@ -148,6 +150,10 @@ function inMemoryRepository(submissions: CapturedSubmission[]): FundingIntentRep
         ...record,
         state: "submitted",
         lastCorrelationId: correlationId,
+        // The confirmation schedule #25 persists. A fresh row is due
+        // immediately, which is what the database default supplies.
+        confirmationAttempts: 0,
+        nextAttemptAt: CREATED_AT,
         createdAt: CREATED_AT,
         updatedAt: UPDATED_AT
       };

@@ -5,7 +5,7 @@ import type {
   FundingIntentRepositoryPort,
   FundingIntentRepositoryResult
 } from "../ports/funding-intent-repository-port.js";
-import { getFundingIntent } from "./get-funding-intent.js";
+import { getFundingIntent, type FundingIntentLookup } from "./get-funding-intent.js";
 
 const INTENT_ID = "123e4567-e89b-42d3-a456-426614174000";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -15,6 +15,7 @@ const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 const SIGNED_XDR = "AAAAAgAAAABfakeSignedEnvelope";
 const TRANSACTION_HASH = "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
 const EXPIRES_AT = "2026-09-21T12:00:00.000Z";
+const NEXT_ATTEMPT_AT = "2026-09-21T12:00:10.000Z";
 
 const intentId = parseFundingIntentId(INTENT_ID);
 const correlationId = parseCorrelationId(CORRELATION_ID);
@@ -32,6 +33,10 @@ const record: FundingIntentRecord = {
   transactionHash: TRANSACTION_HASH,
   state: "submitted",
   lastCorrelationId: correlationId,
+  // The confirmation schedule #25 persists. A status read reports state and
+  // ignores these, but the record mirrors the row, so they are present.
+  confirmationAttempts: 0,
+  nextAttemptAt: NEXT_ATTEMPT_AT,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
 };
@@ -57,12 +62,14 @@ const expectedSnapshot = parseFundingIntentSnapshot({
 function repositoryReturning(
   result: FundingIntentRepositoryResult<FundingIntentRecord>
 ): {
-  repository: FundingIntentRepositoryPort;
+  repository: FundingIntentLookup;
   findById: ReturnType<typeof vi.fn<FundingIntentRepositoryPort["findById"]>>;
 } {
   const findById = vi.fn<FundingIntentRepositoryPort["findById"]>().mockResolvedValue(result);
 
-  return { repository: { submit: vi.fn(), findById }, findById };
+  // Only the lookup operation: the port's wider surface is deliberately not
+  // required here, so a status read cannot quietly grow a dependency on it.
+  return { repository: { findById }, findById };
 }
 
 describe("getFundingIntent", () => {

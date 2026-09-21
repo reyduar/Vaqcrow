@@ -17,7 +17,7 @@ import type {
   FundingIntentXdrResult,
   VerifiedFundingIntentXdr
 } from "../ports/funding-intent-xdr-port.js";
-import { submitFundingIntent } from "./submit-funding-intent.js";
+import { submitFundingIntent, type SubmitFundingIntentDeps } from "./submit-funding-intent.js";
 
 const INTENT_ID = "123e4567-e89b-42d3-a456-426614174000";
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
@@ -83,6 +83,10 @@ const record: FundingIntentRecord = {
   transactionHash: TRANSACTION_HASH,
   state: "submitted",
   lastCorrelationId: correlationId,
+  // The confirmation schedule #25 persists. A submission never reads it back,
+  // but the record mirrors the row, so it is present.
+  confirmationAttempts: 0,
+  nextAttemptAt: "2026-09-21T12:00:10.000Z",
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
 };
@@ -114,12 +118,14 @@ function xdrVerifying(
 function repositoryReturning(
   result: FundingIntentRepositoryResult<FundingIntentSubmissionOutcome>
 ): {
-  repository: FundingIntentRepositoryPort;
+  repository: SubmitFundingIntentDeps["repository"];
   submit: ReturnType<typeof vi.fn<FundingIntentRepositoryPort["submit"]>>;
 } {
   const submit = vi.fn<FundingIntentRepositoryPort["submit"]>().mockResolvedValue(result);
 
-  return { repository: { submit, findById: vi.fn() }, submit };
+  // Only the write operation: the confirmation surface #25 adds belongs to the
+  // poll, not to a submission.
+  return { repository: { submit }, submit };
 }
 
 describe("submitFundingIntent", () => {
