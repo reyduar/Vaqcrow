@@ -194,7 +194,8 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
       it (`apps/api`, per D1) — `ffeabca`, `ebe700b`, `be91a41`
 - [x] T6 WU4 — explorer link and sanitised failure reason exposed on the HTTP surface; explorer URL
       configuration — `f8017e9`, `cfe313b`, `9820d08`
-- [ ] T7 #81 — the ordered test Task: success, failure, timeout and resume against a Horizon double
+- [x] T7 #81 — the ordered test Task: the end-to-end sequence suite and the live probes that close A1
+      — `e8dd962`, `f3a369b`
 - [ ] T8 #82 — evidence document in Spanish, traceable to this log
 
 ## RED → GREEN
@@ -409,9 +410,47 @@ Three commits, each verified green in isolation (see the method below).
   were in the commit *before* the component that satisfies them). Both were reordered so each commit is
   genuinely green, and the reordering is recorded in the commit messages rather than left as a mystery.
 
+### #81 — the ordered test Task
+Two commits, each verified green in isolation.
+
+- **The gap was observational, and worth stating precisely.** #80's suites each prove one layer with
+  the others doubled: the use case against mock ports, the adapters against hand-written responses,
+  the route against a fake repository. Nothing observed a persisted intent being advanced by a poll and
+  read back over HTTP, so nothing would have caught a disagreement *between* the layers — a payload the
+  repository cannot decode, a state the contract and the adapter spell differently, an explorer link
+  derived from the wrong hash. That is the same shape as #78's gap for #24, and the same answer: wire
+  the real pieces together and double only the provider edges.
+
+- **The suite runs everything Vaqcrow wrote** — `StellarTransaction`, `SupabaseFundingIntentRepository`,
+  `confirmFundingIntents`, `ConfirmationScheduler`, the Fastify route — with a double only at the
+  Supabase client and at Horizon. Its four scenarios are the ones the Feature's own testing strategy
+  names: **success**, **failure**, **timeout** and **resume**. Resume is the one that most needed
+  observing and had none: a second process, with its own repository, adapter and scheduler and no
+  shared memory beyond the database, continues from the persisted attempt count instead of restarting
+  it.
+
+- **Two findings, and in both the code was right and the test was wrong.** The harness first seeded a
+  placeholder XDR string, so every scenario expecting a submission came back `failed` / `unsuccessful`:
+  the adapter decodes the envelope for real and correctly reported `invalid_input`. The fixture changed.
+  Then the widening-interval test failed with one attempt instead of three, because the second step ran
+  before `next_attempt_at` was due and correctly found nothing — that is the schedule gating the work,
+  which is half of what "bounded" means. The test now advances the clock and asserts the gating
+  explicitly, rather than stepping around the behaviour it was supposed to be measuring.
+
+- **The in-memory PostgREST double is a mirror, and mirrors are a risk.** It reproduces the column
+  defaults and the conditional update, so a divergence from the migration would let the suite pass
+  while production failed. That is why the live probes exist in the same Task: the mirror is verified
+  from the other side rather than trusted. Recorded as A11.
+
+- **The live probes were run against the real project**, not merely written: **10 passed** on
+  2026-09-21, with `funding_intent` back to **0 rows** afterwards. This closes A1.
+
+- **Full gate at HEAD** — `pnpm run verify` → **exit 0**. contracts **257**, domain **60**, api **420**
+  (was 414), web **384**, root **74**, `boundaries` clean at **279 modules / 739 dependencies**.
+
 ## Per-commit verification, and a correction
 
-**All twelve code commits are verified green in isolation**, by checking each one out detached and
+**All fourteen code commits are verified green in isolation**, by checking each one out detached and
 running `pnpm run verify`:
 
 | work unit | commits | result |
@@ -420,6 +459,7 @@ running `pnpm run verify`:
 | WU2 | `dbc8b31`, `3c68d60`, `be199c2` | exit 0 each |
 | WU3 | `ffeabca`, `ebe700b`, `be91a41` | exit 0 each |
 | WU4 | `f8017e9`, `cfe313b`, `9820d08` | exit 0 each |
+| #81 | `e8dd962`, `f3a369b` | exit 0 each |
 
 **A correction, because the earlier claim in this log was not true when it was written.** WU1, WU2 and
 WU3 each said their commits "were verified green on their own". They were not: `pnpm run verify`
@@ -435,6 +475,14 @@ ESLint nor any test reads, so the gate cannot differ at them. That is reasoning,
 it is labelled as such.
 
 ## Advisories
+
+- **A11 — the sequence suite's PostgREST double is a mirror of the migration, and a mirror can drift.**
+  It reproduces the column defaults (`confirmation_attempts`, `next_attempt_at`, the nullable evidence
+  columns) and the conditional update that matches on `state`, because the adapter relies on both and
+  cannot provide either itself. If the migration changed and the double did not, the suite would keep
+  passing while production failed. The mitigation is not a stronger double — it is the live probes,
+  which assert the real columns exist and that the real CHECKs and grants behave, so the mirror is
+  checked from the other side. A future change to `funding_intent` should touch both files.
 
 - **A9 — `pnpm run verify` validates the working tree, not the commit you just made.** After a `git
   commit`, the working tree still contains whatever else is uncommitted, so a gate run at that moment
@@ -489,14 +537,15 @@ it is labelled as such.
   so it currently surfaces as `unavailable` and is retried. Kept at the default because SEP-29's
   check is a real safety property, not ceremony, but it is worth knowing before the first live run.
 
-- **A1 — the live integration suite does not encode what this work unit verified by hand.** The
-  migration's structure, the column-scoped grant and both evidence CHECKs are now *observed* facts
-  (above), but they live in this log rather than in
-  `apps/api/tests/integration/funding-intent-persistence.integration.test.ts`, so nothing re-checks
-  them on a future run. #81 owns closing that. The pattern is already proven and residue-free: use
-  `has_table_privilege`/`has_column_privilege` for the grant (no role change and no row needed), and
-  assert only on **failing** inserts for the CHECKs, since the table is append-only for the API role
-  (A5 of #24) and a successful insert could never be cleaned up.
+- **A1 — CLOSED by #81.** The live integration suite now encodes the confirmation migration's
+  repeatable observations: the five new columns exist, the three new CHECKs bite (including the
+  equivalence in the direction a one-directional CHECK would have missed), and the column-scoped grant
+  is asserted behaviourally — an UPDATE to `amount_stroops` refused with `42501` while one to `state`
+  is accepted. Run against the live project on 2026-09-21: **10 passed**, and `funding_intent` was back
+  to 0 rows afterwards, so nothing was owed to cleanup. What remains outside any suite is the
+  one-shot structural verification of 2026-09-21 (column and constraint counts, migration idempotency),
+  which is recorded above and is not something a repeatable suite can own: re-running a migration to
+  prove it is re-runnable is an operational act, not an assertion.
 
 - **A2 — whether the `updated_at` grant is *necessary* is still open, and cannot be settled
   residue-free.** The granted columns are proven to work (A1 above), so this is a tightening
@@ -543,6 +592,6 @@ verified green in isolation. The contract commit is the largest of the three and
 its consumers: a required field and the fixtures that build it cannot be separated without producing a
 commit that does not run.
 
-The branch is not yet pushed and no PR is open. The four work units are complete; what remains is
-#81 (the ordered test Task), #82 (the evidence document) and the Feature's closure.
+The branch is not yet pushed and no PR is open. Four work units and the ordered test Task are complete;
+what remains is #82 — the evidence document in Spanish, the roadmap sync, and the Feature's closure.
 
