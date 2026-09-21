@@ -31,6 +31,7 @@ const UNSIGNED_XDR = "AAAAAgAAAABfakeUnsignedEnvelope";
 const SIGNED_XDR = "AAAAAgAAAABfakeSignedEnvelope";
 const TRANSACTION_HASH = "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
 const EXPIRES_AT = "2026-09-21T12:00:00.000Z";
+const EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
 
 const prepareBody = {
   sourceAccountId: SOURCE_ACCOUNT_ID,
@@ -121,6 +122,8 @@ const wireSnapshot = {
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
   applicationId: null,
+  explorerUrl: `${EXPLORER_BASE_URL}/tx/${TRANSACTION_HASH}`,
+  failureReason: null,
   lastCorrelationId: CORRELATION_ID,
   createdAt: "2026-09-21T12:00:00.000Z",
   updatedAt: "2026-09-21T12:00:05.000Z"
@@ -166,6 +169,7 @@ function deps(
     xdr: overrides.xdr ?? xdrDouble(),
     repository: overrides.repository ?? repositoryDouble(),
     network: { network: "testnet", networkPassphrase: NETWORK_PASSPHRASE },
+    explorerBaseUrl: EXPLORER_BASE_URL,
     generateIntentId: vi.fn(() => parseFundingIntentId(INTENT_ID))
   };
 }
