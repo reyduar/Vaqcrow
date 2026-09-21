@@ -98,13 +98,28 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   only the former is accepted, so the outer-fee indirection cannot be used to smuggle a different
   inner transaction past the allowlist.
 
+- **D9 — the table CHECK pins acceptance criterion 3.** `check (state = 'submitted')` because
+  `submitted` is the only state #24 can produce (D3). It turns "initial state is submitted" into a
+  database-enforced fact rather than a convention only the application layer keeps. #25 widens the
+  constraint in its own migration — deliberately, not by oversight.
+
+- **D10 — `on delete set null`, not `on delete cascade`.** `human_decision` cascades because it is an
+  audit row *of* its application. A funding record is financial evidence in its own right: deleting
+  the application must not delete the evidence of a signed instruction to move money, only drop a
+  link that no longer has a referent. Recorded because it deviates from the repo's cascade precedent.
+
+- **D11 — the amount is constrained positive at the database.** `check (amount_stroops > 0)`: a zero
+  or negative funding intent is not an instruction to move money. The contract (WU3) enforces the
+  same invariant; this stops the database accepting what the API would refuse, which is the repo's
+  established habit of mirroring contract invariants as CHECKs.
+
 ## Tasks
 - [x] T1 Recon: #24/#77, roadmap entries, existing ports/adapters/routes, boundaries, skills
 - [x] T2 Assign #24 and #77; move both to `In progress` on Project #4
 - [x] T3 WU1 — XDR build + verify behind a port (`FundingIntentXdrPort` + `StellarFundingIntentXdr`)
       with focused unit tests — `b03048b`, `8b49649`
-- [ ] T4 WU2 — Persistence: `funding_intents` migration (RLS + explicit grants + trigger) and
-      `SupabaseFundingIntentRepository`, with unit tests
+- [x] T4 WU2 — Persistence: `funding_intents` migration (RLS + explicit grants + trigger) and
+      `SupabaseFundingIntentRepository`, with unit tests — `af95e55`, `89daba9`
 - [ ] T5 WU3 — Contracts, use cases and HTTP surface (`create` / `submit` / `get`), wiring in
       `build-app.ts` and `index.ts`
 - [ ] T6 WU4 — Web slice: gateway, state hook calling `WalletPort.signTransaction`, funding page
@@ -139,6 +154,32 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   ESLint warning is pre-existing in `apps/web/src/infrastructure/http/fetch-http-client.ts` and
   untouched here.
 
+### WU2 — the `funding_intent` table and its repository (`supabase/`, `apps/api`)
+- **RED** — `pnpm --filter @vaqcrow/api exec vitest run
+  src/infrastructure/adapters/supabase-funding-intent-repository.test.ts`. **1 file failed / 0 tests
+  collected**: `Cannot find module './supabase-funding-intent-repository.js'`. Same failure mode as
+  WU1 — the suite encoded the port contract before the adapter existed.
+- **GREEN** — same command. **22 passed / 22** after implementing the adapter over a hand-written
+  fake supabase-js client (no live database). The insert-path assertions check the **exact payload
+  sent**, not only the response — the lesson #41's review demanded.
+- **The write path's central assumption was verified against the live database, not assumed.** The
+  adapter sends `amount_stroops` as a decimal string because a JS `bigint` is not JSON-serializable
+  and a JS `number` loses precision above 2^53. PostgREST's coercion was confirmed empirically with a
+  read-only query on the real project:
+  `json_to_record('{"a":"9223372036854775807"}') as t(a bigint)` returns the exact value, for both the
+  string and the number form. Recorded because it was the one premise the implementation could not
+  prove locally.
+- **Three corrections the review surfaced.** (a) An empty memo could be written but never read back:
+  the row decoder routed `memo` through a helper that rejects empty strings, so a stored `""` became
+  `unavailable`. It now has its own nullable-text decoder, with a test. (b) A money column had no
+  positivity constraint, unlike the repo's habit of mirroring contract invariants as CHECKs — D11
+  adds `amount_stroops > 0`. (c) A test named "preserves an amount beyond `Number.MAX_SAFE_INTEGER`
+  without precision loss" **overstated**: it fed the adapter a string, but the read path cannot
+  round-trip such a value (advisory A2). Renamed to what it actually proves, and a case for the real
+  hazard — an imprecise JSON number — was added.
+- **Full gate** — `pnpm run verify` → **exit 0**. domain 60, contracts 101, api **239** (was 215),
+  web 330, root **67**, `boundaries` clean at **234 modules / 548 dependencies**.
+
 ## Advisories
 
 - **A1 — the built envelope carries `minTime` = build time.** `build` sets
@@ -149,11 +190,22 @@ No MCP server is required for authoring; recorded as `mcp_support: none`.
   changed because the submission path belongs to #25; worth revisiting if a demo transaction is ever
   rejected as too early.
 
+- **A2 — a funding amount above 2^53 cannot be read back.** The **write** path is lossless: PostgREST
+  coerces the decimal string the adapter sends into `bigint` (verified against the live database). The
+  **read** path is not: PostgREST renders `bigint` as an *unquoted* JSON number —
+  `row_to_json` returns `{"amount":9223372036854775807}` — so the client's `JSON.parse` has already
+  rounded the value before the adapter sees it. The adapter's `Number.isSafeInteger` guard then
+  rejects it as `unavailable` rather than truncating it silently, which is the right failure but
+  still a failure. The demo's synthetic amounts are many orders of magnitude below the threshold, so
+  this is a declared limit rather than a defect. If larger amounts ever matter, the fix is known: cast
+  the column to text on read (the adapter already accepts a decimal string) and verify the cast
+  against the live API. #78's integration test should confirm the boundary empirically.
+
 ## Review size and delivery chain
 WU1 is three commits: `b03048b` (the scan allowance), `8b49649` (the XDR port, adapter, tests and
-the `stroopsToXlm` helper) and the log commit. `#77` is still forecast to exceed one review once the
-persistence and HTTP work units land, so a stacked chain is likely; the split is decided when WU2 is
-planned.
+the `stroopsToXlm` helper) and `9c58489` (the WU1 log). WU2 adds `af95e55` (the migration) and
+`89daba9` (the port, adapter and tests). `#77` is still forecast to exceed one review once the HTTP
+work unit lands, so a stacked chain is likely; the split is decided when WU3 is planned.
 
 ## Delivery
 _To be filled as PRs are opened._
