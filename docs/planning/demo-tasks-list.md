@@ -57,7 +57,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 2 | [#16 Construir shell y navegación](#^issue-16) | [#50 Implementar](#^issue-50) → [#51 Probar](#^issue-51) → [#52 Documentar](#^issue-52) |
 | 2 | [#20 Definir esquema y guardrails de IA](#^issue-20) | [#65 Implementar](#^issue-65) → [#66 Probar](#^issue-66) → [#67 Documentar](#^issue-67) |
 | 2 | [~~#23 Encapsular Stellar y Freighter~~](#^issue-23) | [~~#74 Implementar~~](#^issue-74) → [~~#75 Probar~~](#^issue-75) → [~~#76 Documentar~~](#^issue-76) |
-| 2 | [#13 Crear persistencia en Supabase](#^issue-13) | [#41 Implementar](#^issue-41) → [#42 Probar](#^issue-42) → [#43 Documentar](#^issue-43) |
+| 2 | [~~#13 Crear persistencia en Supabase~~](#^issue-13) | [~~#41 Implementar~~](#^issue-41) → [~~#42 Probar~~](#^issue-42) → [~~#43 Documentar~~](#^issue-43) |
 | 3 | [#24 Construir y enviar intención de fondeo](#^issue-24) | [#77 Implementar](#^issue-77) → [#78 Probar](#^issue-78) → [#79 Documentar](#^issue-79) |
 | 3 | [#17 Implementar avisos y fixtures](#^issue-17) | [#53 Implementar](#^issue-53) → [#54 Probar](#^issue-54) → [#55 Documentar](#^issue-55) |
 | 3 | [#21 Implementar adaptador LLM](#^issue-21) | [#68 Implementar](#^issue-68) → [#69 Probar](#^issue-69) → [#70 Documentar](#^issue-70) |
@@ -577,7 +577,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#76_Task_Document_evidence_for_Stellar_and_Freighter_integration`, mergeada vía [PR #194](https://github.com/reyduar/Vaqcrow/pull/194). Su entrega incluye además el runbook [`freighter-and-testnet-account-setup.md`](./freighter-and-testnet-account-setup.md), que es el camino para ejecutar el *bounded Testnet check* que la Feature dejó declarado como pendiente.
 
-### #13 — Crear el esquema Supabase y la persistencia idempotente
+### ~~#13 — Crear el esquema Supabase y la persistencia idempotente~~
 
 ^issue-13
 
