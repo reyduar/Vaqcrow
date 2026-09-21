@@ -208,4 +208,15 @@ the `stroopsToXlm` helper) and `9c58489` (the WU1 log). WU2 adds `af95e55` (the 
 work unit lands, so a stacked chain is likely; the split is decided when WU3 is planned.
 
 ## Delivery
-_To be filled as PRs are opened._
+- **Slice 1** — PR [#199](https://github.com/reyduar/Vaqcrow/pull/199) → `main`, labels `type:task` +
+  `area:backend` + `area:database` + `area:stellar`, six commits: `b03048b` (scan allowance),
+  `8b49649` (XDR engine), `9c58489` (WU1 log), `af95e55` (migration), `89daba9` (persistence),
+  `3d19f3f` (WU2 log). CI run `35558129485` **green on the first attempt** over those six commits:
+  *Quality gates (lint, types, tests, build, boundaries)*, *Playwright (deterministic, local double)*
+  and the Vercel deployment. This log commit re-runs the same gates; the run id above is the one that
+  validated the code.
+- **The migration is not applied to the live project.** Writing it under `supabase/migrations/` does
+  not execute it, and applying DDL to the real project is a separate, explicitly authorized step.
+  #78's integration test is the natural place to confirm the boundary empirically.
+- **#77 is not closed by this PR.** Slice 2 — the contracts, use cases, HTTP surface and the web
+  slice — completes it.
