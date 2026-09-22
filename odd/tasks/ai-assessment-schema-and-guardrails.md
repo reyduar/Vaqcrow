@@ -27,7 +27,7 @@ Implement GitHub issue #20 end to end: the structured AI assessment contract (st
 - [x] T1 (#65) Implement assessment contract and evidence guardrail in `packages/ai` — RED observed (6 failing, `parseAiAssessment is not a function`), GREEN 6/6 in `packages/ai/src/ai-assessment.test.ts`.
 - [x] T2 (#65) Wire `packages/ai` into the workspace and the API image: package scaffolding, root devDependency, `pnpm-lock.yaml`, `apps/api/Dockerfile`, `web-never-imports-ai` rule + fixture. Delivered as PR #214, merged into the Feature branch as `f7cd8bd`.
 - [x] T3 (#66) Golden matrix in `packages/ai/src/ai-assessment.golden.test.ts` (36 tests): valid, missing, anomalous, malformed and injection-bearing outputs, plus evidence-reference rejection and the no-path-to-approval boundary. **Mutation-proved, not asserted**: see Progress.
-- [ ] T4 (#67) Evidence document `docs/planning/ai-assessment-schema-and-guardrails-evidence.md`.
+- [x] T4 (#67) Evidence document `docs/planning/ai-assessment-schema-and-guardrails-evidence.md`, in Spanish following the sibling evidence corpus. Docs-only: zero production diff, zero test rewrites.
 
 ## Progress / evidence
 - 2026-09-22: Feature and Task branches created off `main` (`ffa1876`). Dependencies #12 and #15 verified closed on GitHub before starting.
@@ -45,7 +45,10 @@ Implement GitHub issue #20 end to end: the structured AI assessment contract (st
   | none (baseline) | 42 passed |
 
 ## Next step
-T4 (#67) on branch `Vaqcrow#67_Task_Document_evidence_for_AI_assessment_schema_and_guardrails`, stacked on the Feature branch.
+Feature #20 is functionally complete on the Feature branch (`5d4d322`). Remaining, post-merge and outside this Task's diff:
+1. Merge tracker #215 (`#20 → main`).
+2. Backfill the PR numbers for #65/#66/#67 into `demo-tasks-list.md`, following the sibling evidence docs' pattern of deferring roadmap sync to after the merge.
+3. **Rebuild the `apps/api` image** and confirm it still builds with `packages/ai` as a workspace member — the open limitation below.
 
 ## Advisories (non-blocking, must be carried forward)
 - **Docker image NOT rebuilt after the Dockerfile change.** The `docker` CLI/daemon is unavailable in this environment, so the image build is unverified. The Dockerfile change is mechanical (one workspace member following the `packages/domain` pattern) and its only load-bearing property — build order — was verified directly, but the image itself must be rebuilt before trusting the deploy path. Do not claim the image builds.
