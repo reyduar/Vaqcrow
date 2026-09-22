@@ -6,7 +6,7 @@
 
 El issue [#67](https://github.com/reyduar/Vaqcrow/issues/67) es la tercera y última Task de la Feature [#20](https://github.com/reyduar/Vaqcrow/issues/20) ("Definir el esquema y los guardrails de evaluación de IA"). Las otras dos Tasks ya están completas y mergeadas **en la rama del Feature**: [#65](https://github.com/reyduar/Vaqcrow/issues/65) implementó el contrato de salida estructurada y sus guardrails en `packages/ai`, y [#66](https://github.com/reyduar/Vaqcrow/issues/66) probó su admisibilidad con una matriz golden mutada deliberadamente.
 
-La Feature es una capacidad **real** de la demo y a la vez **delimitada**: `docs/planning/DEMO.md` §4 la ubica como "Evaluación de riesgo | **Real** | JSON validado, evidencia citada, alertas, versión de prompt/modelo y aprobación humana", y §5 fija el JSON de salida y los guardrails obligatorios. Lo que esta Feature entrega es el **contrato y los guardrails** de esa salida. El proveedor LLM real, su adaptador reemplazable, el tipado de timeout/error y la persistencia de modelo/prompt/versión son la Feature [#21](https://github.com/reyduar/Vaqcrow/issues/21), que depende de #20 y todavía no empezó.
+La Feature es una capacidad **real** de la demo y a la vez **delimitada**: `docs/planning/DEMO.md` §4 la ubica como "Evaluación de riesgo | **Real** | JSON validado, evidencia citada, alertas, versión de prompt/modelo y aprobación humana", y §5 fija el JSON de salida y los guardrails obligatorios. Lo que esta Feature entrega es el **contrato y los guardrails** de esa salida. El proveedor LLM real, su adaptador reemplazable y el tipado de timeout/error son la Feature [#21](https://github.com/reyduar/Vaqcrow/issues/21), que depende de #20. **Corregido después:** la metadata de modelo/prompt se **devuelve tipada**, no se persiste en una tabla nueva — ver la [evidencia del adaptador LLM reemplazable](./replaceable-llm-adapter-evidence.md) y su sección 7.
 
 ## 2. Cómo leer esta evidencia
 
@@ -67,7 +67,7 @@ Citado de las PRs [#214](https://github.com/reyduar/Vaqcrow/pull/214) y [#216](h
 
 Estos límites siguen vigentes hoy. Ninguno de los dos documentos de Task los enumera como un conjunto:
 
-1. **No hay proveedor LLM.** Nada en esta Feature llama a un modelo: `apps/api/src/application/ports/assistant-port.ts` e `infrastructure/adapters/llm-assistant.ts` siguen siendo stubs (`complete()` lanza `not implemented`). El adaptador reemplazable, el tipado de timeout/error y la persistencia de modelo/prompt/versión son la Feature [#21](https://github.com/reyduar/Vaqcrow/issues/21), sin empezar.
+1. **No hay proveedor LLM.** Nada en esta Feature llama a un modelo: `apps/api/src/application/ports/assistant-port.ts` e `infrastructure/adapters/llm-assistant.ts` siguen siendo stubs (`complete()` lanza `not implemented`). *(Estado al cerrar #20. Después, #21 movió el port a `packages/ai` y retiró esos dos stubs por ser código muerto.)* El adaptador reemplazable y el tipado de timeout/error son la Feature [#21](https://github.com/reyduar/Vaqcrow/issues/21); la metadata de modelo/prompt se devuelve tipada, no se persiste.
 2. **No hay superficie demo-facing.** Ningún endpoint ni pantalla consume `packages/ai` todavía. La pantalla `ai-assessment` sigue renderizando su fixture simulado propio, que **no** pasa por este contrato.
 3. **La imagen Docker no fue reconstruida tras el cambio del Dockerfile.** El CLI/daemon de `docker` no está disponible en el entorno donde se hizo el trabajo. El cambio es mecánico (un miembro del workspace siguiendo el patrón de `packages/domain`) y su única propiedad delicada —el orden de build— se verificó directamente, pero **la imagen no se construyó**: no se afirma que compile. Está registrado como advisory en la bitácora y debe reconstruirse antes de confiar en el camino de deploy.
 4. **`test:boundaries` depende de que exista `dist/`.** `tests/boundaries.test.ts` resuelve `@vaqcrow/*` a través del `package.json` de cada paquete hacia su `dist/`; si se borra el `dist` de un paquete, su regla deja de disparar **en silencio**. En `pnpm run verify` esto no es un riesgo porque `build` corre antes de `test:boundaries`; correr `test:boundaries` solo, sobre un árbol limpio, falla. Observado, no inferido.
@@ -79,7 +79,7 @@ Estos límites siguen vigentes hoy. Ninguno de los dos documentos de Task los en
 Ningún enunciado de esta sección afirma una evaluación de IA real funcionando hoy. Lo que existe — el contrato de salida estructurada y sus guardrails en `packages/ai`, probados por la matriz golden de la sección 4 — es la evidencia que **respaldará** el paso "Evaluación real de IA" de la demo (`DEMO.md` §4) *cuando* la Feature #21 conecte el proveedor:
 
 - Cuando #21 construya el adaptador, la salida del modelo tendrá un contrato contra el cual validarse antes de llegar a cualquier operador: campos desconocidos, tipos inválidos y referencias inexistentes se rechazan en el borde.
-- Cuando #21 persista modelo/prompt/versión, la trazabilidad que `DEMO.md` §5 exige ("Toda recomendación muestra evidencia, incertidumbre, modelo/prompt y aprobación o rechazo humano") tendrá ya el lado de la recomendación tipado y cerrado.
+- Cuando #21 entregue modelo/prompt/versión junto a la recomendación —así quedó construido: la metadata se devuelve tipada y **no** se persiste en una tabla—, la trazabilidad que `DEMO.md` §5 exige ("Toda recomendación muestra evidencia, incertidumbre, modelo/prompt y aprobación o rechazo humano") tendrá ya el lado de la recomendación tipado y cerrado.
 - La pantalla de evaluación podrá pasar de su fixture simulado al resultado validado sin cambiar la afirmación de la demo: la IA recomienda y explica, una persona decide.
 
 Hasta que #21 exista, no hay ningún flujo de evaluación de IA ejecutable de punta a punta.
@@ -114,7 +114,7 @@ Hasta que #21 exista, no hay ningún flujo de evaluación de IA ejecutable de pu
 - **Que la suite golden pase por vacío.** Era el riesgo central de una Task de pruebas sobre código ya escrito. Mitigado mutando la implementación tres veces y reportando el efecto observado (sección 4) en vez de afirmar cobertura.
 - **Que el cambio de Dockerfile parezca verificado.** No lo está: la imagen no se construyó. Aceptado como limitación externa acotada y documentada (sección 5.3), con el único aspecto verificable —el orden de build— probado directamente.
 - **Que la regla `web-never-imports-ai` deje de proteger en silencio.** Es el riesgo que la sección 5.4 describe: la regla se apoya en que exista `dist/`. Mitigado por el orden del pipeline, no por diseño.
-- **Deriva de alcance hacia el proveedor.** Aceptado y explícito: nada de #21 (adaptador, timeout tipado, persistencia de prompt/modelo) se adelantó ni se reclama acá.
+- **Deriva de alcance hacia el proveedor.** Aceptado y explícito: nada de #21 (adaptador, timeout tipado, metadata de prompt/modelo) se adelantó ni se reclama acá.
 
 ## 9. Estado de entrega
 
