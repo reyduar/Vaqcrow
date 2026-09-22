@@ -37,6 +37,15 @@ const DEFAULT_MODELS = ["deepseek-v4-pro", "kimi-k3", "glm-5.3"];
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
+ * The provider's documentation asks every client to identify itself and to send
+ * a stable session id per conversation, rather than arriving as a generic SDK:
+ * traffic is monitored, and the session header is what lets it route and cache.
+ * The production adapter has to send these too.
+ */
+const CLIENT_USER_AGENT = "vaqcrow-assessment/1.0";
+const SESSION_ID = `bake-off-${Date.now().toString(36)}`;
+
+/**
  * The synthetic series from the demo. Every reference a candidate may cite is
  * derived from this bundle, exactly as the app derives it.
  */
@@ -104,7 +113,9 @@ async function callModel({ baseUrl, apiKey, model, timeoutMs }) {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`
+        authorization: `Bearer ${apiKey}`,
+        "user-agent": CLIENT_USER_AGENT,
+        "x-opencode-session": SESSION_ID
       },
       body: JSON.stringify({
         model,
