@@ -25,18 +25,27 @@ Implement GitHub issue #20 end to end: the structured AI assessment contract (st
 
 ## Tasks
 - [x] T1 (#65) Implement assessment contract and evidence guardrail in `packages/ai` — RED observed (6 failing, `parseAiAssessment is not a function`), GREEN 6/6 in `packages/ai/src/ai-assessment.test.ts`.
-- [x] T2 (#65) Wire `packages/ai` into the workspace and the API image: package scaffolding, root devDependency, `pnpm-lock.yaml`, `apps/api/Dockerfile`, `web-never-imports-ai` rule + fixture.
-- [ ] T3 (#66) Golden matrix: valid, missing, anomalous, malformed and injection-bearing outputs.
+- [x] T2 (#65) Wire `packages/ai` into the workspace and the API image: package scaffolding, root devDependency, `pnpm-lock.yaml`, `apps/api/Dockerfile`, `web-never-imports-ai` rule + fixture. Delivered as PR #214, merged into the Feature branch as `f7cd8bd`.
+- [x] T3 (#66) Golden matrix in `packages/ai/src/ai-assessment.golden.test.ts` (36 tests): valid, missing, anomalous, malformed and injection-bearing outputs, plus evidence-reference rejection and the no-path-to-approval boundary. **Mutation-proved, not asserted**: see Progress.
 - [ ] T4 (#67) Evidence document `docs/planning/ai-assessment-schema-and-guardrails-evidence.md`.
 
 ## Progress / evidence
 - 2026-09-22: Feature and Task branches created off `main` (`ffa1876`). Dependencies #12 and #15 verified closed on GitHub before starting.
 - 2026-09-22: T1 RED→GREEN. Committed as `5af524e`, then **amended** once D1 was reversed — the commit was unpushed and unreviewed, and leaving a commit that adds the contract to `contracts` followed by one that moves it out is churn, not reviewable history. The decision history survives here instead.
-- 2026-09-22: `pnpm run verify` **EXIT=0** on the final tree: 7 workspaces green (contracts 8 test files, ai 1, api 21, web 65), `boundaries` clean over 282 modules, `test:boundaries` 25/25 including the new `web-never-imports-ai` rule. The single lint warning is pre-existing in `apps/web`.
+- 2026-09-22: T2. Tracker PR #215 opened, but only **after** S1 was merged: GitHub rejects a PR whose head has no commits of its own (`No commits between main and <feature branch>`). S1 merged into the Feature branch as `f7cd8bd`; `main` untouched at `ffa1876`. Merge verified by read-back, not assumed.
+- 2026-09-22: `pnpm run verify` **EXIT=0** on the S1 tree: 7 workspaces green (contracts 8 test files, ai 1, api 21, web 65), `boundaries` clean over 282 modules, `test:boundaries` 25/25 including the new `web-never-imports-ai` rule. The single lint warning is pre-existing in `apps/web`. CI on PR #214 agreed: all four checks SUCCESS.
 - 2026-09-22: Docker build order proven load-bearing, not assumed: with `packages/contracts/dist` removed, `pnpm --filter @vaqcrow/ai build` fails with `TS2307: Cannot find module '@vaqcrow/contracts'`; after building contracts it compiles. This is why the Dockerfile builds `ai` after `contracts`.
+- 2026-09-22: T3. 42 tests pass (36 golden + 6 from T1). The golden suite was then **mutation-tested** to prove it is not passing vacuously — each mutation was applied to `src/ai-assessment.ts`, observed, and reverted with the diff confirmed empty:
+
+  | Mutation | Effect on the suite |
+  |---|---|
+  | `strictObject` → `object` (unknown fields become legal) | **10 failed** / 32 passed |
+  | `evidenceRefs` `.min(1)` dropped (uncited claims become legal) | **2 failed** / 40 passed |
+  | action set widened to include `"approved"` | **2 failed** / 40 passed |
+  | none (baseline) | 42 passed |
 
 ## Next step
-T3 (#66) on branch `Vaqcrow#66_Task_Test_AI_assessment_schema_and_guardrails`, stacked on the #65 branch.
+T4 (#67) on branch `Vaqcrow#67_Task_Document_evidence_for_AI_assessment_schema_and_guardrails`, stacked on the Feature branch.
 
 ## Advisories (non-blocking, must be carried forward)
 - **Docker image NOT rebuilt after the Dockerfile change.** The `docker` CLI/daemon is unavailable in this environment, so the image build is unverified. The Dockerfile change is mechanical (one workspace member following the `packages/domain` pattern) and its only load-bearing property — build order — was verified directly, but the image itself must be rebuilt before trusting the deploy path. Do not claim the image builds.
