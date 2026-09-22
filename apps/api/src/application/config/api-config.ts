@@ -2,6 +2,8 @@ import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import { invalidIssue, missingIssue, readPresent, unsupportedIssue } from "./env-source.js";
 import type { EnvSource } from "./env-source.js";
+import { parseLlmConfigResult } from "./llm-config.js";
+import type { LlmConfig } from "./llm-config.js";
 import { parseStellarConfigResult } from "./stellar-config.js";
 import type { StellarConfig } from "./stellar-config.js";
 import { parseSupabaseConfigResult } from "./supabase-config.js";
@@ -31,6 +33,7 @@ export type ApiConfig = {
   readonly port: number;
   readonly supabase: SupabaseConfig;
   readonly stellar: StellarConfig;
+  readonly llm: LlmConfig;
 };
 
 export function parseApiConfig(env: EnvSource): ApiConfig {
@@ -50,9 +53,15 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...stellar.issues);
   }
 
+  const llm = parseLlmConfigResult(env);
+  if (!llm.ok) {
+    issues.push(...llm.issues);
+  }
+
   if (
     !supabase.ok ||
     !stellar.ok ||
+    !llm.ok ||
     environment === undefined ||
     port === undefined ||
     logLevel === undefined
@@ -65,7 +74,8 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     port,
     logLevel,
     supabase: supabase.value,
-    stellar: stellar.value
+    stellar: stellar.value,
+    llm: llm.value
   });
 }
 
