@@ -465,10 +465,14 @@ proposal -> spec/design -> tasks -> apply -> verify -> archive
 5. `establish-ledger-and-idempotent-command` — doble partida, idempotencia, outbox y auditoría.
 6. `integrate-anchor-sandbox-thin-slice` — depósito/retiro con estados, cotizaciones y webhooks.
 7. `settle-noncustodial-stellar-payment` — Freighter, verificación, envío, confirmación e indexación.
-8. `complete-investment-vertical-slice` — proyecto aprobado a inversión conciliada.
-9. `record-sales-and-distribute-revenue-share` — evidencia, obligación, cobro y reparto controlado.
+8. `custody-campaign-funds-on-contract` — bóveda por campaña, objetivo, liquidación atómica, retiro antes del objetivo y reembolso con barrido.
+9. `complete-investment-vertical-slice` — proyecto aprobado a inversión conciliada.
+10. `record-sales-and-distribute-revenue-share` — evidencia, obligación, cobro y reparto controlado.
 
 Cada cambio puede detenerse si invalida una hipótesis. Archivar evidencia técnica no universaliza una decisión legal.
+
+> [!info] Alcance de la custodia por contrato
+> El **fondeo** se custodia en un contrato de campaña: reemplaza al pago directo como camino de fondeo. La verificación clásica de transacciones sigue aplicando a la **distribución de revenue share**. Detalle en `stellar-blockchain-requirements.md`.
 
 ## 14. Roadmap
 
@@ -543,10 +547,14 @@ La suite normal usa dobles determinísticos. Una suite separada valida sandbox/T
 | P1 | ¿Cuál es el tratamiento contable, fiscal y de segregación? | Ledger y reportes |
 | P1 | ¿Qué datos KYC se conservan y durante cuánto tiempo? | Privacidad y Storage |
 | P1 | ¿Qué comisión soporta una cohorte después de costos y pérdidas? | Modelo de ingresos |
-| P2 | ¿Escrow o distribución justifican Soroban? | Contratos y Rust |
+| P2 | ¿La distribución de revenue share también justifica un contrato? | Hoy va por el camino clásico; llevarla on-chain está gateado |
+| P2 | ¿Qué exige auditar y controlar el contrato de campaña antes de operar con dinero real? | Requisito de producción: el contrato custodia fondos |
 | P2 | ¿Qué fuentes de ventas tienen calidad, permiso y cobertura? | Underwriting y automatización |
 
 No son preguntas abiertas la jurisdicción ni el modelo de wallet: Argentina y no custodial con Freighter permanecen fijados. Sí se deben validar sus consecuencias jurídicas, operativas y de UX.
+
+> [!important] Resueltas el 2026-09-22
+> **La custodia del fondeo requiere un contrato de Stellar.** Se evaluó Claimable Balance (CAP-23) como alternativa sin contrato y **se descartó**: sus predicados tienen únicamente hojas de tiempo, así que "el objetivo fue alcanzado" es inexpresable on-chain. Fundamento y registro del descarte en `stellar-blockchain-requirements.md`.
 
 ## 18. Referencias oficiales de Stellar
 

@@ -4,7 +4,7 @@
 
 ## 1. Tesis del producto y de la demostración
 
-Vaqcrow permite que una PyME argentina presente evidencia de ventas, reciba una evaluación de riesgo explicable asistida por IA y, después de una aprobación humana, obtenga financiamiento no custodial que se firma con Freighter y se liquida en Stellar Testnet. La demostración prueba una experiencia coherente de punta a punta: la IA transforma evidencia en una recomendación auditable, las personas conservan el control de sus claves y Stellar aporta liquidación verificable. KYC, ventas y el corredor ARS/activo Stellar se simulan detrás de interfaces reemplazables porque la prueba no pretende representar una operación regulada real.
+Vaqcrow permite que una PyME argentina presente evidencia de ventas, reciba una evaluación de riesgo explicable asistida por IA y, después de una aprobación humana, abra una campaña de financiamiento cuyo aporte queda **custodiado por un contrato** en Stellar Testnet: si se alcanza el objetivo, el contrato liquida a la PyME de inmediato; si vence la fecha sin alcanzarlo, reembolsa a los inversores. Cada persona firma con Freighter y Vaqcrow nunca custodia claves ni fondos. La demostración prueba una experiencia coherente de punta a punta: la IA transforma evidencia en una recomendación auditable, las personas conservan el control de sus claves y Stellar aporta custodia y liquidación verificables. KYC, ventas y el corredor ARS/activo Stellar se simulan detrás de interfaces reemplazables porque la prueba no pretende representar una operación regulada real.
 
 ## 2. Definición de éxito y posicionamiento
 
@@ -21,7 +21,7 @@ La propuesta se presenta como el proyecto final del **Trabajo Fin de Máster (TF
 
 ### Bloques Stellar utilizados
 
-La demo puede identificar como bloques de construcción a Stellar Testnet, `@stellar/stellar-sdk`, Horizon, Freighter mediante `@stellar/freighter-api` y, solo como extensión acotada, Soroban mediante Stellar RPC. También pueden describirse anchors, activos locales, SDKs, wallets del ecosistema y protocolos DeFi como alternativas evaluadas, sin afirmar que todos estén integrados.
+La demo usa como bloques de construcción Stellar Testnet, `@stellar/stellar-sdk`, Horizon, Freighter mediante `@stellar/freighter-api` y **contratos de Stellar (Rust + `soroban-sdk`) mediante Stellar RPC**, que son el camino de fondeo. También pueden describirse anchors, activos locales, SDKs, wallets del ecosistema y protocolos DeFi como alternativas evaluadas, sin afirmar que todos estén integrados.
 
 ### Posición de la IA
 
@@ -54,11 +54,11 @@ La demostración debe seguir una sola PyME sintética y evitar journeys paralelo
 | Decisión de financiamiento | **Real y humana** sobre caso sintético | Actor, timestamp, razones y límites | Workflow de operaciones/compliance con segregación de funciones |
 | Cotización/entrada ARS a activo Stellar | **Simulada** por `FundingRailProvider` | Cotización, expiración y estado rotulados | Banco/anchor real para el corredor argentino; SEP-1, SEP-10, SEP-12, SEP-6/24 y SEP-38 según capacidades |
 | Wallet y firma | **Real** con Freighter | Cuenta pública, consentimiento y XDR firmado | El mismo adaptador inicial, con evaluación de UX y soporte; siempre no custodial |
-| Fondeo | **Real en Testnet** | Hash, operaciones y estado de Horizon | Activo y corredor aprobados en Public Network después de gates legales/operativos |
+| Fondeo | **Real en Testnet**, custodiado por contrato | Hash, dirección de la bóveda y estado del contrato | Activo y corredor aprobados en Public Network después de gates legales/operativos |
 | Confirmación | **Real y asíncrona** | Estados `submitted`, `confirmed` o `failed`, latencia y reintentos | Worker durable, cursor persistente, alertas y reconciliación |
 | Cálculo de revenue share | **Real y determinístico** | Entradas, regla versionada, redondeo y salida | Motor contractual revisado por legal/contabilidad |
 | Distribución | **Real en Testnet**, firmada con Freighter | Hash, receptores, montos y confirmación | Flujo no custodial y activo aprobados, con controles y conciliación |
-| Soroban | **No requerido**; stretch goal | Contrato pequeño desplegado solo si el camino clásico ya funciona | Capacidad justificada por amenaza, costo y requisito contractual |
+| Custodia por contrato | **Real en Testnet** (Rust + `soroban-sdk`) | Bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso, verificables en el explorador | Contrato auditado, con controles de emergencia y activo aprobado en Public Network |
 
 **Regla de presentación:** una simulación demuestra UX, contratos de integración y control del flujo; no demuestra disponibilidad, legalidad, SLA, costos ni calidad de un proveedor real.
 
@@ -276,9 +276,25 @@ Freighter es una **wallet e interfaz de firma**, no un custodio. Cada participan
 
 Variables mínimas: URL de Horizon Testnet, passphrase de red, identificadores de cuentas públicas, URL del explorador, proveedor/modelo LLM y credenciales del servidor. Ninguna seed, clave privada, token real, documento personal ni fondo real se incorpora a Git. Las cuentas de Testnet se provisionan mediante Friendbot o tooling oficial y se rotulan como descartables.
 
-### Decisión Soroban
+### Decisión: custodia por contrato de campaña
 
-El camino base usa pagos clásicos y **debe funcionar sin Soroban**. Un contrato pequeño de escrow/reembolso en Rust puede desarrollarse como stretch goal solo después de congelar una demo estable y únicamente si no altera el flujo de fondeo/distribución. Requiere pruebas, deployment reproducible y confirmación terminal mediante Stellar RPC. Si consume tiempo del camino crítico, se elimina.
+El fondeo **no se liquida como un pago directo**. Cada campaña abre una **bóveda en un contrato** de Stellar, y el aporte queda custodiado por código hasta que se cumpla una de estas condiciones. El contrato es **camino obligatorio y no recortable**: es la única forma conocida de expresar el requisito del producto.
+
+| Situación | Qué hace el contrato |
+|---|---|
+| **Se alcanza el objetivo** | Liquida a la PyME **en la misma transacción** que cruza el umbral, sin importar la fecha. La campaña queda cerrada y el ledger rechaza cualquier aporte posterior |
+| **Vence la fecha sin alcanzar el objetivo** | Pasa a reembolso: cada inversor retira su aporte, y un barrido permissionless cierra los que nadie reclamó |
+| **El inversor se arrepiente antes del objetivo** | Puede retirar su aporte mientras la campaña siga abierta |
+
+Por qué no alcanza el camino clásico: el "custodio" de un pago directo es la buena fe de la PyME más un cálculo off-chain, y nada impide a nivel de protocolo que se quede con el aporte. El contrato mueve esa garantía a la máquina de estados del ledger.
+
+> [!danger] Claimable Balance quedó **descartado**
+> Se evaluó antes de ir a contratos y no sirve: sus predicados tienen únicamente hojas de tiempo, así que **"el objetivo fue alcanzado" es inexpresable on-chain**. Registro completo del descarte en [[docs/planning/stellar-blockchain-requirements|Requisitos de blockchain Stellar]], sección "Alternativa evaluada y descartada".
+
+> [!info] Detalle técnico, diagramas y riesgos
+> La máquina de estados, la superficie del contrato, el patrón de fábrica (**una bóveda por campaña**), el modelo de cuentas, la provisión de la cuenta de la PyME y los riesgos operativos de Testnet —incluida la fecha del próximo reset— están en [[docs/planning/stellar-blockchain-requirements|Requisitos de blockchain Stellar]], sección "Detalle técnico: custodia por contrato de campaña". No se duplican acá.
+
+La **distribución de revenue share** sigue por el camino clásico: `@stellar/stellar-sdk`, Horizon y firma con Freighter.
 
 ## 8. Plan de catorce días
 
@@ -289,9 +305,9 @@ El camino base usa pagos clásicos y **debe funcionar sin Soroban**. Un contrato
 | 3 | Dominio y persistencia mínima | Estados, cálculo monetario, IDs correlacionados | Día 1 |
 | 4 | Contrato de IA | Esquema, prompt, evidencia y casos golden | Dataset |
 | 5 | IA integrada | Evaluación real, anomalías, faltantes y fallback manual | Día 4 |
-| 6 | Freighter y construcción XDR | Conexión, cuenta, red, vista previa y firma | Shell |
-| 7 | Pago clásico Testnet | XDR verificado y transacción enviada | Día 6 |
-| 8 | Confirmación asíncrona | Polling, estados terminales, reanudación y enlace explorer | Día 7 |
+| 6 | Toolchain y contrato de campaña | Rust, target `wasm32v1-none`, Stellar CLI y red local; contrato con custodia, objetivo y liquidación atómica, con tests verdes | Día 1 |
+| 7 | Fábrica, cuentas y bóveda en Testnet | Una bóveda por campaña, cuenta de la PyME verificada al abrir y dirección desplegada | Día 6 |
+| 8 | Aporte desde la web y confirmación | Firma con Freighter de la invocación, estados terminales y enlace al explorador | Día 7 |
 | 9 | Ventas y obligación | Feed simulado + cálculo determinístico auditable | Dominio |
 | 10 | Distribución Testnet | Transacción firmada, enviada y confirmada | Días 8–9 |
 | 11 | Integración vertical | Journey completo con correlation ID único | Días 2–10 |
@@ -299,28 +315,31 @@ El camino base usa pagos clásicos y **debe funcionar sin Soroban**. Un contrato
 | 13 | Ensayo con público interno | Demo ≤7 min, tres repeticiones y defectos críticos cerrados | Día 12 |
 | 14 | Freeze y presentación final | Build etiquetado, video y hashes de respaldo | Día 13 |
 
+> [!warning] Plan re-presupuestado — estimaciones provisionales
+> Los días 6 a 8 cambiaron de "Freighter y pago clásico" a **toolchain y contrato de campaña**, porque la custodia pasó a ser camino obligatorio. El reparto de días es **provisional**: el contrato todavía no se probó en Testnet, así que los tiempos reales se ajustan después del primer spike.
+
 ### Frentes de trabajo
 
 | Frente | Responsabilidad | Puede avanzar en paralelo desde |
 |---|---|---|
 | Producto/demo | Historia, UX, claims, guion y material visual | Día 1 |
 | IA/datos | Dataset, esquema, prompt, evaluaciones y guardrails | Día 1 |
-| Stellar | Freighter, XDR, Testnet, confirmación y explorador | Día 2 |
+| Stellar | Contrato de campaña, fábrica, Freighter, Testnet, confirmación y explorador | Día 2 |
 | Dominio/integración | Estados, cálculo, persistencia, adaptadores y E2E | Día 2 |
 
-Dependencia crítica: `demo-shell -> AI assessment -> Stellar payment -> confirmation -> revenue-share distribution -> integration/demo hardening`. La UI puede usar estados predefinidos mientras IA y Stellar se implementan, pero la integración final no puede falsificar esos dos caminos reales.
+Dependencia crítica: `demo-shell -> AI assessment -> aprobación humana -> bóveda de campaña -> aporte y firma con Freighter -> liquidación o reembolso por el contrato -> distribución de revenue share -> integration/demo hardening`. La UI puede usar estados predefinidos mientras IA y Stellar se implementan, pero la integración final no puede falsificar esos dos caminos reales.
 
 ### Línea de corte
 
 Se elimina trabajo en este orden:
 
-1. Contrato Soroban de escrow/reembolso.
+1. Extensiones opcionales sobre contratos (llevar la distribución on-chain, ZK, cross-chain).
 2. `apps/worker` separado si el polling durable cabe de forma segura en el servicio API.
 3. Animaciones, visualizaciones avanzadas y pantallas secundarias.
 4. Segundo caso de PyME, segundo activo o variantes del journey.
 5. Persistencia avanzada, autenticación completa y backoffice separado.
 
-Nunca se recortan la evaluación real de IA, la aprobación humana, la firma real con Freighter, el pago Testnet, la confirmación asíncrona, la distribución Testnet ni el rotulado de simulaciones.
+Nunca se recortan la evaluación real de IA, la aprobación humana, la **custodia por contrato de campaña**, la firma real con Freighter, la liquidación en Testnet, la confirmación asíncrona, la distribución Testnet ni el rotulado de simulaciones.
 
 ## 9. Guion de demo de 5–7 minutos
 
@@ -330,8 +349,8 @@ Nunca se recortan la evaluación real de IA, la aprobación humana, la firma rea
 | 0:40–1:30 | Abrir la solicitud sintética | KYC y ventas están simulados y claramente identificados |
 | 1:30–2:30 | Ejecutar evaluación de IA | La IA cita evidencia, detecta anomalía/faltante y expresa incertidumbre |
 | 2:30–3:00 | Aprobar como operador | Una persona decide; el modelo no autoriza fondos |
-| 3:00–4:15 | Conectar Freighter y fondear | Firma no custodial, XDR verificable y estado inicialmente pendiente |
-| 4:15–4:45 | Mostrar confirmación y explorer | Stellar aporta evidencia de liquidación Testnet |
+| 3:00–4:15 | Conectar Freighter y aportar a la bóveda | La custodia es del contrato, no de una persona; la firma es de quien aporta |
+| 4:15–4:45 | Alcanzar el objetivo y abrir la bóveda en el explorer | El contrato liquida a la PyME en la misma transacción y cierra la campaña |
 | 4:45–5:45 | Cargar ventas y distribuir | Ventas simuladas, cálculo determinístico, firma y distribución real Testnet |
 | 5:45–6:30 | Dashboard, límites y siguiente paso | Dos hashes, trazabilidad completa y reemplazos de producción claros |
 
@@ -397,7 +416,7 @@ Cada slice conserva una ficha breve con: objetivo, escenarios observables, lími
 |---|---|---|---|
 | 1 | `demo-shell` | Caso sintético, estados y rotulado de simulaciones | Journey navegable y fixture congelado |
 | 2 | `ai-assessment` | Éxito, faltante, anomalía, salida inválida y timeout | JSON validado, golden tests y revisión humana |
-| 3 | `stellar-payment` | Conectar, firmar, verificar, enviar y rechazar XDR alterado | Hash Testnet y pruebas de verificación |
+| 3 | `campaign-vault` | Custodia, objetivo, liquidación atómica, retiro antes del objetivo y reembolso con barrido | Contrato desplegado, tests verdes y hash Testnet |
 | 4 | `stellar-confirmation` | Pendiente, éxito, fallo y reanudación | Timeline y estado terminal consultado |
 | 5 | `revenue-share-distribution` | Cálculo, redondeo, firma y reparto | Asignaciones balanceadas y hash Testnet |
 | 6 | `integration-demo-hardening` | Journey completo, caída de LLM/red y respaldo | Ensayo ≤7 minutos y paquete de evidencia |
@@ -411,7 +430,9 @@ Flujo reducido: `proposal breve -> scenarios/design notes -> tasks -> implementa
 | P0 | Elegir el activo de prueba y cuentas Testnet para el guion | Día 2 | Validación futura del corredor real |
 | P0 | Elegir proveedor/modelo LLM y presupuesto/timeout de demo | Día 2 | Modelo de underwriting de producción |
 | P1 | Resolver si el hosting exige `apps/worker` separado | Día 6 | Diseño del worker de producción |
-| P2 | Autorizar o descartar el stretch goal Soroban | Día 10 | Camino clásico obligatorio |
+| P1 | Definir la ubicación del workspace Rust del contrato y si `dependency-cruiser` lo cubre | Día 6 | Ninguna: el contrato es camino obligatorio |
+| P1 | Decidir si el contrato es actualizable y si lleva control de pausa | Día 7 | Demo en Testnet; no bloquea el guion |
+| P2 | Definir cómo se notifica al inversor que le corresponde un reembolso | Día 10 | El barrido permissionless garantiza el resultado aunque el aviso falle |
 
 Argentina y el modelo no custodial con Freighter están resueltos y **no se reabren** durante el sprint. El corredor ARS/activo Stellar, el anchor y la clasificación legal continúan como decisiones de producción, no como bloqueantes de Testnet.
 
