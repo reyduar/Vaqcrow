@@ -16,6 +16,14 @@ module.exports = {
       to: { path: "(^packages/domain/|/@vaqcrow/domain/)" }
     },
     {
+      name: "web-never-imports-ai",
+      comment:
+        "apps/web renders and never talks to the model: the AI assessment contract and its guardrails are backend-only and reach the UI through apps/api. No type-only exemption — the package carries runtime validation logic, not just types.",
+      severity: "error",
+      from: { path: "^apps/web/" },
+      to: { path: "(^packages/ai/|/@vaqcrow/ai/)" }
+    },
+    {
       name: "no-cross-app-imports",
       severity: "error",
       from: { path: "^apps/([^/]+)/" },

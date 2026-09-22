@@ -24,6 +24,7 @@ FROM base AS deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/domain/package.json ./packages/domain/
+COPY packages/ai/package.json ./packages/ai/
 COPY apps/api/package.json ./apps/api/
 # apps/web/package.json is copied to keep the workspace declared by
 # pnpm-workspace.yaml intact, so this install matches the one CI runs. pnpm
@@ -36,6 +37,7 @@ FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_modules
+COPY --from=deps /app/packages/ai/node_modules ./packages/ai/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 # The root manifests are required in this stage too, and not only in deps: pnpm
 # resolves the workspace from pnpm-workspace.yaml and resolves --filter targets
@@ -45,12 +47,16 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc tsconfig.base.json .
 COPY apps/web/package.json ./apps/web/
 COPY packages/contracts/ ./packages/contracts/
 COPY packages/domain/ ./packages/domain/
+COPY packages/ai/ ./packages/ai/
 COPY apps/api/ ./apps/api/
-# The order is load-bearing: @vaqcrow/contracts and @vaqcrow/domain are consumed
-# from their dist/, and apps/api/tsconfig.build.json declares no TypeScript
-# project references, so tsc cannot resolve them until their dist/ exists.
+# The order is load-bearing: @vaqcrow/contracts, @vaqcrow/domain and
+# @vaqcrow/ai are consumed from their dist/, and apps/api/tsconfig.build.json
+# declares no TypeScript project references, so tsc cannot resolve them until
+# their dist/ exists. packages/ai builds after contracts because it imports the
+# shared evidence-reference schema from it.
 RUN pnpm --filter @vaqcrow/contracts build
 RUN pnpm --filter @vaqcrow/domain build
+RUN pnpm --filter @vaqcrow/ai build
 RUN pnpm --filter @vaqcrow/api build
 
 # --- production ---------------------------------------------------------------
@@ -63,6 +69,8 @@ COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/
 COPY --from=build /app/packages/domain/dist ./packages/domain/dist
 COPY --from=build /app/packages/domain/package.json ./packages/domain/
+COPY --from=build /app/packages/ai/dist ./packages/ai/dist
+COPY --from=build /app/packages/ai/package.json ./packages/ai/
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/
 

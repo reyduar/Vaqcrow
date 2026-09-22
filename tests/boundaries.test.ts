@@ -12,6 +12,7 @@ const WEB_MODULES = fileURLToPath(new URL("../apps/web/node_modules", import.met
 const RULE_NAME = "api-application-stays-provider-free";
 const WEB_RULE_NAME = "web-presentation-stays-contracts-free";
 const WEB_DOMAIN_RULE_NAME = "web-never-imports-domain";
+const WEB_AI_RULE_NAME = "web-never-imports-ai";
 const CONTRACTS_NODE_RULE_NAME = "contracts-never-import-node-core";
 const CONTRACTS_FRAMEWORK_RULE_NAME = "contracts-never-import-frameworks";
 const CIRCULAR_RULE_NAME = "no-circular";
@@ -195,6 +196,13 @@ describe("apps/web/src/presentation boundary rule", () => {
     expect(result.summary.error).toBeGreaterThanOrEqual(1);
     expect(violationsFor(result, WEB_DOMAIN_RULE_NAME).length).toBeGreaterThanOrEqual(1);
   });
+
+  it("flags an @vaqcrow/ai import from presentation/ with the named forbidden rule", async () => {
+    const result = await cruiseFixture("apps/web/src/presentation/imports-ai.fixture.ts", [WEB_MODULES]);
+
+    expect(result.summary.error).toBeGreaterThanOrEqual(1);
+    expect(violationsFor(result, WEB_AI_RULE_NAME).length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 describe("Stellar SDK split across workspaces", () => {
@@ -280,6 +288,7 @@ describe("boundary fixtures stay outside build/typecheck/boundaries globs", () =
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-contracts.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-contracts-type-only.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-domain.fixture.ts",
+    "tests/fixtures/boundaries/apps/web/src/presentation/imports-ai.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/presentation/imports-api-application.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/infrastructure/imports-stellar-sdk.fixture.ts",
     "tests/fixtures/boundaries/apps/web/src/infrastructure/imports-stellar-sdk-type-only.fixture.ts",
