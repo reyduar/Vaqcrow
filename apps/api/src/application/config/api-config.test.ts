@@ -17,7 +17,10 @@ const VALID_ENV: EnvSource = {
   SUPABASE_URL: "https://fixture.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-fixture",
   SUPABASE_PUBLISHABLE_KEY: "publishable-fixture",
-  STELLAR_NETWORK: "testnet"
+  STELLAR_NETWORK: "testnet",
+  LLM_PROVIDER: "opencode-go",
+  LLM_MODEL: "deepseek-v4-pro",
+  LLM_API_KEY: "llm-key-fixture"
 };
 
 function captureIssues(env: EnvSource): readonly ConfigIssue[] {
@@ -116,10 +119,18 @@ describe("parseApiConfig — missing configuration fails clearly", () => {
 
     const issues = (error as ConfigurationError).issues;
     expect(issues.map((issue) => issue.key).sort()).toEqual(
-      ["APP_ENV", "STELLAR_NETWORK", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"].sort()
+      [
+        "APP_ENV",
+        "STELLAR_NETWORK",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_URL",
+        "LLM_API_KEY",
+        "LLM_MODEL",
+        "LLM_PROVIDER"
+      ].sort()
     );
     expect(issues.every((issue) => issue.code === "missing")).toBe(true);
-    expect((error as ConfigurationError).message).toContain("Invalid API configuration (4 issues)");
+    expect((error as ConfigurationError).message).toContain("Invalid API configuration (7 issues)");
   });
 
   it("treats a blank value as absent", () => {

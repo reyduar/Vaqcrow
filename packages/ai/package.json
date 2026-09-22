@@ -16,7 +16,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bake-off": "node scripts/bake-off-llm.mjs"
   },
   "dependencies": {
     "@vaqcrow/contracts": "workspace:*",

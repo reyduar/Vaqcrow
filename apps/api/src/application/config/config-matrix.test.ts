@@ -28,15 +28,27 @@ import { STELLAR_TESTNET_HORIZON_URL, STELLAR_TESTNET_NETWORK_PASSPHRASE } from 
 
 const SERVICE_ROLE_SENTINEL = "svc-role-sentinel-9f3a";
 const PUBLISHABLE_SENTINEL = "pub-sentinel-4c1d";
+const LLM_API_KEY_SENTINEL = "llm-key-sentinel-5a7c";
 
-const REQUIRED_KEYS = ["APP_ENV", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "STELLAR_NETWORK"];
+const REQUIRED_KEYS = [
+  "APP_ENV",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "STELLAR_NETWORK",
+  "LLM_PROVIDER",
+  "LLM_MODEL",
+  "LLM_API_KEY"
+];
 
 const VALID_ENV: EnvSource = {
   APP_ENV: "local",
   SUPABASE_URL: "https://fixture.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: SERVICE_ROLE_SENTINEL,
   SUPABASE_PUBLISHABLE_KEY: PUBLISHABLE_SENTINEL,
-  STELLAR_NETWORK: "testnet"
+  STELLAR_NETWORK: "testnet",
+  LLM_PROVIDER: "opencode-go",
+  LLM_MODEL: "deepseek-v4-pro",
+  LLM_API_KEY: LLM_API_KEY_SENTINEL
 };
 
 function without(key: string): EnvSource {
@@ -96,6 +108,7 @@ describe("required keys", () => {
     expect(message).toContain(key);
     expect(message).not.toContain(SERVICE_ROLE_SENTINEL);
     expect(message).not.toContain(PUBLISHABLE_SENTINEL);
+    expect(message).not.toContain(LLM_API_KEY_SENTINEL);
   });
 
   it("does not let an optional value satisfy a required key", () => {
@@ -263,7 +276,10 @@ describe("determinism and purity", () => {
       STELLAR_NETWORK: "testnet",
       SUPABASE_SERVICE_ROLE_KEY: SERVICE_ROLE_SENTINEL,
       SUPABASE_URL: VALID_ENV["SUPABASE_URL"],
-      APP_ENV: "local"
+      APP_ENV: "local",
+      LLM_API_KEY: LLM_API_KEY_SENTINEL,
+      LLM_MODEL: "deepseek-v4-pro",
+      LLM_PROVIDER: "opencode-go"
     });
 
     expect(config.environment).toBe("local");
@@ -294,6 +310,7 @@ describe("a parsed configuration is safe to serialise and to log", () => {
 
     expect(serialised).not.toContain(SERVICE_ROLE_SENTINEL);
     expect(serialised).not.toContain(PUBLISHABLE_SENTINEL);
+    expect(serialised).not.toContain(LLM_API_KEY_SENTINEL);
     expect(serialised).toContain(REDACTED_MARKER);
   });
 
@@ -302,10 +319,13 @@ describe("a parsed configuration is safe to serialise and to log", () => {
 
     expect(serialised).not.toContain(SERVICE_ROLE_SENTINEL);
     expect(serialised).not.toContain(PUBLISHABLE_SENTINEL);
+    expect(serialised).not.toContain(LLM_API_KEY_SENTINEL);
     // Traceability is the point of the demo: non-secret context must survive.
     expect(serialised).toContain("local");
     expect(serialised).toContain("testnet");
     expect(serialised).toContain("fixture.supabase.co");
+    // Which model underwrites an application is traceability, not a secret.
+    expect(serialised).toContain("deepseek-v4-pro");
   });
 
   it("keeps the network identity readable while masking the passphrase itself", () => {
