@@ -15,6 +15,7 @@
   "dependencies": {
     "@stellar/stellar-sdk": "^17.1.0",
     "@supabase/supabase-js": "2.116.0",
+    "@vaqcrow/ai": "workspace:*",
     "@vaqcrow/contracts": "workspace:*",
     "@vaqcrow/domain": "workspace:*",
     "fastify": "^5.12.4"

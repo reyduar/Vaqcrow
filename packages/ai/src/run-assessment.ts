@@ -69,6 +69,31 @@ async function withTimeout<T>(
   }
 }
 
+/**
+ * Normalizes what a provider handed back before the contract judges it.
+ *
+ * A chat provider answers with **text**, so the raw output is a string that
+ * contains the JSON object the contract describes. Parsing it is normalization,
+ * not validation: an unparseable string is passed through untouched and the
+ * contract rejects it as `invalid_output`, which is exactly the outcome a
+ * malformed answer deserves.
+ *
+ * Markdown fences are deliberately **not** stripped. The prompt asks for one
+ * JSON object and nothing else; an answer wrapped in a fence is not that, and
+ * forgiving it here would hide a prompt or model regression behind leniency.
+ */
+function normalizeRawOutput(rawOutput: unknown): unknown {
+  if (typeof rawOutput !== "string") {
+    return rawOutput;
+  }
+
+  try {
+    return JSON.parse(rawOutput);
+  } catch {
+    return rawOutput;
+  }
+}
+
 /** A provider that throws is a provider that is unavailable, not an exception the caller must remember to catch. */
 async function callProvider(
   provider: AssessmentProviderPort,
@@ -113,7 +138,7 @@ export async function runAssessment(
     return { ok: false, error: sanitizeProviderFailure(outcome.error) };
   }
 
-  const parsed = aiAssessmentSchema.safeParse(outcome.rawOutput);
+  const parsed = aiAssessmentSchema.safeParse(normalizeRawOutput(outcome.rawOutput));
 
   if (!parsed.success) {
     return { ok: false, error: { code: "invalid_output" } };

@@ -373,7 +373,11 @@ describe("invalid output matrix", () => {
     { name: "a tool-call channel smuggled in", output: { ...VALID_OUTPUT, toolCalls: [] } },
     { name: "no reasons at all", output: { ...VALID_OUTPUT, reasons: [] } },
     { name: "a reason citing nothing", output: { ...VALID_OUTPUT, reasons: [{ claim: "x", evidenceRefs: [] }] } },
-    { name: "the response as a JSON string", output: JSON.stringify(VALID_OUTPUT) },
+    // A string that is not JSON. A string that *is* JSON is the shape a chat
+    // provider actually returns, so it belongs on the accepted path — see the
+    // normalization suite below. This case was previously mis-classified as
+    // invalid, which was only tenable while no real provider existed.
+    { name: "a string that is not JSON", output: "I am unable to assess this application." },
     { name: "null", output: null },
     { name: "an array", output: [VALID_OUTPUT] },
     { name: "a required field missing", output: { ...VALID_OUTPUT, riskBand: undefined } }
@@ -385,6 +389,52 @@ describe("invalid output matrix", () => {
     });
 
     expect(result).toEqual({ ok: false, error: { code: "invalid_output" } });
+  });
+});
+
+describe("raw output normalization", () => {
+  it("accepts the assessment when a chat provider delivers it as JSON text", async () => {
+    // This is not a convenience: it is the only shape a real chat provider
+    // returns. Without it the production adapter could never succeed.
+    const result = await runAssessment(
+      createSimulatedAssessmentProvider({ output: JSON.stringify(VALID_OUTPUT) }),
+      { evidence: EVIDENCE }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value.assessment.riskBand).toBe("medium");
+  });
+
+  it("does not strip a markdown fence to rescue a malformed answer", async () => {
+    const fenced = ["```json", JSON.stringify(VALID_OUTPUT), "```"].join("\n");
+
+    const result = await runAssessment(createSimulatedAssessmentProvider({ output: fenced }), {
+      evidence: EVIDENCE
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "invalid_output" } });
+  });
+
+  it("still validates a JSON text answer against the evidence guardrail", async () => {
+    const citingUnseen = JSON.stringify({
+      ...VALID_OUTPUT,
+      reasons: [{ claim: "Inventada", evidenceRefs: ["sales:2025-12"] }]
+    });
+
+    const result = await runAssessment(createSimulatedAssessmentProvider({ output: citingUnseen }), {
+      evidence: EVIDENCE
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.code).toBe("unknown_evidence_reference");
   });
 });
 

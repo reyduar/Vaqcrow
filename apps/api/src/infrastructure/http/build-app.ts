@@ -2,6 +2,8 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import { registerAssessmentRoute } from "./routes/assessment.route.js";
+import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
@@ -18,6 +20,7 @@ function assertRandomUUIDAvailable(): void {
 export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
   readonly fundingIntent?: FundingIntentRouteDependencies;
+  readonly assessment?: AssessmentRouteDependencies;
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
 
@@ -37,6 +40,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);
+  }
+  if (dependencies.assessment) {
+    registerAssessmentRoute(app, dependencies.assessment);
   }
   return app;
 }
