@@ -21,18 +21,23 @@ describe("AiAssessmentPage", () => {
     expect(screen.getByText(microcopy.humanDecision)).toBeInTheDocument();
   });
 
-  it("renders the fallback banner microcopy when a backup AI response applies", () => {
+  it("renders the fallback disclosure as standing policy, not as a claimed outcome", () => {
     render(<AiAssessmentPage />);
 
+    // Feature #17 requires this route to state what happens when the AI is
+    // unavailable. That policy holds whether or not a failure is happening.
     expect(screen.getByText(microcopy.aiFallback)).toBeInTheDocument();
   });
 
-  it("renders the simulated, advisory-only assessment with cited evidence", () => {
+  it("offers the real assessment and claims no result before it is asked for", () => {
     render(<AiAssessmentPage />);
 
-    expect(screen.getByRole("region", { name: /Evaluación de IA \(simulada\)/ })).toBeInTheDocument();
-    expect(screen.getByText("Riesgo medio")).toBeInTheDocument();
-    expect(screen.getByText("missing:2026-04")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /consultar evaluación de IA/i })).toBeInTheDocument();
+    // The frozen fixture used to render here unconditionally. A canned
+    // assessment that looks like a result is exactly what this route must not
+    // show before a real one exists.
+    expect(screen.queryByRole("region", { name: /Evaluación de IA/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/todavía no se consultó/i)).toBeInTheDocument();
   });
 
   it("offers no decision control: the decision lives on the approval step", () => {
