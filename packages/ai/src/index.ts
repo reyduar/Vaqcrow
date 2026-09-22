@@ -22,3 +22,24 @@ export type {
   AssessmentRecommendedAction,
   AssessmentRiskBand
 } from "./ai-assessment.js";
+
+export {
+  assessmentEvidenceBundleSchema,
+  citableReferences,
+  parseAssessmentEvidenceBundle
+} from "./assessment-evidence.js";
+export type { AssessmentEvidenceBundle } from "./assessment-evidence.js";
+
+export { assessmentMetadataSchema } from "./assessment-provider-port.js";
+export type {
+  AssessmentMetadata,
+  AssessmentProviderFailure,
+  AssessmentProviderOutcome,
+  AssessmentProviderPort
+} from "./assessment-provider-port.js";
+
+export { DEFAULT_ASSESSMENT_TIMEOUT_MS, runAssessment } from "./run-assessment.js";
+export type { RunAssessmentError, RunAssessmentResult } from "./run-assessment.js";
+
+export { createSimulatedAssessmentProvider } from "./simulated-assessment-provider.js";
+export type { SimulatedAssessmentProviderOptions } from "./simulated-assessment-provider.js";
