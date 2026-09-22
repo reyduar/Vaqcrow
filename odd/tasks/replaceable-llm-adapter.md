@@ -24,7 +24,7 @@ Implement GitHub issue #21 end to end: a provider-independent boundary that call
 ## Tasks
 - [x] T1 (#68) Implement the provider boundary — RED observed (8 failing, `citableReferences is not a function`), GREEN 8/8 in `packages/ai/src/run-assessment.test.ts`.
 - [x] T2 (#69) Contract and timeout matrix in `packages/ai/src/run-assessment.contract.test.ts` (39 tests). **It found a real defect in T1 and closed it** — see Progress. Mutation-proved afterwards.
-- [ ] T3 (#70) Evidence document `docs/planning/replaceable-llm-adapter-evidence.md`.
+- [x] T3 (#70) Evidence document `docs/planning/replaceable-llm-adapter-evidence.md` (Spanish, 10 sections following the sibling corpus), plus the four corrections to Feature #20's evidence document that D2 made necessary. Docs-only: zero production diff, zero test rewrites.
 
 ## Progress / evidence
 - 2026-09-22: Feature branch `Vaqcrow#21_Feat_Implement_replaceable_LLM_adapter` created off `main` (`4702e5d`); Task branch `Vaqcrow#68_Task_Implement_replaceable_LLM_adapter`.
@@ -52,7 +52,14 @@ Implement GitHub issue #21 end to end: a provider-independent boundary that call
 - 2026-09-22: `pnpm run verify` **EXIT=0** on the T2 tree: `@vaqcrow/ai` 4 test files green, contracts 8, api 21, web 65, domain 1; `boundaries` clean over 289 modules / 772 dependencies; `test:boundaries` 6 files. The one lint warning is pre-existing in `apps/web`.
 
 ## Next step
-T3 (#70) on branch `Vaqcrow#70_Task_Document_evidence_for_replaceable_LLM_adapter`, stacked on the Feature branch.
+Feature #21 is functionally complete on the Feature branch (`86b8ffa`). Remaining, post-merge and outside this Task's diff:
+1. Merge tracker #220 (`#21 → main`).
+2. Backfill the PR numbers for #68/#69/#70 into `demo-tasks-list.md` and move #22 to `Ready` now that its blocker closes.
+3. **Choose the LLM provider and model** — a P0 demo-prep item (`DEMO.md` line 412), and the only remaining blocker to the AI path being real.
+4. **Rebuild the `apps/api` image** and confirm it still builds with `packages/ai` as a workspace member.
+
+## Corrections made by T3 (recorded here so the history is not lost)
+D2 (metadata returned, not persisted) made four sentences in `docs/planning/ai-assessment-schema-and-guardrails-evidence.md` false. They were corrected in place, each marked as a correction rather than rewritten: section 1 (line 9, the #21 scope enumeration), section 5.1 (the stub description plus the scope enumeration), section 6 (the predictive "Cuando #21 persista…" sentence), and section 8 (the explicitly-not-advanced scope list). No other line of that document changed.
 
 ## Advisories (non-blocking, must be carried forward)
 - **The Feature #20 evidence document is now partly wrong.** It states that #21 would persist model/prompt/version; per D2 that is not what was built. Correct it in #70 — do not leave the claim standing.
