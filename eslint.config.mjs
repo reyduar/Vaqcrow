@@ -24,5 +24,13 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     languageOptions: { ecmaVersion: 2023, sourceType: "module", globals: globals.node },
     rules: { "@typescript-eslint/consistent-type-imports": "error", "no-console": "warn" }
+  },
+  {
+    // Node ESM entry points (tooling and scripts). Without this the recommended
+    // set flags `process`, `console`, `fetch` and `AbortSignal` as undefined,
+    // because the entry above only claims TypeScript files. `no-console` is
+    // deliberately not applied: for a CLI script the console is the interface.
+    files: ["**/*.mjs"],
+    languageOptions: { ecmaVersion: 2023, sourceType: "module", globals: globals.node }
   }
 );
