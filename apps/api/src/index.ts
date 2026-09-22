@@ -1,3 +1,4 @@
+import { createOpenCodeGoProvider } from "@vaqcrow/ai";
 import { parseFundingIntentId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./application/use-cases/confirm-funding-intents.js";
@@ -21,8 +22,27 @@ const supabase = createSupabaseClient(config.supabase);
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
 const fundingIntentRepository = new SupabaseFundingIntentRepository(supabase);
 
+/**
+ * The composition root is the one place the credential is unwrapped.
+ *
+ * `config.llm.apiKey` is a `Secret` that collapses to a marker under string
+ * coercion, so it cannot reach a log line by accident; `reveal()` is greppable
+ * in review, and this call site is the only one. The adapter receives a plain
+ * string and never returns it.
+ */
+const assessmentProvider = createOpenCodeGoProvider({
+  baseUrl: config.llm.baseUrl,
+  model: config.llm.model,
+  apiKey: config.llm.apiKey.reveal(),
+  timeoutMs: config.llm.timeoutMs
+});
+
 const app = buildApp({
   applicationReviewRepository,
+  assessment: {
+    provider: assessmentProvider,
+    timeoutMs: config.llm.timeoutMs
+  },
   fundingIntent: {
     ledger: new StellarLedger(config.stellar),
     xdr: new StellarFundingIntentXdr(),

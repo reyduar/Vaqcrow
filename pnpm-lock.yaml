@@ -80,6 +80,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.116.0
         version: 2.116.0
+      '@vaqcrow/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@vaqcrow/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
