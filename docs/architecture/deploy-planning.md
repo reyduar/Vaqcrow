@@ -5,10 +5,10 @@ tags:
   - deployment
   - ci-cd
   - docker
-  - flyio
+  - railway
   - vercel
   - mcp
-date: 2026-09-18
+date: 2026-09-22
 status: draft
 ---
 
@@ -22,11 +22,11 @@ status: draft
 >
 > | Fase | Alcance | Issue | Estado (18/09/2026) |
 > |---|---|---|---|
-> | 1 — Fundación | `Dockerfile`, `fly.toml`, `vercel.json`, `.dockerignore`, secretos | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | Bloqueada por [#30](https://github.com/reyduar/Vaqcrow/issues/30) (a su vez espera #20, #24, #28) |
+> | 1 — Fundación | `Dockerfile`, `railway.json`, `vercel.json`, `.dockerignore`, secretos | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | **API entregada** por [#101](https://github.com/reyduar/Vaqcrow/issues/101): desplegada y verificada en Railway. Restan la web (Vercel) y los workflows |
 > | 2 — CI (`ci.yml`: lint/typecheck/test/boundaries/build) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47)/[#48](https://github.com/reyduar/Vaqcrow/issues/48)/[#49](https://github.com/reyduar/Vaqcrow/issues/49) | **`Ready`** — solo dependía de #11, ya cerrada |
 > | 2 — Deploy (`deploy-dev.yml`, `deploy-production.yml`) | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | Igual que Fase 1 |
 > | 3 — Testing E2E (Playwright) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47) | Igual que Fase 2 (mismo Task, su objetivo nombra Playwright explícitamente) |
-> | 4 — MCP (Fly.io/Vercel/Playwright/GitHub para Claude Desktop y OpenCode) | Sin issue — configuración local de entorno, no scope funcional de la demo | N/A |
+> | 4 — MCP (Railway/Vercel/Playwright/GitHub para Claude Code y OpenCode) | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101) — **el tooling de agentes pasó a estar dentro del alcance** | Railway MCP y el skill `use-railway` configurados a nivel proyecto |
 > | 5 — Demo (ensayo, freeze, presentación) | [#33](https://github.com/reyduar/Vaqcrow/issues/33), [#34](https://github.com/reyduar/Vaqcrow/issues/34) | Bloqueadas, lejos en la cadena |
 
 ---
@@ -40,7 +40,7 @@ graph TB
     subgraph "Desarrollo Local"
         DEV[Developer]
         OC[OpenCode]
-        CD[Claude Desktop]
+        CD[Claude Code]
     end
 
     subgraph "GitHub"
@@ -55,10 +55,9 @@ graph TB
         WEB_CDN[Edge Network / CDN]
     end
 
-    subgraph "Backend — Fly.io"
+    subgraph "Backend — Railway"
         API_DOCKER[Docker Build]
-        API_FLY["Fly Machine — Fastify + Node.js"]
-        API_VOL[Persistent Volume]
+        API_RAILWAY["Railway Service — Fastify + Node.js"]
     end
 
     subgraph "External Services"
@@ -69,7 +68,7 @@ graph TB
     end
 
     subgraph "MCP Servers"
-        FLY_MCP["Fly.io MCP — flyctl mcp server"]
+        RAILWAY_MCP["Railway MCP — mcp.railway.com (hosted, OAuth)"]
         VERCEL_MCP["Vercel MCP — mcp.vercel.com (hosted)"]
         PW_MCP["Playwright MCP — @playwright/mcp"]
         GH_MCP["GitHub MCP — ghcr.io/github/github-mcp-server"]
@@ -95,21 +94,21 @@ graph TB
 
     WEB_BUILD --> WEB_DEPLOY
     WEB_DEPLOY --> WEB_CDN
-    WEB_CDN -->|API calls| API_FLY
+    WEB_CDN -->|API calls| API_RAILWAY
 
-    API_DOCKER --> API_FLY
-    API_FLY --> SUPABASE
-    API_FLY --> STELLAR
-    API_FLY --> LLM
+    API_DOCKER --> API_RAILWAY
+    API_RAILWAY --> SUPABASE
+    API_RAILWAY --> STELLAR
+    API_RAILWAY --> LLM
 
     WEB_CDN -->|client-side| FREIGHTER
 
-    OC --> FLY_MCP
+    OC --> RAILWAY_MCP
     OC --> VERCEL_MCP
     OC --> PW_MCP
     OC --> GH_MCP
 
-    CD --> FLY_MCP
+    CD --> RAILWAY_MCP
     CD --> VERCEL_MCP
     CD --> PW_MCP
 
@@ -121,16 +120,16 @@ graph TB
 ### Decision: Despliegue split (no monolito)
 
 > [!important] Recomendación: DESPLIEGUE SEPARADO
-> Vercel para el frontend (`apps/web`), Fly.io para la API (`apps/api`).
+> Vercel para el frontend (`apps/web`), Railway para la API (`apps/api`).
 
-| Criterio | Web (Vercel) | API (Fly.io) |
+| Criterio | Web (Vercel) | API (Railway) |
 |---|---|---|
 | Runtime | Serverless / Edge | Docker container |
-| Escalado | Auto (Fluid compute) | Manual / Auto (Machines) |
+| Escalado | Auto (Fluid compute) | Auto (réplicas por región) |
 | Framework | [[../web/README\|Next.js 16]] | [[../../apps/api/src/index.ts\|Fastify 5]] |
 | Dependencias | `@vaqcrow/contracts` | `@vaqcrow/contracts`, `@vaqcrow/domain` |
 | Variables de entorno | Solo las del BFF | Todas las del backend |
-| Costo | Free tier (Hobby, sin costo) | Pay-as-you-go con crédito mensual (Fly.io eliminó el free tier incondicional en 2024) — verificar pricing actual antes de comprometer presupuesto |
+| Costo | Free tier (Hobby, sin costo) | Plan Hobby, USD 5 de crédito mensual |
 
 > [!warning] Por qué NO un solo deploy
 > - Vercel no soporta Fastify como server de larga ejecución
@@ -144,7 +143,15 @@ graph TB
 
 ### Dockerfile
 
-> [!note] Ubicación: `apps/api/Dockerfile`
+> [!note] Ubicación: `apps/api/Dockerfile` — **el archivo del repositorio es la fuente de verdad**; el bloque de abajo lo refleja.
+
+> [!success] Verificado (2026-09-22)
+> El build corre localmente y en Railway. La base `node:24-alpine` es **obligatoria, no incidental**: `package.json` fija `engines.node: ">=24.0.0 <25.0.0"` y `.npmrc` activa `engine-strict=true`, así que `pnpm install` aborta con `ERR_PNPM_UNSUPPORTED_ENGINE` en cualquier otra versión mayor.
+>
+> Tres correcciones se aplicaron sobre la versión originalmente planificada, y las tres salieron de **ejecutar** el build, no de razonarlo:
+> 1. La etapa `build` no copiaba los manifests raíz y moría con `ERR_PNPM_NO_PKG_MANIFEST` en el primer comando.
+> 2. Ninguna etapa copiaba `.npmrc`, así que la imagen podía construirse sobre un Node que CI rechaza, en silencio.
+> 3. El comentario que justificaba copiar `apps/web/package.json` ("pnpm valida contra TODOS los miembros del workspace") era **inexacto**: verificado con un A/B, pnpm tolera un miembro faltante y aun así reporta el lockfile al día.
 
 ```dockerfile
 # apps/api/Dockerfile
@@ -154,13 +161,16 @@ WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+# .npmrc viaja en ambas etapas: lleva engine-strict=true y
+# manage-package-manager-versions=true.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/domain/package.json ./packages/domain/
 COPY apps/api/package.json ./apps/api/
-# apps/web/package.json también se copia aunque esta imagen no lo use:
-# pnpm valida --frozen-lockfile contra TODOS los miembros del workspace
-# declarados en pnpm-workspace.yaml, no solo los instalados.
+# apps/web/package.json también se copia aunque esta imagen no lo use: mantiene
+# intacta la lista de miembros que declara pnpm-workspace.yaml, de modo que esta
+# instalación sea idéntica a la de CI. pnpm tolera un miembro faltante
+# (verificado con un A/B), así que es higiene y no un requisito duro.
 COPY apps/web/package.json ./apps/web/
 RUN pnpm install --frozen-lockfile
 
@@ -170,7 +180,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY tsconfig.base.json ./
+# Los manifests raíz también hacen falta en ESTA etapa: pnpm resuelve el
+# workspace desde pnpm-workspace.yaml y los targets de --filter contra el
+# package.json raíz. Sin ellos el primer comando de build falla con
+# ERR_PNPM_NO_PKG_MANIFEST.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc tsconfig.base.json ./
+COPY apps/web/package.json ./apps/web/
 COPY packages/contracts/ ./packages/contracts/
 COPY packages/domain/ ./packages/domain/
 COPY apps/api/ ./apps/api/
@@ -193,7 +208,7 @@ COPY --from=build /app/apps/api/package.json ./apps/api/
 # Real production-only install: la etapa `deps` instaló con devDependencies
 # (las necesita el build de TypeScript), así que acá se reinstala desde cero
 # con --prod en vez de copiar el node_modules de `deps` tal cual.
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
@@ -201,74 +216,94 @@ ENV NODE_ENV=production
 CMD ["node", "apps/api/dist/index.js"]
 ```
 
-### fly.toml
+### railway.json — config-as-code
 
-> [!warning] Ubicación: `fly.toml` (raíz del monorepo, **no** `apps/api/fly.toml`)
-> El `Dockerfile` usa rutas `COPY` relativas a la raíz del monorepo (`packages/contracts/...`, `apps/api/...`). Fly.io usa por defecto el directorio donde vive `fly.toml` como build context — si `fly.toml` quedara en `apps/api/`, esas rutas no existirían y el build fallaría en el primer deploy. Por eso `fly.toml` va en la raíz y `dockerfile` apunta hacia adentro de `apps/api/`.
+> [!warning] Ubicación: `railway.json` (raíz del monorepo)
+> El `Dockerfile` usa rutas `COPY` relativas a la raíz del monorepo (`packages/contracts/...`, `apps/api/...`), así que el **build context tiene que ser la raíz**. El servicio de Railway deja su *root directory* en la raíz y apunta al Dockerfile con `build.dockerfilePath`, que es una ruta **no estándar**: sin esa clave Railway no lo autodetecta.
 
-```toml
-# fly.toml (raíz del monorepo)
-app = "vaqcrow-api"
-primary_region = "eze"  # Buenos Aires — nearest a usuarios argentinos
-
-[build]
-  dockerfile = "apps/api/Dockerfile"
-  build-target = "production"
-
-[http_service]
-  internal_port = 3000
-  force_https = true
-  auto_stop_machines = "stop"
-  auto_start_machines = true
-  min_machines_running = 0
-
-  [http_service.concurrency]
-    type = "connections"
-    hard_limit = 25
-    soft_limit = 20
-
-  [[http_service.checks]]
-    interval = "15s"
-    timeout = "5s"
-    grace_period = "10s"
-    method = "GET"
-    path = "/health"
-
-[[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
-  cpus = 1
-
-[env]
-  NODE_ENV = "production"
-  PORT = "3000"
-
-# Secrets (set via: fly secrets set KEY=VALUE)
-# SUPABASE_URL
-# SUPABASE_SERVICE_ROLE_KEY
-# STELLAR_NETWORK_PASSPHRASE
-# STELLAR_HORIZON_URL
-# LLM_PROVIDER
-# LLM_API_KEY
+```json
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "apps/api/Dockerfile",
+    "watchPatterns": [
+      "/apps/api/**",
+      "/packages/**",
+      "/package.json",
+      "/pnpm-lock.yaml",
+      "/pnpm-workspace.yaml",
+      "/tsconfig.base.json",
+      "/.npmrc",
+      "/railway.json"
+    ]
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
 ```
+
+> [!danger] `railway.json` está deprecado
+> Railway marcó *Config as Code* (`railway.json` / `railway.toml`) como deprecado en favor de *Infrastructure as Code* (`.railway/railway.ts`). Los archivos existentes **siguen funcionando hasta el 2026-12-01**. Migración: `railway config migrate`. Ojo: `railway config pull` puede arrastrar **valores** de variables al repositorio — revisar el diff antes de commitear.
+>
+> Alternativa sin config-as-code: mover el Dockerfile a la raíz del repositorio, donde Railway lo autodetecta.
+
+> [!warning] Discrepancia de builder observada (2026-09-22)
+> Aunque `railway.json` se respeta, la configuración **del servicio** sigue mostrando `build.builder: "RAILPACK"` (el default de la plataforma). El build usó el Dockerfile igual —los logs muestran sus etapas— pero la discrepancia es una trampa latente: si `railway.json` dejara de aplicarse, el servicio caería al builder Railpack, y Railpack resuelve Node desde `engines.node`/`.nvmrc` con **default 22**, que el gate `engine-strict` rechaza.
+>
+> Fijar el builder a nivel servicio (dashboard → Settings → Build → Builder → Dockerfile) elimina la dependencia del archivo deprecado para el ajuste más crítico.
+
+> [!note] La región por defecto quedó en `us-west2`
+> A diferencia del plan original (que proponía `eze` para latencia argentina), el servicio se creó con la región por defecto de Railway. Si la latencia importa para la demo, se cambia desde el dashboard; Supabase está en otra región de todos modos, así que el efecto real es acotado.
 
 ### .dockerignore
 
 > [!note] Ubicación: `.dockerignore` (raíz del monorepo)
 
 ```dockerignore
-# .dockerignore (raíz del monorepo)
-node_modules
-.next
-.turbo
-dist
+# Docker respeta .dockerignore, NUNCA .gitignore. La imagen de la API necesita
+# código, manifests y el lockfile; el resto es peso de contexto o material
+# sensible que no debe poder alcanzar un COPY amplio.
+
+# Historia del repositorio y cachés locales
 .git
+.turbo
+.obsidian
+.codegraph
+
+# Las dependencias se instalan dentro de la imagen
+node_modules
+**/node_modules
+
+# Salidas de build y reportes de test: se regeneran dentro de la imagen
+**/dist
+**/.next
+**/playwright-report
+**/test-results
+**/coverage
+
+# Entorno local y material sensible
+.env
+.env.*
+*.local
+
+# Documentación, estado de agentes y fixtures que no son de runtime
+docs
+odd
+.atl
+.claude
+.agents
+.opencode
+tests
 .github
-*.md
-!packages/*/README.md
-.env*
-!.env.example
 ```
+
+> [!warning] Por qué no es opcional
+> Docker mide el contexto de build con `.dockerignore`, no con `.gitignore`. Medido en este repositorio: `apps/web/.next` pesa **495 MB**, así que sin este archivo cada deploy subiría ~500 MB de build de Next que la imagen de la API nunca usa. Y `.env.local` está en el árbol de trabajo: cualquier `COPY` amplio futuro filtraría secretos a la imagen.
 
 ---
 
@@ -312,70 +347,98 @@ dist
 
 | Variable | Valor | Descripción |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://vaqcrow-api.fly.dev` | URL de la API en Fly.io |
+| `NEXT_PUBLIC_API_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
 
 ---
 
-## 4. MCP — Configuración para Claude Desktop y OpenCode
+## 4. MCP — Configuración para Claude Code y OpenCode
 
 > [!info] ¿Qué son los MCP servers?
 > Los Model Context Protocol servers permiten que Claude y OpenCode interactúen directamente con servicios de deployment, testing y gestión de código.
 
-### 4.1 Fly.io MCP Server
+> [!note] Corrección (2026-09-22): Claude Code, no Claude Desktop
+> El plan original apuntaba a **Claude Desktop** (`claude_desktop_config.json`). Este repositorio usa **Claude Code**, cuyo archivo de proyecto es `.mcp.json` (raíz del monorepo, clave `mcpServers`). La distinción importa: son productos distintos con archivos distintos, y el nombre equivocado hace que la configuración no se cargue.
 
-**Propósito:** Gestionar la API en Fly.io desde el IDE (deploy, logs, secrets, status).
+### 4.1 Railway MCP Server
+
+**Propósito:** Gestionar la API en Railway desde el IDE (deploy, logs, variables, status).
+
+> [!info] Servidor remoto y alojado
+> Railway expone un MCP **remoto** en `https://mcp.railway.com`, autenticado por **OAuth**. Es el camino que usa este repositorio: no requiere instalar nada local ni mantener un token en el config del editor.
+>
+> La alternativa es el *proxy* por CLI (`railway mcp`), que reutiliza las credenciales de `railway login` en lugar de OAuth. `railway setup agent` configura esa última por defecto.
 
 #### Instalación
 
 ```bash
-# flyctl debe estar instalado
-brew install flyctl
+# Una sola vez: instala el CLI y configura agentes (skill + MCP + auth)
+curl -fsSL agents.railway.com | sh
 
-# Login
-fly auth login
-
-# Agregar MCP server a Claude Desktop
-fly mcp server --claude --server flyctl
+# O, con el CLI ya presente:
+brew install railway        # requiere >= 5.44.0 para el MCP
+railway login               # interactivo, abre el navegador
+railway setup agent         # skill use-railway + MCP + verificación de auth
 ```
 
-#### Claude Desktop — `claude_desktop_config.json`
+#### Configuración a nivel proyecto
+
+> [!important] Alcance de proyecto, no de máquina
+> Las entradas viven en el repositorio para que el entorno sea reproducible por cualquier contribuyente. `railway setup agent` escribe por defecto en la configuración **global** del editor.
+
+`.mcp.json` (Claude Code) — mismo patrón que `supabase` y `vercel`:
 
 ```json
 {
   "mcpServers": {
-    "flyctl": {
-      "command": "/opt/homebrew/bin/flyctl",
-      "args": ["mcp", "server", "--server", "flyctl"]
+    "railway": {
+      "type": "http",
+      "url": "https://mcp.railway.com"
     }
   }
 }
 ```
 
-#### OpenCode — `opencode.json`
+`opencode.json` (OpenCode):
 
 ```json
 {
   "mcp": {
-    "flyctl": {
-      "command": "/opt/homebrew/bin/flyctl",
-      "args": ["mcp", "server", "--server", "flyctl"]
+    "railway": {
+      "type": "remote",
+      "url": "https://mcp.railway.com",
+      "enabled": true
     }
   }
 }
 ```
 
+> [!warning] `oauth` se omite a propósito
+> En el schema de OpenCode, **omitir** `oauth` activa la autodetección OAuth (con registro dinámico de cliente, RFC 7591). Poner `oauth: false` la **deshabilita** — correcto para servidores autenticados por header `Authorization`, incorrecto para Railway.
+
+#### Verificación
+
+```bash
+opencode mcp list        # railway -> https://mcp.railway.com, connected
+railway --version        # >= 5.44.0
+railway whoami
+```
+
 #### Herramientas disponibles
+
+El servidor alojado expone un conjunto más acotado que el servidor local; `railway-agent` cubre las operaciones multi-paso.
 
 | Tool | Descripción |
 |---|---|
-| `fly-apps-list` | Listar aplicaciones |
-| `fly-apps-create` | Crear nueva app |
-| `fly-machines-list` | Listar máquinas de una app |
-| `fly-machines-status` | Estado de una máquina |
-| `fly-secrets-list` | Listar secretos |
-| `fly-secrets-set` | Establecer secretos |
-| `fly-logs` | Ver logs de la aplicación |
-| `fly-status` | Estado general de la app |
+| `list-projects` | Listar proyectos |
+| `create-project` | Crear un proyecto |
+| `list-services` | Listar servicios |
+| `redeploy` | Redesplegar un servicio |
+| `accept-deploy` | Confirmar cambios staged y desplegar (destructivo) |
+| `whoami` | Identidad autenticada |
+| `railway-agent` | Agente de Railway para operaciones multi-paso (logs, debugging, configuración) |
+
+> [!caution] El MCP no acepta project tokens
+> Requiere identidad de usuario (billing y audit trail). El deploy desde CI es un asunto **separado**: usa `RAILWAY_TOKEN` como variable de entorno del workflow, no el MCP.
 
 ---
 
@@ -394,7 +457,7 @@ claude mcp add --transport http vercel https://mcp.vercel.com
 # verificar: claude mcp list
 ```
 
-#### Claude Desktop — `claude_desktop_config.json`
+#### Claude Code — `.mcp.json`
 
 ```json
 {
@@ -437,7 +500,7 @@ claude mcp add --transport http vercel https://mcp.vercel.com
 
 **Propósito:** Automatizar testing E2E, inspeccionar DOM, generar tests.
 
-#### Claude Desktop — `claude_desktop_config.json`
+#### Claude Code — `.mcp.json`
 
 ```json
 {
@@ -480,7 +543,7 @@ claude mcp add --transport http vercel https://mcp.vercel.com
 
 **Propósito:** Gestionar issues, PRs, y releases desde el IDE.
 
-#### Claude Desktop — `claude_desktop_config.json`
+#### Claude Code — `.mcp.json`
 
 ```json
 {
@@ -525,37 +588,37 @@ claude mcp add --transport http vercel https://mcp.vercel.com
 ### 4.5 Configuración completa — OpenCode (`opencode.json`)
 
 > [!example] Configuración final de MCP para OpenCode
-> Este es el `opencode.json` completo con los 4 MCP servers configurados.
+> Este es el bloque `mcp` de `opencode.json` con los servidores configurados. En el repositorio conviven además entradas ajenas a este plan (`codegraph`, `engram`, `context7`), así que la fuente de verdad es el archivo.
 
 ```json
 {
   "mcp": {
-    "flyctl": {
-      "command": "/opt/homebrew/bin/flyctl",
-      "args": ["mcp", "server", "--server", "flyctl"]
+    "railway": {
+      "type": "remote",
+      "url": "https://mcp.railway.com"
     },
     "vercel": {
       "type": "remote",
       "url": "https://mcp.vercel.com"
     },
     "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest"]
     },
     "github": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": ""
-      }
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "oauth": false
     }
   }
 }
 ```
+
+> [!note] Corrección de formato respecto del plan original
+> En OpenCode un servidor local usa `"type": "local"` y `command` como **array** de strings —la forma `command`/`args` de Claude Desktop no es válida y el config es rechazado al arrancar. GitHub se registra como servidor **remoto** con header `Authorization`, no con `docker run`.
 
 ---
 
@@ -706,9 +769,9 @@ Canales:
 
 | Tag | Acción | Deploy |
 |---|---|---|
-| `v0.1.0-dev` | CI completo + deploy dev | Web (Vercel preview) + API (Fly.io staging) |
-| `v0.1.0-rc.1` | CI completo + deploy staging | Web (Vercel preview) + API (Fly.io staging) |
-| `v0.1.0` | CI completo + deploy production | Web (Vercel prod) + API (Fly.io prod) |
+| `v0.1.0-dev` | CI completo + deploy dev | Web (Vercel preview) + API (Railway) |
+| `v0.1.0-rc.1` | CI completo + deploy staging | Web (Vercel preview) + API (Railway) |
+| `v0.1.0` | CI completo + deploy production | Web (Vercel prod) + API (Railway) |
 
 ### Flujo de promotion
 
@@ -899,15 +962,16 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   deploy-api:
-    name: Deploy API → Fly.io
+    name: Deploy API → Railway
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy to Fly.io
-        run: flyctl deploy --config fly.toml --app vaqcrow-api-dev
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+      - name: Deploy to Railway
+        run: railway up --detach --service api
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
   smoke-tests:
     name: Smoke Tests
@@ -929,7 +993,7 @@ jobs:
         run: pnpm --filter @vaqcrow/web exec playwright test --grep "smoke"
         env:
           BASE_URL: ${{ vars.VERCEL_PREVIEW_URL }}
-          API_URL: https://vaqcrow-api-dev.fly.dev
+          API_URL: https://api-production-c07f.up.railway.app
 ```
 
 #### deploy-production.yml — Deploy a producción
@@ -967,15 +1031,16 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   deploy-api:
-    name: Deploy API → Fly.io (production)
+    name: Deploy API → Railway (production)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy to Fly.io
-        run: flyctl deploy --config fly.toml --app vaqcrow-api
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+      - name: Deploy to Railway
+        run: railway up --detach --service api
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
   smoke-tests:
     name: Smoke Tests (production)
@@ -997,7 +1062,7 @@ jobs:
         run: pnpm --filter @vaqcrow/web exec playwright test --grep "smoke"
         env:
           BASE_URL: ${{ vars.VERCEL_PRODUCTION_URL }}
-          API_URL: https://vaqcrow-api.fly.dev
+          API_URL: https://api-production-c07f.up.railway.app
 
   release:
     name: Create GitHub Release
@@ -1015,40 +1080,52 @@ jobs:
 
 ## 7. Secretos y Variables de Entorno
 
-### Fly.io (API)
+### Railway (API)
 
 > [!warning] Secretos
-> Nunca commitear secretos. Usar `fly secrets set` para configurarlos.
+> Nunca commitear secretos. Se configuran como variables del servicio.
 
 ```bash
-# Development
-fly secrets set --app vaqcrow-api-dev \
-  SUPABASE_URL="https://xxx.supabase.co" \
-  SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
-  STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
-  STELLAR_HORIZON_URL="https://horizon-testnet.stellar.org" \
-  LLM_PROVIDER="openai" \
-  LLM_API_KEY="sk-..."
+# Las variables se setean en el servicio, nunca en el repositorio.
+# Exportarlas en el shell evita escribirlas en el historial de comandos.
 
-# Production
-fly secrets set --app vaqcrow-api \
+railway variable set \
+  APP_ENV=demo \
+  STELLAR_NETWORK=testnet \
+  LOG_LEVEL=info \
+  PORT=3000 \
   SUPABASE_URL="https://xxx.supabase.co" \
-  SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
-  STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
-  STELLAR_HORIZON_URL="https://horizon-testnet.stellar.org" \
-  LLM_PROVIDER="openai" \
-  LLM_API_KEY="sk-..."
+  SUPABASE_SERVICE_ROLE_KEY="..." \
+  SUPABASE_PUBLISHABLE_KEY="..." \
+  --service api --project <PROJECT_ID> --environment <ENVIRONMENT_ID>
 ```
+
+> [!danger] Corrección del contrato de variables (2026-09-22)
+> El plan original listaba `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_HORIZON_URL`, `LLM_PROVIDER` y `LLM_API_KEY`. **Ninguna de esas claves existe en el contrato de configuración de la API.** La passphrase de Testnet y la URL de Horizon son constantes públicas del código (`stellar-config.ts`), no variables.
+>
+> El contrato real, confirmado por el propio proceso al arrancar sin configuración:
+>
+> | Variable | Obligatoria | Nota |
+> |---|---|---|
+> | `APP_ENV` | Sí | `local \| ci \| preview \| demo`. **`production` es rechazado por diseño** |
+> | `STELLAR_NETWORK` | Sí | Solo `testnet`; la red pública se rechaza al arrancar |
+> | `SUPABASE_URL` | Sí | Debe ser una URL `http(s)` absoluta |
+> | `SUPABASE_SERVICE_ROLE_KEY` | Sí | Nunca se registra ni se devuelve |
+> | `PORT` | No | Default `3000` |
+> | `LOG_LEVEL` | No | Default `info` |
+> | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
+>
+> Correr el contenedor sin configuración falla listando **todas** las claves faltantes de una sola vez, y no imprime ningún valor.
 
 ### Vercel (Web)
 
 ```bash
 # Via Vercel CLI
 vercel env add NEXT_PUBLIC_API_URL preview
-# Valor: https://vaqcrow-api-dev.fly.dev
+# Valor: https://api-production-c07f.up.railway.app
 
 vercel env add NEXT_PUBLIC_API_URL production
-# Valor: https://vaqcrow-api.fly.dev
+# Valor: https://api-production-c07f.up.railway.app
 ```
 
 ### GitHub Secrets
@@ -1058,44 +1135,49 @@ vercel env add NEXT_PUBLIC_API_URL production
 | `VERCEL_TOKEN` | Token de Vercel para deploy |
 | `VERCEL_ORG_ID` | ID de la organización Vercel |
 | `VERCEL_PROJECT_ID` | ID del proyecto Vercel |
-| `FLY_API_TOKEN` | Token de Fly.io para deploy |
+| `RAILWAY_TOKEN` | Token **de proyecto** de Railway para deploy desde CI |
+
+> [!caution] `RAILWAY_TOKEN` y el MCP son credenciales distintas
+> `RAILWAY_TOKEN` es un token de proyecto: sirve para CI, no para el MCP. El servidor MCP rechaza project tokens por diseño y exige identidad de usuario (billing y audit trail). No intentes reutilizar uno como el otro.
 
 ---
 
 ## 8. Checklist de implementación
 
 > [!todo] Fase 1: Fundación (Semanas 1-2)
-> - [ ] Crear `apps/api/Dockerfile` (multi-stage build)
-> - [ ] Crear `fly.toml` en la **raíz** del monorepo (no en `apps/api/`) — ver nota de contexto de build en §2
-> - [ ] Implementar endpoint `GET /health` en `apps/api` (lo requieren el health check de `fly.toml` y los smoke tests de nivel 5)
-> - [ ] Probar el build de Docker localmente (`docker build -f apps/api/Dockerfile .` desde la raíz) antes del primer `fly deploy`, para confirmar que `pnpm install --frozen-lockfile` no falla por miembros del workspace faltantes
-> - [ ] Crear `.dockerignore` en la raíz
+> - [x] Crear `apps/api/Dockerfile` (multi-stage build) — **verificado construyendo y ejecutando la imagen**
+> - [x] Crear `railway.json` en la **raíz** del monorepo — ver nota de contexto de build y de deprecación en §2
+> - [x] Verificar el endpoint `GET /health` en `apps/api` (lo consumen el health check de `railway.json` y los smoke tests de nivel 5)
+> - [x] Probar el build de Docker localmente (`docker build -f apps/api/Dockerfile .` desde la raíz) antes del primer deploy — encontró el defecto de manifests raíz de la etapa `build`
+> - [x] Crear `.dockerignore` en la raíz
 > - [ ] Crear `vercel.json` en la raíz
 > - [ ] Configurar proyecto en Vercel (vaqcrow-web)
-> - [ ] Crear app en Fly.io (`fly launch --no-deploy`) y confirmar el pricing/plan actual antes de comprometer presupuesto
-> - [ ] Configurar GitHub Secrets (VERCEL_TOKEN, FLY_API_TOKEN, etc.)
+> - [x] Crear el servicio en Railway, conectar el repo y confirmar el plan Hobby
+> - [ ] Configurar GitHub Secrets (`VERCEL_TOKEN`, `RAILWAY_TOKEN`, etc.)
 > - [ ] Configurar variables de entorno en Vercel
+> - [ ] Fijar el builder a `DOCKERFILE` a nivel servicio (ver §2)
 
 > [!todo] Fase 2: CI/CD (Semanas 2-3)
-> - [ ] Crear `.github/workflows/ci.yml`
+> - [x] Crear `.github/workflows/ci.yml` (Feature #15)
 > - [ ] Crear `.github/workflows/deploy-dev.yml`
 > - [ ] Crear `.github/workflows/deploy-production.yml`
-> - [ ] Probar CI en primer PR
+> - [x] Probar CI en primer PR (Feature #15)
 > - [ ] Probar deploy dev con tag `v0.1.0-dev`
 
 > [!todo] Fase 3: Testing (Semanas 3-4)
 > - [ ] Instalar Playwright (`pnpm --filter @vaqcrow/web exec playwright install`)
-> - [ ] Crear `apps/web/playwright.config.ts`
-> - [ ] Crear tests E2E en `apps/web/e2e/`
+> - [x] Crear `apps/web/playwright.config.ts`
+> - [x] Crear tests E2E en `apps/web/e2e/`
 > - [ ] Crear smoke tests para post-deploy
-> - [ ] Integrar E2E en CI workflow
+> - [x] Integrar E2E en CI workflow
 
 > [!todo] Fase 4: MCP (Semanas 2-3)
-> - [ ] Configurar Fly.io MCP en Claude Desktop y OpenCode
-> - [ ] Configurar Vercel MCP en Claude Desktop y OpenCode
-> - [ ] Configurar Playwright MCP en Claude Desktop y OpenCode
-> - [ ] Configurar GitHub MCP en Claude Desktop y OpenCode
-> - [ ] Probar cada MCP server
+> - [x] Configurar Railway MCP en Claude Code y OpenCode, **a nivel proyecto** (`.mcp.json` y `opencode.json`)
+> - [ ] Configurar Vercel MCP en Claude Code y OpenCode
+> - [ ] Configurar Playwright MCP en Claude Code y OpenCode
+> - [x] Configurar GitHub MCP (remoto, en `opencode.json`)
+> - [x] Instalar el skill `use-railway`
+> - [x] Probar cada MCP server configurado (`opencode mcp list`)
 
 > [!todo] Fase 5: Demo (Semana 4)
 > - [ ] Deploy completo a dev
@@ -1111,9 +1193,12 @@ vercel env add NEXT_PUBLIC_API_URL production
 | Servicio | Development | Production |
 |---|---|---|
 | Web (Vercel) | `vaqcrow-web-<hash>.vercel.app` | `vaqcrow-web.vercel.app` |
-| API (Fly.io) | `vaqcrow-api-dev.fly.dev` | `vaqcrow-api.fly.dev` |
-| Supabase | `xxx.supabase.co` | `xxx.supabase.co` (mismo) |
+| API (Railway) | `api-production-c07f.up.railway.app` | `api-production-c07f.up.railway.app` |
+| Supabase | `ppvlnwejajxpsmazvnbj.supabase.co` | `ppvlnwejajxpsmazvnbj.supabase.co` (mismo) |
 | Stellar Horizon | `horizon-testnet.stellar.org` | `horizon-testnet.stellar.org` |
+
+> [!note] Hoy hay un solo environment en Railway
+> El proyecto expone únicamente `production`, así que la columna *Development* repite la URL productiva. Un environment de staging separado es trabajo pendiente, no una capacidad existente.
 
 ---
 
@@ -1123,7 +1208,8 @@ vercel env add NEXT_PUBLIC_API_URL production
 >
 > | Decisión | Opciones | Recomendación |
 > |---|---|---|
-> | Región Fly.io | `eze` (Buenos Aires) vs `iad` (Virginia) | `eze` — más cercano a usuarios argentinos |
+> | Región Railway | `us-west2` (default actual) vs `eze` (Buenos Aires) vs `iad` (Virginia) | El servicio quedó en `us-west2` por el default de la plataforma; cambiar solo si la latencia se vuelve visible en la demo |
+> | Migración de IaC | `railway.json` (expira 2026-12-01) vs `.railway/railway.ts` vs Dockerfile en la raíz | Migrar antes de que expire, o mover el Dockerfile a la raíz |
 > | Proveedor LLM | OpenAI vs Anthropic vs local | OpenAI para la demo (costo/beneficio) |
 > | Supabase plan | Free vs Pro | Free para la demo |
 > | Playwright browsers | Solo Chromium vs multi-browser | Solo Chromium para la demo |

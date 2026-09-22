@@ -15,6 +15,10 @@
       "type": "http",
       "url": "https://mcp.vercel.com"
     },
+    "railway": {
+      "type": "http",
+      "url": "https://mcp.railway.com"
+    },
     "heroui-react": {
       "command": "npx",
       "args": ["-y", "@heroui/react-mcp@latest"]

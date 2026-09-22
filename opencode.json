@@ -274,6 +274,11 @@
     "type": "remote",
     "url": "https://mcp.vercel.com",
     "enabled": true
+    },
+    "railway": {
+      "type": "remote",
+      "url": "https://mcp.railway.com",
+      "enabled": true
     }
   },
   "share": "disabled"
