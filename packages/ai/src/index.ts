@@ -43,3 +43,12 @@ export type { RunAssessmentError, RunAssessmentResult } from "./run-assessment.j
 
 export { createSimulatedAssessmentProvider } from "./simulated-assessment-provider.js";
 export type { SimulatedAssessmentProviderOptions } from "./simulated-assessment-provider.js";
+
+export {
+  ASSESSMENT_PROMPT_VERSION,
+  buildAssessmentMessages
+} from "./assessment-prompt.js";
+export type { AssessmentMessage } from "./assessment-prompt.js";
+
+export { createOpenCodeGoProvider } from "./opencode-go-provider.js";
+export type { OpenCodeGoProviderOptions } from "./opencode-go-provider.js";
