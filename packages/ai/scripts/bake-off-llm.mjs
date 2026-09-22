@@ -33,7 +33,14 @@
 import { parseAiAssessment, validateAssessmentEvidence } from "../dist/index.js";
 
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1";
-const DEFAULT_MODELS = ["deepseek-v4-pro", "kimi-k3", "glm-5.3"];
+/**
+ * The candidates worth comparing for THIS task. The 2026-09-22 run measured
+ * seven models; every one returned schema-valid JSON with no invented
+ * references, so admissibility did not discriminate and the choice came down to
+ * latency. These are the three fastest, with the winner first. Override with
+ * LLM_BAKE_OFF_MODELS to try anything else on the live list.
+ */
+const DEFAULT_MODELS = ["glm-5.3-flash", "mimo-v2.6-flash", "deepseek-v4-flash"];
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
