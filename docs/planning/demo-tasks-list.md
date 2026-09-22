@@ -2,6 +2,8 @@
 
 Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 109 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features, 75 Tasks y 2 ítems sin etiqueta de tipo ([#134](https://github.com/reyduar/Vaqcrow/issues/134) y [#189](https://github.com/reyduar/Vaqcrow/issues/189)). El estado base del inventario se verificó el 18 de septiembre de 2026. Con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), de la configuración de pruebas y gates de CI (#15, #47, #48 y #49), de la configuración tipada y límites de secretos (#14, #44, #45 y #46) y de la integración de Stellar y Freighter (#23, #74, #75 y #76) y de la intención de fondeo (#24, #77, #78 y #79), del esquema y guardrails de IA (#20, #65, #66 y #67) y del adaptador LLM reemplazable (#21, #68, #69 y #70), el estado queda en 42 `Backlog`, 3 `Ready` y 64 `Done`. Esos conteos provienen de una consulta verificada al Project #4 el 22 de septiembre de 2026, tomada sobre los 109 ítems de este inventario: el tablero tiene 117 y los 8 issues posteriores al inventario quedan fuera: [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`; [#196](https://github.com/reyduar/Vaqcrow/issues/196), abierto el 20/09/2026 y en `Backlog`; y la cadena del camino de IA, abierta y cerrada el 22/09/2026 — [#223](https://github.com/reyduar/Vaqcrow/issues/223), [#226](https://github.com/reyduar/Vaqcrow/issues/226), [#228](https://github.com/reyduar/Vaqcrow/issues/228), [#230](https://github.com/reyduar/Vaqcrow/issues/230) y [#232](https://github.com/reyduar/Vaqcrow/issues/232), las cinco en `Done`, mientras que [#59](https://github.com/reyduar/Vaqcrow/issues/59), [#60](https://github.com/reyduar/Vaqcrow/issues/60) y [#61](https://github.com/reyduar/Vaqcrow/issues/61), los tres cerrados, nunca estuvieron en el tablero. El ítem [#134](https://github.com/reyduar/Vaqcrow/issues/134) cuenta como `Done` porque así lo registran su issue (cerrado el 17/09/2026) y el Project #4; sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main`, así que este documento no declara entregada la capa de Auth.js.
 
+**Incorporado después del inventario (2026-09-22).** El 2026-09-22 se agregaron **21 unidades nuevas** —1 Epic, 5 Features y 15 Tasks— para **custodiar el fondeo en un contrato de Stellar**. **No forman parte del inventario de 109 ítems**, no están todavía en el Project #4, y su Epic no lleva rama. Reemplazan el camino de fondeo de [#24](https://github.com/reyduar/Vaqcrow/issues/24), que sigue cerrado y no se reescribe. Detalle, decisiones y avisos en [Custodia del fondeo por contrato de campaña](#^custodia-por-contrato).
+
 ## Comenzar aquí
 
 > **Unidades actualmente `Ready`: [#22 — Derivar los fallos de IA a revisión manual](#^issue-22), [#26 — Implementar el feed mensual de ventas](#^issue-26) y [#83 — Implementar el feed mensual de ventas](#^issue-83).**
@@ -1461,6 +1463,283 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **Orden:** está inventariado porque pertenece al Project #4, pero no altera las olas ni bloquea el recorrido de dos semanas.
 
 **Rama propuesta.** `Vaqcrow#189_Task_Cover_the_root_tests_directory_with_lint_and_typecheck` sería una unidad transversal revisable cuando se promueva explícitamente su ejecución.
+
+## Custodia del fondeo por contrato de campaña — incorporado el 2026-09-22
+
+^custodia-por-contrato
+
+Estas 21 unidades **no forman parte del inventario de 109 ítems** verificado el 18/09/2026: se crearon después de una decisión de alcance tomada el **2026-09-22**, y ninguna está todavía en el Project canónico `Vaqcrow-TFM` #4.
+
+**Qué cambia.** El fondeo deja de ser un pago clásico directo y pasa a estar **custodiado por un contrato de Stellar**, con una bóveda por campaña. El camino clásico (`@stellar/stellar-sdk`, Horizon y firma con Freighter) se mantiene para la **distribución de revenue share** y para toda firma de la persona usuaria. La decisión reemplaza la que el 2026-09-14 declaraba los contratos inteligentes como trabajo puramente opcional, y **promueve el contrato de stretch goal recortable a camino obligatorio**: en el plan de catorce días reemplaza los días 6 a 8, y sale de la línea de corte para entrar en la lista de lo que nunca se recorta.
+
+**Qué supersede.** El **camino de fondeo** entregado por [#24](#^issue-24). [#24](#^issue-24) y el [Epic #7](#^issue-7) **siguen cerrados y no se reescriben**: su código y su evidencia quedan como la historia entregada. Este documento no declara retirado su motor XDR; declara que deja de ser el camino por el que entra el dinero.
+
+**Por qué no se usó Claimable Balance.** Se evaluó CAP-23 como alternativa sin contrato y **se descartó**: su lenguaje de predicados tiene seis tipos y sus únicas hojas son tiempo o "siempre", así que "el objetivo fue alcanzado" es inexpresable on-chain, y ninguna partición de fechas cierra las dos puntas del riesgo. Fundamento y registro del descarte en [Requisitos de blockchain Stellar](./stellar-blockchain-requirements.md); decisiones y avisos en [`odd/tasks/soroban-campaign-vault-decision.md`](../../odd/tasks/soroban-campaign-vault-decision.md).
+
+**Nombres de rama.** Se aplica la convención vigente: `Vaqcrow#<número>_Feat_<título original>` y `Vaqcrow#<número>_Task_<título original>`, con el título original en inglés. El Epic no lleva rama.
+
+### #235 — Custodiar el fondeo de la campaña en un contrato de Stellar
+
+^issue-235
+
+- **Título original:** `Epic: Custody campaign funds on a Stellar contract`
+- **GitHub y estado:** [issue #235](https://github.com/reyduar/Vaqcrow/issues/235) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`, aún fuera del Project #4.
+- **Jerarquía y bloqueos:** sin padre; cinco Features hijas. Bloquea de hecho todo el camino de fondeo de la demo.
+- **Objetivo:** custodiar el fondeo de la campaña en un contrato para que la condición de objetivo la imponga el ledger: pago atómico a la PyME al alcanzar el objetivo y reembolsos permissionless al vencer la fecha sin alcanzarlo.
+- **Orden:** no altera las olas 1 a 9 del inventario, pero **reemplaza los días 6 a 8 del plan de catorce días**.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #238 — Aprovisionar el toolchain de contratos y el despliegue reproducible
+
+^issue-238
+
+- **Título original:** `Feature: Provision the Soroban toolchain and reproducible deployment`
+- **GitHub y estado:** [issue #238](https://github.com/reyduar/Vaqcrow/issues/238) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#235](#^issue-235); sin bloqueos nativos propios. **Bloquea a todas las demás Features de [#235](#^issue-235).**
+- **Objetivo:** instalar y verificar el toolchain del contrato y hacer reproducible su build y despliegue en local y en CI.
+- **Estado medido al crearlo:** `rustup`, `rustc`, `cargo` y `stellar` **no están instalados** y el target `wasm32v1-none` no existe; Docker 29.1.3, Homebrew 7.0.6, Node `v26.8.1` y pnpm `11.27.0` sí están.
+- **Orden:** es el primer trabajo del camino nuevo; nada más de [#235](#^issue-235) puede empezar sin él.
+
+**Rama propuesta.** `Vaqcrow#238_Feat_Provision_the_Soroban_toolchain_and_reproducible_deployment` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #242 — Instalar y verificar el toolchain de contratos
+
+^issue-242
+
+- **Título original:** `Task: Install and verify the Soroban toolchain`
+- **GitHub y estado:** [issue #242](https://github.com/reyduar/Vaqcrow/issues/242) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#238](#^issue-238); sin bloqueos nativos propios.
+- **Objetivo:** instalar Rust, el target `wasm32v1-none` y Stellar CLI, y registrar las versiones exactas como evidencia.
+- **Requisitos técnicos confirmados:** Rust por `rustup`; CLI por Homebrew —`brew install stellar-cli`, en `homebrew-core` como `stable 28.0.0`—; Quickstart **no se instala**, es una imagen Docker que se descarga sola. `cargo install --locked stellar-cli` queda como alternativa, porque compila desde fuente.
+- **Orden:** inicia el Feature y desbloquea [#243](#^issue-243).
+
+**Rama propuesta.** `Vaqcrow#242_Task_Install_and_verify_the_Soroban_toolchain` es una unidad de implementación revisable.
+
+### #243 — Levantar la red local y el despliegue reproducible
+
+^issue-243
+
+- **Título original:** `Task: Set up the local network and reproducible deployment`
+- **GitHub y estado:** [issue #243](https://github.com/reyduar/Vaqcrow/issues/243) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#238](#^issue-238); bloqueada nativamente por [#242](#^issue-242).
+- **Objetivo:** levantar la red local, registrar el script de build y despliegue reproducible, y cablear el job de CI.
+- **Requisitos técnicos confirmados:** `stellar container start local` y `stellar network add local`; la Action `stellar/quickstart@main` para CI; `stellar/quickstart:testing` en modo local para emular los límites de Testnet. La red local **no reemplaza a Testnet para la evidencia**, porque no es pública.
+- **Orden:** valida la instalación y desbloquea [#241](#^issue-241).
+
+**Rama propuesta.** `Vaqcrow#243_Task_Set_up_the_local_network_and_reproducible_deployment` es una unidad de implementación revisable.
+
+### #241 — Documentar evidencia del toolchain y el despliegue reproducible
+
+^issue-241
+
+- **Título original:** `Task: Document evidence for the Soroban toolchain and reproducible deployment`
+- **GitHub y estado:** [issue #241](https://github.com/reyduar/Vaqcrow/issues/241) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#238](#^issue-238); bloqueada nativamente por [#243](#^issue-243).
+- **Objetivo:** documentar evidencia reproducible del toolchain y del build, despliegue e invocación, en red local y en Testnet.
+- **Orden:** cierra [#238](#^issue-238) y habilita [#236](#^issue-236).
+
+**Rama propuesta.** `Vaqcrow#241_Task_Document_evidence_for_the_Soroban_toolchain_and_reproducible_deployment` es una unidad de documentación revisable.
+
+### #236 — Implementar el contrato de bóveda de campaña
+
+^issue-236
+
+- **Título original:** `Feature: Implement the campaign vault contract`
+- **GitHub y estado:** [issue #236](https://github.com/reyduar/Vaqcrow/issues/236) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#238](#^issue-238). **Supersede el camino de fondeo de [#24](#^issue-24).**
+- **Objetivo:** implementar la fábrica y la bóveda de campaña: custodia de los aportes, pago atómico al alcanzar el objetivo, retiro voluntario antes del objetivo y reembolsos permissionless con barrido acotado.
+- **Diseño ya cerrado:** una instancia de contrato **por campaña**, creada por la fábrica al aprobar; el estado del objetivo se evalúa **dentro** de `contribute`, para que el ordenamiento del ledger lo haga determinístico.
+- **Orden:** es el núcleo del camino nuevo y desbloquea [#239](#^issue-239) y [#237](#^issue-237).
+
+**Rama propuesta.** `Vaqcrow#236_Feat_Implement_the_campaign_vault_contract` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #244 — Implementar la fábrica y la bóveda de campaña
+
+^issue-244
+
+- **Título original:** `Task: Implement the factory and the campaign vault`
+- **GitHub y estado:** [issue #244](https://github.com/reyduar/Vaqcrow/issues/244) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#236](#^issue-236); requiere [#238](#^issue-238).
+- **Objetivo:** escribir en Rust la fábrica y la bóveda con la máquina de estados y la superficie acordadas.
+- **Requisitos técnicos confirmados:** Rust `#![no_std]`, target `wasm32v1-none`, `soroban-sdk` major 28; `__constructor` en vez de `initialize`; lote del barrido acotado; el TTL es dato, no mecanismo de seguridad.
+- **Orden:** inicia el Feature y desbloquea [#246](#^issue-246).
+
+**Rama propuesta.** `Vaqcrow#244_Task_Implement_the_factory_and_the_campaign_vault` es una unidad de implementación revisable.
+
+### #246 — Probar la fábrica y la bóveda de campaña
+
+^issue-246
+
+- **Título original:** `Task: Test the factory and the campaign vault`
+- **GitHub y estado:** [issue #246](https://github.com/reyduar/Vaqcrow/issues/246) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#236](#^issue-236); bloqueada nativamente por [#244](#^issue-244).
+- **Objetivo:** cubrir los caminos del dinero y los casos negativos de forma determinística y sin red.
+- **Orden:** valida la implementación y desbloquea [#245](#^issue-245).
+
+**Rama propuesta.** `Vaqcrow#246_Task_Test_the_factory_and_the_campaign_vault` es una unidad de pruebas revisable.
+
+### #245 — Documentar evidencia del contrato de bóveda
+
+^issue-245
+
+- **Título original:** `Task: Document evidence for the campaign vault contract`
+- **GitHub y estado:** [issue #245](https://github.com/reyduar/Vaqcrow/issues/245) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#236](#^issue-236); bloqueada nativamente por [#246](#^issue-246).
+- **Objetivo:** documentar evidencia reproducible de la custodia, el pago atómico y los reembolsos, con la dirección de Testnet verificable en el explorador.
+- **Orden:** cierra [#236](#^issue-236).
+
+**Rama propuesta.** `Vaqcrow#245_Task_Document_evidence_for_the_campaign_vault_contract` es una unidad de documentación revisable.
+
+### #239 — Superseder el camino de XDR de intención de fondeo y reconciliar la persistencia
+
+^issue-239
+
+- **Título original:** `Feature: Supersede the funding-intent XDR path and reconcile persistence`
+- **GitHub y estado:** [issue #239](https://github.com/reyduar/Vaqcrow/issues/239) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#236](#^issue-236).
+- **Objetivo:** reconciliar la persistencia con la custodia on-chain: retirar `funding_intent` como camino por el que entra el dinero, agregar el modelo de campaña y aportes, y definir la cadena como fuente de verdad del dinero con el almacén como espejo.
+- **Nota de alcance:** invierte la arquitectura actual, donde la API es la única escritora. [#24](#^issue-24) y el [Epic #7](#^issue-7) siguen cerrados y no se reescriben.
+- **Orden:** desbloquea [#237](#^issue-237).
+
+**Rama propuesta.** `Vaqcrow#239_Feat_Supersede_the_funding-intent_XDR_path_and_reconcile_persistence` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #250 — Implementar la persistencia de campaña y retirar el camino de intención de fondeo
+
+^issue-250
+
+- **Título original:** `Task: Implement the campaign persistence and retire the funding-intent path`
+- **GitHub y estado:** [issue #250](https://github.com/reyduar/Vaqcrow/issues/250) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#239](#^issue-239); requiere [#236](#^issue-236).
+- **Objetivo:** implementar el modelo de campaña y aportes, la reconciliación contra la cadena y el retiro o reconversión de `funding_intent` con migración reversible.
+- **Requisitos técnicos confirmados:** el patrón de persistencia del repo —una migración que crea, habilita RLS y fija grants atómicamente, sin grants por defecto transitorios—, transiciones condicionales y errores sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#256](#^issue-256).
+
+**Rama propuesta.** `Vaqcrow#250_Task_Implement_the_campaign_persistence_and_retire_the_funding-intent_path` es una unidad de implementación revisable.
+
+### #256 — Probar la persistencia de campaña y la reconciliación
+
+^issue-256
+
+- **Título original:** `Task: Test the campaign persistence and reconciliation`
+- **GitHub y estado:** [issue #256](https://github.com/reyduar/Vaqcrow/issues/256) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#239](#^issue-239); bloqueada nativamente por [#250](#^issue-250).
+- **Objetivo:** cubrir la persistencia y la reconciliación contra la cadena, incluida la idempotencia de la migración y el comportamiento de RLS y grants.
+- **Restricción vigente:** ninguna prueba del gate puede depender de Testnet ni de un proyecto Supabase vivo; la suite de integración con credenciales queda separada.
+- **Orden:** valida la implementación y desbloquea [#257](#^issue-257).
+
+**Rama propuesta.** `Vaqcrow#256_Task_Test_the_campaign_persistence_and_reconciliation` es una unidad de pruebas revisable.
+
+### #257 — Documentar evidencia de la persistencia y la reconciliación
+
+^issue-257
+
+- **Título original:** `Task: Document evidence for the campaign persistence and reconciliation`
+- **GitHub y estado:** [issue #257](https://github.com/reyduar/Vaqcrow/issues/257) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#239](#^issue-239); bloqueada nativamente por [#256](#^issue-256).
+- **Objetivo:** documentar la persistencia, el retiro del camino de intención de fondeo y la reconciliación, con la supersesión de [#24](#^issue-24) declarada explícitamente.
+- **Orden:** cierra [#239](#^issue-239).
+
+**Rama propuesta.** `Vaqcrow#257_Task_Document_evidence_for_the_campaign_persistence_and_reconciliation` es una unidad de documentación revisable.
+
+### #237 — Integrar la bóveda de campaña en el recorrido web
+
+^issue-237
+
+- **Título original:** `Feature: Integrate the campaign vault into the web journey`
+- **GitHub y estado:** [issue #237](https://github.com/reyduar/Vaqcrow/issues/237) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#236](#^issue-236) y [#239](#^issue-239).
+- **Objetivo:** llevar la bóveda por el recorrido web: abrirla al aprobar, permitir el aporte firmando la invocación con Freighter y mostrar el estado leído de la cadena.
+- **Cambio de forma:** hoy el frontend firma un XDR de pago clásico; ahora firma una invocación de contrato. Freighter sigue firmando y Vaqcrow sigue sin ver seeds.
+- **Orden:** cierra el camino crítico de la demo.
+
+**Rama propuesta.** `Vaqcrow#237_Feat_Integrate_the_campaign_vault_into_the_web_journey` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #247 — Implementar el recorrido de la bóveda en la web
+
+^issue-247
+
+- **Título original:** `Task: Implement the campaign vault journey in the web`
+- **GitHub y estado:** [issue #247](https://github.com/reyduar/Vaqcrow/issues/247) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#237](#^issue-237); requiere [#236](#^issue-236) y [#239](#^issue-239).
+- **Objetivo:** acreditar la cuenta de la PyME y abrir la bóveda al aprobar, aportar firmando la invocación, leer el estado de la cadena y ofrecer el reembolso.
+- **Requisitos técnicos confirmados:** `apps/web` sigue usando solo `@stellar/freighter-api` —sin `@stellar/stellar-sdk` ni `packages/domain`— y respeta las fronteras de `dependency-cruiser`. La cuenta de la PyME se verifica **al abrir la campaña**, no al liquidar.
+- **Orden:** inicia el Feature y desbloquea [#248](#^issue-248).
+
+**Rama propuesta.** `Vaqcrow#247_Task_Implement_the_campaign_vault_journey_in_the_web` es una unidad de implementación revisable.
+
+### #248 — Probar el recorrido de la bóveda en la web
+
+^issue-248
+
+- **Título original:** `Task: Test the campaign vault journey in the web`
+- **GitHub y estado:** [issue #248](https://github.com/reyduar/Vaqcrow/issues/248) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#237](#^issue-237); bloqueada nativamente por [#247](#^issue-247).
+- **Objetivo:** cubrir los tres estados con pruebas de componente y un recorrido de navegador determinístico, sin alcanzar Testnet.
+- **Orden:** valida la implementación y desbloquea [#249](#^issue-249).
+
+**Rama propuesta.** `Vaqcrow#248_Task_Test_the_campaign_vault_journey_in_the_web` es una unidad de pruebas revisable.
+
+### #249 — Documentar evidencia del recorrido de la bóveda en la web
+
+^issue-249
+
+- **Título original:** `Task: Document evidence for the campaign vault journey in the web`
+- **GitHub y estado:** [issue #249](https://github.com/reyduar/Vaqcrow/issues/249) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#237](#^issue-237); bloqueada nativamente por [#248](#^issue-248).
+- **Objetivo:** documentar el recorrido con los hashes de Testnet y los límites honestos de la interfaz.
+- **Orden:** cierra [#237](#^issue-237).
+
+**Rama propuesta.** `Vaqcrow#249_Task_Document_evidence_for_the_campaign_vault_journey_in_the_web` es una unidad de documentación revisable.
+
+### #240 — Reconciliar los avisos de confianza con la custodia por contrato
+
+^issue-240
+
+- **Título original:** `Feature: Reconcile trust disclosures with contract custody`
+- **GitHub y estado:** [issue #240](https://github.com/reyduar/Vaqcrow/issues/240) · Tipo `Feature` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#236](#^issue-236). Relacionada con [#17](#^issue-17), cerrada.
+- **Objetivo:** reescribir los avisos para que digan lo que el contrato realmente impone, incluidos sus límites.
+- **Por qué:** hoy dicen que la persona conserva sus claves y que Vaqcrow nunca recibe su seed — ambas siguen siendo ciertas—, pero durante la campaña la custodia es del contrato, y los límites honestos son más duros de lo que la demo tenía que declarar antes.
+- **Orden:** acompaña al camino nuevo y no bloquea el recorrido.
+
+**Rama propuesta.** `Vaqcrow#240_Feat_Reconcile_trust_disclosures_with_contract_custody` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #258 — Reescribir los avisos de confianza para la custodia por contrato
+
+^issue-258
+
+- **Título original:** `Task: Rewrite the trust disclosures for contract custody`
+- **GitHub y estado:** [issue #258](https://github.com/reyduar/Vaqcrow/issues/258) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#240](#^issue-240); requiere [#236](#^issue-236).
+- **Objetivo:** declarar que los aportes los custodia el contrato durante la campaña, que el destino es inmutable y que no hay recuperación ni clawback; y actualizar `docs/design/demo-ui.md` y `DEMO.md` juntos para que no se separen.
+- **Orden:** inicia el Feature y desbloquea [#259](#^issue-259).
+
+**Rama propuesta.** `Vaqcrow#258_Task_Rewrite_the_trust_disclosures_for_contract_custody` es una unidad de implementación revisable.
+
+### #259 — Probar los avisos de confianza reconciliados
+
+^issue-259
+
+- **Título original:** `Task: Test the reconciled trust disclosures`
+- **GitHub y estado:** [issue #259](https://github.com/reyduar/Vaqcrow/issues/259) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#240](#^issue-240); bloqueada nativamente por [#258](#^issue-258).
+- **Objetivo:** afirmar que los avisos se renderizan y revisar cada afirmación contra lo que el contrato impone.
+- **Orden:** valida la implementación y desbloquea [#260](#^issue-260).
+
+**Rama propuesta.** `Vaqcrow#259_Task_Test_the_reconciled_trust_disclosures` es una unidad de pruebas revisable.
+
+### #260 — Documentar evidencia de los avisos de confianza reconciliados
+
+^issue-260
+
+- **Título original:** `Task: Document evidence for the reconciled trust disclosures`
+- **GitHub y estado:** [issue #260](https://github.com/reyduar/Vaqcrow/issues/260) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#240](#^issue-240); bloqueada nativamente por [#259](#^issue-259).
+- **Objetivo:** documentar la revisión afirmación por afirmación y sus hallazgos, incluida cualquier afirmación que no pudiera respaldarse.
+- **Orden:** cierra [#240](#^issue-240).
+
+**Rama propuesta.** `Vaqcrow#260_Task_Document_evidence_for_the_reconciled_trust_disclosures` es una unidad de documentación revisable.
 
 ## Discrepancias y exclusiones
 

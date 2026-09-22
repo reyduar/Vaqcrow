@@ -67,7 +67,7 @@ Pull-request-gated tests (`pnpm run test`, and everything `pnpm run verify` runs
 
 `docs/planning/` holds the rest of the planning corpus — check it before assuming scope or architecture for a given technology:
 - `product.md` — the real-product roadmap beyond the demo (Argentina-specific risks, production decisions still open).
-- `stellar-blockchain-requirements.md` — the authoritative Stellar/Freighter/Horizon scope: classic Testnet payments only via `@stellar/stellar-sdk` + Horizon + Freighter; Soroban/smart contracts are explicitly optional extension work, never required or blocking.
+- `stellar-blockchain-requirements.md` — the authoritative Stellar scope: **the funding is custodied by a Stellar contract (Rust + `soroban-sdk`)**, one vault per campaign, with atomic payout on reaching the goal and permissionless refunds; classic Testnet payments via `@stellar/stellar-sdk` + Horizon + Freighter remain the path for revenue-share distribution and for every user signature. Stellar Claimable Balance (CAP-23) was evaluated and **rejected** — its predicates have time-only leaves, so "goal reached" is not expressible on-chain. Contract work is mandatory here, not optional extension work.
 - `demo-tasks-list.md` — the executable roadmap; see Branching below for how it drives branch names.
 - `*-evidence.md` files (e.g. `domain-states-and-shared-contracts-evidence.md`, `trust-disclosures-and-synthetic-fixtures-evidence.md`, `supabase-schema-and-persistence-evidence.md`) — the established format for a Feature-closing evidence doc; read one before writing a new one rather than inventing a structure.
 

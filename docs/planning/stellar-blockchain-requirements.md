@@ -9,12 +9,14 @@
   - [2. Mapa canónico de issues](#^mapa-canonico-de-issues)
   - [3. Ruta conceptual de aprendizaje recomendada](#^ruta-conceptual-de-aprendizaje)
   - [4. Referencias oficiales](#^referencias-oficiales)
+  - [Detalle técnico: custodia por contrato de campaña](#^detalle-custodia-por-contrato)
+  - [Alternativa evaluada y descartada: Claimable Balance (CAP-23)](#^claimable-balance-descartado)
 - [Parte 2 — Preparación del equipo y herramientas](#^parte-2)
   - [1. Alcance obligatorio y opcional](#^alcance-de-preparacion)
   - [2. Comprobaciones obligatorias sin instalación](#^comprobaciones-obligatorias)
   - [3. Dependencias del proyecto](#^dependencias-del-proyecto)
   - [4. Preparación segura de Freighter](#^preparacion-de-freighter)
-  - [5. Prerrequisitos opcionales para contratos inteligentes](#^prerrequisitos-opcionales)
+  - [5. Prerrequisitos obligatorios para el contrato de campaña](#^prerrequisitos-contrato)
   - [6. Decisión de lenguajes y herramientas](#^decision-de-herramientas)
   - [7. Distinción arquitectónica de `packages/contracts`](#^distincion-de-packages-contracts)
   - [8. Lista de seguridad](#^lista-de-seguridad)
@@ -25,10 +27,10 @@
     - [b. Preflight manual acotado en Testnet](#^preflight-testnet)
     - [c. Pruebas negativas](#^pruebas-negativas)
     - [d. Checklist de evidencia y limpieza](#^checklist-evidencia)
-  - [2. Plan de pruebas opcional de smart contracts Soroban](#^pruebas-opcionales-soroban)
+  - [2. Plan de pruebas obligatorio del contrato de campaña](#^pruebas-contrato)
   - [3. Gates de decisión](#^gates-de-decision)
     - [a. Definition of ready antes de #74](#^dor-antes-de-74)
-    - [b. Gate separado antes de issues Soroban](#^gate-soroban)
+    - [b. Gate antes de extender contratos a caminos opcionales](#^gate-extensiones)
 - [Parte 4 — Cierre, skills, seguridad y verificación](#^parte-4)
   - [1. Tabla de skills recomendadas](#^skills-recomendadas)
   - [2. Convenios de seguridad y arquitectura](#^convenios-seguridad)
@@ -46,8 +48,195 @@
 
 | Alcance | Decisión |
 |---|---|
-| **Obligatorio** | El camino base de Vaqcrow utiliza pagos clásicos en **Stellar Testnet**, construidos y verificados con `@stellar/stellar-sdk`, enviados y consultados mediante **Horizon**, y autorizados por la persona usuaria mediante **Freighter**. El fondeo y la distribución de revenue share deben funcionar por este camino. **No se requiere ningún contrato inteligente.** |
-| **Opcional** | **Soroban y los contratos inteligentes de Stellar son únicamente trabajo de extensión**. Solo pueden considerarse después de que el fondeo y la distribución clásicos estén estables; no sustituyen, condicionan ni retrasan el camino obligatorio. |
+| **Obligatorio — contrato de campaña** | El **fondeo se custodia en un contrato Soroban** escrito en Rust con `soroban-sdk`. El contrato recibe los aportes, detecta el objetivo, liquida a la PyME y reembolsa a los inversores. **No es opcional ni recortable**: es la única forma conocida de expresar el requisito del producto (ver [Alternativa evaluada y descartada](#^claimable-balance-descartado)). |
+| **Obligatorio — camino clásico** | La **distribución de revenue share** (Feature #28) sigue el camino clásico: `@stellar/stellar-sdk`, Horizon y firma con **Freighter**. Queda sujeta a re-evaluación posterior; no se modifica en esta decisión. |
+| **Opcional** | Otro trabajo de extensión sobre contratos (llevar la distribución de revenue share on-chain, ZK, cross-chain) sigue siendo **opcional** y no puede condicionar ni retrasar los dos caminos obligatorios. |
+
+> [!danger] Claimable Balance (CAP-23) fue evaluado y **descartado**
+> Se evaluó usar `CreateClaimableBalanceOp` —operación clásica, sin contrato— para dar custodia con reembolso garantizado. **No sirve para el requisito del producto.** El lenguaje de predicados de CAP-23 tiene exactamente seis tipos y sus únicas hojas son **tiempo o "siempre"**: no hay predicado sobre saldos, banderas, estado de cuenta, otro balance ni oráculo, así que **"el objetivo fue alcanzado" es inexpresable on-chain**. Con hojas solo temporales, quien reciba la ventana temprana tiene una oportunidad incondicional de tomar los fondos, y ninguna partición de fechas cierra las dos puntas. Fundamento completo en [Alternativa evaluada y descartada](#^claimable-balance-descartado).
+
+> [!warning] Esta decisión reemplaza la de las 4 partes verificadas
+> Las 4 partes verificadas el **2026-09-14** declaraban los contratos inteligentes como **trabajo puramente opcional**. Esta sección invierte esa decisión para el camino de fondeo y se toma el **2026-09-22**. El resto de las 4 partes sigue vigente salvo donde esta sección y la Parte 2, sección 5 lo contradigan.
+
+#### Detalle técnico: custodia por contrato de campaña
+
+^detalle-custodia-por-contrato
+
+**Qué resuelve.** Hoy el "custodio" del fondeo es la buena fe de la PyME más un cálculo determinístico off-chain: nada impide, a nivel de protocolo, que la PyME se quede con el aporte sin distribuir después. El contrato mueve esa garantía del código de aplicación a la máquina de estados del ledger:
+
+| Requisito del producto | Cómo lo cumple el contrato |
+|---|---|
+| Custodia de los aportes por código, sin humano con la clave | El contrato es el único tenedor de los fondos durante la campaña |
+| Pago a la PyME **apenas** se alcanza el objetivo, sin importar la fecha | Ocurre **dentro de la misma transacción** que cruza el umbral |
+| Cierre total al alcanzar el objetivo | `contribute` revierte si el estado ya no es `Funding` — lo impone el ledger, no la interfaz |
+| Retiro voluntario del inversor antes del objetivo | `withdraw` habilitado mientras el estado sea `Funding` |
+| Reembolso si vence la fecha sin alcanzar el objetivo | Estado `Refunding`; reembolso **permissionless** |
+| Reembolso de quien nunca lo reclama | Barrido **permissionless** por lotes (ver **Cierre de la campaña y reembolsos**) |
+
+**Máquina de estados.**
+
+| Estado | Significado | Operaciones habilitadas |
+|---|---|---|
+| `Funding` | Campaña abierta, por debajo del objetivo | `contribute`, `withdraw` |
+| `Settled` | Objetivo alcanzado; los fondos ya se pagaron a la PyME | Ninguna de aporte o retiro |
+| `Refunding` | Vencida la fecha sin alcanzar el objetivo | `refund` y `sweep`, permissionless |
+
+**Superficie del contrato de campaña.**
+
+| Función | Autorización | Regla |
+|---|---|---|
+| `__constructor(sme, token, goal, deadline)` | Ninguna (corre al desplegar) | Fija destino, activo, objetivo y fecha. **No vuelve a ejecutarse** |
+| `contribute(investor, amount)` | `investor.require_auth()` | Solo en `Funding` y antes de `deadline`. Suma el aporte y, si `total >= goal`, pasa a `Settled` y transfiere a la PyME en la misma transacción |
+| `withdraw(investor)` | `investor.require_auth()` | Solo en `Funding`. Devuelve el aporte a la dirección registrada |
+| `refund(investor)` | **Permissionless** | Solo en `Refunding`. El destino está fijado en el contrato, así que cualquiera puede dispararlo y los fondos van al inversor igual |
+| `sweep(investors)` | **Permissionless** | Solo en `Refunding`. `refund` por lotes, para cerrar los reembolsos que nadie pidió. **Lote acotado** |
+| Lecturas | Ninguna | `state`, `total`, `goal`, `deadline`, `sme`, `contribution_of(investor)` |
+
+**El estado del objetivo se evalúa dentro de `contribute`.** Ese detalle es el que vuelve el pago automático y determinístico: el ordenamiento del ledger decide frente a un `withdraw` concurrente, y no hay ventana en la que el objetivo esté alcanzado y los fondos sigan disponibles.
+
+**Cierre de la campaña y reembolsos.** Si vence la fecha sin alcanzar el objetivo, el contrato pasa a `Refunding` y cada inversor puede retirar su aporte. Hay **dos caminos, y el segundo existe justamente para el que nunca lo pide**:
+
+| Camino | Quién lo dispara | Para qué |
+|---|---|---|
+| `refund(investor)` | Cualquiera | El inversor retira lo suyo, o alguien lo hace por él |
+| `sweep(investors)` | Cualquiera | Cierra por lotes los reembolsos que nadie reclamó |
+
+Los dos son **permissionless** porque el destino está fijado en el contrato: quien dispara no puede redirigir los fondos, solo completar el reembolso hacia la dirección registrada. Eso es lo que permite que la plataforma cierre el ciclo **sin discreción** y **sin que el inversor esté online**.
+
+> [!important] El barrido necesita saber a quién reembolsar
+> El contrato mantiene un **índice de aportantes** para poder enumerarlos, y `sweep` recibe un **lote acotado** — recorrer una lista arbitraria es superficie de ataque por consumo de recursos. La plataforma arma los lotes a partir de ese índice y del espejo off-chain.
+
+**Avisar, además de barrer.** El barrido es la **garantía**; el aviso es **UX**. El espejo off-chain asocia cada aporte con su inversor, así que Vaqcrow puede **notificarle que le corresponde un reembolso** en lugar de esperar que lo descubra solo. Las dos cosas van juntas y no se sustituyen: la notificación mejora la experiencia, el barrido garantiza el resultado **aunque la notificación falle**. En la demo la identidad del inversor es simulada, igual que el resto del alta.
+
+**Fábrica: una instancia de contrato por campaña.** La fábrica se despliega **una sola vez**, no custodia fondos, y expone una función que crea la bóveda de cada campaña:
+
+```rust
+pub fn deploy(env: Env, owner: Address, wasm_hash: BytesN<32>,
+              salt: BytesN<32>, constructor_args: Vec<Val>) -> Address {
+    owner.require_auth();
+    env.deployer()
+        .with_address(env.current_contract_address(), salt)
+        .deploy_v2(wasm_hash, constructor_args)
+}
+```
+
+- **La dirección es determinística** por `(deployer, salt)`, y `deployed_address()` la calcula **sin desplegar** — se puede mostrar la dirección de la campaña antes de que exista.
+- Se emite **un evento por deployment**, que es lo que permite indexar las instancias.
+- La lógica de la fábrica queda **separada** de la de las instancias.
+
+**Por qué una instancia por campaña y no un contrato único compartido.** En Soroban cada instancia tiene storage aislado y **su propia dirección con su propio balance**. Con un contrato único, los fondos de todas las campañas viven en una sola dirección y "el dinero de la campaña X" es un asiento dentro de un mapa: un defecto de contabilidad en una campaña alcanza a las demás. Con una instancia por campaña, la **segregación de fondos es a nivel ledger**. Además, las campañas nuevas usan el wasm nuevo mientras las en curso conservan el suyo, sin migración de datos bajo campañas vivas.
+
+**Modelo de cuentas — una dirección de contrato no es una cuenta.**
+
+| Quién | ¿Cuenta `G...`? | Por qué |
+|---|---|---|
+| Fábrica | ❌ dirección de contrato `C...` | Se despliega una vez |
+| Bóveda de campaña | ❌ dirección de contrato `C...` | La crea la fábrica; no necesita cuenta |
+| **PyME** | ✅ **sí** | Es el **destino del pago**: la SAC transfiere a su cuenta |
+| **Inversores** | ✅ sí | Sus wallets, firmadas con Freighter |
+| **Plataforma** | ✅ sí | Firma los deployments y paga fee y reserva |
+
+No hay una cuenta por campaña. Hay **una cuenta de plataforma** que paga fee y reserva de todos los deployments.
+
+**Provisión de la cuenta de la PyME.** Se hace **al aprobar**, no al registrar: al registrar habría que fondear cuentas de PyMEs que nunca se aprueban. La dapp **fondea una clave pública que la PyME ya posee**; nunca genera ni custodia su seed (ver `DEMO.md`, "Firma no custodial").
+
+1. La PyME conecta **Freighter** y la dapp **lee su clave pública**; el seed nunca sale de la extensión.
+2. Presenta la solicitud; la clave pública se guarda con ella (off-chain).
+3. Evaluación de IA y **aprobación humana explícita** (Feature #19).
+4. La dapp crea y fondea la cuenta con un `CreateAccount` desde la cuenta de la plataforma. En Testnet o red local alcanza con Friendbot, que crea y fondea en una sola llamada. **`CreateAccount` no requiere firma del destino** — la PyME no tiene que hacer nada en este paso.
+5. La dapp **verifica que la cuenta existe** y recién entonces llama a `deploy()` en la fábrica.
+
+> [!important] La verificación en el paso 5 no es opcional
+> Para el activo nativo, transferir a una cuenta que **no existe** falla. Si la cuenta de la PyME no existe, la transacción que cruza el objetivo **revienta entera** —y nadie más puede aportar— con aportes de inversores ya dentro del contrato. Por eso la cuenta se verifica **al abrir la campaña** y no al liquidar.
+
+**Ciclo completo.**
+
+```mermaid
+sequenceDiagram
+    participant PYME as PyME
+    participant INV as Inversor
+    participant FR as Freighter
+    participant APP as Vaqcrow (API)
+    participant FAB as Fábrica (contrato)
+    participant V as Bóveda de campaña
+    participant L as Stellar (Testnet o local)
+
+    Note over PYME,APP: Alta y evaluación — todo off-chain
+    PYME->>FR: Conecta wallet
+    FR-->>APP: Clave pública (el seed nunca sale)
+    PYME->>APP: Presenta solicitud y evidencia
+    APP->>APP: Evaluación de IA (asesora, no decide)
+    APP->>APP: Aprobación humana explícita (#19)
+
+    Note over APP,L: Apertura de la bóveda
+    APP->>L: CreateAccount hacia la clave pública de la PyME
+    L-->>APP: La cuenta existe
+    APP->>FAB: deploy(sme, token, goal, deadline)
+    FAB->>V: Crea la instancia
+    V-->>APP: Dirección de la campaña
+
+    Note over INV,V: Fondeo
+    INV->>FR: Conecta wallet
+    INV->>V: contribute(amount) firmado con Freighter
+    V->>V: total += amount
+
+    alt total >= goal
+        V->>L: transfer a la PyME en la misma transacción
+        Note over V: estado = Settled · aportes cerrados por el ledger
+    else Fecha vencida sin alcanzar el objetivo
+        Note over V: estado = Refunding
+        INV->>V: refund() o sweep() permissionless
+        V->>INV: Devuelve el aporte
+    end
+```
+
+**Límites honestos.**
+- **El contrato no se dispara solo.** No hay cron ni scheduler: el pago a la PyME sí es atómico dentro de la transacción que cruza el objetivo, pero el reembolso por vencimiento necesita que **alguien envíe una transacción**. Es permissionless, así que nadie puede bloquearlo y la plataforma puede cerrar todos los reembolsos por lotes — pero no se ejecuta por sí mismo.
+- **`sweep` con lote acotado.** Recorrer una lista arbitraria es superficie de ataque por consumo de recursos; el lote tiene un tope explícito.
+- **Sin recuperación y sin clawback.** No existe operación para sacar fondos de una bóveda salvo `contribute`/`withdraw`/`refund`/`sweep`. Para el activo nativo no hay clawback. Los fondos que nadie reclama se recuperan **solo** por `sweep`; si los reembolsos se vuelven irrecuperables, quedan en el contrato.
+- **Custodia durante la campaña.** Los aportes los tiene el contrato, no la wallet del inversor. Sigue siendo no custodial en el sentido de que **ninguna persona** tiene la clave de esos fondos, pero no es "cada uno custodia lo suyo" mientras la campaña está abierta. Debe decirse así en las divulgaciones.
+- **La dirección de la PyME es inmutable** tras el constructor. No hay corrección de destino: si se fija mal, se fija mal. Es la contracara de que nadie —tampoco la plataforma— pueda desviar el pago después.
+- **TTL y archival.** Cada entrada tiene TTL y puede archivarse; ampliarlo es posible y el TTL **no es un mecanismo de seguridad** — la fecha se guarda en el valor y se compara contra el tiempo del ledger.
+- **Sin auditar.** Un contrato que custodia fondos y va a producción exige auditoría y controles de emergencia. Esta es una demo en Testnet y **no** los tiene; declararlo es parte del alcance.
+
+**Riesgos operativos de Testnet.**
+
+| Riesgo | Dato verificado | Mitigación |
+|---|---|---|
+| **Reset de Testnet** | Borra *"accounts, trustlines, offers, **smart contract data**, etc."*. 2-4 veces por año, avisados con ≥2 semanas. Próxima fecha agendada: **2026-12-16** | Red local para desarrollo y CI; guion de redeploy y resiembra; el ciclo de campaña de la demo cabe en una sesión |
+| **Versión del SDK** | Protocolo **28** en Testnet y Mainnet; `soroban-sdk` **28.0.0**. Un upgrade de protocolo obliga a reconstruir | Fijar el major que matchea la red; verificar con `getVersionInfo` antes de desplegar |
+| **Alcance del cambio** | Promueve los contratos de *stretch goal* a **camino crítico**, contra la decisión del 2026-09-14 | Está decidido y documentado acá; el plan de 14 días necesita re-presupuestarse |
+
+#### Alternativa evaluada y descartada: Claimable Balance (CAP-23)
+
+^claimable-balance-descartado
+
+> [!warning] Registro de descarte — no es alcance vigente
+> Se documenta para que la decisión no se re-litigue sin el fundamento a mano. **No forma parte del alcance.**
+
+**Qué se evaluó.** Reemplazar el pago directo por `CreateClaimableBalanceOp`, una operación **clásica** (sin contrato) con dos reclamantes con predicado de tiempo, para obtener un reembolso garantizado por el ledger sin desplegar nada.
+
+| Reclamante | Predicado propuesto | Efecto |
+|---|---|---|
+| PyME | `beforeAbsoluteTime(fecha de cierre)` | Podía reclamar **antes** de la fecha límite |
+| Inversor | `not(beforeAbsoluteTime(fecha de cierre))` | Podía reclamar **después** de esa fecha |
+
+**Por qué se descartó.** Los predicados de CAP-23 (`ClaimPredicateType`) tienen **seis tipos** —`UNCONDITIONAL`, `AND`, `OR`, `NOT`, `BEFORE_ABSOLUTE_TIME`, `BEFORE_RELATIVE_TIME`— y sus **únicas hojas son tiempo o "siempre"**. No existe predicado sobre saldos, banderas, estado de cuenta, otro balance ni oráculo. Por lo tanto:
+
+- **"El objetivo fue alcanzado" es inexpresable on-chain.** El ledger no lo sabe.
+- **El agujero es estructural, no de calibración.** Como las ventanas deben partirse por reloj, quien tenga la ventana temprana puede tomar los fondos de forma incondicional: con la PyME temprana puede reclamar antes del objetivo; con el inversor temprano puede reembolsarse aunque el objetivo se haya alcanzado. Garantizar el reembolso del inversor exige que la ventana de la PyME cierre antes de la del inversor, lo que obliga a la PyME a tener ventana previa. **Ninguna partición de fechas cierra las dos puntas.**
+
+**Lo que el protocolo sí garantizaba** (y conviene no perder de vista, porque el contrato debe dar al menos esto):
+- **Exclusión mutua estructural:** al reclamarse, el spec **borra** la entrada; el segundo reclamante recibe `CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST`. No hay doble reclamo posible.
+- **Techo temporal real**, evaluado por el ledger contra el `closeTime`.
+- `claimants` es una lista **finita e inmutable**: no se puede agregar un reclamante después.
+
+**Limitaciones que se habían documentado mal** (corregidas acá para que no se arrastren):
+- La reserva **no** es una subentrada de 0.5 XLM: es `claimants.size() * baseReserve`, o sea **1 XLM con dos reclamantes**. La nota anterior la subestimaba por dos.
+- **No hay mecanismo de recuperación.** Documentación oficial: *"there is no recovery mechanism for a claimable balance in general — if none of the predicates can be fulfilled, the balance cannot be recovered."* Si las cuentas reclamantes se fusionan o se pierden las claves, los fondos quedan varados para siempre.
+- Clawback descartado: `ClawbackClaimableBalance` exige un activo emitido con `AUTH_CLAWBACK_ENABLED` y lo ejecuta el **emisor**, no el creador. Para el activo nativo no existe emisor, y emitir un activo propio convertiría a Vaqcrow en custodio de facto.
+
+**Consecuencia sobre los issues existentes.** La custodia por contrato toma el lugar del camino de fondeo que entregó la Feature **#24** (cerrada, con su motor XDR que verifica *exactamente un pago*). **No se reabre ni se reescribe historia**: se crean issues nuevos y esta sección deja registrado que lo supersede. La distribución de revenue share (**#28**, abierta) mantiene su camino clásico y queda sujeta a re-evaluación.
 
 ### 2. Mapa canónico de issues
 
@@ -127,8 +316,12 @@ Esta parte define qué debe comprobarse y prepararse en un equipo de desarrollo.
 
 | Camino | Preparación del equipo | Regla de entrada |
 |---|---|---|
-| **Obligatorio: pagos clásicos** | Git, Node.js, pnpm, un navegador compatible con Freighter, una cuenta descartable en Stellar Testnet y acceso a Horizon. El código utiliza TypeScript, `@stellar/stellar-sdk` y `@stellar/freighter-api`. | Es el único camino necesario para implementar y demostrar fondeo y distribución. |
-| **Opcional: contratos inteligentes** | Rust `1.84.0` o superior, `rustup`, `cargo`, el target `wasm32v1-none`, Stellar CLI y `soroban-sdk`. | Solo se prepara si el stretch goal recibe autorización después de estabilizar los pagos clásicos. No bloquea el camino obligatorio. |
+| **Obligatorio: contrato de campaña** | Rust `1.84.0` o superior, `rustup`, `cargo`, el target `wasm32v1-none`, Stellar CLI y `soroban-sdk`. Docker (para la red local). | Es el camino obligatorio del **fondeo**. Bloquea la custodia: sin este toolchain no hay campaña. |
+| **Obligatorio: pagos clásicos** | Git, Node.js, pnpm, un navegador compatible con Freighter, una cuenta descartable en Stellar Testnet y acceso a Horizon. El código utiliza TypeScript, `@stellar/stellar-sdk` y `@stellar/freighter-api`. | Necesario para la **distribución de revenue share** y para toda la firma con Freighter, incluidos los aportes al contrato. |
+| **Opcional: extensiones** | Tooling para llevar la distribución on-chain, ZK o cross-chain. | No puede condicionar ni retrasar los caminos obligatorios. |
+
+> [!warning] Estado real de este equipo al 2026-09-22
+> Comprobado: **`rustup`, `rustc`, `cargo` y `stellar version` no están instalados**, y el target `wasm32v1-none` no existe. **Docker 29.1.3 sí está**, y es lo único que hoy habilita la red local. Node `v26.8.1` y pnpm `11.27.0` están OK. El bloque de la [sección 5](#^prerrequisitos-contrato) es, por lo tanto, trabajo pendiente y no una nota futura.
 
 ### 2. Comprobaciones obligatorias sin instalación
 
@@ -178,42 +371,62 @@ Ambas dependencias se incorporarán mediante los manifiestos del workspace cuand
 
 Vaqcrow nunca debe solicitar, recibir, copiar ni mostrar la seed, frase de recuperación o clave privada. La persona usuaria revisa y firma el XDR dentro de Freighter; la aplicación solo recibe la dirección pública y el resultado de la firma autorizada.
 
-### 5. Prerrequisitos opcionales para contratos inteligentes
+### 5. Prerrequisitos obligatorios para el contrato de campaña
 
-^prerrequisitos-opcionales
+^prerrequisitos-contrato
 
-> **No ejecutar este bloque para el camino obligatorio.** Solo corresponde al stretch goal Soroban autorizado. Las órdenes de instalación se documentan como prerrequisitos futuros; no se ejecutaron al preparar este documento.
+> [!important] Bloque obligatorio, todavía no ejecutado
+> Instala el toolchain del contrato de campaña, que es el camino de fondeo. **Al 2026-09-22 nada de esto está instalado en el equipo** (ver la advertencia de la [sección 1](#^alcance-de-preparacion)). Las órdenes de abajo son las que hay que ejecutar para habilitar el trabajo.
 
-Primero se comprueba que el toolchain de Rust existe y que `rustc` es **`1.84.0` o superior**:
+Primero se instala el toolchain de Rust. La vía oficial es `rustup`, que trae `rustc` y `cargo` y permite fijar la versión:
 
 ```bash
-command -v rustup
-rustup --version
-
-command -v rustc
-rustc --version
-
-command -v cargo
-cargo --version
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Con un toolchain compatible, el target requerido se agrega para ese toolchain y luego se verifica entre los targets instalados:
+Después se comprueba que `rustc` es **`1.84.0` o superior**:
+
+```bash
+command -v rustup && rustup --version
+command -v rustc  && rustc --version
+command -v cargo  && cargo --version
+```
+
+Con el toolchain instalado se agrega el target requerido y se verifica:
 
 ```bash
 rustup target add wasm32v1-none
 rustup target list
 ```
 
-El target debe aparecer como `wasm32v1-none (installed)`. Como su instalación es específica de cada toolchain, debe volver a comprobarse después de actualizar Rust.
+El target debe aparecer como `wasm32v1-none (installed)`. Como su instalación es específica de cada toolchain, hay que volver a comprobarlo después de actualizar Rust.
 
-La orden oficial solicitada para instalar Stellar CLI desde Cargo y su comprobación posterior son:
+**Stellar CLI por Homebrew es la vía preferida**, porque evita compilar desde fuente y la fórmula oficial ya publica la versión que matchea el protocolo:
 
 ```bash
-cargo install --locked stellar-cli
+brew install stellar-cli
 stellar version
 ```
 
-`soroban-sdk` no es una herramienta global: se declara como dependencia del `Cargo.toml` del eventual workspace Rust y cada contrato la referencia desde su propio manifiesto. La versión se fijará de forma compatible con Stellar CLI y la red cuando el stretch goal tenga un issue canónico.
+> [!tip] Por qué Homebrew y no `cargo install`
+> `cargo install --locked stellar-cli` **compila desde fuente** y tarda bastante. La fórmula está en **`homebrew-core`** —el repositorio oficial de Homebrew, no un tap de terceros— y publica `stable 28.0.0`, que es exactamente el major del protocolo 28 verificado en las dos redes. Si se prefiere compilar desde fuente, la orden es `cargo install --locked stellar-cli`.
+
+`soroban-sdk` no es una herramienta global: se declara como dependencia del `Cargo.toml` del workspace Rust del contrato y cada contrato la referencia desde su propio manifiesto. **Versión a fijar: `28`, que es el major que matchea el protocolo 28** —verificado en Testnet y Mainnet el 2026-09-22—. El major del SDK sigue a la versión del protocolo, así que un upgrade de red puede obligar a re-fijarlo y reconstruir.
+
+La red local se levanta con Docker —que ya está instalado— y es el carril de desarrollo y CI. **Quickstart no se instala**: es una imagen Docker que se descarga sola la primera vez que se levanta.
+
+```bash
+stellar container start local
+stellar network add local \
+  --rpc-url "http://localhost:8000/rpc" \
+  --network-passphrase "Standalone Network ; February 2017"
+```
+
+> [!tip] Por qué conviene la red local
+> No se resetea, despliega instantáneo y es determinista. Con `stellar/quickstart:testing` **emula los límites de Testnet**, así que lo que se aprueba en local predice Testnet sin sorpresas de recursos ni fees. La imagen `stellar/stellar-cli` es una alternativa para compilar sin instalar Rust, porque ya trae el target `wasm32v1-none`.
+
+> [!warning] La red local no reemplaza a Testnet para la evidencia
+> No es pública: nadie más la ve. La demo exige un fondeo confirmado en **Testnet**, verificable por un tercero en el explorador. La red local sirve para desarrollo y CI; Testnet, para la evidencia.
 
 ### 6. Decisión de lenguajes y herramientas
 
@@ -222,7 +435,7 @@ stellar version
 | Camino | Stack decidido | Exclusiones |
 |---|---|---|
 | **Pagos clásicos obligatorios** | TypeScript + `@stellar/stellar-sdk` + Horizon + Freighter mediante `@stellar/freighter-api`. | No necesita framework de contratos ni Stellar RPC para cumplir el alcance base. |
-| **Contratos inteligentes opcionales** | Rust + `soroban-sdk` + Stellar CLI, con Stellar RPC cuando exista una implementación autorizada. | No se utilizarán Solidity, Hardhat, Foundry ni Truffle: son herramientas del ecosistema EVM y no forman parte del stack de contratos Stellar decidido. |
+| **Contrato de campaña obligatorio** | Rust + `soroban-sdk` + Stellar CLI + Docker para la red local, con Stellar RPC para Testnet. | No se utilizarán Solidity, Hardhat, Foundry ni Truffle: son herramientas del ecosistema EVM y no forman parte del stack de contratos Stellar decidido. |
 
 ### 7. Distinción arquitectónica de `packages/contracts`
 
@@ -230,7 +443,10 @@ stellar version
 
 `packages/contracts` pertenece al monorepo TypeScript y contiene **esquemas, tipos públicos y contratos de comunicación entre web y API**. El nombre `contracts` se refiere a contratos de software, no a programas on-chain: ese paquete no contiene Rust, `soroban-sdk`, artefactos Wasm ni lógica desplegable en Stellar.
 
-Si se autoriza el stretch goal, el contrato inteligente debe vivir en un workspace o directorio Rust independiente, identificado por sus propios `Cargo.toml` y fuentes `.rs`. Su ubicación y nombre se decidirán en el issue canónico correspondiente; no se reutilizará `packages/contracts` para evitar mezclar límites de API con código on-chain.
+El contrato de campaña vive en un **workspace o directorio Rust independiente**, con sus propios `Cargo.toml` y fuentes `.rs`. Su ubicación y nombre exactos los fija el issue canónico del contrato; no se reutiliza `packages/contracts` para no mezclar límites de API con código on-chain.
+
+> [!warning] `dependency-cruiser` no cubre Rust
+> Las reglas de frontera del repo se aplican sobre `apps/*/src` y `packages/*/src`, así que **el código Rust queda fuera de esa verificación automática**. La frontera del contrato se sostiene por convención y por CI propio (build, tests y tamaño del Wasm), no por `pnpm run boundaries`. Extender las reglas al directorio Rust es una decisión abierta del issue canónico.
 
 ### 8. Lista de seguridad
 
@@ -265,7 +481,7 @@ Fuentes oficiales consultadas y verificadas el **2026-09-14**:
 
 ^parte-3
 
-Esta parte define las pruebas obligatorias del camino clásico, las pruebas opcionales de Soroban y los gates de decisión que controlan cuándo puede avanzar cada camino.
+Esta parte define las pruebas obligatorias del **contrato de campaña** y del camino clásico, las pruebas de las **extensiones opcionales**, y los gates de decisión que controlan el avance.
 
 ### 1. Plan de pruebas obligatorio de transferencias Testnet
 
@@ -357,11 +573,12 @@ Al finalizar cada ejecución del preflight manual, se completa la siguiente evid
 - Las cuentas anteriores no se borran (Testnet no lo requiere), pero se registran como inactivas en el registro de evidencia.
 - Si se detecta que una cuenta descartable acumuló fondos reales por error, se documenta el incidente y se descarta la cuenta.
 
-### 2. Plan de pruebas opcional de smart contracts Soroban
+### 2. Plan de pruebas obligatorio del contrato de campaña
 
-^pruebas-opcionales-soroban
+^pruebas-contrato
 
-> **Esta sección NO es requerida para el camino obligatorio.** Solo se ejecuta si el stretch goal Soroban recibe autorización después de estabilizar los pagos clásicos. Si existe algún riesgo de que las pruebas de Soroban retrasen la demo clásica, se aplica el gate de la [sección 3.b](#^gate-soroban) y se elimina esta sección del plan.
+> [!important] Sección obligatoria, no un extra
+> El contrato de campaña **es** el camino de fondeo: no hay versión de la demo que pueda recortarlo. Estas pruebas entran en el gate de PR igual que las del camino clásico. Y rige la misma regla que hace determinista al resto del repo: **ningún test gateado por PR depende de Testnet ni de la red** — corren contra la red local o con el entorno de prueba del SDK.
 
 #### a. Unit tests Rust locales
 
@@ -390,8 +607,8 @@ El contrato se compila a Wasm con `stellar contract build`. El artefacto resulta
 
 | Opción | Cuándo usarla | Riesgo |
 |---|---|---|
-| **Sandbox local** (`stellar contract deploy --sandbox`) | Desarrollo iterativo rápido; no toca Testnet. | No valida comportamiento real de red. |
-| **Testnet aislado** (`stellar contract deploy --network testnet`) | Validación final antes de la demo. | Consume XLM de prueba; requiere cuentas descartables separadas. |
+| **Red local** (`stellar container start local`, luego `stellar contract deploy --network local`) | Desarrollo iterativo y **CI**: la Action `stellar/quickstart@main` levanta la red y espera el health-check. | No valida comportamiento real de red y no es visible para terceros. |
+| **Testnet** (`stellar contract deploy --network testnet`) | Validación final y evidencia de la demo. | Consume XLM de prueba; requiere cuentas descartables por rol. **Se borra en cada reset de Testnet.** |
 
 En ambos casos se registra el `contract ID` asignado y la transacción de deploy.
 
@@ -415,16 +632,17 @@ En ambos casos se registra el `contract ID` asignado y la transacción de deploy
 | Transacciones de invocación | Hashes con enlaces al explorador. |
 | Logs de pruebas Rust | Salida de `cargo test` archivada. |
 
-#### f. Gate explícito go/no-go
+#### f. Definition of ready del contrato de campaña
 
-Antes de iniciar cualquier trabajo de pruebas Soroban, se evalúa:
+Antes de escribir el contrato, se verifica:
 
-- [ ] Los pagos clásicos (fondeo, distribución) están estables y documentados.
-- [ ] La demo clásica se ha ejecutado al menos una vez completa sin errores.
-- [ ] Existe un issue canónico aprobado para el contrato inteligente específico.
-- [ ] El equipo tiene capacidad adicional sin riesgo para la demo clásica.
+- [ ] El toolchain está instalado y verificado (Parte 2, sección 5): Rust ≥1.84, target `wasm32v1-none`, Stellar CLI.
+- [ ] La red local levanta y acepta un deploy de prueba.
+- [ ] El major de `soroban-sdk` matchea el protocolo vivo de la red destino (`getVersionInfo`).
+- [ ] Existe el issue canónico del contrato, con la máquina de estados y la superficie acordadas.
+- [ ] El plan de 14 días fue re-presupuestado para incluir el trabajo de contrato.
 
-Si cualquiera de estos ítems no se cumple, **no se inician las pruebas de Soroban**. El stretch goal se pospone hasta que el camino obligatorio esté completamente validado.
+Si alguno no se cumple, el contrato no arranca. A diferencia de la versión anterior de esta sección, **esto no posterga un extra: bloquea la demo**, porque no hay camino de fondeo alternativo.
 
 ### 3. Gates de decisión
 
@@ -449,23 +667,25 @@ El issue [#74 — `Task: Implement Stellar and Freighter integration`](https://g
 
 Si alguna condición no se cumple, el issue #74 permanece bloqueado y se resuelve la dependencia antes de continuar.
 
-#### b. Gate separado antes de issues Soroban
+#### b. Gate antes de extender contratos a caminos opcionales
 
-^gate-soroban
+^gate-extensiones
 
-Ningún issue de contratos inteligentes o integración Soroban puede crearse o iniciarse hasta que se cumplan **todos** los siguientes condiciones:
+> [!warning] Este gate **ya no** protege el contrato de campaña
+> Hasta el 2026-09-14 esta sección bloqueaba todo trabajo sobre contratos detrás de la estabilización del camino clásico. **Eso quedó invertido**: el contrato de campaña *es* el camino de fondeo y no espera a nada. Lo que sigue gateado es únicamente llevar contratos a caminos **opcionales**, como la distribución de revenue share on-chain.
+
+Ninguna extensión opcional sobre contratos puede crearse o iniciarse hasta que se cumplan **todas** estas condiciones:
 
 | # | Condición | Fuente de verificación |
 |---|---|---|
-| 1 | El camino clásico completo (fondeo, confirmación, distribución) está implementado y verificado. | Issues #74–#91 cerrados con evidencia documentada. |
-| 2 | La demo clásica se ha ejecutado al menos una vez completa sin errores en Testnet. | Registro de la ejecución de la demo. |
-| 3 | El issue canónico para el contrato inteligente específico está aprobado y priorizado. | Estado del issue en GitHub. |
-| 4 | El equipo tiene capacidad adicional confirmada sin riesgo para el camino clásico. | Decisión explícita del equipo o responsable. |
-| 5 | El toolchain de Rust y Stellar CLI están instalados y verificados (Parte 2, sección 5). | Registro de comprobación del equipo. |
+| 1 | El contrato de campaña está implementado, probado y desplegado, con su evidencia. | Issues del contrato cerrados con evidencia documentada. |
+| 2 | La demo completa se ejecutó al menos una vez sin errores en Testnet. | Registro de la ejecución de la demo. |
+| 3 | El issue canónico de la extensión está aprobado y priorizado. | Estado del issue en GitHub. |
+| 4 | El equipo tiene capacidad adicional confirmada sin riesgo para los caminos obligatorios. | Decisión explícita del equipo o responsable. |
 
-Si cualquiera de estas condiciones no se cumple, no se crea ningún issue Soroban. El stretch goal se pospone indefinidamente hasta que el camino obligatorio esté completamente validado y el equipo tenga capacidad.
+Si alguna no se cumple, no se crea el issue de la extensión.
 
-**Regla de emergencia:** si en algún momento durante el desarrollo de Soroban se detecta que el camino clásico se ha degradado o que las pruebas de Soroban retrasan la demo, se detiene inmediatamente el trabajo de Soroban y se regresa al camino clásico. La prioridad absoluta es la demo funcional con pagos clásicos.
+**Regla de emergencia, corregida:** si una **extensión opcional** degrada los caminos obligatorios o retrasa la demo, se detiene y se la quita. **El contrato de campaña no entra en esa regla** — es camino obligatorio y no se recorta. Si el contrato en sí no llega a funcionar, lo que se replantea es el **alcance del producto**, no la pieza.
 
 ## Parte 4 — Cierre, skills, seguridad y verificación
 
@@ -492,7 +712,7 @@ Las skills se cargan en el agente de IA según la tarea en curso. Ninguna skill 
 | **find-skills** | (disponible localmente) | Descubrir e instalar skills nuevas. | Cuando se necesite una skill no listada. |
 | **skill-creator** | (disponible localmente) | Crear skills nuevas. | Solo si se documenta un patrón repetible del proyecto. |
 
-**Nota importante:** Las skills de Stellar Foundation y OpenZeppelin son complementarias, no contradictorias. `stellar-dev` es el nombre del plugin/paquete de Stellar Foundation, **no el de una skill**: `stellar/stellar-dev-skill` expone 8 skills — `dapp`, `data`, `assets`, `standards`, `smart-contracts`, `agentic-payments`, `cross-chain` y `zk-proofs` — que en conjunto cubren el espectro completo de Stellar (dapps, contratos, APIs, assets). Pedir "la skill `stellar-dev`" devuelve 8 unidades, no una. `setup-stellar-contracts` y `develop-secure-contracts` profundizan en el setup y la seguridad de contratos con las librerías de OpenZeppelin. Para Vaqcrow, el paquete primario es `stellar-dev` (camino clásico y general); dentro de él, el camino de la demo —pagos clásicos en Testnet vía `@stellar/stellar-sdk`, Horizon y Freighter— lo cubren `dapp`, `data` y `assets`, mientras que `smart-contracts`, `zk-proofs` y `cross-chain` pertenecen al mundo Soroban, que `DEMO.md` declara extensión opcional y nunca bloqueante. Las skills de OpenZeppelin solo se cargan si se autoriza Soroban.
+**Nota importante:** Las skills de Stellar Foundation y OpenZeppelin son complementarias, no contradictorias. `stellar-dev` es el nombre del plugin/paquete de Stellar Foundation, **no el de una skill**: `stellar/stellar-dev-skill` expone 8 skills — `dapp`, `data`, `assets`, `standards`, `smart-contracts`, `agentic-payments`, `cross-chain` y `zk-proofs` — que en conjunto cubren el espectro completo de Stellar (dapps, contratos, APIs, assets). Pedir "la skill `stellar-dev`" devuelve 8 unidades, no una. `setup-stellar-contracts` y `develop-secure-contracts` profundizan en el setup y la seguridad de contratos con las librerías de OpenZeppelin. Para Vaqcrow, el paquete primario es `stellar-dev` (camino clásico y general); dentro de él, el camino de la demo —pagos clásicos en Testnet vía `@stellar/stellar-sdk`, Horizon y Freighter— lo cubren `dapp`, `data` y `assets`, mientras que `smart-contracts` pasa a ser **camino obligatorio** —es la skill del contrato de campaña, que custodia fondos—, mientras que `zk-proofs` y `cross-chain` siguen siendo extensiones opcionales. Las skills de OpenZeppelin se cargan al trabajar en el contrato, porque su checklist de seguridad aplica de lleno a un contrato con valor.
 
 **Estado de instalación (verificado el 2026-09-20):** las 8 skills de `stellar/stellar-dev-skill` están instaladas **a nivel de proyecto** — presentes en `.agents/skills/` con symlinks en `.claude/skills/`, registradas en `skills-lock.json` y con `scope=project` en `.atl/skill-registry.md`. Las raíces globales (`~/.claude/skills`, `~/.agents/skills`, `~/.config/opencode/skills`) no contienen ninguna skill de Stellar: la instalación no alcanzó alcance de usuario. Aplicado el gate compartido de `AGENTS.md`: `skill_resolution: skill-registry` (usada para reindexar), `mcp_support: none`.
 

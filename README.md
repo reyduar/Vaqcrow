@@ -90,10 +90,12 @@ packages/ai · stellar · simulators · db · config · testing · ui
 | Web | Next.js + React para la interfaz y un BFF limitado a necesidades de presentación |
 | API | Node.js + TypeScript + Fastify para comandos, dominio, verificación XDR y coordinación |
 | Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
-| Stellar | Stellar SDK, Freighter, Horizon y Testnet para XDR, firma no custodial, envío y confirmación |
+| Stellar | Stellar SDK, Freighter, Horizon y Testnet para firma no custodial, envío y confirmación; **contratos de Stellar (Rust) para la custodia del fondeo** |
 | IA | Proveedor LLM por definir, detrás de un adaptador reemplazable y con salida estructurada |
 | Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el journey crítico en navegador |
 | Workspace y CI | pnpm, Turborepo; GitHub Actions con lockfile congelado y gates de pull request |
+
+El **fondeo se custodia en un contrato de Stellar** (Rust + `soroban-sdk`): cada campaña abre su propia bóveda, el contrato liquida a la PyME apenas se alcanza el objetivo y reembolsa a los inversores si vence la fecha sin alcanzarlo. Se evaluó **Claimable Balance (CAP-23)** como alternativa sin contrato y **se descartó**, porque no puede expresar "objetivo alcanzado" on-chain. Detalle en `docs/planning/stellar-blockchain-requirements.md`.
 
 ## Despliegue propuesto
 
