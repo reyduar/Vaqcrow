@@ -50,5 +50,5 @@ export {
 } from "./assessment-prompt.js";
 export type { AssessmentMessage } from "./assessment-prompt.js";
 
-export { createOpenCodeGoProvider } from "./opencode-go-provider.js";
-export type { OpenCodeGoProviderOptions } from "./opencode-go-provider.js";
+export { createOpenCodeGoProvider, REASONING_EFFORTS } from "./opencode-go-provider.js";
+export type { OpenCodeGoProviderOptions, ReasoningEffort } from "./opencode-go-provider.js";

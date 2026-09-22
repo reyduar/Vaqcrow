@@ -24,7 +24,15 @@
  *   LLM_BASE_URL         optional — defaults to the opencode-go base.
  *   LLM_BAKE_OFF_MODELS  optional — comma-separated ids. The live list is
  *                        authoritative: curl <base>/models
- *   LLM_TIMEOUT_MS       optional — per-request bound, defaults to 15000.
+ *   LLM_BAKE_OFF_SAMPLES optional — repeats per model, defaults to 3. One
+ *                        sample is not a measurement.
+ *   LLM_REASONING_EFFORT optional — the thinking budget. Defaults to
+ *                        "default", which omits the switch entirely. The
+ *                        2026-09-22 A/B showed the switch's effect is
+ *                        model-dependent: it cut deepseek-v4-flash's median
+ *                        from 19.9 s to 5.1 s while making glm-5.3-flash's
+ *                        worst case worse, so it is not a global default.
+ *   LLM_TIMEOUT_MS       optional — per-request bound, defaults to 30000.
  */
 
 import { createOpenCodeGoProvider, runAssessment } from "../dist/index.js";
@@ -38,6 +46,8 @@ const DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1";
  */
 const DEFAULT_MODELS = ["glm-5.3-flash", "mimo-v2.6-flash", "deepseek-v4-flash"];
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_SAMPLES = 3;
+const DEFAULT_REASONING_EFFORT = "default";
 
 /** The synthetic series from the demo; the same evidence the app would send. */
 const PERIODS = [
@@ -58,12 +68,13 @@ const FINDINGS = [
 
 const EVIDENCE = { periods: PERIODS, findings: FINDINGS };
 
-async function measure({ baseUrl, apiKey, model, timeoutMs }) {
+async function measure({ baseUrl, apiKey, model, timeoutMs, reasoningEffort }) {
   const provider = createOpenCodeGoProvider({
     baseUrl,
     model,
     apiKey,
     timeoutMs,
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     sessionId: `bake-off-${model}-${Date.now().toString(36)}`
   });
 
@@ -74,18 +85,21 @@ async function measure({ baseUrl, apiKey, model, timeoutMs }) {
   if (!result.ok) {
     // The error vocabulary IS the report: the production path already
     // distinguishes a timeout from an outage from an inadmissible answer.
-    return { model, latencyMs, outcome: result.error.code, invented: result.error.code === "unknown_evidence_reference" };
+    return { latencyMs, outcome: result.error.code };
   }
 
   return {
-    model,
     latencyMs,
     outcome: "valid",
-    invented: false,
     riskBand: result.value.assessment.riskBand,
-    confidence: result.value.assessment.confidence,
-    promptVersion: result.value.metadata.promptVersion
+    confidence: result.value.assessment.confidence
   };
+}
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? Math.round((sorted[middle - 1] + sorted[middle]) / 2) : sorted[middle];
 }
 
 function pad(value, width) {
@@ -104,6 +118,11 @@ async function main() {
 
   const baseUrl = (process.env.LLM_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const timeoutMs = Number(process.env.LLM_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
+  const samples = Number(process.env.LLM_BAKE_OFF_SAMPLES ?? DEFAULT_SAMPLES);
+  const effortSetting = process.env.LLM_REASONING_EFFORT ?? DEFAULT_REASONING_EFFORT;
+  // "default" omits the switch, so a run can measure what the provider does on
+  // its own — which is the comparison that proves the switch is worth sending.
+  const reasoningEffort = effortSetting === "default" ? undefined : effortSetting;
   const models = (process.env.LLM_BAKE_OFF_MODELS ?? DEFAULT_MODELS.join(","))
     .split(",")
     .map((entry) => entry.trim())
@@ -111,37 +130,55 @@ async function main() {
 
   console.log(`provider base: ${baseUrl}`);
   console.log(`path under test: createOpenCodeGoProvider -> runAssessment (production)`);
+  console.log(`thinking budget: ${reasoningEffort ?? "<provider default>"}   samples/model: ${samples}`);
   console.log(`models: ${models.join(", ")}   (live list: curl ${baseUrl}/models)\n`);
 
-  const results = [];
+  const summaries = [];
   for (const model of models) {
-    process.stdout.write(`… ${model}\n`);
-    results.push(await measure({ baseUrl, apiKey, model, timeoutMs }));
+    const runs = [];
+    for (let index = 0; index < samples; index += 1) {
+      process.stdout.write(`… ${model} (${index + 1}/${samples})\n`);
+      runs.push(await measure({ baseUrl, apiKey, model, timeoutMs, reasoningEffort }));
+    }
+
+    const valid = runs.filter((run) => run.outcome === "valid");
+    const latencies = valid.map((run) => run.latencyMs);
+    summaries.push({
+      model,
+      valid: valid.length,
+      outcomes: [...new Set(runs.map((run) => run.outcome))].join("/"),
+      min: latencies.length > 0 ? Math.min(...latencies) : undefined,
+      median: latencies.length > 0 ? median(latencies) : undefined,
+      max: latencies.length > 0 ? Math.max(...latencies) : undefined
+    });
   }
 
   console.log(
-    `\n${pad("model", 22)}${pad("outcome", 28)}${pad("invented", 10)}${pad("ms", 8)}band / confidence`
+    `\n${pad("model", 22)}${pad("valid", 8)}${pad("outcomes", 24)}${pad("min", 8)}${pad("median", 9)}max`
   );
-  for (const result of results) {
+  for (const summary of summaries) {
     console.log(
-      pad(result.model, 22) +
-        pad(result.outcome, 28) +
-        pad(result.invented === undefined ? "-" : String(result.invented), 10) +
-        pad(result.latencyMs, 8) +
-        (result.outcome === "valid" ? `${result.riskBand} / ${result.confidence}` : "")
+      pad(summary.model, 22) +
+        pad(`${summary.valid}/${samples}`, 8) +
+        pad(summary.outcomes, 24) +
+        pad(summary.min, 8) +
+        pad(summary.median, 9) +
+        pad(summary.max, 8)
     );
   }
 
-  const viable = results.filter((result) => result.outcome === "valid");
+  const admissible = summaries.filter((summary) => summary.valid === samples);
   console.log(
-    viable.length > 0
-      ? `\nadmissible: ${viable.map((result) => `${result.model} (${result.latencyMs} ms)`).join(", ")}`
-      : "\nno candidate returned an admissible assessment — do not pick a model yet"
+    admissible.length > 0
+      ? `\nadmissible on every sample: ${admissible.map((s) => `${s.model} (median ${s.median} ms, max ${s.max} ms)`).join(", ")}`
+      : "\nno model was admissible on every sample — do not pick one yet"
   );
 
-  const unusable = results.filter((result) => result.outcome !== "valid");
-  if (unusable.length > 0) {
-    console.log(`not admissible: ${unusable.map((result) => `${result.model} (${result.outcome})`).join(", ")}`);
+  const unstable = summaries.filter((summary) => summary.valid !== samples);
+  if (unstable.length > 0) {
+    console.log(
+      `not admissible on every sample: ${unstable.map((s) => `${s.model} (${s.outcomes})`).join(", ")}`
+    );
   }
 }
 

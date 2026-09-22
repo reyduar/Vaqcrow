@@ -143,8 +143,45 @@ describe("createOpenCodeGoProvider", () => {
     expect(body.messages[1]?.content).toContain("2026-01");
   });
 
-  it("never reveals the key in the returned outcome", async () => {
-    const { provider } = providerAnswering(JSON.stringify(VALID_OUTPUT));
+  it("sends the configured thinking budget and never the mutually exclusive switch", async () => {
+    const captured: CapturedRequest[] = [];
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      captured.push({ url: String(url), init: init ?? {} });
+      return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }) as unknown as typeof fetch;
+
+    const provider = createOpenCodeGoProvider({
+      baseUrl: "https://provider.test/v1",
+      model: "glm-5.3-flash",
+      apiKey: "key-sentinel",
+      timeoutMs: 15_000,
+      reasoningEffort: "none",
+      fetchImpl
+    });
+
+    await provider.assess({ evidence: EVIDENCE });
+
+    const body = JSON.parse(String(captured[0]?.init.body)) as Record<string, unknown>;
+    expect(body["reasoning_effort"]).toBe("none");
+    // The endpoint rejects a request carrying both switches with a 400, so
+    // `thinking` must never appear.
+    expect(body).not.toHaveProperty("thinking");
+  });
+
+  it("omits the thinking budget when it is not configured", async () => {
+    const { provider, captured } = providerAnswering(JSON.stringify(VALID_OUTPUT));
+
+    await provider.assess({ evidence: EVIDENCE });
+
+    const body = JSON.parse(String(captured[0]?.init.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("reasoning_effort");
+    expect(body).not.toHaveProperty("thinking");
+  });
+
+  it("never reveals the key in the returned outcome", async () => {    const { provider } = providerAnswering(JSON.stringify(VALID_OUTPUT));
 
     const outcome = await provider.assess({ evidence: EVIDENCE });
 

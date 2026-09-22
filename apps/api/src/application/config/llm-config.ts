@@ -33,10 +33,16 @@ export type LlmProvider = typeof SUPPORTED_LLM_PROVIDER;
 export const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1";
 
 /**
- * The port's own default is 30 s, which is longer than the whole demo segment
- * that calls it. 15 s is the bound a live demo can afford to wait.
+ * How long the assessment call may take.
+ *
+ * Set from measurement, not from taste. Three samples per model against the
+ * live provider on 2026-09-22 gave `glm-5.3-flash` a median of 7.4 s and a
+ * worst case of 11.4 s; 30 s is roughly 2.6x the worst observed sample, which
+ * is the headroom a demo can afford without a failure becoming routine. A
+ * timeout degrades to human review, never to an answer, so the bound protects
+ * the operator rather than the model.
  */
-export const DEFAULT_LLM_TIMEOUT_MS = 15_000;
+export const DEFAULT_LLM_TIMEOUT_MS = 30_000;
 export const MIN_LLM_TIMEOUT_MS = 1_000;
 export const MAX_LLM_TIMEOUT_MS = 120_000;
 

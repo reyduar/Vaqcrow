@@ -18,6 +18,22 @@ import type { AssessmentProviderOutcome, AssessmentProviderPort } from "./assess
  * port already declares.
  */
 
+/**
+ * The thinking budget the provider accepts. Verified against its own validator,
+ * which reports exactly this set.
+ */
+export const REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max"
+] as const;
+
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+
 export type OpenCodeGoProviderOptions = {
   /** The provider's base, without a trailing slash, e.g. `https://opencode.ai/zen/go/v1`. */
   readonly baseUrl: string;
@@ -29,6 +45,20 @@ export type OpenCodeGoProviderOptions = {
    */
   readonly apiKey: string;
   readonly timeoutMs: number;
+  /**
+   * How much the model is allowed to think before answering.
+   *
+   * The provider accepts `none | minimal | low | medium | high | xhigh | max`,
+   * and `none` disables reasoning outright. It matters enormously here: these
+   * are reasoning models, and extracting a structured assessment from a small
+   * numeric series following explicit rules is instruction-following, not deep
+   * reasoning — so the default thinking budget is pure latency and pure cost.
+   *
+   * `thinking` is deliberately never sent: the endpoint rejects a request that
+   * carries both switches with a 400, and `reasoning_effort` is the one it
+   * honours.
+   */
+  readonly reasoningEffort?: ReasoningEffort;
   /**
    * A stable id per conversation. The provider's documentation asks for it and
    * rejects requests without it (`400 MissingSessionID`), so it is not optional
@@ -71,7 +101,11 @@ export function createOpenCodeGoProvider(
             model: options.model,
             messages: buildAssessmentMessages(evidence),
             // Determinism first: this is an assessment, not a creative task.
-            temperature: 0
+            temperature: 0,
+            // Sent only when configured, and never alongside `thinking`.
+            ...(options.reasoningEffort === undefined
+              ? {}
+              : { reasoning_effort: options.reasoningEffort })
           }),
           signal: AbortSignal.timeout(options.timeoutMs)
         });

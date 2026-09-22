@@ -41,8 +41,32 @@ The production path — `createOpenCodeGoProvider` → `runAssessment` — was r
 | deepseek-v4-flash | valid | false | 59,437 ms | high / 0.6 |
 
 ## Advisories (non-blocking, must be carried forward)
-- **LATENCY IS NOT STABLE, AND THIS CORRECTS THE MODEL RECOMMENDATION.** The same model and the same prompt measured **5.6 s** on the first bake-off and **21.6 s** here for `glm-5.3-flash` — a factor of four. The ranking is not stable either: `mimo-v2.6-flash` was fastest in this run, `glm-5.3-flash` in the previous one. Two samples are not a selection basis. **The configured 15 s timeout is too tight and will fail intermittently**, and a timeout degrades to human review rather than to an answer. Before the demo: raise `LLM_TIMEOUT_MS`, take several samples per model, and warm the model — or stop depending on a live call for the demo segment.
-- **The adapter has been verified live once**, not continuously. Its deterministic tests are the regression net; the live path is manual by design.
+- **LATENCY: MEASURED AND CLOSED, AND IT CORRECTS TWO EARLIER CLAIMS OF MINE.** See the section below. The model is `glm-5.3-flash` on the provider's **default** thinking budget, and the timeout default is now 30 s.
+- **The adapter has been verified live**, repeatedly, during the measurement below. Its deterministic tests remain the regression net.
 - **The prompt has no automatic change detection.** Bumping `ASSESSMENT_PROMPT_VERSION` when the text changes is a human obligation, and forgetting it makes the retained provenance a lie.
 - **`apps/api` still does not construct the adapter.** Nothing calls a model from the application yet: this Task delivers the adapter and proves it works, not its wiring into a use case or an endpoint. That wiring is the next unit.
 - **Go is scoped to coding-agent traffic and is monitored for abuse.** Our workload is a financial risk assessment; whether Go or Zen is the right subscription remains unresolved.
+
+## Closing the latency problem (2026-09-22)
+
+The first bake-off took one sample per model and the live verification took another. Comparing them produced a claim I made too strongly — "the same model measured 5.6 s then 21.6 s, a factor of four" — and a recommendation to raise the timeout. **Both were artefacts of single samples.** This section replaces them with a distribution.
+
+Two findings drove the investigation. The provider's own issue tracker documents that the Go endpoint accepts `reasoning_effort` with `none | minimal | low | medium | high | xhigh | max`, that `none` disables thinking, and that it **rejects with 400 a request carrying both `thinking` and `reasoning_effort`** — so `thinking` must never be sent. The adapter sends neither by default, which means the model reasons at the provider's default budget.
+
+Three samples per model, with and without the switch:
+
+| Model | `reasoning_effort: none` — min / median / max | Provider default — min / median / max |
+|---|---|---|
+| glm-5.3-flash | 6,812 / 8,406 / 20,768 ms | **6,267 / 7,418 / 11,436 ms** |
+| deepseek-v4-flash | **4,478 / 5,129** / 20,707 ms | 11,987 / 19,890 / 36,008 ms |
+| mimo-v2.6-flash | 21,345 / 23,805 / **timeout at 120 s** | not measured |
+
+**Conclusions, all of which the data forced rather than confirmed:**
+
+1. **The switch's effect is model-dependent, so it is not a global default.** It cut `deepseek-v4-flash`'s median from 19.9 s to 5.1 s — a genuine win — while making `glm-5.3-flash`'s worst case *worse* (11.4 s to 20.8 s). Setting it globally would have degraded the model we ship.
+2. **`glm-5.3-flash` on the provider's default budget is the right configuration**: median 7.4 s and, more importantly, the **tightest tail** of any combination measured — 11.4 s worst case against 20.8 s, 36.0 s and a 120 s timeout for the alternatives.
+3. **`mimo-v2.6-flash` is eliminated.** One sample of three hit the 120 s timeout, which is not a candidate for a live demo at any timeout a person would wait.
+4. **My "factor of four" instability claim was wrong**, and I retract it: it compared two single samples. With three samples each, `glm-5.3-flash` sits at 6.3–11.4 s with no timeout in six runs. The 21.6 s reading was a tail sample, not the central tendency.
+5. **The timeout default moves from 15 s to 30 s**, which is ~2.6x the worst observed sample for the shipped model — headroom that does not turn a tail into a routine failure. A timeout still degrades to human review, never to an answer.
+
+**What is still true and worth keeping:** a live call to a reasoning model takes seconds, not milliseconds, and the tail exists. Before a live demo, warm the model and expect the first call to be the slow one. If the demo segment cannot tolerate a tail at all, the answer is not a shorter timeout — it is not depending on a live call for that segment.
