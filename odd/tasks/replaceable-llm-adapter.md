@@ -23,7 +23,7 @@ Implement GitHub issue #21 end to end: a provider-independent boundary that call
 
 ## Tasks
 - [x] T1 (#68) Implement the provider boundary — RED observed (8 failing, `citableReferences is not a function`), GREEN 8/8 in `packages/ai/src/run-assessment.test.ts`.
-- [ ] T2 (#69) Provider contract and timeout matrix.
+- [x] T2 (#69) Contract and timeout matrix in `packages/ai/src/run-assessment.contract.test.ts` (39 tests). **It found a real defect in T1 and closed it** — see Progress. Mutation-proved afterwards.
 - [ ] T3 (#70) Evidence document `docs/planning/replaceable-llm-adapter-evidence.md`.
 
 ## Progress / evidence
@@ -31,12 +31,35 @@ Implement GitHub issue #21 end to end: a provider-independent boundary that call
 - 2026-09-22: T1 RED→GREEN. New files in `packages/ai/src/`: `assessment-evidence.ts`, `assessment-provider-port.ts`, `run-assessment.ts`, `simulated-assessment-provider.ts`, plus the barrel and a focused test. `@types/node` added to the package's devDependencies for `setTimeout` typing — acceptable because `DEMO.md` line 143 makes `packages/ai` backend-only.
 - 2026-09-22: `pnpm run verify` **EXIT=0**: `@vaqcrow/ai` 3 test files green, contracts 8, api 21, web 65, domain 1; `boundaries` clean over 288 modules / 768 dependencies; `test:boundaries` 6 files. The one lint warning is pre-existing in `apps/web`.
 - One typecheck failure was found and fixed during the cycle (`TS2552: Cannot find name 'AssessmentProviderOutcome'` — a missing type import), which is exactly what the gate is for.
+- 2026-09-22: T2. The matrix produced a **genuine RED** — not a manufactured one — and that is the point of an ordered test Task:
+
+  | Scenario | Observed before the fix |
+  |---|---|
+  | A provider attaches `message`/`retryAfterMs` to its own error object | The orchestration returned the provider's object **as-is**, so a vendor message, a path and a token-shaped string reached the caller. The repository forbids an adapter leaking `message`/`details`/`hint`. |
+
+  Fixed in `sanitizeProviderFailure`: the failure is rebuilt from the single allowed field, and an unrecognised code fails closed to `provider_unavailable`. The same class of hole on the *success* path was closed at the same time — metadata is now validated against `assessmentMetadataSchema`, so a provider cannot append a field to what an operator is shown.
+
+- 2026-09-22: 89 tests pass (39 new here). The matrix was then mutation-tested against a verified byte-identical restore:
+
+  | Mutation | Effect on the suite |
+  |---|---|
+  | provider error passed through again (sanitization reverted) | **1 failed** / 88 passed |
+  | metadata validation dropped | **1 failed** / 88 passed |
+  | timeout race removed | **3 failed** / 86 passed |
+  | evidence guardrail skipped | **4 failed** / 85 passed |
+  | none (baseline) | 89 passed |
+
+- 2026-09-22: `pnpm run verify` **EXIT=0** on the T2 tree: `@vaqcrow/ai` 4 test files green, contracts 8, api 21, web 65, domain 1; `boundaries` clean over 289 modules / 772 dependencies; `test:boundaries` 6 files. The one lint warning is pre-existing in `apps/web`.
 
 ## Next step
-T2 (#69) on branch `Vaqcrow#69_Task_Test_replaceable_LLM_adapter`, stacked on the Feature branch: the full provider contract and timeout matrix.
+T3 (#70) on branch `Vaqcrow#70_Task_Document_evidence_for_replaceable_LLM_adapter`, stacked on the Feature branch.
 
 ## Advisories (non-blocking, must be carried forward)
 - **The Feature #20 evidence document is now partly wrong.** It states that #21 would persist model/prompt/version; per D2 that is not what was built. Correct it in #70 — do not leave the claim standing.
 - **The real provider is still undecided** (`DEMO.md` line 132 `TBD`, and line 412 lists choosing it as a P0 demo-prep item). Nothing in #21 blocks on it, but the live rehearsal does.
 - **Docker image NOT rebuilt** since `packages/ai` was added as a workspace member (carried from Feature #20). Docker is unavailable in this environment.
 - **`test:boundaries` depends on built `dist/`** (carried from Feature #20): it resolves `@vaqcrow/*` through each package's `package.json` → `dist/`, so running it alone on a clean tree fails. Safe inside `pnpm run verify` because `build` runs first.
+- **Metadata is strict on purpose.** A third-party adapter that appends a field to its metadata (say `latencyMs`) now fails as `invalid_output` rather than passing it through. That is the intended fail-closed behaviour: the port's metadata type is the contract, so a new field means changing the contract, not smuggling it.
+
+## Method note (learned the hard way, worth keeping)
+- **`git checkout -- <file>` is destructive to uncommitted work, and it silently broke a verification run here.** While mutation-testing T1's fix, the restore step used `git checkout -- run-assessment.ts`, which restored **HEAD's** version — discarding the uncommitted fix — so the "baseline" afterwards reported 2 failures and looked like flakiness. It was not flakiness; the fix had been deleted. The correct pattern for mutating a file with uncommitted changes is to copy it aside (`cp` to a temp path) and restore from that copy, then verify the restore with `cmp`. Both were done on the second pass, and the mutation numbers below come from that clean run.

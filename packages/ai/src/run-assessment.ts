@@ -1,7 +1,11 @@
-import { aiAssessmentSchema, validateAssessmentEvidence } from "./ai-assessment.js";
+import {
+  aiAssessmentSchema,
+  validateAssessmentEvidence
+} from "./ai-assessment.js";
 import type { AiAssessment, AssessmentEvidenceViolation } from "./ai-assessment.js";
 import { citableReferences } from "./assessment-evidence.js";
 import type { AssessmentEvidenceBundle } from "./assessment-evidence.js";
+import { assessmentMetadataSchema } from "./assessment-provider-port.js";
 import type {
   AssessmentMetadata,
   AssessmentProviderFailure,
@@ -77,6 +81,19 @@ async function callProvider(
   }
 }
 
+/**
+ * Rebuilds the failure from the one field that is allowed across the boundary.
+ *
+ * Passing the provider's object through would let an adapter attach `message`,
+ * `retryAfterMs` or a vendor trace to an error a caller logs — the repository
+ * forbids leaking `message`/`details`/`hint` from an adapter, and a type does
+ * not survive contact with a third-party implementation at runtime. An
+ * unrecognised code fails closed to `provider_unavailable`.
+ */
+function sanitizeProviderFailure(failure: AssessmentProviderFailure): AssessmentProviderFailure {
+  return failure.code === "timeout" ? { code: "timeout" } : { code: "provider_unavailable" };
+}
+
 export async function runAssessment(
   provider: AssessmentProviderPort,
   input: {
@@ -93,12 +110,21 @@ export async function runAssessment(
   }
 
   if (!outcome.ok) {
-    return { ok: false, error: outcome.error };
+    return { ok: false, error: sanitizeProviderFailure(outcome.error) };
   }
 
   const parsed = aiAssessmentSchema.safeParse(outcome.rawOutput);
 
   if (!parsed.success) {
+    return { ok: false, error: { code: "invalid_output" } };
+  }
+
+  // Provenance is validated on the same side of the boundary as the output, so
+  // the metadata a caller shows is exactly the declared shape and nothing a
+  // provider decided to append to it.
+  const metadata = assessmentMetadataSchema.safeParse(outcome.metadata);
+
+  if (!metadata.success) {
     return { ok: false, error: { code: "invalid_output" } };
   }
 
@@ -111,5 +137,5 @@ export async function runAssessment(
     };
   }
 
-  return { ok: true, value: { assessment: parsed.data, metadata: outcome.metadata } };
+  return { ok: true, value: { assessment: parsed.data, metadata: metadata.data } };
 }
