@@ -1,0 +1,35 @@
+# Docker honours .dockerignore, never .gitignore. The API image needs source,
+# manifests and the lockfile; everything below is context weight or secret
+# material that must never be able to reach a broad COPY.
+
+# Repository history and local caches
+.git
+.turbo
+.obsidian
+.codegraph
+
+# Dependencies are installed inside the image
+node_modules
+**/node_modules
+
+# Build outputs and test reports: rebuilt inside the image, never uploaded
+**/dist
+**/.next
+**/playwright-report
+**/test-results
+**/coverage
+
+# Local environment and secret material
+.env
+.env.*
+*.local
+
+# Repository documentation, agent state and non-runtime test fixtures
+docs
+odd
+.atl
+.claude
+.agents
+.opencode
+tests
+.github
