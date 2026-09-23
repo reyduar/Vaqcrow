@@ -18,14 +18,17 @@ Implementar la persistencia espejo de las campañas custodiadas por contratos So
 
 - **U1 — Esquema y contrato de reconciliación.** Migración reversible: crea campaña, aporte y contacto de reintegro; aplica RLS y grants explícitos en la misma unidad; deja `funding_intent_legacy` sólo legible por `service_role`.
 - **U2 — Reconciliación pura.** El caso de uso compara estado y total observados contra el espejo antes de escribir. Seis tests deterministas cubren divergencia, coincidencia y sanitización de errores.
-- **U3 — Adaptador Supabase.** Pendiente de validación de contrato en [#256](https://github.com/reyduar/Vaqcrow/issues/256): inserciones, lecturas, actualización condicional y PII fuera de diagnósticos.
+- **U3 — Adaptador Supabase.** `SupabaseCampaignRepository` implementa inserciones y lecturas de campañas/aportes, actualización condicional por estado y marca temporal, y contactos de reintegro. No usa `upsert`: una inserción repetida se resuelve como actualización explícita y acotada. Sus pruebas de contrato e idempotencia son [#256](https://github.com/reyduar/Vaqcrow/issues/256).
 
 ## Verificación parcial
 
 - `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/reconcile-campaign.test.ts` — 1 archivo, 6 tests verdes.
 - `pnpm --filter @vaqcrow/api typecheck` — verde.
 - `pnpm --filter @vaqcrow/api lint` — verde.
+- `pnpm --filter @vaqcrow/api test` — 24 archivos, 490 tests verdes.
+- `pnpm run boundaries` — 315 módulos y 851 dependencias, 0 violaciones.
+- `supabase migration list --local` — no ejecutable en esta máquina: no hay base local en `127.0.0.1:54322`. La validación de migración e integración queda deliberadamente en #256 y requiere levantar el stack o credenciales reales según el protocolo del repo.
 
 ## Estado
 
-Primer slice listo para revisión: migración, puerto y reconciliación pura. El adaptador se entrega como segundo slice para mantener cada PR debajo del presupuesto de revisión.
+Dos slices listos para revisión: fundación (361 líneas) y adaptador (313 líneas). La separación evita una PR de 643 líneas y conserva una frontera de rollback clara: la segunda slice elimina sólo `apps/api/src/infrastructure/adapters/supabase-campaign-repository.ts` y esta actualización de la bitácora.
