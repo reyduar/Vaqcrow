@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["campaign-vault"]
+
+[workspace.dependencies]
+# Pinned to the major that matches the live protocol version: 28 on both Testnet
+# and Mainnet (verified 2026-09-22 via `getVersionInfo`).
+#
+# NOTE: `stellar contract init` scaffolds `soroban-sdk = "27"`, one major behind.
+# Do not lower this to match the scaffold.
+soroban-sdk = "28"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+# For more information about this profile see https://developers.stellar.org/docs/build/smart-contracts/example-contracts/logging#cargotoml-profile
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true

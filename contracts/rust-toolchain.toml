@@ -1,0 +1,9 @@
+# Pins the toolchain and the Wasm target so a local build and a CI build resolve
+# the same compiler. `rustc` 1.98.1 satisfies the `>= 1.84.0` floor that the
+# Stellar runtime requires, and `wasm32v1-none` is the only Wasm target it accepts.
+#
+# rustup reads this file from the current directory upwards, so commands must run
+# from `contracts/` for the pin to apply.
+[toolchain]
+channel = "1.98.1"
+targets = ["wasm32v1-none"]
