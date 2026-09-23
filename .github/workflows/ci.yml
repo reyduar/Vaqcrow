@@ -132,3 +132,10 @@ jobs:
 
       - name: Build, test and deploy on the local network
         run: ./contracts/scripts/deploy-local.sh --goal=1000
+
+      # The factory deploys by Wasm hash, so the vault's Wasm has to be really
+      # uploaded before a campaign can be opened. That cannot be covered by unit
+      # tests; this runs the whole flow against the local network and asserts on
+      # what the network reports.
+      - name: Run the campaign flow end to end
+        run: ./contracts/scripts/campaign-smoke.sh
