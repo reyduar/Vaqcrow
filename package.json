@@ -18,7 +18,12 @@
     "test:boundaries": "vitest run",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",
     "install:verify": "pnpm install --frozen-lockfile",
-    "workspaces:list": "pnpm -r list --depth -1"
+    "workspaces:list": "pnpm -r list --depth -1",
+    "env:docker:up": "./scripts/local-env.sh up",
+    "env:docker:down": "./scripts/local-env.sh down",
+    "env:docker:status": "./scripts/local-env.sh status",
+    "dev:web:docker": "pnpm --filter @vaqcrow/web run dev:docker",
+    "dev:web:cloud": "pnpm --filter @vaqcrow/web run dev:cloud"
   },
   "devDependencies": {
     "turbo": "^2.10.13",
