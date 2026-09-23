@@ -39,6 +39,13 @@ Es el carril de **desarrollo y CI**: nunca se resetea, despliega al instante y e
 
 La red local **no reemplaza a Testnet para la evidencia**: no es pública, y nadie de afuera puede verificarla.
 
+> [!important] La SAC del activo nativo hay que desplegarla
+> En una red nueva —local, o Testnet recién reseteada— la SAC nativa tiene dirección determinística pero **su instancia todavía no existe**. Cualquier contrato que mueva XLM nativo falla con `Error(Storage, MissingValue)` al llamar `transfer`, y el error apunta a la SAC, no al contrato que la llama. Se despliega una vez por red:
+>
+> ```bash
+> stellar contract asset deploy --asset native --source-account <cuenta> --network local
+> ```
+
 ## Build, test y despliegue
 
 ```bash
