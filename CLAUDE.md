@@ -57,6 +57,10 @@ Both `apps/api` and `apps/web` follow the same internal layering: `application/`
 
 `apps/api`'s persistence layer (see `apps/api/src/infrastructure/adapters/`, `supabase/migrations/`) establishes the pattern for future tables: a single migration creates the table, enables RLS, and sets explicit grants atomically (no default `anon`/`authenticated` grants ever survive even transiently); state transitions use a conditional `UPDATE ... WHERE id=$1 AND state=$from` rather than upsert, so a replayed request is idempotent instead of double-applying; adapters map Postgres/PostgREST errors to a sanitized error shape and never leak `message`/`details`/`hint` to callers.
 
+### Supabase migration workflow
+
+The configured remote Supabase project is the default database target. Use the already-running Docker Desktop image only to test a migration locally; do not start, stop, or repurpose Docker resources without explicit approval. Once the local migration test passes, apply that same migration to the remote Supabase project in the same work unit, then verify its schema, grants/RLS, and migration-history version match the repository. Do not report a migration as complete while the remote project is behind, and do not use a local database as a substitute for the remote update.
+
 ### Testing philosophy
 
 Pull-request-gated tests (`pnpm run test`, and everything `pnpm run verify` runs) never depend on Stellar Testnet, Horizon, or the LLM provider — they use local doubles and fixtures so external flakiness is never confused with a real regression. Live-service checks (Testnet transactions, the Supabase integration suite) run separately, manually or in a bounded non-blocking job, gated on real credentials being present. `docs/planning/DEMO.md` §11 is the source of truth for the intended test-level matrix (unit/domain, API functional, golden/AI, component, adapter-contract, boundaries, Playwright E2E, Testnet operational check) if you need to place a new test.
