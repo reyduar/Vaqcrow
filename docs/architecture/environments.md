@@ -53,8 +53,9 @@ pnpm env:docker:status           # estado de todo, sin imprimir ninguna clave
 pnpm --filter @vaqcrow/api dev          # API en el host, sin perfil (usa el entorno del shell)
 pnpm --filter @vaqcrow/api dev:cloud    # API en el host contra Supabase remoto (.env.cloud)
 
-pnpm dev:web:docker               # web contra la API/Supabase locales (.env.docker)
-pnpm dev:web:cloud                # web contra el proyecto remoto (.env.cloud)
+pnpm dev:web:docker               # web en :3001 contra la API/Supabase locales (.env.docker)
+pnpm dev:api:cloud                # API local en :3000 contra el proyecto remoto (.env.cloud)
+pnpm dev:web:cloud                # web en :3001 contra NEXT_PUBLIC_API_BASE_URL (.env.cloud)
 
 pnpm run test:db                  # supabase test db --local — siempre contra el stack local
 ```

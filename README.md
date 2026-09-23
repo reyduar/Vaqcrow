@@ -105,9 +105,62 @@ El **fondeo se custodia en un contrato de Stellar** (Rust + `soroban-sdk`): cada
 
 No existen despliegues productivos actualmente.
 
+## Cómo ejecutar el proyecto
+
+El proyecto tiene dos perfiles de entorno, cada uno en su propio archivo en la raíz del repositorio. Ninguno se versiona; las plantillas `.env.docker.example` y `.env.cloud.example` sí.
+
+| Perfil | Archivo | Supabase | API | Stellar | Uso |
+|---|---|---|---|---|---|
+| **docker** | `.env.docker` | Stack local en Docker (`:54321`) | Contenedor en Docker Desktop (`:3000`) | Quickstart local (`:8000`) para contratos | Pruebas locales |
+| **cloud** | `.env.cloud` | Proyecto remoto | Proceso local contra servicios remotos (Railway en la demo) | Testnet | Exclusivo para la demo |
+
+> [!important]
+> Los nombres no son `.env.development` / `.env.local` a propósito: Next.js y Vite cargan esos archivos en capas, no como alternativas. Cada perfil se elige explícitamente con su comando. Detalle completo en [Perfiles de entorno](./docs/architecture/environments.md).
+
+### Requisitos
+
+- Node `>=24 <25` y pnpm `11.27.0` (`corepack enable`), luego `pnpm install --frozen-lockfile`.
+- Docker Desktop en ejecución y Supabase CLI (sólo para el perfil docker).
+- Un `.env.cloud` completo: el perfil docker reutiliza sus variables `LLM_*`, porque no hay un LLM local.
+
+### Ambiente local (perfil docker)
+
+```bash
+cp .env.cloud.example .env.cloud     # una sola vez; completar con las credenciales reales
+pnpm env:docker:up                   # Supabase local + Stellar Quickstart + API en contenedor
+pnpm dev:web:docker                  # web en http://localhost:3001 → usa la API del contenedor (:3000)
+```
+
+- `pnpm env:docker:up` levanta Supabase local (kong, rest, auth, db), reutiliza Quickstart si ya está sano, genera `.env.docker` la primera vez sin imprimir secretos y construye la imagen de la API desde `apps/api/Dockerfile`. Termina cuando `http://localhost:3000/health` responde.
+- `pnpm env:docker:status` muestra el estado de cada pieza sin mostrar claves; `pnpm env:docker:down` detiene la API y Supabase conservando los datos (`pnpm env:docker:down -- --all` también detiene Quickstart).
+- Pruebas contra el stack local: `pnpm run test:db` (pgTAP de esquema, RLS y grants) y `pnpm --filter @vaqcrow/api test:integration` (usa el perfil docker por defecto).
+- Para regenerar `.env.docker` (por ejemplo, tras cambiar `.env.cloud`): `./scripts/env/generate-docker-env.sh --force`.
+
+> [!tip]
+> El primer `pnpm env:docker:up` construye la imagen de la API y puede tardar varios minutos; los siguientes reutilizan las capas en caché.
+
+### Ambiente cloud (perfil cloud)
+
+```bash
+pnpm dev:api:cloud                   # API local en http://localhost:3000 contra el Supabase remoto
+pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_PUBLIC_API_BASE_URL de .env.cloud
+```
+
+- `.env.cloud` debe tener `APP_ENV=demo` y `NEXT_PUBLIC_API_BASE_URL` apuntando a la API que se quiere usar: `http://localhost:3000` con `pnpm dev:api:cloud`, o la URL pública de Railway una vez desplegada.
+- La suite de integración contra el proyecto remoto es opt-in: `pnpm --filter @vaqcrow/api test:integration:cloud`.
+
+> [!warning]
+> El perfil cloud escribe en la base de datos de la demo. Usalo para preparar o ensayar la demo, no para pruebas; las migraciones se prueban primero en el perfil docker y luego se aplican al proyecto remoto en la misma unidad de trabajo.
+
+> [!info]
+> Ambos perfiles publican la API en el puerto `3000` y la web en el `3001`: detené el contenedor (`pnpm env:docker:down`) antes de usar `pnpm dev:api:cloud`.
+
+> [!warning] Limitación conocida: CORS
+> La API todavía no habilita CORS y los componentes de la web llaman a la API desde el navegador. Con web (`:3001`) y API (`:3000`) en orígenes distintos, esas llamadas son bloqueadas por el navegador en ambos perfiles hasta que la API declare los orígenes permitidos. La API sí responde por HTTP directo (`curl http://localhost:3000/health`).
+
 ## Desarrollo y calidad
 
-- **Setup local:** para correr la API o la web contra Supabase (remoto o en Docker), ver [Perfiles de entorno](./docs/architecture/environments.md) — cubre `.env.cloud`/`.env.docker`, `pnpm env:docker:up` y el flujo de migraciones.
+- **Setup local:** ver [Cómo ejecutar el proyecto](#cómo-ejecutar-el-proyecto) y [Perfiles de entorno](./docs/architecture/environments.md) — cubre `.env.cloud`/`.env.docker`, `pnpm env:docker:up` y el flujo de migraciones.
 - **Estado actual:** `pnpm verify` ejecuta lint, typecheck, pruebas, build y verificación de boundaries entre workspaces. Las pruebas usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
 - **CI:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) corre en cada pull request con `pnpm install --frozen-lockfile`: un job ejecuta `pnpm verify` y otro el journey de Playwright. Ningún job usa servicios externos vivos ni requiere secretos del repositorio.
 - **Playwright:** cubre el journey crítico de la demo —shell guiado de seis pasos y decisión humana— contra un doble local en `apps/web/e2e/`, con navegador Chromium, un solo worker y sin reintentos. Comandos: `pnpm run test:e2e:install` (instala Chromium, una vez) y `pnpm run test:e2e`.
