@@ -28,6 +28,7 @@ Implementar la persistencia espejo de las campañas custodiadas por contratos So
 - `pnpm --filter @vaqcrow/api lint` — verde.
 - `pnpm --filter @vaqcrow/api test` — 24 archivos, 490 tests verdes.
 - `pnpm run boundaries` — 315 módulos y 851 dependencias, 0 violaciones.
+- `pnpm run verify` — verde: lint, typecheck, 1.318 tests de workspaces, build, boundaries y 75 tests de límites.
 - `supabase migration list --local` — no ejecutable en esta máquina: no hay base local en `127.0.0.1:54322`. La validación de migración e integración queda deliberadamente en #256 y requiere levantar el stack o credenciales reales según el protocolo del repo.
 
 ## Estado
