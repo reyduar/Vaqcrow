@@ -22,15 +22,25 @@ pnpm run boundaries               # dependency-cruiser against apps/*/src, packa
 pnpm run test:boundaries          # vitest run of the boundary-rule fixture tests
 
 pnpm --filter @vaqcrow/api test              # single workspace: @vaqcrow/api | @vaqcrow/web | @vaqcrow/domain | @vaqcrow/contracts
-pnpm --filter @vaqcrow/api test:integration  # credential-gated Supabase integration suite (see below); never part of `pnpm run test`
+pnpm --filter @vaqcrow/api test:integration          # credential-gated Supabase integration suite (see below); never part of `pnpm run test`; defaults to the docker profile
+pnpm --filter @vaqcrow/api test:integration:docker   # same suite, explicit docker profile (.env.docker)
+pnpm --filter @vaqcrow/api test:integration:cloud    # same suite against the remote project (.env.cloud)
 pnpm --filter @vaqcrow/api exec vitest run path/to/file.test.ts   # single test file
 pnpm --filter @vaqcrow/api exec vitest run -t "test name"         # single test by name
 
-pnpm --filter @vaqcrow/api dev   # Fastify API, tsc --watch + node --watch
-pnpm --filter @vaqcrow/web dev   # Next.js dev server
+pnpm --filter @vaqcrow/api dev          # Fastify API, tsc --watch + node --watch, no profile (shell env)
+pnpm --filter @vaqcrow/api dev:cloud    # Fastify API against the remote Supabase project (.env.cloud)
+pnpm --filter @vaqcrow/web dev          # Next.js dev server
+pnpm run dev:web:docker                 # Next.js dev server against the local docker profile (.env.docker)
+pnpm run dev:web:cloud                  # Next.js dev server against the remote project (.env.cloud)
+
+pnpm run env:docker:up      # start local Supabase + Stellar Quickstart + apps/api in a container (docker profile)
+pnpm run env:docker:down    # stop the api container and local Supabase (add `-- --all` to also stop Quickstart)
+pnpm run env:docker:status  # status of every piece, never prints a key value
+pnpm run test:db            # supabase test db --local supabase/tests — always against the local stack
 ```
 
-`test:integration` (in `apps/api`) needs real `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_PUBLISHABLE_KEY` and writes to the live Supabase project — it is intentionally excluded from `pnpm run test`, `pnpm run verify`, and any CI gate. Only run it with an operator's real credentials, never with fabricated ones.
+`test:integration` (in `apps/api`) needs real `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_PUBLISHABLE_KEY` and writes to a live Supabase project — it is intentionally excluded from `pnpm run test`, `pnpm run verify`, and any CI gate. It defaults to the docker profile (local Supabase) so an accidental run never writes to the demo project; `test:integration:cloud` opts into the remote one. Only run either with an operator's real credentials, never with fabricated ones. See `docs/architecture/environments.md` for the full `.env.cloud`/`.env.docker` profile split.
 
 Turbo tasks (`build`, `typecheck`, `test`) declare `dependsOn: ["^build"]`, so package builds run in dependency order automatically; `lint` has no such dependency.
 
@@ -59,7 +69,7 @@ Both `apps/api` and `apps/web` follow the same internal layering: `application/`
 
 ### Supabase migration workflow
 
-The configured remote Supabase project is the default database target. Use the already-running Docker Desktop image only to test a migration locally; do not start, stop, or repurpose Docker resources without explicit approval. Once the local migration test passes, apply that same migration to the remote Supabase project in the same work unit, then verify its schema, grants/RLS, and migration-history version match the repository. Do not report a migration as complete while the remote project is behind, and do not use a local database as a substitute for the remote update.
+The configured remote Supabase project is the default database target and where every migration must land. The docker environment profile (`docs/architecture/environments.md`; started with `pnpm env:docker:up`, which the user has authorized for this purpose) is where a migration is tested first — do not start, stop, or repurpose any other Docker resource without explicit approval. Once the local migration test passes (`pnpm run test:db` against the local stack), apply that same migration to the remote Supabase project in the same work unit, then verify its schema, grants/RLS, and migration-history version match the repository. Do not report a migration as complete while the remote project is behind, and do not use the local database as a substitute for the remote update.
 
 ### Testing philosophy
 

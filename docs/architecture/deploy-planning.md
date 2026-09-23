@@ -303,7 +303,7 @@ tests
 ```
 
 > [!warning] Por qué no es opcional
-> Docker mide el contexto de build con `.dockerignore`, no con `.gitignore`. Medido en este repositorio: `apps/web/.next` pesa **495 MB**, así que sin este archivo cada deploy subiría ~500 MB de build de Next que la imagen de la API nunca usa. Y `.env.local` está en el árbol de trabajo: cualquier `COPY` amplio futuro filtraría secretos a la imagen.
+> Docker mide el contexto de build con `.dockerignore`, no con `.gitignore`. Medido en este repositorio: `apps/web/.next` pesa **495 MB**, así que sin este archivo cada deploy subiría ~500 MB de build de Next que la imagen de la API nunca usa. Y `.env.cloud`/`.env.docker` están en el árbol de trabajo (ver [perfiles de entorno](./environments.md)): cualquier `COPY` amplio futuro filtraría secretos a la imagen.
 
 ---
 
@@ -1079,6 +1079,9 @@ jobs:
 ---
 
 ## 7. Secretos y Variables de Entorno
+
+> [!info] Desarrollo local vs. variables de plataforma
+> Esta sección cubre las variables como las setea la **plataforma** (Railway, Vercel). Para desarrollo local contra el proyecto remoto o contra Supabase en Docker, ver [[docs/architecture/environments|Perfiles de entorno]] (`.env.cloud` / `.env.docker`).
 
 ### Railway (API)
 
