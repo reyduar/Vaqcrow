@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["campaign-vault"]
+members = ["campaign-factory", "campaign-vault"]
 
 [workspace.dependencies]
 # Pinned to the major that matches the live protocol version: 28 on both Testnet
