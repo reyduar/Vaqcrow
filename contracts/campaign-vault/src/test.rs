@@ -10,9 +10,9 @@
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, Ledger as _},
+    testutils::{storage::Instance as _, Address as _, Events as _, Ledger as _},
     token::{StellarAssetClient, TokenClient},
-    Address, Env,
+    Address, Env, Event as _,
 };
 
 const START: u64 = 1_000;
@@ -334,3 +334,393 @@ fn a_contribution_after_the_deadline_is_rejected() {
         Err(Ok(Error::DeadlinePassed))
     );
 }
+
+// --- TTL -------------------------------------------------------------------
+
+#[test]
+fn contributing_extends_the_instance_ttl() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+
+    // The instance entry starts well below the bump threshold in the test
+    // environment, so the extension is observable here.
+    let before = env.as_contract(&f.contract, || env.storage().instance().get_ttl());
+    assert!(
+        before < BUMP_THRESHOLD,
+        "the test environment no longer starts below the threshold: {before}"
+    );
+
+    client.contribute(&alice, &400);
+
+    let after = env.as_contract(&f.contract, || env.storage().instance().get_ttl());
+    assert_eq!(after, BUMP_TO, "the instance TTL should be extended to the target");
+
+    // The deadline is enforced by the ledger time, never by expiry: an entry that
+    // is still alive past the deadline still refuses contributions.
+    env.ledger().set_timestamp(DEADLINE);
+    assert_eq!(
+        client.try_contribute(&alice, &100),
+        Err(Ok(Error::DeadlinePassed))
+    );
+}
+
+// --- authorization ---------------------------------------------------------
+
+/// Who the contract asks, and who it does not. These assert the recorded
+/// authorizations rather than trusting the source, so a `require_auth` that got
+/// dropped fails here.
+
+#[test]
+fn contribute_is_authenticated_by_the_investor() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+
+    client.contribute(&alice, &400);
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1, "expected exactly one authorization");
+    assert_eq!(auths[0].0, alice);
+}
+
+#[test]
+fn withdraw_is_authenticated_by_the_investor() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 300);
+    client.contribute(&alice, &300);
+
+    client.withdraw(&alice);
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1);
+    assert_eq!(auths[0].0, alice);
+}
+
+#[test]
+fn refund_asks_for_no_authorization_at_all() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 250);
+    client.contribute(&alice, &250);
+
+    env.ledger().set_timestamp(DEADLINE);
+    client.refund(&alice);
+
+    // Nobody signs: the destination is fixed by the contract, so the caller has
+    // no power over the funds and needs no authorization to return them.
+    assert!(env.auths().is_empty());
+}
+
+#[test]
+fn sweep_asks_for_no_authorization_at_all() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 100);
+    client.contribute(&alice, &100);
+
+    env.ledger().set_timestamp(DEADLINE);
+    client.sweep(&soroban_sdk::vec![&env, alice]);
+
+    assert!(env.auths().is_empty());
+}
+
+#[test]
+fn contribute_fails_when_the_investor_does_not_authorize_it() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+
+    // Recording is off, so nothing satisfies `require_auth`.
+    env.set_auths(&[]);
+
+    assert!(client.try_contribute(&alice, &400).is_err());
+    assert_eq!(client.total(), 0);
+}
+
+// --- negative cases --------------------------------------------------------
+
+#[test]
+fn refunding_an_address_that_never_contributed_fails() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let stranger = Address::generate(&env);
+
+    env.ledger().set_timestamp(DEADLINE);
+
+    assert_eq!(
+        client.try_refund(&stranger),
+        Err(Ok(Error::NothingToRefund))
+    );
+}
+
+#[test]
+fn withdrawing_without_a_contribution_fails() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let stranger = Address::generate(&env);
+
+    assert_eq!(
+        client.try_withdraw(&stranger),
+        Err(Ok(Error::NothingToRefund))
+    );
+}
+
+#[test]
+fn a_zero_or_negative_contribution_is_rejected() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+
+    assert_eq!(
+        client.try_contribute(&alice, &0),
+        Err(Ok(Error::InvalidAmount))
+    );
+    assert_eq!(
+        client.try_contribute(&alice, &-1),
+        Err(Ok(Error::InvalidAmount))
+    );
+    assert_eq!(client.total(), 0);
+}
+
+#[test]
+fn sweeping_an_empty_batch_is_rejected() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    env.ledger().set_timestamp(DEADLINE);
+
+    assert_eq!(
+        client.try_sweep(&soroban_sdk::vec![&env]),
+        Err(Ok(Error::EmptyBatch))
+    );
+}
+
+#[test]
+fn a_campaign_settled_before_the_deadline_can_never_be_refunded() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, GOAL);
+    client.contribute(&alice, &GOAL);
+    assert_eq!(client.state(), State::Settled);
+
+    // The deadline passing does not reopen anything: the money already left.
+    env.ledger().set_timestamp(DEADLINE);
+
+    assert_eq!(client.try_refund(&alice), Err(Ok(Error::WrongState)));
+    assert_eq!(
+        client.try_sweep(&soroban_sdk::vec![&env, alice]),
+        Err(Ok(Error::WrongState))
+    );
+    assert_eq!(balance(&env, &f.token, &f.sme), GOAL);
+}
+
+#[test]
+fn refunding_twice_returns_nothing_the_second_time() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+    client.contribute(&alice, &400);
+
+    env.ledger().set_timestamp(DEADLINE);
+    assert_eq!(client.refund(&alice), 400);
+
+    assert_eq!(
+        client.try_refund(&alice),
+        Err(Ok(Error::NothingToRefund))
+    );
+    assert_eq!(balance(&env, &f.token, &alice), 400);
+}
+
+#[test]
+fn an_address_listed_twice_in_a_batch_is_paid_once() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+    client.contribute(&alice, &400);
+
+    env.ledger().set_timestamp(DEADLINE);
+
+    let batch = soroban_sdk::vec![&env, alice.clone(), alice.clone()];
+    assert_eq!(client.sweep(&batch), 1);
+    assert_eq!(balance(&env, &f.token, &alice), 400);
+}
+
+// --- contributor index -----------------------------------------------------
+
+#[test]
+fn the_index_survives_a_withdraw_and_a_new_contribution() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 600);
+
+    client.contribute(&alice, &400);
+    assert_eq!(client.contributors().len(), 1);
+
+    client.withdraw(&alice);
+    assert_eq!(client.contribution_of(&alice), 0);
+
+    // Regression: this used to append Alice a second time, because the index was
+    // keyed off the contribution being zero rather than off membership.
+    client.contribute(&alice, &200);
+    assert_eq!(client.contributors().len(), 1);
+    assert_eq!(client.contributors().get(0), Some(alice.clone()));
+}
+
+#[test]
+fn the_index_lists_every_contributor_once_in_order_of_first_contribution() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    let bob = Address::generate(&env);
+    fund(&env, &f.token, &alice, 200);
+    fund(&env, &f.token, &bob, 200);
+
+    client.contribute(&bob, &100);
+    client.contribute(&alice, &100);
+    client.contribute(&bob, &100);
+
+    let contributors = client.contributors();
+    assert_eq!(contributors.len(), 2);
+    assert_eq!(contributors.get(0), Some(bob));
+    assert_eq!(contributors.get(1), Some(alice));
+}
+
+// --- events ----------------------------------------------------------------
+
+#[test]
+fn a_contribution_below_the_goal_emits_only_contributed() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 400);
+
+    client.contribute(&alice, &400);
+
+    let events = env.events().all().filter_by_contract(&f.contract);
+    assert_eq!(events.events().len(), 1);
+    assert_eq!(
+        events.events()[0],
+        Contributed {
+            investor: alice.clone(),
+            amount: 400,
+            total: 400,
+        }
+        .to_xdr(&env, &f.contract)
+    );
+}
+
+#[test]
+fn the_contribution_that_settles_publishes_settled_and_contributed() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, GOAL);
+
+    client.contribute(&alice, &GOAL);
+
+    let events = env.events().all().filter_by_contract(&f.contract);
+    assert_eq!(events.events().len(), 2);
+    assert_eq!(
+        events.events()[0],
+        Settled {
+            sme: f.sme.clone(),
+            amount: GOAL,
+        }
+        .to_xdr(&env, &f.contract)
+    );
+    assert_eq!(
+        events.events()[1],
+        Contributed {
+            investor: alice.clone(),
+            amount: GOAL,
+            total: GOAL,
+        }
+        .to_xdr(&env, &f.contract)
+    );
+}
+
+#[test]
+fn withdrawing_and_refunding_publish_their_own_events() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    let bob = Address::generate(&env);
+    fund(&env, &f.token, &alice, 500);
+    fund(&env, &f.token, &bob, 500);
+
+    client.contribute(&alice, &500);
+    client.withdraw(&alice);
+
+    let events = env.events().all().filter_by_contract(&f.contract);
+    assert_eq!(
+        events.events()[events.events().len() - 1],
+        Withdrawn {
+            investor: alice.clone(),
+            amount: 500,
+        }
+        .to_xdr(&env, &f.contract)
+    );
+
+    client.contribute(&bob, &500);
+    env.ledger().set_timestamp(DEADLINE);
+    client.refund(&bob);
+
+    let events = env.events().all().filter_by_contract(&f.contract);
+    assert_eq!(
+        events.events()[events.events().len() - 1],
+        Refunded {
+            investor: bob.clone(),
+            amount: 500,
+        }
+        .to_xdr(&env, &f.contract)
+    );
+}
+
+

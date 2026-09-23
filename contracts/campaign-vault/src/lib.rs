@@ -163,10 +163,16 @@ impl CampaignVault {
         let previous: i128 = env.storage().persistent().get(&key).unwrap_or(0);
 
         if previous == 0 {
+            // Membership has to be checked, not inferred from the contribution
+            // being zero: an investor who contributes, withdraws and contributes
+            // again is back at zero the second time, and appending on that
+            // condition alone would list them twice in the index.
             let mut contributors: Vec<Address> =
                 env.storage().instance().get(&DataKey::Contributors).unwrap();
-            contributors.push_back(investor.clone());
-            env.storage().instance().set(&DataKey::Contributors, &contributors);
+            if !contributors.contains(investor.clone()) {
+                contributors.push_back(investor.clone());
+                env.storage().instance().set(&DataKey::Contributors, &contributors);
+            }
         }
 
         env.storage().instance().set(&DataKey::Total, &total);

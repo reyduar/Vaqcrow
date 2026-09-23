@@ -49,11 +49,15 @@ La red local **no reemplaza a Testnet para la evidencia**: no es pública, y nad
 ## Build, test y despliegue
 
 ```bash
-./scripts/deploy-local.sh --goal=1000        # local, por defecto
-NETWORK=testnet ./scripts/deploy-local.sh --goal=1000
+# La bóveda: el constructor es __constructor(sme, token, goal, deadline)
+./scripts/deploy-local.sh --sme=<G...> --token=<C...> --goal=1000 --deadline=4102444800
+NETWORK=testnet ./scripts/deploy-local.sh --sme=<G...> --token=<C...> --goal=1000 --deadline=4102444800
+
+# El recorrido completo: fábrica, bóveda, aportes, liquidación y reembolso
+./scripts/campaign-smoke.sh
 ```
 
-El script fija el toolchain, verifica el target, genera y fondea la cuenta de despliegue si no existe, construye, corre los tests, imprime el **sha256 del Wasm** —la evidencia de reproducibilidad— y despliega con los argumentos del constructor que le pases.
+Los argumentos del constructor se reenvían tal cual, así que tienen que coincidir con la firma del contrato destino. Para el recorrido completo —que es lo que corre el CI— está `campaign-smoke.sh`.
 
 > [!warning] Los argumentos del constructor van con `=`
 > La forma que funciona es **`--goal=1000`**. La ayuda de la CLI dice `--arg-name value` (separado por espacio) y esa forma **falla** con `unexpected argument`. Con `=` la CLI mapea el nombre al argumento del `__constructor`.

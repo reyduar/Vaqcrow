@@ -130,5 +130,13 @@ jobs:
       - name: Register the local network
         run: ./contracts/scripts/local-network.sh network-add
 
-      - name: Build, test and deploy on the local network
-        run: ./contracts/scripts/deploy-local.sh --goal=1000
+      # The factory deploys by Wasm hash, so the vault's Wasm has to be really
+      # uploaded before a campaign can be opened. That cannot be covered by unit
+      # tests: this builds, tests, deploys both contracts and runs the campaign
+      # flow end to end, asserting on what the network reports.
+      #
+      # Note: the vault's constructor takes (sme, token, goal, deadline), so a
+      # bare `deploy-local.sh --goal=...` no longer works — the script forwards
+      # whatever the caller gives it, and the CLI rejects a short argument list.
+      - name: Run the campaign flow end to end
+        run: ./contracts/scripts/campaign-smoke.sh
