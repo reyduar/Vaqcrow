@@ -1,0 +1,7 @@
+# Rust's output directory. Around 1.3 GB after a full build, and fully
+# reproducible from the pinned toolchain in rust-toolchain.toml.
+target
+
+# Local Stellar settings: network and identity configuration. Never versioned.
+.soroban
+.stellar
