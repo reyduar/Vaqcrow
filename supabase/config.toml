@@ -23,7 +23,10 @@ enabled = true
 port = 54323
 
 [auth]
-enabled = false
+# Enabled so the local stack issues the anon/publishable and service_role keys
+# that `supabase status` exposes to scripts/env/generate-docker-env.sh. The
+# demo does not use Supabase Auth itself (identity is simulated).
+enabled = true
 
 [storage]
 enabled = false
