@@ -26,11 +26,22 @@ cd "$CONTRACTS_DIR"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok()   { echo "  ok  $*"; }
 
-# `stellar contract invoke` prints JSON, so the value comes back quoted.
+# `stellar contract invoke` prints the value as JSON, so it comes back quoted.
+# Diagnostic events also land on stdout, so only the last line is the value.
+#
+# Errors are NOT swallowed. An earlier version sent stderr to /dev/null and a
+# failure in the middle of the run showed up as nothing at all — which cost real
+# debugging time and is the worst possible failure mode for a test script.
 invoke() {
   local id="$1"; shift
-  stellar contract invoke --id "$id" --source-account "$SOURCE_ACCOUNT" --network "$NETWORK" \
-    -- "$@" 2>/dev/null | tail -1 | tr -d '"'
+  local out
+  if ! out=$(stellar contract invoke --id "$id" --source-account "$SOURCE_ACCOUNT" \
+        --network "$NETWORK" -- "$@" 2>&1); then
+    echo "  invoke failed: $*" >&2
+    printf '%s\n' "$out" | grep -vi "diagnostic event" >&2
+    return 1
+  fi
+  printf '%s\n' "$out" | tail -1 | tr -d '"'
 }
 
 echo "== build =="
@@ -101,15 +112,17 @@ fi
 ok "a settled campaign rejects further contributions"
 
 echo "== campaign B: the deadline passes without the goal =="
-# Read the clock again here: the campaign opens with a deadline only seconds out,
-# so it has to be recent.
+# Read the clock again here, and leave a wide margin. The campaign opens with a
+# deadline only seconds out, so it has to be recent — and a 20-second margin
+# turned out to be marginal against Testnet's latency, where the transaction can
+# land a couple of ledgers after it was built.
 VAULT_B=$(invoke "$FACTORY" deploy --salt="$SALT_B" --sme="$SME" --token="$NATIVE" \
-  --goal="$GOAL" --deadline=$(( $(ledger_now) + 20 )))
+  --goal="$GOAL" --deadline=$(( $(ledger_now) + 45 )))
 invoke "$VAULT_B" contribute --investor="$SME" --amount=300 >/dev/null
 ok "300/1000 contributed"
 
 echo "  waiting for the deadline to pass..."
-sleep 30
+sleep 60
 
 # Refunding is permissionless: the caller here is not the investor.
 [ "$(invoke "$VAULT_B" refund --investor="$SME")" = "300" ] \
