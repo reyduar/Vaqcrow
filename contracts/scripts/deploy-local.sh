@@ -7,9 +7,16 @@
 # Defaults to the local network, which is what development and CI use. Pass
 # `NETWORK=testnet` for the demo evidence.
 #
+# The constructor arguments are forwarded verbatim, so they have to match the
+# target contract's signature. The vault's is
+# `__constructor(sme, token, goal, deadline)`:
+#
 # Usage:
-#   ./deploy-local.sh [-- <constructor args>...]
-#   NETWORK=testnet SOURCE_ACCOUNT=vaqcrow-deployer ./deploy-local.sh -- 1000
+#   ./deploy-local.sh --sme=<G...> --token=<C...> --goal=<i128> --deadline=<u64>
+#   NETWORK=testnet SOURCE_ACCOUNT=vaqcrow-deployer ./deploy-local.sh --sme=... --token=... --goal=1000 --deadline=4102444800
+#
+# For the whole campaign flow — factory, vault, contributions, settlement and
+# refund — use `campaign-smoke.sh`, which is what CI runs.
 #
 set -euo pipefail
 
