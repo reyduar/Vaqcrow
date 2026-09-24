@@ -117,6 +117,8 @@ Cuando la variable está seteada, la lista explícita reemplaza el default en to
 
 > [!info] Objetivo
 > Correr el recorrido completo de la bóveda de campaña (apertura, aportes, liquidación, reembolso) contra el Stellar Quickstart local en vez de Testnet, de forma determinística. Es **opt-in**: sin este flujo, el perfil docker sigue hablando con Testnet exactamente como antes de [#237](https://github.com/reyduar/Vaqcrow/issues/237).
+>
+> Para entender qué cuentas y claves intervienen (la de la plataforma, la de la PyME y las de los inversores) y por qué es la plataforma la que crea la cuenta de la PyME, ver [[docs/architecture/stellar-accounts-and-keys|Cuentas, claves y fondeo en Stellar]].
 
 Orden de comandos, desde la raíz del repositorio:
 

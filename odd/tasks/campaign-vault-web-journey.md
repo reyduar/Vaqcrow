@@ -32,8 +32,8 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - [x] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
 - [x] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
 - [x] **U6 — Web de campaña.** Gateway, hook y workspace con los tres estados, aporte, retiro y reembolso sin permisos; copy en español. Ruta: writer delegado.
-- [ ] **U7 — Arranque de la red local.** Script que despliega SAC + fábrica en Quickstart y deja las direcciones para el perfil docker. Ruta: writer delegado.
-- [ ] **U8 — Documento explicativo en español** (pedido del usuario): qué significa fondear una cuenta, los dos pares de claves y por qué fondea la plataforma. Ruta: inline.
+- [x] **U7 — Arranque de la red local.** Script que despliega SAC + fábrica en Quickstart y deja las direcciones para el perfil docker. Ruta: writer delegado.
+- [x] **U8 — Documento explicativo en español** (pedido del usuario): qué significa fondear una cuenta, los dos pares de claves y por qué fondea la plataforma. Ruta: inline.
 
 ## Hallazgos
 
@@ -95,3 +95,13 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
   - Lint `react-hooks`: `setState` síncrono en el effect de carga → carga con cancelación, escritura de estado sólo al llegar la respuesta y `isLoadingCampaign` derivado de la clave cargada.
   - Mocks de `next/navigation` en `trust-disclosures.integration.test.tsx` y `prohibited-terms.test.tsx` (la página ahora usa `useRouter`/`useSearchParams`).
 - `pnpm --filter @vaqcrow/web test` 73 archivos, 454/454; `pnpm run test:boundaries` 79/79; lint y typecheck sin errores; `pnpm --filter @vaqcrow/web build` verde; `pnpm run test:e2e` 8/8 (todo re-ejecutado por el padre). `pnpm run boundaries`: 360 módulos, 0 violaciones.
+
+### U7
+- `contracts/scripts/bootstrap-local-campaign.sh` (`pnpm env:docker:bootstrap`): levanta Quickstart si no está sano, fondea la identidad `vaqcrow-platform` (clave en el keystore del Stellar CLI), despliega el SAC nativo, sube el wasm de la bóveda y despliega la fábrica; escribe sólo datos públicos en `contracts/.local-deployment.json` (ignorado por git).
+- `generate-docker-env.sh`: si existe ese archivo, escribe el bloque Stellar local y toma la clave de plataforma del keystore sin imprimirla (revisado por el padre). `docker-compose.local-network.yml` traduce las URLs host→contenedor sólo cuando `.env.docker` es de red local, para no romper el perfil de Testnet.
+- `bash -n` y `shellcheck` sin hallazgos; lint verde; `test:boundaries` 79/79; boundaries 360 módulos, 0 violaciones (según el writer).
+- Nota: el contenedor Quickstart `vaqcrow-local` había terminado con código 137 (probablemente sin memoria bajo carga alta); el bootstrap lo relanza si no responde.
+- Pendiente: verificación end-to-end ejecutada por el usuario (`pnpm env:docker:bootstrap` → `./scripts/env/generate-docker-env.sh --force` → `pnpm env:docker:up`) y comprobación del padre contra el contenedor, incluida la decodificación del enum `State`.
+
+### U8
+- `docs/architecture/stellar-accounts-and-keys.md` (español): qué es fondear una cuenta, los dos pares de claves, el paso a paso de la apertura, por qué fondea la plataforma y no Friendbot, y cómo se protege la clave de la plataforma. Enlazado desde `environments.md` §11.
