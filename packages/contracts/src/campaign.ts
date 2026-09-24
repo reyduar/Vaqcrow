@@ -138,13 +138,134 @@ export function parseContractInvocation(input: unknown): ContractInvocation {
   return contractInvocationSchema.parse(input);
 }
 
-/** What the submit step accepts: the envelope Freighter signed, nothing else. */
-export const submitContractInvocationCommandSchema = z.strictObject({
-  signedXdr: z.string().min(1)
-});
+/**
+ * The declared facts a contract invocation command carries — shared by
+ * `prepareContractInvocationCommandSchema` (before the API builds and
+ * simulates the envelope) and `submitContractInvocationCommandSchema`
+ * (echoed back so the stateless submit step re-verifies against exactly what
+ * was declared, plus the campaign's own contract address loaded
+ * server-side). Fields are required-but-nullable, matching
+ * `funding-intent.ts`'s own declared-field convention, rather than
+ * optional/omittable: a client that drops a key is refused instead of
+ * silently defaulting it.
+ */
+const contractInvocationInputShape = {
+  operation: contractOperationSchema,
+  investorAccountId: stellarAccountIdSchema,
+  /**
+   * `null` when the caller leaves the signer to the API's own rule
+   * (`contribute`/`withdraw` always sign as the investor; `refund` signs as
+   * the investor too, unless a different permissionless triggerer is named).
+   * A non-null value on `contribute`/`withdraw` must equal
+   * `investorAccountId` — the investor always signs their own money — while
+   * `refund` accepts any account, since the contract itself is
+   * permissionless about who triggers it.
+   */
+  sourceAccountId: stellarAccountIdSchema.nullable(),
+  /** Required for `contribute`; `null` (never a value) for `withdraw`/`refund`. */
+  amountStroops: stroopsSchema.nullable()
+} as const;
+
+function checkContractInvocationInput(
+  value: {
+    readonly operation: ContractOperation;
+    readonly investorAccountId: string;
+    readonly sourceAccountId: string | null;
+    readonly amountStroops: bigint | null;
+  },
+  context: z.RefinementCtx
+): void {
+  if (value.operation === "contribute" && value.amountStroops === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["amountStroops"],
+      message: "amountStroops is required for contribute"
+    });
+  }
+
+  if (value.operation !== "contribute" && value.amountStroops !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["amountStroops"],
+      message: "amountStroops is only accepted for contribute"
+    });
+  }
+
+  if (
+    value.operation !== "refund" &&
+    value.sourceAccountId !== null &&
+    value.sourceAccountId !== value.investorAccountId
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["sourceAccountId"],
+      message: "sourceAccountId must equal investorAccountId for contribute/withdraw"
+    });
+  }
+}
+
+/**
+ * Prepares one signed contract invocation: what the caller declares before
+ * the API builds and simulates it (`D1`). The web never imports the Stellar
+ * SDK, so this is the only thing it can supply — the resulting XDR is built,
+ * simulated and returned opaque, ready for Freighter to sign.
+ */
+export const prepareContractInvocationCommandSchema = z
+  .strictObject(contractInvocationInputShape)
+  .superRefine(checkContractInvocationInput);
+
+export type PrepareContractInvocationCommand = z.infer<typeof prepareContractInvocationCommandSchema>;
+
+export function parsePrepareContractInvocationCommand(input: unknown): PrepareContractInvocationCommand {
+  return prepareContractInvocationCommandSchema.parse(input);
+}
+
+/**
+ * What the submit step accepts: the same declared facts `prepare` took, plus
+ * the envelope Freighter signed. The submit step is stateless — nothing is
+ * persisted at prepare time — so these are the only facts the server can
+ * re-verify the envelope against, together with the campaign's contract
+ * address it loads itself from the mirror.
+ */
+export const submitContractInvocationCommandSchema = z
+  .strictObject({
+    ...contractInvocationInputShape,
+    signedXdr: z.string().min(1)
+  })
+  .superRefine(checkContractInvocationInput);
 
 export type SubmitContractInvocationCommand = z.infer<typeof submitContractInvocationCommandSchema>;
 
 export function parseSubmitContractInvocationCommand(input: unknown): SubmitContractInvocationCommand {
   return submitContractInvocationCommandSchema.parse(input);
+}
+
+/** What the submit step returns immediately: enough to poll the transaction-status endpoint with. */
+export const contractInvocationSubmissionSchema = z.strictObject({
+  transactionHash: z.string().trim().min(1),
+  status: z.literal("accepted")
+});
+
+export type ContractInvocationSubmission = z.infer<typeof contractInvocationSubmissionSchema>;
+
+export function parseContractInvocationSubmission(input: unknown): ContractInvocationSubmission {
+  return contractInvocationSubmissionSchema.parse(input);
+}
+
+/**
+ * What the transaction-status endpoint reports while a submitted invocation
+ * settles. `campaign` is present only once the transaction succeeds: it is a
+ * freshly re-read and reconciled snapshot (`D6`), never a value carried over
+ * from before the invocation was known to have settled.
+ */
+export const contractInvocationTransactionStatusSchema = z.strictObject({
+  transactionHash: z.string().trim().min(1),
+  status: z.enum(["pending", "success", "failed"]),
+  campaign: campaignSnapshotSchema.optional()
+});
+
+export type ContractInvocationTransactionStatus = z.infer<typeof contractInvocationTransactionStatusSchema>;
+
+export function parseContractInvocationTransactionStatus(input: unknown): ContractInvocationTransactionStatus {
+  return contractInvocationTransactionStatusSchema.parse(input);
 }

@@ -73,6 +73,15 @@ export interface CampaignRepositoryPort {
 
   findById(campaignId: string): Promise<CampaignRepositoryResult<CampaignRecord>>;
 
+  /**
+   * Backs the `open-campaign` idempotency check (D5): the salt a retry
+   * derives from `applicationId` is deterministic, so a campaign already
+   * mirrored for this application is the same campaign a retry would deploy
+   * again. `not_found` is the expected answer the first time a given
+   * application opens its vault, not an error.
+   */
+  findByApplicationId(applicationId: ApplicationId): Promise<CampaignRepositoryResult<CampaignRecord>>;
+
   findContributions(campaignId: string): Promise<CampaignRepositoryResult<readonly CampaignContributionRecord[]>>;
 
   reconcile(input: {

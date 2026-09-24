@@ -41,6 +41,7 @@ function repositoryReturning(
   return {
     create: vi.fn(),
     findById: vi.fn().mockResolvedValue(found),
+    findByApplicationId: vi.fn(),
     findContributions: vi.fn(),
     reconcile: vi.fn().mockResolvedValue(reconciled),
     saveRefundContact: vi.fn()
