@@ -1,0 +1,29 @@
+# Overlay for the Stellar local-network profile (see
+# docs/architecture/environments.md §"Bóveda de campaña en la red local").
+#
+# `docker-compose.local.yml` deliberately does NOT override
+# STELLAR_HORIZON_URL/STELLAR_RPC_URL itself (see its own comment on why —
+# `host.docker.internal` fails validation for the default Testnet-shaped
+# profile). This file carries only that translation, on top of the base
+# compose file:
+#
+#   docker compose -f docker-compose.local.yml -f docker-compose.local-network.yml ...
+#
+# `scripts/local-env.sh` adds this `-f` only when `.env.docker` itself
+# already carries `STELLAR_NETWORK=local` — written by
+# `./scripts/env/generate-docker-env.sh` once
+# `contracts/.local-deployment.json` exists (`pnpm env:docker:bootstrap`).
+# In every other case this file is never referenced.
+name: vaqcrow-local-stack
+
+services:
+  api:
+    environment:
+      # localhost:8000 (what .env.docker's STELLAR_HORIZON_URL/STELLAR_RPC_URL
+      # hold in this profile — see generate-docker-env.sh) is the container
+      # itself from inside this container, same reasoning as SUPABASE_URL in
+      # docker-compose.local.yml. This is safe here specifically because the
+      # `local` network has no host restriction in the config parser — any
+      # absolute http(s) URL is accepted.
+      STELLAR_HORIZON_URL: http://host.docker.internal:8000
+      STELLAR_RPC_URL: http://host.docker.internal:8000/rpc

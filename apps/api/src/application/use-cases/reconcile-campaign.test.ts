@@ -13,6 +13,7 @@ const correlationId = parseCorrelationId("33333333-3333-4333-8333-333333333333")
 const campaign: CampaignRecord = {
   campaignId: "11111111-1111-4111-8111-111111111111",
   applicationId: parseApplicationId("22222222-2222-4222-8222-222222222222"),
+  smeAccountId: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
   contractAddress: "CCAMPAIGN",
   network: "testnet",
   tokenContractAddress: "CTOKEN",
@@ -40,6 +41,7 @@ function repositoryReturning(
   return {
     create: vi.fn(),
     findById: vi.fn().mockResolvedValue(found),
+    findByApplicationId: vi.fn(),
     findContributions: vi.fn(),
     reconcile: vi.fn().mockResolvedValue(reconciled),
     saveRefundContact: vi.fn()
