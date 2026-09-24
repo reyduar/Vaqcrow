@@ -1,6 +1,6 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import { isLoopbackHost, STELLAR_LOCAL_NETWORK } from "../../application/config/stellar-config.js";
-import type { StellarConfig } from "../../application/config/stellar-config.js";
+import type { StellarConfig, StellarNetwork } from "../../application/config/stellar-config.js";
 
 /**
  * The one place a Horizon server is constructed from validated configuration.
@@ -42,18 +42,29 @@ export function createHorizonServer(config: StellarConfig): Horizon.Server {
  * place — this is defense in depth, not the primary boundary.
  */
 export function usesPlainHttp(config: StellarConfig): boolean {
-  if (!config.horizonUrl.startsWith("http://")) {
+  return allowsPlainHttp(config.horizonUrl, config.network);
+}
+
+/**
+ * The plain-HTTP boundary itself, taking a URL directly rather than a whole
+ * `StellarConfig` — `soroban-rpc.ts` reuses this exact rule for `config.rpcUrl`
+ * instead of re-deciding the same two axes (loopback, or the `local` network)
+ * for a second URL field. See {@link usesPlainHttp} for the reasoning; this is
+ * that same boundary, generalised over which validated URL it is applied to.
+ */
+export function allowsPlainHttp(url: string, network: StellarNetwork): boolean {
+  if (!url.startsWith("http://")) {
     return false;
   }
 
-  if (config.network === STELLAR_LOCAL_NETWORK) {
+  if (network === STELLAR_LOCAL_NETWORK) {
     return true;
   }
 
-  return isLoopbackHost(safeHostname(config.horizonUrl));
+  return isLoopbackHost(safeHostname(url));
 }
 
-/** `config.horizonUrl` was already validated by `stellar-config.ts`, so a parse failure here is unreachable in practice — this is a defensive fallback, not a new validation path. */
+/** The URL was already validated by `stellar-config.ts`, so a parse failure here is unreachable in practice — this is a defensive fallback, not a new validation path. */
 function safeHostname(url: string): string {
   try {
     return new URL(url).hostname;
