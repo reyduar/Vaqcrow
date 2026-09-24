@@ -13,6 +13,7 @@
  * so two runs of the suite observe byte-identical responses.
  */
 import { createServer } from "node:http";
+import { resetCampaignFixtures, tryHandleCampaignRequest } from "./stub-campaign-routes.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env["STUB_API_PORT"] ?? 4310);
@@ -93,6 +94,7 @@ async function handle(request, response) {
 
   if (request.method === "POST" && pathname === "/__reset") {
     currentRequest = null;
+    resetCampaignFixtures();
     response.writeHead(204, CORS_HEADERS);
     response.end();
     return;
@@ -129,6 +131,14 @@ async function handle(request, response) {
       decision: { ...body, applicationId, decidedAt: DECIDED_AT, correlationId: CORRELATION_ID }
     });
     return;
+  }
+
+  if (pathname === "/campaigns" || pathname.startsWith("/campaigns/")) {
+    const handled = await tryHandleCampaignRequest(request, response, request.method, pathname, url, {
+      sendJson,
+      readJsonBody
+    });
+    if (handled) return;
   }
 
   sendJson(response, 404, { code: "not_found" });
