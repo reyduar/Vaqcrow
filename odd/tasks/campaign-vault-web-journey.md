@@ -14,6 +14,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 | D4 | La red `local` (Quickstart) sólo se admite con `APP_ENV=local` | El criterio de #237 exige correr el recorrido de forma determinística contra la red local sin abrir la API a redes arbitrarias en la demo |
 | D5 | La bóveda se abre en un paso explícito posterior a la aprobación, idempotente por `salt` derivado de `applicationId` | Separa la decisión humana (auditada) de la operación on-chain; un reintento predice la misma dirección con `predict(salt)` |
 | D7 | La clave pública de la PyME se captura al abrir la bóveda (la PyME conecta Freighter tras la aprobación) y se guarda en el espejo de la campaña | La API no expone `POST /sme-requests` (la web lo llama, pero nada crea `application_review` en producción); elegido por el usuario el 2026-09-24 para mantener #247 acotado. El endpoint de solicitudes queda como seguimiento aparte |
+| D8 | La API firma con la clave operativa de la plataforma sólo en un archivo auditado (`platform-signer.ts`); el escáner de no-custodia de #23 lo admite únicamente ahí y un test fija esa excepción | La garantía de #23 protege que Vaqcrow nunca tenga claves de usuarios; eso no cambia. La plataforma necesita su propia clave para `CreateAccount` y `factory.deploy` (dueña de la fábrica). Elegido por el usuario el 2026-09-24 frente a un script operativo fuera de la API |
 | D6 | El espejo de Supabase se actualiza sólo con hechos leídos de la cadena (`reconcileCampaign`) | La cadena es autoritativa para el dinero (#239) |
 
 ## Configuración
