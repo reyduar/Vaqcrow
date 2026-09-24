@@ -13,6 +13,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 | D3 | La clave secreta de la plataforma entra como variable tipada `Secret` | Mismo patrón que `LLM_API_KEY`; nunca llega a un log |
 | D4 | La red `local` (Quickstart) sólo se admite con `APP_ENV=local` | El criterio de #237 exige correr el recorrido de forma determinística contra la red local sin abrir la API a redes arbitrarias en la demo |
 | D5 | La bóveda se abre en un paso explícito posterior a la aprobación, idempotente por `salt` derivado de `applicationId` | Separa la decisión humana (auditada) de la operación on-chain; un reintento predice la misma dirección con `predict(salt)` |
+| D7 | La clave pública de la PyME se captura al abrir la bóveda (la PyME conecta Freighter tras la aprobación) y se guarda en el espejo de la campaña | La API no expone `POST /sme-requests` (la web lo llama, pero nada crea `application_review` en producción); elegido por el usuario el 2026-09-24 para mantener #247 acotado. El endpoint de solicitudes queda como seguimiento aparte |
 | D6 | El espejo de Supabase se actualiza sólo con hechos leídos de la cadena (`reconcileCampaign`) | La cadena es autoritativa para el dinero (#239) |
 
 ## Configuración
@@ -25,7 +26,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 ## Tareas
 
 - [x] **U1 — Configuración Stellar para Soroban.** Red `local` (sólo `APP_ENV=local`), URL de Soroban RPC, dirección de la fábrica y del token (SAC nativo), clave de plataforma como `Secret`. Ruta: writer delegado.
-- [ ] **U2 — Clave pública de la PyME.** Campo en `packages/contracts`, migración (probada en docker y aplicada al remoto), captura con Freighter en la solicitud. Ruta: writer delegado.
+- [ ] **U2 — Clave pública de la PyME en la campaña.** Columna `sme_account_id` en `campaign` (migración probada en docker y aplicada al remoto), campo en el puerto/adaptador de campaña y esquemas compartidos en `packages/contracts` para abrir la bóveda y para el estado de campaña. La captura con Freighter va en U6 (D7). Ruta: writer delegado.
 - [ ] **U3 — Adaptadores Soroban.** Puertos en `application/`; lector de estado de la bóveda (`state`, `total`, `contribution_of`), constructor+simulación de `contribute`/`withdraw`/`refund`, verificación del XDR firmado y envío/sondeo por RPC. Ruta: writer delegado.
 - [ ] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
 - [ ] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
@@ -34,6 +35,8 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - [ ] **U8 — Documento explicativo en español** (pedido del usuario): qué significa fondear una cuenta, los dos pares de claves y por qué fondea la plataforma. Ruta: inline.
 
 ## Hallazgos
+
+- La web llama a `POST /sme-requests`, pero la API no implementa esa ruta; ninguna ruta de producción crea filas de `application_review`.
 
 - `apps/api/src/index.ts` no cablea hoy las dependencias de `funding-intent`; queda obsoleto con este cambio.
 - Las direcciones de Testnet de #245 valen hasta el reset del 2026-12-16.
