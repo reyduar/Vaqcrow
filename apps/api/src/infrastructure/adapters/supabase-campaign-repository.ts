@@ -123,7 +123,15 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
       if (error) return { ok: false, error: this.toError(error, input.correlationId) };
       if (!data) return this.resolveUnappliedReconciliation(input.campaignId);
 
+      // A zero-stroop entry means "never contributed yet" (an investor who
+      // has only connected, or one who just withdrew/was refunded back to
+      // zero) — there is nothing to mirror, and the table's own
+      // `campaign_contribution_amount_stroops_check` (`amount_stroops > 0`)
+      // refuses the row outright. Writing was previously unconditional here,
+      // so a zero contribution failed the whole reconcile as `unavailable`
+      // (Task #248/T4's live suite against the real schema).
       for (const contribution of input.snapshot.contributions) {
+        if (contribution.amountStroops <= 0n) continue;
         const written = await this.writeContribution(input.campaignId, contribution, input.correlationId);
         if (!written.ok) return written;
       }
