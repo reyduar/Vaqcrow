@@ -1117,6 +1117,7 @@ railway variable set \
 > | `PORT` | No | Default `3000` |
 > | `LOG_LEVEL` | No | Default `info` |
 > | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
+> | `CORS_ALLOWED_ORIGINS` | No | Lista de orígenes exactos separados por coma; default `[]` salvo `APP_ENV=local`. En Railway hay que declarar explícitamente el origen de Vercel — ver [[docs/architecture/environments#8-cors-cors_allowed_origins\|§8 de Perfiles de entorno]] |
 >
 > Correr el contenedor sin configuración falla listando **todas** las claves faltantes de una sola vez, y no imprime ningún valor.
 

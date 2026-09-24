@@ -155,8 +155,8 @@ pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_
 > [!info]
 > Ambos perfiles publican la API en el puerto `3000` y la web en el `3001`: detené el contenedor (`pnpm env:docker:down`) antes de usar `pnpm dev:api:cloud`.
 
-> [!warning] Limitación conocida: CORS
-> La API todavía no habilita CORS y los componentes de la web llaman a la API desde el navegador. Con web (`:3001`) y API (`:3000`) en orígenes distintos, esas llamadas son bloqueadas por el navegador en ambos perfiles hasta que la API declare los orígenes permitidos. La API sí responde por HTTP directo (`curl http://localhost:3000/health`).
+> [!info] CORS
+> La API habilita CORS vía `CORS_ALLOWED_ORIGINS` (lista de orígenes exactos separados por coma). Sin configurar, el perfil docker (`APP_ENV=local`) permite `http://localhost:3001`/`http://127.0.0.1:3001` por default; el perfil cloud (`APP_ENV=demo`) no permite ningún origen hasta declarar explícitamente el de Vercel. Ver [Perfiles de entorno §8](./docs/architecture/environments.md).
 
 ## Desarrollo y calidad
 

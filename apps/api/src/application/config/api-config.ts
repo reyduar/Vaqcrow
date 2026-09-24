@@ -1,5 +1,7 @@
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
+import { parseCorsConfigResult } from "./cors-config.js";
+import type { CorsConfig } from "./cors-config.js";
 import { invalidIssue, missingIssue, readPresent, unsupportedIssue } from "./env-source.js";
 import type { EnvSource } from "./env-source.js";
 import { parseLlmConfigResult } from "./llm-config.js";
@@ -34,6 +36,7 @@ export type ApiConfig = {
   readonly supabase: SupabaseConfig;
   readonly stellar: StellarConfig;
   readonly llm: LlmConfig;
+  readonly cors: CorsConfig;
 };
 
 export function parseApiConfig(env: EnvSource): ApiConfig {
@@ -58,10 +61,19 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...llm.issues);
   }
 
+  // Falls back to a non-"local" sentinel when APP_ENV itself failed to parse,
+  // which resolves to the restrictive empty CORS default — safe, since the
+  // whole call throws below anyway once `environment` is undefined.
+  const cors = parseCorsConfigResult(env, environment ?? "");
+  if (!cors.ok) {
+    issues.push(...cors.issues);
+  }
+
   if (
     !supabase.ok ||
     !stellar.ok ||
     !llm.ok ||
+    !cors.ok ||
     environment === undefined ||
     port === undefined ||
     logLevel === undefined
@@ -75,7 +87,8 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     logLevel,
     supabase: supabase.value,
     stellar: stellar.value,
-    llm: llm.value
+    llm: llm.value,
+    cors: cors.value
   });
 }
 
