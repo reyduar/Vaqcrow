@@ -23,6 +23,20 @@ services:
       # overridden here to reach the host's published Supabase ports
       # instead.
       SUPABASE_URL: http://host.docker.internal:54321
+      # The Stellar local-network profile needs the same host/container
+      # translation (localhost:8000, where contracts/scripts/local-network.sh
+      # binds Quickstart, is not reachable from inside this container
+      # either) — but unlike SUPABASE_URL above, that translation is NOT
+      # safe to apply unconditionally: the default profile here is real
+      # Testnet, and the API's config parser
+      # (apps/api/src/application/config/stellar-config.ts) rejects
+      # `host.docker.internal` for STELLAR_HORIZON_URL/STELLAR_RPC_URL on
+      # that network (only the canonical Testnet host or a loopback address
+      # are accepted there). So this file does NOT override those two
+      # variables — docker-compose.local-network.yml does, and
+      # scripts/local-env.sh only merges it in when `.env.docker` itself
+      # carries STELLAR_NETWORK=local (i.e. after `pnpm env:docker:bootstrap`
+      # + `./scripts/env/generate-docker-env.sh --force`).
     extra_hosts:
       # Docker Desktop resolves this on macOS/Windows; on Linux it needs
       # `host-gateway`, which this maps explicitly so the same compose file
