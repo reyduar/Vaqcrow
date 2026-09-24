@@ -33,6 +33,7 @@ import type {
 const CONFIG: StellarConfig = {
   network: "testnet",
   horizonUrl: "https://horizon-testnet.stellar.org",
+  rpcUrl: "https://soroban-testnet.stellar.org",
   networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE,
   explorerUrl: STELLAR_TESTNET_EXPLORER_URL
 };

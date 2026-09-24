@@ -7,9 +7,15 @@ import {
 } from "./api-config.js";
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
+import { parseCampaignVaultConfig } from "./campaign-vault-config.js";
 import { LOCAL_DEFAULT_CORS_ALLOWED_ORIGINS } from "./cors-config.js";
 import type { EnvSource } from "./env-source.js";
-import { parseStellarConfig, STELLAR_TESTNET_EXPLORER_URL, STELLAR_TESTNET_NETWORK_PASSPHRASE } from "./stellar-config.js";
+import {
+  parseStellarConfig,
+  STELLAR_LOCAL_NETWORK_PASSPHRASE,
+  STELLAR_TESTNET_EXPLORER_URL,
+  STELLAR_TESTNET_NETWORK_PASSPHRASE
+} from "./stellar-config.js";
 import { parseSupabaseConfig } from "./supabase-config.js";
 
 /** A complete, valid environment. Values are synthetic fixtures, not credentials. */
@@ -287,5 +293,68 @@ describe("parseSupabaseConfig — slice independence", () => {
     expect(config.serviceRoleKey.reveal()).toBe("service-role-fixture");
     expect(config.publishableKey?.reveal()).toBe("publishable-fixture");
     expect(JSON.stringify(config)).not.toContain("service-role-fixture");
+  });
+});
+
+describe("parseStellarConfig — standalone entry point reads APP_ENV from the same bag (U1)", () => {
+  it("admits the local network when APP_ENV=local is in the same environment", () => {
+    const config = parseStellarConfig({ APP_ENV: "local", STELLAR_NETWORK: "local" });
+
+    expect(config.network).toBe("local");
+    expect(config.networkPassphrase).toBe(STELLAR_LOCAL_NETWORK_PASSPHRASE);
+    expect(config.horizonUrl).toBe("http://localhost:8000");
+    expect(config.rpcUrl).toBe("http://localhost:8000/rpc");
+    expect(config.explorerUrl).toBeUndefined();
+  });
+
+  it("rejects the local network when APP_ENV is absent", () => {
+    const issue = (() => {
+      try {
+        parseStellarConfig({ STELLAR_NETWORK: "local" });
+      } catch (error) {
+        return (error as ConfigurationError).issues[0];
+      }
+      throw new Error("expected local to be rejected without APP_ENV=local");
+    })();
+
+    expect(issue?.key).toBe("STELLAR_NETWORK");
+    expect(issue?.detail).toContain("APP_ENV=local");
+  });
+});
+
+describe("parseCampaignVaultConfig — slice independence (U1)", () => {
+  const FACTORY_ID = "C" + "A".repeat(55);
+  const PLATFORM_SECRET_KEY = "S" + "A".repeat(55);
+
+  it("is disabled when no campaign vault key is set", () => {
+    expect(parseCampaignVaultConfig({})).toEqual({ enabled: false });
+  });
+
+  it("enables and wraps the platform secret when the factory and the secret are both set", () => {
+    const config = parseCampaignVaultConfig({
+      STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID,
+      STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY
+    });
+
+    expect(config.enabled).toBe(true);
+    if (config.enabled) {
+      expect(config.factoryId).toBe(FACTORY_ID);
+      expect(config.platformSecretKey.reveal()).toBe(PLATFORM_SECRET_KEY);
+      expect(JSON.stringify(config)).not.toContain(PLATFORM_SECRET_KEY);
+    }
+  });
+
+  it("rejects the factory id set without the platform secret", () => {
+    const issue = (() => {
+      try {
+        parseCampaignVaultConfig({ STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID });
+      } catch (error) {
+        return (error as ConfigurationError).issues[0];
+      }
+      throw new Error("expected a lone factory id to be rejected");
+    })();
+
+    expect(issue?.key).toBe("STELLAR_PLATFORM_SECRET_KEY");
+    expect(issue?.code).toBe("missing");
   });
 });

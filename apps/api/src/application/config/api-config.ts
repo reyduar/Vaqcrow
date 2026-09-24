@@ -1,3 +1,5 @@
+import { parseCampaignVaultConfigResult } from "./campaign-vault-config.js";
+import type { CampaignVaultConfig } from "./campaign-vault-config.js";
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import { parseCorsConfigResult } from "./cors-config.js";
@@ -37,6 +39,7 @@ export type ApiConfig = {
   readonly stellar: StellarConfig;
   readonly llm: LlmConfig;
   readonly cors: CorsConfig;
+  readonly campaignVault: CampaignVaultConfig;
 };
 
 export function parseApiConfig(env: EnvSource): ApiConfig {
@@ -51,7 +54,13 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...supabase.issues);
   }
 
-  const stellar = parseStellarConfigResult(env);
+  // Falls back to a non-"local" sentinel when APP_ENV itself failed to parse,
+  // which resolves to the restrictive/closed defaults for both slices below —
+  // safe, since the whole call throws below anyway once `environment` is
+  // undefined. `stellar-config.ts` takes the same plain-string parameter for
+  // the same reason `cors-config.ts` does: a `DeploymentEnvironment` return
+  // edge back to this module would make `no-circular` fail.
+  const stellar = parseStellarConfigResult(env, environment ?? "");
   if (!stellar.ok) {
     issues.push(...stellar.issues);
   }
@@ -61,12 +70,14 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...llm.issues);
   }
 
-  // Falls back to a non-"local" sentinel when APP_ENV itself failed to parse,
-  // which resolves to the restrictive empty CORS default — safe, since the
-  // whole call throws below anyway once `environment` is undefined.
   const cors = parseCorsConfigResult(env, environment ?? "");
   if (!cors.ok) {
     issues.push(...cors.issues);
+  }
+
+  const campaignVault = parseCampaignVaultConfigResult(env);
+  if (!campaignVault.ok) {
+    issues.push(...campaignVault.issues);
   }
 
   if (
@@ -74,6 +85,7 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     !stellar.ok ||
     !llm.ok ||
     !cors.ok ||
+    !campaignVault.ok ||
     environment === undefined ||
     port === undefined ||
     logLevel === undefined
@@ -88,7 +100,8 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     supabase: supabase.value,
     stellar: stellar.value,
     llm: llm.value,
-    cors: cors.value
+    cors: cors.value,
+    campaignVault: campaignVault.value
   });
 }
 
