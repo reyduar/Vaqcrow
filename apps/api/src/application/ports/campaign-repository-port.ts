@@ -6,6 +6,8 @@ export type ReconciliationStatus = "in_sync" | "diverged";
 export interface CampaignRecord {
   readonly campaignId: string;
   readonly applicationId: ApplicationId;
+  /** The SME's own Stellar public key, captured when the vault opens (`D7`). */
+  readonly smeAccountId: string;
   readonly contractAddress: string;
   readonly network: string;
   readonly tokenContractAddress: string;

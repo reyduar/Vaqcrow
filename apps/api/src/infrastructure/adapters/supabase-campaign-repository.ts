@@ -189,6 +189,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     return {
       campaign_id: campaign.campaignId,
       application_id: campaign.applicationId,
+      sme_account_id: campaign.smeAccountId,
       contract_address: campaign.contractAddress,
       network: campaign.network,
       token_contract_address: campaign.tokenContractAddress,
@@ -234,6 +235,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     return {
       campaignId: this.text(value["campaign_id"]),
       applicationId: parseApplicationId(value["application_id"]),
+      smeAccountId: this.text(value["sme_account_id"]),
       contractAddress: this.text(value["contract_address"]),
       network: this.text(value["network"]),
       tokenContractAddress: this.text(value["token_contract_address"]),

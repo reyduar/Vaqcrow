@@ -82,3 +82,36 @@ export type {
 
 export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
+
+export {
+  campaignSnapshotSchema,
+  campaignStateSchema,
+  contractInvocationSchema,
+  contractOperationSchema,
+  nonNegativeStroopsSchema,
+  openCampaignCommandSchema,
+  parseCampaignSnapshot,
+  parseCampaignState,
+  parseContractInvocation,
+  parseContractOperation,
+  parseOpenCampaignCommand,
+  parseReconciliationStatus,
+  parseStellarAccountId,
+  parseStellarContractId,
+  parseSubmitContractInvocationCommand,
+  reconciliationStatusSchema,
+  stellarAccountIdSchema,
+  stellarContractIdSchema,
+  submitContractInvocationCommandSchema
+} from "./campaign.js";
+export type {
+  CampaignSnapshot,
+  CampaignState,
+  ContractInvocation,
+  ContractOperation,
+  OpenCampaignCommand,
+  ReconciliationStatus,
+  StellarAccountId,
+  StellarContractId,
+  SubmitContractInvocationCommand
+} from "./campaign.js";

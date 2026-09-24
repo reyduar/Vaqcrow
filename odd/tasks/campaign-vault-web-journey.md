@@ -26,7 +26,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 ## Tareas
 
 - [x] **U1 — Configuración Stellar para Soroban.** Red `local` (sólo `APP_ENV=local`), URL de Soroban RPC, dirección de la fábrica y del token (SAC nativo), clave de plataforma como `Secret`. Ruta: writer delegado.
-- [ ] **U2 — Clave pública de la PyME en la campaña.** Columna `sme_account_id` en `campaign` (migración probada en docker y aplicada al remoto), campo en el puerto/adaptador de campaña y esquemas compartidos en `packages/contracts` para abrir la bóveda y para el estado de campaña. La captura con Freighter va en U6 (D7). Ruta: writer delegado.
+- [x] **U2 — Clave pública de la PyME en la campaña.** Columna `sme_account_id` en `campaign` (migración probada en docker y aplicada al remoto), campo en el puerto/adaptador de campaña y esquemas compartidos en `packages/contracts` para abrir la bóveda y para el estado de campaña. La captura con Freighter va en U6 (D7). Ruta: writer delegado.
 - [ ] **U3 — Adaptadores Soroban.** Puertos en `application/`; lector de estado de la bóveda (`state`, `total`, `contribution_of`), constructor+simulación de `contribute`/`withdraw`/`refund`, verificación del XDR firmado y envío/sondeo por RPC. Ruta: writer delegado.
 - [ ] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
 - [ ] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
@@ -50,3 +50,10 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - Decisión: `StellarConfig.explorerUrl` es `string | undefined` (indefinido sólo en `local`), porque ni la URL de Horizon ni el explorador de Testnet sirven como explorador de la red local.
 - Revisión del padre: los issues de `STELLAR_PLATFORM_SECRET_KEY` sólo nombran la variable; `local` fuera de `APP_ENV=local` produce `unsupported`.
 - Pendiente del usuario: líneas nuevas en `.env.docker.example` / `.env.cloud.example` (`STELLAR_RPC_URL`, `STELLAR_CAMPAIGN_FACTORY_ID`, `STELLAR_TOKEN_CONTRACT_ID`, `STELLAR_PLATFORM_SECRET_KEY`).
+
+### U2
+- RED: `campaign.test.ts` 46/46 fallando antes de existir el módulo; `tsc --noEmit` con 3 errores al exigir `smeAccountId` en el puerto. GREEN: 46/46; typecheck limpio.
+- Migración `20260924132528_add_campaign_sme_account.sql`: dos ejecuciones locales con exit 0 y 0 errores; columna `NOT NULL` y constraint `campaign_sme_account_id_format_check` presentes.
+- `pnpm run test:db` — 21/21 pgTAP. El writer pasó la descripción de `throws_ok` en la posición del mensaje esperado; el padre lo corrigió con la forma de cuatro argumentos.
+- Remoto: aplicada con `apply_migration` (0 filas en `campaign` verificadas antes). La herramienta registró la versión `20260924132528`; el archivo del repo se renombró a esa versión para que el historial coincida sin escribir en `supabase_migrations`.
+- Paridad: huella `71d51434770fe4801930701d5b14f36f|127` idéntica en local y remoto.
