@@ -28,6 +28,12 @@ dist/
 .env.test.local
 .env.production
 .env.production.local
+# Environment profiles (see docs/architecture/environments.md): the cloud
+# profile (Supabase remote, Railway, Vercel) and the docker profile (local
+# Supabase + API container). Their `.example` templates are NOT matched by
+# these patterns and stay tracked.
+.env.cloud
+.env.docker
 *.pem
 *.key
 *.p12
