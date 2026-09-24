@@ -7,6 +7,7 @@ import {
 } from "./api-config.js";
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
+import { LOCAL_DEFAULT_CORS_ALLOWED_ORIGINS } from "./cors-config.js";
 import type { EnvSource } from "./env-source.js";
 import { parseStellarConfig, STELLAR_TESTNET_EXPLORER_URL, STELLAR_TESTNET_NETWORK_PASSPHRASE } from "./stellar-config.js";
 import { parseSupabaseConfig } from "./supabase-config.js";
@@ -102,6 +103,20 @@ describe("parseApiConfig — accepted configuration", () => {
   it.each(["local", "ci", "preview", "demo"])("accepts the %s environment", (environment) => {
     expect(parseApiConfig({ ...VALID_ENV, APP_ENV: environment }).environment).toBe(environment);
   });
+
+  it("wires the CORS slice, defaulting to the local web origins on APP_ENV=local", () => {
+    expect(parseApiConfig(VALID_ENV).cors.allowedOrigins).toEqual(LOCAL_DEFAULT_CORS_ALLOWED_ORIGINS);
+  });
+
+  it("wires an explicit CORS_ALLOWED_ORIGINS through to the parsed configuration", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      APP_ENV: "demo",
+      CORS_ALLOWED_ORIGINS: "https://vaqcrow-web.example.com"
+    });
+
+    expect(config.cors.allowedOrigins).toEqual(["https://vaqcrow-web.example.com"]);
+  });
 });
 
 describe("parseApiConfig — missing configuration fails clearly", () => {
@@ -189,6 +204,12 @@ describe("parseApiConfig — out-of-scope environments are rejected", () => {
 
   it("rejects a non-absolute Supabase URL", () => {
     expect(issueFor({ ...VALID_ENV, SUPABASE_URL: "fixture.supabase.co" }, "SUPABASE_URL")?.code).toBe(
+      "invalid"
+    );
+  });
+
+  it("rejects a wildcard CORS_ALLOWED_ORIGINS entry", () => {
+    expect(issueFor({ ...VALID_ENV, CORS_ALLOWED_ORIGINS: "*" }, "CORS_ALLOWED_ORIGINS")?.code).toBe(
       "invalid"
     );
   });
