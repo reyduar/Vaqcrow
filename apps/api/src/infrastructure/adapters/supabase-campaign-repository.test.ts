@@ -264,6 +264,38 @@ describe("SupabaseCampaignRepository", () => {
     expect(calls.lte).toContainEqual(["last_observed_at", SNAPSHOT.observedAt]);
   });
 
+  it("never writes a contribution row for a zero-amount entry (nothing contributed yet — Task #248/T4's live suite found this against the real schema: `campaign_contribution_amount_stroops_check` requires `amount_stroops > 0`, so persisting a zero-amount row for an investor who has merely connected and never contributed used to fail the whole reconcile with a check-constraint violation)", async () => {
+    const zeroSnapshot: ChainCampaignSnapshot = {
+      state: "open",
+      totalStroops: 0n,
+      observedAt: "2026-09-23T18:05:00.000Z",
+      contributions: [
+        {
+          investorAccountId: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+          amountStroops: 0n,
+          lastObservedAt: "2026-09-23T18:05:00.000Z"
+        }
+      ]
+    };
+    const { client, calls } = createFakeSupabaseClient([
+      { data: persistedCampaign({ total_stroops: "0", last_reconciled_at: zeroSnapshot.observedAt }), error: null }
+    ]);
+
+    const result = await new SupabaseCampaignRepository(client).reconcile({
+      campaignId: CAMPAIGN_ID,
+      expectedState: "open",
+      snapshot: zeroSnapshot,
+      reconciliationStatus: "in_sync",
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { applied: true } });
+    // Only the `campaign` table is touched — `campaign_contribution` never
+    // sees an insert or an update for the zero-amount entry.
+    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.insert).toEqual([]);
+  });
+
   it("updates a refund contact after a duplicate key without logging its PII", async () => {
     const contact = {
       campaignId: CAMPAIGN_ID,

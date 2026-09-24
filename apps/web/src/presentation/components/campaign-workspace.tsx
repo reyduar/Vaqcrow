@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input, Label } from "@heroui/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -100,6 +100,19 @@ export function CampaignWorkspace({
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState<string | undefined>();
   const [refundTarget, setRefundTarget] = useState("");
+
+  // `Date.now()` is impure and may not be called during render (React's own
+  // purity rule) — `now` is tracked as state instead, refreshed on a timer
+  // while the campaign is still open. This is also what makes the deadline
+  // gate below reactive in production: nobody has to reload the page for
+  // the refund button to appear once the deadline actually passes.
+  const [now, setNow] = useState(() => Date.now());
+  const campaignState = campaign?.state;
+  useEffect(() => {
+    if (campaignState !== "funding") return;
+    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(timer);
+  }, [campaignState]);
 
   const walletStatus = (
     <p aria-live="polite" className="text-sm">
@@ -204,7 +217,15 @@ export function CampaignWorkspace({
 
   const canContribute = campaign.state === "funding";
   const canWithdraw = campaign.state === "funding";
-  const canRefund = campaign.state === "refunding";
+  // The contract enters `Refunding` only on the *first* `refund`/`sweep` call
+  // after the deadline — there is no on-chain scheduler, so nothing flips the
+  // chain-observed `state` on its own (`contracts/campaign-vault/src/lib.rs`,
+  // `ensure_refundable`). Gating the form on `state === "refunding"` alone
+  // would make that first, permissionless call unreachable from the web
+  // forever: nobody would ever see a refund button to press. Once the
+  // deadline has passed, the contract accepts `refund` from any signer even
+  // while it still reports `funding` (found and fixed under #248/T4).
+  const canRefund = campaign.state === "refunding" || (campaign.state === "funding" && now >= Date.parse(campaign.deadline));
 
   const handleContribute = (event: React.FormEvent) => {
     event.preventDefault();

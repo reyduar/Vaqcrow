@@ -85,6 +85,29 @@ describe("CampaignWorkspace: opening the vault", () => {
   });
 });
 
+describe("CampaignWorkspace: the SME account blocked state", () => {
+  it("shows the blocked-precondition message on the open panel and never renders the campaign view", async () => {
+    const openCampaign = vi
+      .fn()
+      .mockRejectedValue(new HttpClientError("http", 422, undefined, "sme_account_unavailable"));
+    const gateway = createGateway({ openCampaign });
+    const onCampaignOpened = vi.fn();
+    render(
+      <CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={null} onCampaignOpened={onCampaignOpened} />
+    );
+    await connect();
+
+    fireEvent.change(screen.getByLabelText(/Meta/), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/Fecha límite/), { target: { value: "2026-12-01" } });
+    fireEvent.click(screen.getByRole("button", { name: /Abrir bóveda/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no se abrió/i);
+    expect(onCampaignOpened).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: /Abrir bóveda de campaña/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Fondeo abierto|Meta alcanzada|Reembolso disponible/)).not.toBeInTheDocument();
+  });
+});
+
 describe("CampaignWorkspace: the three chain states", () => {
   it("renders the funding state and offers contribute and withdraw", async () => {
     const gateway = createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ state: "funding" })) });
@@ -113,6 +136,18 @@ describe("CampaignWorkspace: the three chain states", () => {
 
     expect(await screen.findByText("Reembolso disponible")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reembolsar/ })).toBeInTheDocument();
+  });
+
+  it("offers refund once the deadline has passed even while the chain still reports funding (Task #248/T4: the first permissionless refund enters `Refunding` on-chain; gating the form on state alone would make that first call unreachable from the web forever)", async () => {
+    const gateway = createGateway({
+      getCampaign: vi
+        .fn()
+        .mockResolvedValue(snapshot({ state: "funding", deadline: "2020-01-01T00:00:00.000Z" }))
+    });
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+
+    expect(await screen.findByText("Fondeo abierto")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Reembolsar/ })).toBeInTheDocument();
   });
 });
@@ -167,6 +202,61 @@ describe("CampaignWorkspace: contributing", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no está disponible/i);
+  });
+
+  it("shows a reverted-contribution message and keeps Aportar available, claiming no success", async () => {
+    const getTransaction = vi.fn().mockResolvedValue({ transactionHash: HASH, status: "failed" });
+    const gateway = createGateway({ getTransaction });
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    await connect();
+    await screen.findByText("Fondeo abierto");
+
+    fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).not.toHaveTextContent(/éxito|confirmad/i);
+    expect(screen.getByRole("button", { name: /^Aportar$/ })).toBeEnabled();
+    expect(screen.getByText("Fondeo abierto")).toBeInTheDocument();
+  });
+});
+
+describe("CampaignWorkspace: Freighter absent", () => {
+  it("shows an install/enable Freighter message when connect fails because the wallet is unavailable", async () => {
+    const connectMock = vi.fn().mockRejectedValue(new WalletError("unavailable", "Freighter is not available"));
+    const gateway = createGateway();
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ connect: connectMock })} campaignId={CAMPAIGN_ID} />);
+    await screen.findByText("Fondeo abierto");
+
+    fireEvent.click(screen.getByRole("button", { name: /Conectar wallet/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/instalá o habilitá freighter/i);
+  });
+});
+
+describe("CampaignWorkspace: the live funding-to-settled transition", () => {
+  it("removes Aportar/Retirar and shows the settled copy on the same rendered section, without remounting", async () => {
+    const settled = snapshot({ state: "settled", totalStroops: 50000000n });
+    const getTransaction = vi
+      .fn()
+      .mockResolvedValue({ transactionHash: HASH, status: "success", campaign: settled });
+    const gateway = createGateway({ getTransaction });
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    await connect();
+    await screen.findByText("Fondeo abierto");
+
+    const sectionBefore = screen.getByRole("region", { name: "Bóveda de campaña" });
+
+    fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+
+    expect(await screen.findByText("Meta alcanzada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Retirar mi aporte/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/ya no acepta aportes/i)).toBeInTheDocument();
+
+    const sectionAfter = screen.getByRole("region", { name: "Bóveda de campaña" });
+    expect(sectionAfter).toBe(sectionBefore);
   });
 });
 

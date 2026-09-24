@@ -14,6 +14,7 @@
     "test:db": "supabase test db --local supabase/tests",
     "test:e2e": "turbo run test:e2e",
     "test:e2e:install": "pnpm --filter @vaqcrow/web run test:e2e:install",
+    "test:e2e:live": "pnpm --filter @vaqcrow/web run test:e2e:live",
     "boundaries": "depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs",
     "test:boundaries": "vitest run",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",

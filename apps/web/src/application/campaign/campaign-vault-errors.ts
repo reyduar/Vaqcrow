@@ -8,15 +8,19 @@ import { WalletError } from "@/application/ports/wallet-port";
  * `FundingSubmitErrorKind` does: both reach the person through the same
  * contribute/withdraw/refund controls. `not_funding` is its own kind (not
  * folded into `refused`) because the workspace reacts to it by hiding the
- * contribute control, not just showing an error; `refused` covers every
- * other 409/422 the backend can answer (`application_not_approved`,
- * `sme_account_unavailable`, `vault_state_mismatch`, a signature the chain
- * rejected, or a submitted transaction that settled `failed`).
+ * contribute control, not just showing an error; `sme_account_unavailable`
+ * is its own kind too, because it is a blocked pre-condition before the
+ * vault ever opens — the PyME's Stellar account could not be created or
+ * verified, so nothing was deployed and no funds moved — and must never read
+ * like a failed payout. `refused` covers every other 409/422 the backend can
+ * answer (`application_not_approved`, `vault_state_mismatch`, a signature
+ * the chain rejected, or a submitted transaction that settled `failed`).
  */
 export type CampaignVaultErrorKind =
   | "validation"
   | "not_found"
   | "not_funding"
+  | "sme_account_unavailable"
   | "refused"
   | "unavailable"
   | "network"
@@ -38,6 +42,8 @@ const MESSAGES: Readonly<Record<CampaignVaultErrorKind, string>> = {
   not_found: "No se encontró la campaña en el servicio.",
   not_funding:
     "La bóveda ya no acepta aportes: la cadena confirma que salió del estado de fondeo. Actualizá la vista.",
+  sme_account_unavailable:
+    "No se pudo crear ni verificar la cuenta de la PyME en Stellar: la bóveda no se abrió, no se desplegó nada y no se movieron fondos. Podés reintentar.",
   refused:
     "El servicio rechazó la operación. No se registró nada; revisá el estado de la campaña y volvé a intentar.",
   unavailable: "El servicio no está disponible en este momento. No se registró nada; podés reintentar.",
@@ -77,7 +83,9 @@ export function toCampaignVaultError(error: unknown): CampaignVaultError {
     case 409:
       return campaignVaultErrorOfKind(error.errorCode === "campaign_not_funding" ? "not_funding" : "refused");
     case 422:
-      return campaignVaultErrorOfKind("refused");
+      return campaignVaultErrorOfKind(
+        error.errorCode === "sme_account_unavailable" ? "sme_account_unavailable" : "refused"
+      );
     case 503:
       return campaignVaultErrorOfKind("unavailable");
     default:

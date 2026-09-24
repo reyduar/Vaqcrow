@@ -141,3 +141,32 @@ pnpm env:docker:up                            # levanta el contenedor de la API 
 
 > [!tip] Estado del perfil
 > `pnpm env:docker:status` (`scripts/local-env.sh status`) imprime si `.env.docker` quedó en `local` o `testnet`, sin imprimir ninguna clave.
+
+## 12. Recorrido Playwright en vivo (`pnpm test:e2e:live`)
+
+> [!info] Objetivo
+> Manejar la página real de fondeo contra la API del perfil docker (con la red local del §11 ya arriba) en vez del doble determinístico — cuenta real de la PyME, contrato real, Horizon real. Es **opt-in**, no forma parte de `pnpm run test:e2e`, de `pnpm run verify` ni de CI: se corre a mano, cuando hace falta verificar el recorrido contra la cadena, del mismo modo que `test:integration` de `apps/api` ([[README|README]], `CLAUDE.md`).
+
+**Requisitos previos** (§11, en orden): `pnpm env:docker:bootstrap` → `./scripts/env/generate-docker-env.sh --force` → `pnpm env:docker:up`. `apps/web/e2e-live/support/global-setup.ts` falla rápido, con esas mismas instrucciones en el mensaje, si la API (`/health`), el RPC de Soroban (`getHealth`) o las rutas de campaña no responden.
+
+```bash
+pnpm run test:e2e:live                       # desde la raíz
+pnpm --filter @vaqcrow/web run test:e2e:live # equivalente, filtrado al workspace
+```
+
+**Qué cubre:**
+
+| Escenario | Qué verifica |
+|---|---|
+| Abrir la bóveda | Freighter emulado conecta como la PyME (sin firmar nada); la vista de campaña queda en `Fondeo abierto`; Horizon confirma que la cuenta de la PyME existe después de abrir |
+| Aportar y retirar | Un inversor aporta y retira su propio aporte; el total de la campaña y el saldo del inversor en Horizon reflejan cada paso |
+| Liquidar | Un aporte que alcanza la meta deja la bóveda en `Meta alcanzada` sin controles de aporte; el saldo de la PyME en Horizon sube exactamente el monto de la meta |
+| Reembolsar tras el plazo | Con un plazo de ~25 s, un inversor aporta por debajo de la meta; tras esperar el plazo, una wallet **distinta** dispara el reembolso permissionless a favor del primer inversor; el estado pasa a `Reembolso disponible` y el saldo del inversor reembolsado sube en Horizon |
+
+> [!warning] Sólo el primer escenario abre la bóveda por el panel real
+> La página real (`apps/web/src/app/(demo)/funding/page.tsx`) nunca reemplaza el `applicationId` fijo de `CampaignWorkspace`, así que **todo** open por UI apunta a la misma aplicación demo — y `openCampaign` es idempotente por aplicación, de modo que un segundo submit del panel sólo adopta la campaña que ya exista ahí. Sólo el escenario de apertura ejercita "Abrir bóveda"; los otros tres abren su propia campaña con `POST /campaigns` directo (misma ruta real, sin pasar por el navegador) y manejan aportar/retirar/reembolsar siempre por la página real — el mismo patrón que ya usa `apps/web/e2e/campaign-vault.spec.ts` para su propio fixture de reembolso.
+
+> [!warning] Firma sin salir del proceso de Playwright
+> `apps/web/src` nunca puede importar `@stellar/stellar-sdk` (regla `web-never-imports-server-stellar-sdk`). `apps/web/e2e-live/support/freighter-live-emulator.ts` emula el mismo protocolo `postMessage` de Freighter que el doble determinístico, pero el paso `SUBMIT_TRANSACTION` llama a un puente `page.exposeFunction("vaqcrowLiveSign", …)`: la página manda el XDR sin firmar y la clave pública, y la firma real ocurre en el proceso de Node de Playwright (`apps/web/e2e-live/support/identities.ts`, `Keypair.random()` de la Stellar CLI SDK, fondeadas con Friendbot). La clave privada nunca cruza al navegador.
+
+No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts`'s guard contra hosts externos, `apps/web/playwright.config.ts` y `pnpm run test:e2e` (17 tests, `testDir: "./e2e"`) no cambian. `apps/web/e2e-live/` vive fuera del glob que `tests/testing-and-ci-gates.test.ts` recorre, y `apps/web/playwright.live.config.ts` es una configuración separada, nunca referenciada por `turbo.json`, `.github/workflows/ci.yml` ni `pnpm run verify`.
