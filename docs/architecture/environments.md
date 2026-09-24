@@ -89,11 +89,20 @@ No se debe usar la base local como sustituto de la actualización remota.
 - Las variables de la plataforma cloud (Railway para la API, Vercel para la web) viven en sus paneles respectivos, no en `.env.cloud` — `.env.cloud` es para desarrollo local contra el proyecto remoto, no el mecanismo de despliegue. Ver [[docs/architecture/deploy-planning#7-secretos-y-variables-de-entorno|§7 de Deploy Planning]].
 - `.env.cloud` y `.env.docker` los crea y edita la persona operadora; ninguna sesión de agente los lee, escribe ni mueve (regla global `deny`).
 
-## 8. Nota sobre Stellar
+## 8. CORS (`CORS_ALLOWED_ORIGINS`)
+
+`CORS_ALLOWED_ORIGINS` es opcional: lista de orígenes exactos separados por coma (`https://a.example.com,https://b.example.com`), sin rutas, query, hash, credenciales ni `*`. Sin la variable:
+
+- Perfil docker (`APP_ENV=local`): permite `http://localhost:3001` y `http://127.0.0.1:3001` — cubre la web del contenedor sin configuración extra.
+- Perfil cloud (`APP_ENV=demo` u otro entorno no `local`): no permite ningún origen.
+
+Cuando la variable está seteada, la lista explícita reemplaza el default en todo entorno, incluido `local`. Para el perfil cloud hay que declarar el origen de Vercel; si además se corre la web en local contra `pnpm dev:api:cloud`, agregar `http://localhost:3001` a la lista.
+
+## 9. Nota sobre Stellar
 
 `contracts/scripts/local-network.sh` levanta el Stellar Quickstart en Docker para el desarrollo de contratos (Rust/`soroban-sdk`) — es una red determinística y aislada, no un sustituto de Testnet para la evidencia de la demo. `apps/api`, en cambio, mantiene `STELLAR_NETWORK=testnet` incluso en el perfil docker: el parser de configuración sólo acepta `"testnet"`, y desde #250 U4 la API no tiene ningún consumidor Stellar en runtime — conectarla al Quickstart local queda diferido a [#237](https://github.com/reyduar/Vaqcrow/issues/237).
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 > [!warning] `host.docker.internal` no resuelve
 > En Linux, Docker no define `host.docker.internal` por defecto. `docker-compose.local.yml` lo mapea explícitamente con `extra_hosts: ["host.docker.internal:host-gateway"]`, así que si falla, confirmá que tu Docker Engine soporta `host-gateway` (Docker Desktop en macOS/Windows lo resuelve nativamente).
