@@ -105,24 +105,42 @@ export async function openCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
-  const accountReady = await ensureSmeAccount(deps.accounts, command.smeAccountId);
-  if (!accountReady) {
-    return { ok: false, error: { code: "sme_account_unavailable" } };
-  }
+  // A previous attempt may have deployed on-chain and failed afterwards (a
+  // poll timeout, a chain read, the mirror write). The mirror then has no
+  // row, but the vault already lives at the predicted address, and a second
+  // `deploy` with the same salt can never succeed. So the chain is probed
+  // first: an existing vault is adopted, only `not_found` leads to a deploy,
+  // and any other answer stops here rather than risk a blind deploy.
+  const probe = await deps.chain.readCampaign(predicted.value);
 
-  const deployed = await deps.factory.deploy({
-    salt,
-    smeAccountId: command.smeAccountId,
-    tokenContractId: deps.tokenContractId,
-    goalStroops: command.goalStroops,
-    deadline: command.deadline
-  });
-
-  if (!deployed.ok) {
+  if (!probe.ok && probe.error.code !== "not_found") {
     return { ok: false, error: { code: "unavailable" } };
   }
 
-  const chainState = await deps.chain.readCampaign(deployed.value.contractAddress);
+  let contractAddress = predicted.value;
+
+  if (!probe.ok) {
+    const accountReady = await ensureSmeAccount(deps.accounts, command.smeAccountId);
+    if (!accountReady) {
+      return { ok: false, error: { code: "sme_account_unavailable" } };
+    }
+
+    const deployed = await deps.factory.deploy({
+      salt,
+      smeAccountId: command.smeAccountId,
+      tokenContractId: deps.tokenContractId,
+      goalStroops: command.goalStroops,
+      deadline: command.deadline
+    });
+
+    if (!deployed.ok) {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+
+    contractAddress = deployed.value.contractAddress;
+  }
+
+  const chainState = await deps.chain.readCampaign(contractAddress);
   if (!chainState.ok) {
     return { ok: false, error: { code: "unavailable" } };
   }
@@ -136,7 +154,7 @@ export async function openCampaign(
       campaignId: randomUUID(),
       applicationId: command.applicationId,
       smeAccountId: command.smeAccountId,
-      contractAddress: deployed.value.contractAddress,
+      contractAddress,
       network: deps.network,
       tokenContractAddress: deps.tokenContractId,
       goalStroops: chainState.value.goalStroops,
@@ -160,8 +178,8 @@ export async function openCampaign(
  * Idempotent per application (D5): `SHA-256(applicationId)` is the same
  * 32-byte input `factory.predict`/`factory.deploy` build a `BytesN<32>`
  * argument from every time this application opens its vault, so a retry
- * after a partial failure lands on the same deterministic address instead of
- * deploying a second vault.
+ * after a partial failure probes the same deterministic address and adopts
+ * the vault already deployed there instead of attempting a second deploy.
  */
 function deriveSalt(applicationId: ApplicationId): Uint8Array {
   return new Uint8Array(createHash("sha256").update(applicationId).digest());

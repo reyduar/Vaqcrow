@@ -155,11 +155,17 @@ function fundingChainState(overrides: Partial<VaultChainState> = {}): VaultChain
   };
 }
 
+/**
+ * The first `readCampaign` is the pre-deploy probe at the predicted address:
+ * by default no vault lives there yet (`not_found`), so the use case deploys
+ * and every later read returns `readCampaign`.
+ */
 function chain(
-  readCampaign: CampaignVaultChainResult<VaultChainState> = { ok: true, value: fundingChainState() }
+  readCampaign: CampaignVaultChainResult<VaultChainState> = { ok: true, value: fundingChainState() },
+  probe: CampaignVaultChainResult<VaultChainState> = { ok: false, error: { code: "not_found" } }
 ): CampaignVaultChainPort {
   return {
-    readCampaign: vi.fn().mockResolvedValue(readCampaign),
+    readCampaign: vi.fn().mockResolvedValueOnce(probe).mockResolvedValue(readCampaign),
     readContribution: vi.fn()
   };
 }
@@ -225,6 +231,44 @@ describe("openCampaign", () => {
     expect(factoryPort.deploy).not.toHaveBeenCalled();
   });
 
+  it("resumes a vault already deployed at the predicted address instead of deploying again", async () => {
+    // A previous attempt deployed on-chain but failed before the mirror write:
+    // the retry must adopt that vault, because a second deploy with the same
+    // salt can never succeed.
+    const factoryPort = factory();
+    const campaignsPort = campaigns();
+
+    const result = await openCampaign(
+      deps({
+        factory: factoryPort,
+        campaigns: campaignsPort,
+        chain: chain({ ok: true, value: fundingChainState() }, { ok: true, value: fundingChainState() })
+      }),
+      { command: command(), correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { applied: true } });
+    expect(factoryPort.deploy).not.toHaveBeenCalled();
+    expect(campaignsPort.calls.create[0]).toMatchObject({
+      campaign: expect.objectContaining({ contractAddress: CONTRACT_ADDRESS })
+    });
+  });
+
+  it("never deploys when the pre-deploy probe cannot tell whether a vault already exists", async () => {
+    const factoryPort = factory();
+
+    const result = await openCampaign(
+      deps({
+        factory: factoryPort,
+        chain: chain({ ok: true, value: fundingChainState() }, { ok: false, error: { code: "unavailable" } })
+      }),
+      { command: command(), correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(factoryPort.deploy).not.toHaveBeenCalled();
+  });
+
   it("creates the SME account when it does not exist yet, then re-verifies before deploying", async () => {
     const accountsPort = accounts([{ ok: true, value: false }, { ok: true, value: true }]);
     const factoryPort = factory();
@@ -258,8 +302,14 @@ describe("openCampaign", () => {
   it("never writes the mirror before reading the deployed vault back from the chain", async () => {
     const calls: string[] = [];
     const readCampaignResult: CampaignVaultChainResult<VaultChainState> = { ok: true, value: fundingChainState() };
+    const probeResult: CampaignVaultChainResult<VaultChainState> = { ok: false, error: { code: "not_found" } };
+    let reads = 0;
     const chainPort: CampaignVaultChainPort = {
       readCampaign: vi.fn(async () => {
+        reads += 1;
+        if (reads === 1) {
+          return probeResult;
+        }
         calls.push("chain.readCampaign");
         return readCampaignResult;
       }),
