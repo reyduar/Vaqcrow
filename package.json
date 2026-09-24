@@ -22,6 +22,7 @@
     "env:docker:up": "./scripts/local-env.sh up",
     "env:docker:down": "./scripts/local-env.sh down",
     "env:docker:status": "./scripts/local-env.sh status",
+    "env:docker:bootstrap": "./contracts/scripts/bootstrap-local-campaign.sh",
     "dev:api:cloud": "pnpm --filter @vaqcrow/api run dev:cloud",
     "dev:web:docker": "pnpm --filter @vaqcrow/web run dev:docker",
     "dev:web:cloud": "pnpm --filter @vaqcrow/web run dev:cloud"

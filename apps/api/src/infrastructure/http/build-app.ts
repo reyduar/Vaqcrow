@@ -5,6 +5,8 @@ import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
+import { registerCampaignRoute } from "./routes/campaign.route.js";
+import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
@@ -22,6 +24,7 @@ export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly assessment?: AssessmentRouteDependencies;
+  readonly campaign?: CampaignRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
@@ -54,6 +57,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.assessment) {
     registerAssessmentRoute(app, dependencies.assessment);
+  }
+  if (dependencies.campaign) {
+    registerCampaignRoute(app, dependencies.campaign);
   }
   return app;
 }

@@ -3,18 +3,24 @@ import {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,
+  contractInvocationSubmissionSchema,
+  contractInvocationTransactionStatusSchema,
   contractOperationSchema,
   nonNegativeStroopsSchema,
   openCampaignCommandSchema,
   parseCampaignSnapshot,
   parseCampaignState,
   parseContractInvocation,
+  parseContractInvocationSubmission,
+  parseContractInvocationTransactionStatus,
   parseContractOperation,
   parseOpenCampaignCommand,
+  parsePrepareContractInvocationCommand,
   parseReconciliationStatus,
   parseStellarAccountId,
   parseStellarContractId,
   parseSubmitContractInvocationCommand,
+  prepareContractInvocationCommandSchema,
   reconciliationStatusSchema,
   stellarAccountIdSchema,
   stellarContractIdSchema,
@@ -209,18 +215,204 @@ describe("contractInvocationSchema", () => {
   });
 });
 
-describe("submitContractInvocationCommandSchema", () => {
-  it("parses a signed envelope", () => {
-    expect(parseSubmitContractInvocationCommand({ signedXdr: "AAAAAgAAAABfakeSignedEnvelope" })).toEqual({
-      signedXdr: "AAAAAgAAAABfakeSignedEnvelope"
-    });
+const VALID_OTHER_ACCOUNT_ID = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBQ";
+
+const validContribute = {
+  operation: "contribute",
+  investorAccountId: VALID_SME_ACCOUNT_ID,
+  sourceAccountId: null,
+  amountStroops: "5000000"
+};
+
+const validWithdraw = {
+  operation: "withdraw",
+  investorAccountId: VALID_SME_ACCOUNT_ID,
+  sourceAccountId: VALID_SME_ACCOUNT_ID,
+  amountStroops: null
+};
+
+const validRefund = {
+  operation: "refund",
+  investorAccountId: VALID_SME_ACCOUNT_ID,
+  sourceAccountId: VALID_OTHER_ACCOUNT_ID,
+  amountStroops: null
+};
+
+describe("prepareContractInvocationCommandSchema", () => {
+  it("parses a well-formed contribute command with amountStroops", () => {
+    const parsed = parsePrepareContractInvocationCommand(validContribute);
+    expect(parsed.amountStroops).toBe(5_000_000n);
+    expect(parsed.sourceAccountId).toBeNull();
   });
 
-  it("rejects an empty signed envelope", () => {
-    expect(submitContractInvocationCommandSchema.safeParse({ signedXdr: "" }).success).toBe(false);
+  it("parses a well-formed withdraw command with no amount and a matching source", () => {
+    const parsed = parsePrepareContractInvocationCommand(validWithdraw);
+    expect(parsed.amountStroops).toBeNull();
+    expect(parsed.sourceAccountId).toBe(VALID_SME_ACCOUNT_ID);
+  });
+
+  it("parses a refund command with any source account", () => {
+    const parsed = parsePrepareContractInvocationCommand(validRefund);
+    expect(parsed.sourceAccountId).toBe(VALID_OTHER_ACCOUNT_ID);
+  });
+
+  it("parses a refund command with no source at all", () => {
+    const parsed = parsePrepareContractInvocationCommand({ ...validRefund, sourceAccountId: null });
+    expect(parsed.sourceAccountId).toBeNull();
+  });
+
+  it("rejects a contribute command missing amountStroops", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validContribute, amountStroops: null }).success
+    ).toBe(false);
+  });
+
+  it("rejects a withdraw command that carries amountStroops", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validWithdraw, amountStroops: "1" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a refund command that carries amountStroops", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validRefund, amountStroops: "1" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a contribute command whose source differs from the investor", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validContribute, sourceAccountId: VALID_OTHER_ACCOUNT_ID })
+        .success
+    ).toBe(false);
+  });
+
+  it("rejects a withdraw command whose source differs from the investor", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validWithdraw, sourceAccountId: VALID_OTHER_ACCOUNT_ID })
+        .success
+    ).toBe(false);
+  });
+
+  it("rejects an unrelated operation", () => {
+    expect(
+      prepareContractInvocationCommandSchema.safeParse({ ...validContribute, operation: "deploy" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a missing field", () => {
+    const withoutAmount: Record<string, unknown> = { ...validContribute };
+    delete withoutAmount["amountStroops"];
+    expect(prepareContractInvocationCommandSchema.safeParse(withoutAmount).success).toBe(false);
   });
 
   it("rejects an unknown field", () => {
-    expect(submitContractInvocationCommandSchema.safeParse({ signedXdr: "x", extra: true }).success).toBe(false);
+    expect(prepareContractInvocationCommandSchema.safeParse({ ...validContribute, extra: true }).success).toBe(false);
+  });
+});
+
+describe("submitContractInvocationCommandSchema", () => {
+  it("parses a well-formed contribute submission", () => {
+    const parsed = parseSubmitContractInvocationCommand({ ...validContribute, signedXdr: "AAAAAgAAAABfakeSignedEnvelope" });
+    expect(parsed.amountStroops).toBe(5_000_000n);
+    expect(parsed.signedXdr).toBe("AAAAAgAAAABfakeSignedEnvelope");
+  });
+
+  it("parses a well-formed refund submission with any source", () => {
+    const parsed = parseSubmitContractInvocationCommand({ ...validRefund, signedXdr: "AAAAAgAAAABfakeSignedEnvelope" });
+    expect(parsed.sourceAccountId).toBe(VALID_OTHER_ACCOUNT_ID);
+  });
+
+  it("rejects an empty signed envelope", () => {
+    expect(
+      submitContractInvocationCommandSchema.safeParse({ ...validWithdraw, signedXdr: "" }).success
+    ).toBe(false);
+  });
+
+  it("rejects a contribute submission missing amountStroops", () => {
+    expect(
+      submitContractInvocationCommandSchema.safeParse({
+        ...validContribute,
+        amountStroops: null,
+        signedXdr: "x"
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects a withdraw submission whose source differs from the investor", () => {
+    expect(
+      submitContractInvocationCommandSchema.safeParse({
+        ...validWithdraw,
+        sourceAccountId: VALID_OTHER_ACCOUNT_ID,
+        signedXdr: "x"
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects an unknown field", () => {
+    expect(
+      submitContractInvocationCommandSchema.safeParse({ ...validWithdraw, signedXdr: "x", extra: true }).success
+    ).toBe(false);
+  });
+});
+
+describe("contractInvocationSubmissionSchema", () => {
+  it("parses an accepted submission outcome", () => {
+    expect(
+      parseContractInvocationSubmission({
+        transactionHash: "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
+        status: "accepted"
+      })
+    ).toEqual({
+      transactionHash: "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
+      status: "accepted"
+    });
+  });
+
+  it("rejects any other status", () => {
+    expect(
+      contractInvocationSubmissionSchema.safeParse({ transactionHash: "abc", status: "rejected" }).success
+    ).toBe(false);
+  });
+
+  it("rejects an unknown field", () => {
+    expect(
+      contractInvocationSubmissionSchema.safeParse({
+        transactionHash: "abc",
+        status: "accepted",
+        extra: true
+      }).success
+    ).toBe(false);
+  });
+});
+
+describe("contractInvocationTransactionStatusSchema", () => {
+  it("parses a pending status with no campaign snapshot", () => {
+    const parsed = parseContractInvocationTransactionStatus({ transactionHash: "abc", status: "pending" });
+    expect(parsed.campaign).toBeUndefined();
+  });
+
+  it("parses a success status carrying a fresh campaign snapshot", () => {
+    const parsed = parseContractInvocationTransactionStatus({
+      transactionHash: "abc",
+      status: "success",
+      campaign: validSnapshot
+    });
+    expect(parsed.campaign?.campaignId).toBe(VALID_CAMPAIGN_ID);
+  });
+
+  it("rejects an unrelated status", () => {
+    expect(
+      contractInvocationTransactionStatusSchema.safeParse({ transactionHash: "abc", status: "settled" }).success
+    ).toBe(false);
+  });
+
+  it("rejects an unknown field", () => {
+    expect(
+      contractInvocationTransactionStatusSchema.safeParse({
+        transactionHash: "abc",
+        status: "failed",
+        extra: true
+      }).success
+    ).toBe(false);
   });
 });
