@@ -1,5 +1,6 @@
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
 import { parseApiConfig } from "./application/config/api-config.js";
+import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-client.js";
@@ -29,12 +30,18 @@ const assessmentProvider = createOpenCodeGoProvider({
   timeoutMs: config.llm.timeoutMs
 });
 
+const campaign = buildCampaignDependencies(config, {
+  supabase,
+  applicationReviews: applicationReviewRepository
+});
+
 const app = buildApp({
   applicationReviewRepository,
   assessment: {
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
+  campaign,
   cors: config.cors
 });
 

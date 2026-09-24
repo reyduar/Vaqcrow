@@ -298,4 +298,32 @@ describe("SupabaseCampaignRepository", () => {
     });
     error.mockRestore();
   });
+
+  it("finds the campaign already mirrored for an application, for the open-campaign replay check (D5)", async () => {
+    const { client, calls } = createFakeSupabaseClient([{ data: persistedCampaign(), error: null }]);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: true, value: CAMPAIGN });
+    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.eq).toEqual([["application_id", APPLICATION_ID]]);
+  });
+
+  it("reports not_found for an application that has not opened a campaign yet", async () => {
+    const { client } = createFakeSupabaseClient([{ data: null, error: null }]);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+  });
+
+  it("sanitizes a database failure on findByApplicationId without logging the row or PostgREST message", async () => {
+    const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("42501") }]);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    error.mockRestore();
+  });
 });
