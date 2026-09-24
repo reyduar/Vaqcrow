@@ -31,6 +31,6 @@ El writer delegado se detuvo dos veces sin progreso (watchdog de 600 s) sin escr
 - `gh issue view 24` / `7`: ambos `CLOSED`.
 - Documento: `docs/planning/campaign-persistence-and-reconciliation-evidence.md`.
 
-## Pendiente
+## Decisión: no re-ejecutar la migración en el remoto
 
-Decisión del usuario sobre re-ejecutar la migración contra el remoto; hoy queda declarada como limitación acotada (§5, límite 3).
+Se comparó además `pg_trigger`, `pg_proc` y `pg_policies` en ambos lados (remoto por MCP, sólo lectura): función `set_campaign_updated_at`, los tres triggers de campaña y el heredado de `funding_intent_legacy` presentes en los dos; ninguna política de RLS en ninguno. Con la huella idéntica, el remoto coincide en todas las piezas que crea la migración. El usuario aceptó dejar la re-ejecución remota como limitación acotada (§5, límite 3) y sumar esta comparación a §4.2, entregada en la rama `…-02-parity` tras el merge de #276.

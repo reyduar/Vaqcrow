@@ -56,6 +56,19 @@ Las dos ejecuciones terminan sin error y la huella no cambia: aplicar la migraci
 
 La misma consulta de huella contra el proyecto remoto devolvió **`1733ad43581fb0e008413086dbfc7131` con 125 elementos**, idéntica a la local. El historial remoto (`list_migrations`) incluye `20260923183356 create_campaign_persistence`, la misma versión que el archivo del repositorio.
 
+La huella no incluye triggers, funciones ni políticas de RLS. Se compararon aparte con una consulta sobre `pg_trigger`, `pg_proc` y `pg_policies`, ejecutada en ambos lados (remoto, sólo lectura; local, re-ejecutado), con resultado idéntico:
+
+| Pieza | Local | Remoto |
+|---|---|---|
+| Función `set_campaign_updated_at` (`security_definer=false`) | presente | presente |
+| Triggers `campaign_set_updated_at`, `campaign_contribution_set_updated_at`, `campaign_refund_contact_set_updated_at` | presentes | presentes |
+| Trigger heredado `funding_intent_set_updated_at` en `funding_intent_legacy` | presente | presente |
+| Políticas de RLS en las cuatro tablas | ninguna | ninguna |
+
+La ausencia de políticas es intencional: con RLS habilitada y sin políticas, sólo `service_role`, que omite RLS, accede a las tablas. Es la razón de los `42501` de §4.3.
+
+Con esta comparación, el esquema remoto coincide con el que produce la migración en todas las piezas que crea, por lo que re-ejecutarla en el remoto sólo repetiría la prueba de idempotencia de §4.1 (§5, límite 3).
+
 ### 4.3 RLS y grants con el código de error observado
 
 Grants del proyecto remoto (`information_schema.role_table_grants` y `pg_class.relrowsecurity`), remoto, sólo lectura:
@@ -125,7 +138,7 @@ La reversión elimina las tres tablas de campaña y su función de `updated_at`,
 
 1. **Sin lectura en vivo del contrato.** La divergencia se evidencia con estado observado sembrado, no leyendo la bóveda en Testnet. Lo cierra [#237](https://github.com/reyduar/Vaqcrow/issues/237).
 2. **El adaptador no se ejercitó contra PostgREST en vivo.** Los 7 tests del adaptador usan dobles del cliente Supabase; la persistencia real se evidencia a nivel SQL (§4.4, §4.6). No existe una suite de integración con credenciales para las tablas de campaña.
-3. **Idempotencia contra el proyecto remoto.** La migración se aplicó una vez en el remoto (#256) y no se re-ejecutó allí para esta evidencia, porque sería escribir DDL sobre la base de la demo. La idempotencia está probada en local (§4.1) y la paridad local–remoto por huella idéntica (§4.2).
+3. **Idempotencia contra el proyecto remoto.** La migración se aplicó una vez en el remoto (#256) y no se re-ejecutó allí para esta evidencia, porque sería escribir DDL sobre la base de la demo. La idempotencia está probada en local (§4.1) y la paridad local–remoto por huella idéntica y por la comparación de triggers, función y políticas (§4.2).
 4. **Suite de integración de `funding_intent` rota.** `apps/api/tests/integration/funding-intent-persistence.integration.test.ts` sigue apuntando a `funding_intent` y falla con `PGRST205` desde el renombrado. Es consecuencia esperada del retiro, pero la suite no se retiró ni se actualizó.
 5. **Deriva de versiones de migraciones anteriores.** Las seis migraciones previas a esta Feature figuran en el historial remoto con versiones distintas a las de sus archivos (por ejemplo, `20260918130151` en el remoto frente a `20260918114635_create_application_review.sql`). La de esta Feature coincide. La deriva es anterior a #239 y queda fuera de su alcance.
 
