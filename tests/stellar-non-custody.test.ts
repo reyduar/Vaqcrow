@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -7,6 +7,17 @@ import { describe, expect, it } from "vitest";
 /**
  * Feature #23 promises that no private key path exists: Freighter signs in the
  * browser, and Vaqcrow only ever handles public addresses and transaction XDR.
+ *
+ * That guarantee did not change with the campaign vault (#247, D8): Vaqcrow
+ * still never handles a user's key. What changed is that the *platform*
+ * itself now needs one operational key of its own — it owns the campaign
+ * factory and has to sign `CreateAccount` (funding the SME's own account, D2)
+ * and `factory.deploy()` (opening the vault). That key is not a user's key,
+ * it never leaves the API process, and it is confined to exactly one audited
+ * file, `apps/api/src/infrastructure/adapters/platform-signer.ts`
+ * ({@link PLATFORM_SIGNER_FILES}) — the scan below admits `Keypair.fromSecret`
+ * there and nowhere else, and every other rule (secret-bearing identifiers,
+ * seed literals) stays exactly as strict inside that file too.
  *
  * That is a property of the code rather than of a runtime check, so it is
  * enforced by reading the source. The scan walks the TypeScript AST instead of
@@ -20,10 +31,21 @@ import { describe, expect, it } from "vitest";
  * this file gets no static analysis. Keep it explicit.
  */
 
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
 const APP_SRC_ROOTS = [
   fileURLToPath(new URL("../apps/web/src", import.meta.url)),
   fileURLToPath(new URL("../apps/api/src", import.meta.url))
 ];
+
+/**
+ * The one production file allowed to turn the platform's own `Secret` into a
+ * signing key (D8). Repo-relative, so it reads the same way the `Rama
+ * propuesta` lines in `docs/planning/demo-tasks-list.md` do. Exactly one
+ * entry on purpose: widening this list is a deliberate, reviewable act, never
+ * an accident of a refactor that happens to add a second file.
+ */
+const PLATFORM_SIGNER_FILES: readonly string[] = ["apps/api/src/infrastructure/adapters/platform-signer.ts"];
 
 /**
  * `Keypair` members that create or expose a signing key. `fromPublicKey` is
@@ -64,6 +86,15 @@ export interface Offence {
  */
 export interface ScanOptions {
   readonly allowEphemeralSigners?: boolean;
+  /**
+   * The narrow D8 concession: `Keypair.fromSecret` is not flagged in this one
+   * call. Opt-in per file, exactly like `allowEphemeralSigners` — the caller
+   * decides which file this is true for, `offencesIn` itself trusts nothing
+   * about the `file` name it is given. Every other secret-bearing shape
+   * (an identifier named `secretKey`, a hardcoded seed literal, `Keypair.random`
+   * outside a test) stays flagged even here.
+   */
+  readonly allowPlatformSigner?: boolean;
 }
 
 /** Key material this source text would handle, as code — comments and prose are invisible to it. */
@@ -81,7 +112,11 @@ export function offencesIn(file: string, text: string, options: ScanOptions = {}
       const member = node.name.text;
 
       if (KEYPAIR_SECRET_MEMBERS.has(member) && ts.isIdentifier(node.expression) && node.expression.text === "Keypair") {
-        if (!(options.allowEphemeralSigners && member === "random")) {
+        const allowed =
+          (options.allowEphemeralSigners && member === "random") ||
+          (options.allowPlatformSigner && member === "fromSecret");
+
+        if (!allowed) {
           report(`Keypair.${member}`, node);
         }
       }
@@ -159,6 +194,31 @@ describe("the scanner itself", () => {
     ).toEqual([]);
   });
 
+  it("still flags Keypair.fromSecret outside the platform signer allowlist, ephemeral or not", () => {
+    const code = 'const pair = Keypair.fromSecret("not-a-real-seed");';
+
+    expect(offencesIn("probe.ts", code).some((offence) => offence.detail.includes("Keypair.fromSecret"))).toBe(
+      true
+    );
+    // `allowEphemeralSigners` (a test-file concession) and `allowPlatformSigner`
+    // (a one-file concession) are independent switches: a test file gets no
+    // free pass on `fromSecret` just because it opted in to `Keypair.random()`.
+    expect(
+      offencesIn("probe.test.ts", code, { allowEphemeralSigners: true }).some((offence) =>
+        offence.detail.includes("Keypair.fromSecret")
+      )
+    ).toBe(true);
+  });
+
+  it("allows Keypair.fromSecret only where the caller opts in as the platform signer", () => {
+    const code = "const signingKey = Keypair.fromSecret(platformKey.reveal());";
+
+    expect(offencesIn("platform-signer.ts", code, { allowPlatformSigner: true })).toEqual([]);
+    expect(
+      offencesIn("platform-signer.ts", code).some((offence) => offence.detail.includes("Keypair.fromSecret"))
+    ).toBe(true);
+  });
+
   it("still flags every other key-material shape in a test file", () => {
     // The ephemeral allowance is narrow on purpose: a test is a place a leaked
     // key can hide just as easily as shipped code.
@@ -206,6 +266,18 @@ describe("the scanner itself", () => {
   });
 });
 
+describe("the platform signer allowlist", () => {
+  it("has exactly one entry", () => {
+    expect(PLATFORM_SIGNER_FILES).toHaveLength(1);
+  });
+
+  it("points at a file that actually exists", () => {
+    const [entry] = PLATFORM_SIGNER_FILES;
+    expect(entry).toBeDefined();
+    expect(existsSync(join(REPO_ROOT, entry as string))).toBe(true);
+  });
+});
+
 describe("the scanned surface", () => {
   it("covers the real Stellar sources, so a clean result means something", () => {
     // A scanner pointed at an empty tree reports success too. These two files
@@ -219,10 +291,11 @@ describe("the scanned surface", () => {
 });
 
 describe("no private key path exists", () => {
-  it("handles no key material anywhere in apps/web/src or apps/api/src", () => {
+  it("handles no key material anywhere in apps/web/src or apps/api/src, except the one audited platform signer", () => {
     const offences = APP_SOURCE_FILES.flatMap(({ root, file }) =>
       offencesIn(relative(root, file), readFileSync(file, "utf8"), {
-        allowEphemeralSigners: TEST_FILE.test(file)
+        allowEphemeralSigners: TEST_FILE.test(file),
+        allowPlatformSigner: PLATFORM_SIGNER_FILES.includes(relative(REPO_ROOT, file))
       })
     );
 

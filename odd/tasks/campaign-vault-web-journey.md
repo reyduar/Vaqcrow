@@ -29,7 +29,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - [x] **U1 — Configuración Stellar para Soroban.** Red `local` (sólo `APP_ENV=local`), URL de Soroban RPC, dirección de la fábrica y del token (SAC nativo), clave de plataforma como `Secret`. Ruta: writer delegado.
 - [x] **U2 — Clave pública de la PyME en la campaña.** Columna `sme_account_id` en `campaign` (migración probada en docker y aplicada al remoto), campo en el puerto/adaptador de campaña y esquemas compartidos en `packages/contracts` para abrir la bóveda y para el estado de campaña. La captura con Freighter va en U6 (D7). Ruta: writer delegado.
 - [x] **U3 — Adaptadores Soroban.** Puertos en `application/`; lector de estado de la bóveda (`state`, `total`, `contribution_of`), constructor+simulación de `contribute`/`withdraw`/`refund`, verificación del XDR firmado y envío/sondeo por RPC. Ruta: writer delegado.
-- [ ] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
+- [x] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
 - [ ] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
 - [ ] **U6 — Web de campaña.** Gateway, hook y workspace con los tres estados, aporte, retiro y reembolso sin permisos; copy en español. Ruta: writer delegado.
 - [ ] **U7 — Arranque de la red local.** Script que despliega SAC + fábrica en Quickstart y deja las direcciones para el perfil docker. Ruta: writer delegado.
@@ -67,3 +67,12 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - Nota para U5: la ruta debe pasar siempre `sourceAccountId` en `contribute`/`withdraw` (sólo `refund` lo omite); si no, el control de origen queda abierto.
 - Supuesto sin verificar en red: el enum `State` sin datos se decodifica como `ScVal::U32`; se valida en U7 contra Quickstart.
 - Tamaño: ~1.640 líneas (dos puertos, tres adaptadores y cobertura exhaustiva por rama); excede las 400 del presupuesto sin partición cohesiva menor → se declara en el PR (`size:exception`).
+
+### U4
+- Escáner de no-custodia: `PLATFORM_SIGNER_FILES` con una única entrada (`platform-signer.ts`); `Keypair.fromSecret` sigue prohibido en cualquier otra ruta y los nombres de material secreto siguen prohibidos también ahí. Cabecera reescrita citando D8.
+- `PlatformSigner`: `reveal()` una sola vez en el constructor, clave en campo privado `#signingKey`, sólo expone `publicKey` y `sign()`; `toString`/`toJSON` devuelven un marcador fijo.
+- Puertos `stellar-account-port.ts` y `campaign-factory-port.ts`; `findByApplicationId` en el repositorio de campaña. Adaptadores `stellar-platform-account.ts` (Horizon: existencia vía `loadAccount`, `CreateAccount` con sondeo acotado) y `stellar-campaign-factory.ts` (Soroban RPC: `predict`, `deploy` firmado por la plataforma).
+- Caso de uso `open-campaign.ts`: aprobada → `predict(salt = SHA-256(applicationId))` → replay si ya existe → crear la cuenta de la PyME si falta (2 XLM) y re-verificar → `deploy` → leer la bóveda (debe estar en `funding` y coincidir) → registrar en el espejo.
+- RED→GREEN: escáner 14/14, firmante 5/5, cuenta 8/8, fábrica 7/7, repositorio 10/10, caso de uso 10/10.
+- `pnpm run test:boundaries` 79/79 y `pnpm --filter @vaqcrow/api test` 644/644 (re-ejecutados por el padre); lint, typecheck, boundaries (342 módulos, 0 violaciones), build y `pnpm run verify` verdes según el writer.
+- Tamaño: ~1.700 líneas; mismo `size:exception` que U3.
