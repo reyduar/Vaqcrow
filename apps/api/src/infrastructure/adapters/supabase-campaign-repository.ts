@@ -1,6 +1,6 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { parseApplicationId } from "@vaqcrow/contracts";
-import type { CorrelationId } from "@vaqcrow/contracts";
+import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import type {
   CampaignContributionRecord,
   CampaignRecord,
@@ -58,6 +58,22 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
         .from(CAMPAIGN_TABLE)
         .select()
         .eq("campaign_id", campaignId)
+        .maybeSingle();
+
+      if (error) return { ok: false, error: this.toError(error) };
+      if (!data) return { ok: false, error: { code: "not_found" } };
+      return { ok: true, value: this.toCampaign(data) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async findByApplicationId(applicationId: ApplicationId): Promise<CampaignRepositoryResult<CampaignRecord>> {
+    try {
+      const { data, error } = await this.client
+        .from(CAMPAIGN_TABLE)
+        .select()
+        .eq("application_id", applicationId)
         .maybeSingle();
 
       if (error) return { ok: false, error: this.toError(error) };
@@ -189,6 +205,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     return {
       campaign_id: campaign.campaignId,
       application_id: campaign.applicationId,
+      sme_account_id: campaign.smeAccountId,
       contract_address: campaign.contractAddress,
       network: campaign.network,
       token_contract_address: campaign.tokenContractAddress,
@@ -234,6 +251,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     return {
       campaignId: this.text(value["campaign_id"]),
       applicationId: parseApplicationId(value["application_id"]),
+      smeAccountId: this.text(value["sme_account_id"]),
       contractAddress: this.text(value["contract_address"]),
       network: this.text(value["network"]),
       tokenContractAddress: this.text(value["token_contract_address"]),

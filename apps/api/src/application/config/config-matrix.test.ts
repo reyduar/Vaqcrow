@@ -11,7 +11,13 @@ import type { ConfigIssue } from "./config-issue.js";
 import type { EnvSource } from "./env-source.js";
 import { redactForLog } from "./redaction.js";
 import { REDACTED_MARKER } from "./secret.js";
-import { STELLAR_TESTNET_HORIZON_URL, STELLAR_TESTNET_NETWORK_PASSPHRASE } from "./stellar-config.js";
+import {
+  STELLAR_LOCAL_NETWORK_PASSPHRASE,
+  STELLAR_TESTNET_EXPLORER_URL,
+  STELLAR_TESTNET_HORIZON_URL,
+  STELLAR_TESTNET_NETWORK_PASSPHRASE,
+  STELLAR_TESTNET_RPC_URL
+} from "./stellar-config.js";
 
 /**
  * Exhaustive accept / reject / fallback matrix for the configuration contract,
@@ -152,7 +158,7 @@ describe("closed enumerations", () => {
     expect(issue.detail).toContain("must be one of");
   });
 
-  it.each(["public", "pubnet", "mainnet", "main", "futurenet", "TESTNET", "Testnet", "test-net", "local"])(
+  it.each(["public", "pubnet", "mainnet", "main", "futurenet", "TESTNET", "Testnet", "test-net"])(
     "closes STELLAR_NETWORK against %s",
     (value) => {
       const issue = expectSingleIssue(
@@ -164,6 +170,28 @@ describe("closed enumerations", () => {
       expect(issue.detail).toContain('only "testnet" is supported');
     }
   );
+
+  // `local` is not in the closed set above: it is a conditional member,
+  // admitted only under APP_ENV=local (D4), and covered by its own describe
+  // block below rather than the blanket-rejection matrix.
+});
+
+describe("STELLAR_NETWORK=local (D4)", () => {
+  it("accepts local only when APP_ENV=local", () => {
+    expect(
+      parseApiConfig({ ...VALID_ENV, APP_ENV: "local", STELLAR_NETWORK: "local" }).stellar.network
+    ).toBe("local");
+  });
+
+  it.each(["ci", "preview", "demo"])("rejects STELLAR_NETWORK=local when APP_ENV=%s", (environment) => {
+    const issue = expectSingleIssue(
+      { ...VALID_ENV, APP_ENV: environment, STELLAR_NETWORK: "local" },
+      "STELLAR_NETWORK",
+      "unsupported"
+    );
+
+    expect(issue.detail).toContain("APP_ENV=local");
+  });
 });
 
 describe("defaults and fallbacks", () => {
@@ -252,6 +280,183 @@ describe("defaults and fallbacks", () => {
       expectSingleIssue({ ...VALID_ENV, SUPABASE_URL: supabaseUrl }, "SUPABASE_URL", "invalid");
     }
   );
+});
+
+const LOCAL_ENV: EnvSource = { ...VALID_ENV, APP_ENV: "local", STELLAR_NETWORK: "local" };
+
+describe("Soroban RPC and local-network defaults (U1)", () => {
+  it("defaults the Soroban RPC URL to the Testnet endpoint", () => {
+    expect(parseApiConfig(VALID_ENV).stellar.rpcUrl).toBe(STELLAR_TESTNET_RPC_URL);
+  });
+
+  it("accepts Testnet and loopback Soroban RPC endpoints", () => {
+    for (const rpcUrl of [
+      "https://soroban-testnet.stellar.org",
+      "http://localhost:8000/rpc",
+      "http://127.0.0.1:8000/rpc"
+    ]) {
+      expect(parseApiConfig({ ...VALID_ENV, STELLAR_RPC_URL: rpcUrl }).stellar.rpcUrl).toBe(rpcUrl);
+    }
+  });
+
+  it.each(["https://soroban.stellar.org", "https://evil.example.com"])(
+    "refuses a Soroban RPC endpoint that is not Testnet or loopback: %s",
+    (rpcUrl) => {
+      expectSingleIssue({ ...VALID_ENV, STELLAR_RPC_URL: rpcUrl }, "STELLAR_RPC_URL", "unsupported");
+    }
+  );
+
+  it("refuses plain http against the canonical Testnet RPC host", () => {
+    expectSingleIssue(
+      { ...VALID_ENV, STELLAR_RPC_URL: "http://soroban-testnet.stellar.org" },
+      "STELLAR_RPC_URL",
+      "invalid"
+    );
+  });
+
+  it("defaults the local-network Horizon and RPC URLs to Quickstart's loopback ports", () => {
+    const config = parseApiConfig(LOCAL_ENV);
+
+    expect(config.stellar.horizonUrl).toBe("http://localhost:8000");
+    expect(config.stellar.rpcUrl).toBe("http://localhost:8000/rpc");
+  });
+
+  it("accepts an arbitrary absolute http(s) local Horizon/RPC URL, including a non-loopback host", () => {
+    // The API container reaches Quickstart via `host.docker.internal`, which is
+    // not a loopback spelling `isLoopbackHost` recognises — the local network is
+    // not closed to a host the way Testnet is.
+    const config = parseApiConfig({
+      ...LOCAL_ENV,
+      STELLAR_HORIZON_URL: "http://host.docker.internal:8000",
+      STELLAR_RPC_URL: "http://host.docker.internal:8000/rpc"
+    });
+
+    expect(config.stellar.horizonUrl).toBe("http://host.docker.internal:8000");
+    expect(config.stellar.rpcUrl).toBe("http://host.docker.internal:8000/rpc");
+  });
+
+  it.each(["/horizon", "not a url"])("refuses a non-absolute local Horizon URL: %s", (horizonUrl) => {
+    expectSingleIssue({ ...LOCAL_ENV, STELLAR_HORIZON_URL: horizonUrl }, "STELLAR_HORIZON_URL", "invalid");
+  });
+
+  it.each(["/rpc", "not a url"])("refuses a non-absolute local RPC URL: %s", (rpcUrl) => {
+    expectSingleIssue({ ...LOCAL_ENV, STELLAR_RPC_URL: rpcUrl }, "STELLAR_RPC_URL", "invalid");
+  });
+
+  it("resolves the local passphrase to the Standalone Network constant", () => {
+    expect(parseApiConfig(LOCAL_ENV).stellar.networkPassphrase).toBe(STELLAR_LOCAL_NETWORK_PASSPHRASE);
+  });
+});
+
+describe("explorer URL on the local network (U1 — decision in the report)", () => {
+  it("leaves the explorer URL undefined when none is configured", () => {
+    expect(parseApiConfig(LOCAL_ENV).stellar.explorerUrl).toBeUndefined();
+  });
+
+  it("accepts an explicit local explorer URL", () => {
+    expect(
+      parseApiConfig({ ...LOCAL_ENV, STELLAR_EXPLORER_URL: "http://localhost:8001" }).stellar.explorerUrl
+    ).toBe("http://localhost:8001");
+  });
+
+  it("still defaults the Testnet explorer URL for the testnet network", () => {
+    expect(parseApiConfig(VALID_ENV).stellar.explorerUrl).toBe(STELLAR_TESTNET_EXPLORER_URL);
+  });
+});
+
+describe("campaign vault configuration slice (U1)", () => {
+  const FACTORY_ID = "C" + "A".repeat(55);
+  const TOKEN_CONTRACT_ID = "C" + "B".repeat(55);
+  const PLATFORM_SECRET_KEY = "S" + "A".repeat(55);
+
+  it("is disabled by default when none of the campaign vault keys are set", () => {
+    expect(parseApiConfig(VALID_ENV).campaignVault).toEqual({ enabled: false });
+  });
+
+  it("enables the slice once the factory and the platform secret are both set", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID,
+      STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY
+    });
+
+    expect(config.campaignVault.enabled).toBe(true);
+    if (config.campaignVault.enabled) {
+      expect(config.campaignVault.factoryId).toBe(FACTORY_ID);
+      expect(config.campaignVault.tokenContractId).toBeUndefined();
+      expect(config.campaignVault.platformSecretKey.reveal()).toBe(PLATFORM_SECRET_KEY);
+    }
+  });
+
+  it("carries the optional token contract id through when set", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID,
+      STELLAR_TOKEN_CONTRACT_ID: TOKEN_CONTRACT_ID,
+      STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY
+    });
+
+    expect(config.campaignVault.enabled).toBe(true);
+    if (config.campaignVault.enabled) {
+      expect(config.campaignVault.tokenContractId).toBe(TOKEN_CONTRACT_ID);
+    }
+  });
+
+  it("rejects the factory id set alone, naming the platform secret as required together", () => {
+    expectSingleIssue(
+      { ...VALID_ENV, STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID },
+      "STELLAR_PLATFORM_SECRET_KEY",
+      "missing"
+    );
+  });
+
+  it("rejects the platform secret set alone, naming the factory id as required together", () => {
+    expectSingleIssue(
+      { ...VALID_ENV, STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY },
+      "STELLAR_CAMPAIGN_FACTORY_ID",
+      "missing"
+    );
+  });
+
+  it.each(["not-a-contract", "C" + "A".repeat(54), "G" + "A".repeat(55)])(
+    "rejects a malformed STELLAR_CAMPAIGN_FACTORY_ID: %s",
+    (factoryId) => {
+      expectSingleIssue(
+        { ...VALID_ENV, STELLAR_CAMPAIGN_FACTORY_ID: factoryId, STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY },
+        "STELLAR_CAMPAIGN_FACTORY_ID",
+        "invalid"
+      );
+    }
+  );
+
+  it.each(["not-a-secret", "S" + "A".repeat(54), "G" + "A".repeat(55)])(
+    "rejects a malformed STELLAR_PLATFORM_SECRET_KEY: %s",
+    (malformedValue) => {
+      expectSingleIssue(
+        { ...VALID_ENV, STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID, STELLAR_PLATFORM_SECRET_KEY: malformedValue },
+        "STELLAR_PLATFORM_SECRET_KEY",
+        "invalid"
+      );
+    }
+  );
+
+  it("never echoes the platform secret in the failure message or in JSON", () => {
+    const message = catchConfigError({
+      ...VALID_ENV,
+      STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID,
+      STELLAR_PLATFORM_SECRET_KEY: "invalid-secret"
+    }).message;
+
+    expect(message).not.toContain("invalid-secret");
+
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      STELLAR_CAMPAIGN_FACTORY_ID: FACTORY_ID,
+      STELLAR_PLATFORM_SECRET_KEY: PLATFORM_SECRET_KEY
+    });
+
+    expect(JSON.stringify(config)).not.toContain(PLATFORM_SECRET_KEY);
+  });
 });
 
 describe("determinism and purity", () => {

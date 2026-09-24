@@ -11,10 +11,12 @@ const CAMPAIGN_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
 const OBSERVED_AT = "2026-09-23T18:00:00.000Z";
+const SME_ACCOUNT_ID = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
 const CAMPAIGN: CampaignRecord = {
   campaignId: CAMPAIGN_ID,
   applicationId: APPLICATION_ID,
+  smeAccountId: SME_ACCOUNT_ID,
   contractAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
   network: "testnet",
   tokenContractAddress: "CBFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFZ",
@@ -125,6 +127,7 @@ function persistedCampaign(overrides: Readonly<Record<string, unknown>> = {}): R
   return {
     campaign_id: CAMPAIGN.campaignId,
     application_id: CAMPAIGN.applicationId,
+    sme_account_id: CAMPAIGN.smeAccountId,
     contract_address: CAMPAIGN.contractAddress,
     network: CAMPAIGN.network,
     token_contract_address: CAMPAIGN.tokenContractAddress,
@@ -155,6 +158,7 @@ describe("SupabaseCampaignRepository", () => {
       {
         campaign_id: CAMPAIGN.campaignId,
         application_id: CAMPAIGN.applicationId,
+        sme_account_id: CAMPAIGN.smeAccountId,
         contract_address: CAMPAIGN.contractAddress,
         network: "testnet",
         token_contract_address: CAMPAIGN.tokenContractAddress,
@@ -292,6 +296,34 @@ describe("SupabaseCampaignRepository", () => {
       code: "42501",
       correlationId: undefined
     });
+    error.mockRestore();
+  });
+
+  it("finds the campaign already mirrored for an application, for the open-campaign replay check (D5)", async () => {
+    const { client, calls } = createFakeSupabaseClient([{ data: persistedCampaign(), error: null }]);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: true, value: CAMPAIGN });
+    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.eq).toEqual([["application_id", APPLICATION_ID]]);
+  });
+
+  it("reports not_found for an application that has not opened a campaign yet", async () => {
+    const { client } = createFakeSupabaseClient([{ data: null, error: null }]);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+  });
+
+  it("sanitizes a database failure on findByApplicationId without logging the row or PostgREST message", async () => {
+    const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("42501") }]);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     error.mockRestore();
   });
 });

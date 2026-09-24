@@ -54,6 +54,7 @@ import { buildApp } from "./build-app.js";
 const CONFIG: StellarConfig = {
   network: "testnet",
   horizonUrl: "https://horizon-testnet.stellar.org",
+  rpcUrl: "https://soroban-testnet.stellar.org",
   networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE,
   explorerUrl: "https://stellar.expert/explorer/testnet"
 };
@@ -358,7 +359,10 @@ async function harness(options: {
       },
       repository,
       network: { network: "testnet", networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE },
-      explorerBaseUrl: CONFIG.explorerUrl,
+      // `CONFIG` is a fixed testnet fixture above, so `explorerUrl` is always
+      // defined; the type is `string | undefined` only because the `local`
+      // network (U1) has no canonical explorer.
+      explorerBaseUrl: CONFIG.explorerUrl as string,
       generateIntentId: () => parseFundingIntentId(generateCorrelationId())
     }
   });
