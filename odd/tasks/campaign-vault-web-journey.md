@@ -127,3 +127,17 @@ Comprobaciones del padre (datos sintéticos sólo en red y base locales; identid
 Observación para #248: tras un aporte legítimo, la primera reconciliación marca `diverged` (el espejo va un paso atrás de la cadena, semántica heredada de #239) y la lectura siguiente vuelve a `in_sync`. No es un error, pero registra como anomalía un desfase esperado; conviene distinguir "espejo desactualizado por un hecho nuevo" de "divergencia".
 
 No ejercitado todavía en red: `withdraw`, `refund` sin permisos tras el plazo y la firma real con Freighter en el navegador (quedan para #248).
+
+## Entrega (cadena apilada a `main`)
+
+| PR | Rama | Commits |
+|---|---|---|
+| [#278](https://github.com/reyduar/Vaqcrow/pull/278) | base | `5737359` (U1), `9743035` (D7) |
+| [#279](https://github.com/reyduar/Vaqcrow/pull/279) | `-02-sme-account` | `39e3651` (U2) |
+| [#280](https://github.com/reyduar/Vaqcrow/pull/280) | `-03-soroban-adapters` | `1ceb9d1` (U3), `9938784` (D8) |
+| [#281](https://github.com/reyduar/Vaqcrow/pull/281) | `-04-open-vault` | `77e8711` (U4), `0eb6f0d` (corrección), `cd2c546` |
+| [#282](https://github.com/reyduar/Vaqcrow/pull/282) | `-05-http-routes` | `a4cc763` (U5) |
+| [#283](https://github.com/reyduar/Vaqcrow/pull/283) | `-06-web-workspace` | `5fa7568` (U6) |
+| [#284](https://github.com/reyduar/Vaqcrow/pull/284) | `-07-local-bootstrap` | `5a5da30` (U7), `e307bce` (U8), `f683e3e` (evidencia), este registro — `Closes #247` |
+
+Orden de merge estricto de abajo hacia arriba; tras cada merge, confirmar que el PR siguiente quedó con base `main` antes de mergearlo (lección de #273/#274 → #275). La revisión de la rama acumulada no pudo correr (`lens_context_budget_exceeded`, 8.865 líneas): la cobertura es la de cada slice.
