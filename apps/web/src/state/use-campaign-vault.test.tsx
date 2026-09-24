@@ -113,6 +113,25 @@ describe("useCampaignVault: opening the vault", () => {
     expect(result.current.campaign?.campaignId).toBe(CAMPAIGN_ID);
   });
 
+  it("reports the SME account being unavailable as a blocked pre-open state, not a payout failure", async () => {
+    const openCampaign = vi
+      .fn()
+      .mockRejectedValue(new HttpClientError("http", 422, undefined, "sme_account_unavailable"));
+    const gateway = createGateway({ openCampaign });
+    const { result } = await renderConnected(gateway, createWallet(), null);
+
+    await act(async () => {
+      await result.current.openCampaign({
+        applicationId: APPLICATION_ID,
+        goalStroops: "50000000",
+        deadline: "2026-12-01T00:00:00.000Z"
+      });
+    });
+
+    expect(result.current.error?.kind).toBe("sme_account_unavailable");
+    expect(result.current.campaign).toBeUndefined();
+  });
+
   it("refuses to open before the SME connects a wallet", async () => {
     const gateway = createGateway();
     const { result } = renderHook(() => useCampaignVault(gateway, createWallet(), null, { pollIntervalMs: 0 }));
@@ -217,6 +236,19 @@ describe("useCampaignVault: contributing", () => {
       await first;
     });
     expect(gateway.submitInvocation).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a reverted contribution (poll status failed) as refused, without leaving the campaign stuck loading", async () => {
+    const getTransaction = vi.fn().mockResolvedValue({ transactionHash: HASH, status: "failed" });
+    const gateway = createGateway({ getTransaction });
+    const { result } = await renderConnected(gateway, createWallet());
+
+    await act(() => result.current.contribute("15000000"));
+
+    expect(result.current.error?.kind).toBe("refused");
+    // The chain-observed snapshot is unchanged (still funding): nothing claims the contribution succeeded.
+    expect(result.current.campaign?.state).toBe("funding");
+    expect(result.current.isSubmitting).toBe(false);
   });
 
   it("reports a bounded poll timeout as unavailable, without hanging forever", async () => {

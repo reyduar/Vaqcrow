@@ -39,6 +39,12 @@ describe("toCampaignVaultError", () => {
     expect(toCampaignVaultError(new HttpClientError("http", 422, undefined, "rejected")).kind).toBe("refused");
   });
 
+  it("maps a 422 sme_account_unavailable to its own blocked kind, not refused", () => {
+    expect(toCampaignVaultError(new HttpClientError("http", 422, undefined, "sme_account_unavailable")).kind).toBe(
+      "sme_account_unavailable"
+    );
+  });
+
   it("maps 503 to unavailable", () => {
     expect(toCampaignVaultError(new HttpClientError("http", 503)).kind).toBe("unavailable");
   });
@@ -55,5 +61,11 @@ describe("toCampaignVaultError", () => {
     const error = campaignVaultErrorOfKind("wallet_network_mismatch");
     expect(error.message.length).toBeGreaterThan(0);
     expect(error.message).not.toContain("Freighter is on");
+  });
+
+  it("authors the SME-account-unavailable message as a pre-open blocked state, never as a failed payout", () => {
+    const error = campaignVaultErrorOfKind("sme_account_unavailable");
+    expect(error.message).toMatch(/no se abrió/i);
+    expect(error.message).not.toMatch(/pago|payout|rechazó la operación/i);
   });
 });
