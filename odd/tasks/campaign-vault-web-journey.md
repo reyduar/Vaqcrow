@@ -76,3 +76,6 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - RED→GREEN: escáner 14/14, firmante 5/5, cuenta 8/8, fábrica 7/7, repositorio 10/10, caso de uso 10/10.
 - `pnpm run test:boundaries` 79/79 y `pnpm --filter @vaqcrow/api test` 644/644 (re-ejecutados por el padre); lint, typecheck, boundaries (342 módulos, 0 violaciones), build y `pnpm run verify` verdes según el writer.
 - Tamaño: ~1.700 líneas; mismo `size:exception` que U3.
+- Revisión RDD (lente de confiabilidad): `correction_required` con un hallazgo CRITICAL válido, `R3-open-campaign-retry-not-idempotent` — tras un deploy confirmado y una falla posterior, el reintento no encontraba fila en el espejo y redeployaba con el mismo `salt`, fallando para siempre. Corrección en `0eb6f0d`: sonda de la dirección predicha antes del deploy (adopta la bóveda existente; `not_found` → deploy; otra respuesta → `unavailable` sin desplegar). RED: 2 tests nuevos + 4 ajustados fallando; GREEN: 12/12 y API 646/646.
+- Plan de corrección declarado: 80 líneas; corrección real: 104 (presupuesto congelado 200).
+- Tras la corrección, el STATUS vinculado devolvió el estado terminal `captured_artifacts_unverifiable` (lineage `review-1bf004b35f589d76`). Pendiente de decisión del usuario.
