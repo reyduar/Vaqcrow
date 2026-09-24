@@ -1,5 +1,12 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The funding page keeps its campaign id in `?campaign=` through the App
+// Router; these renders have no router mounted and never navigate.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: () => undefined }),
+  useSearchParams: () => new URLSearchParams()
+}));
 import AiAssessmentPage from "./ai-assessment/page";
 import ApprovalPage from "./approval/page";
 import DistributionPage from "./distribution/page";

@@ -31,7 +31,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - [x] **U3 — Adaptadores Soroban.** Puertos en `application/`; lector de estado de la bóveda (`state`, `total`, `contribution_of`), constructor+simulación de `contribute`/`withdraw`/`refund`, verificación del XDR firmado y envío/sondeo por RPC. Ruta: writer delegado.
 - [x] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
 - [x] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
-- [ ] **U6 — Web de campaña.** Gateway, hook y workspace con los tres estados, aporte, retiro y reembolso sin permisos; copy en español. Ruta: writer delegado.
+- [x] **U6 — Web de campaña.** Gateway, hook y workspace con los tres estados, aporte, retiro y reembolso sin permisos; copy en español. Ruta: writer delegado.
 - [ ] **U7 — Arranque de la red local.** Script que despliega SAC + fábrica en Quickstart y deja las direcciones para el perfil docker. Ruta: writer delegado.
 - [ ] **U8 — Documento explicativo en español** (pedido del usuario): qué significa fondear una cuenta, los dos pares de claves y por qué fondea la plataforma. Ruta: inline.
 
@@ -88,3 +88,10 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - RED→GREEN: contratos 21 fallos → 325/325; rutas 31 fallos → 34/34 (dos errores de fixtures corregidos). Desvío: `campaign-dependencies` (5 tests) se escribió junto con la implementación tras el corte por límite de uso.
 - El writer se cortó una vez por límite de uso de la sesión (HTTP 429) y se retomó con su contexto.
 - `pnpm --filter @vaqcrow/api test` 685/685 y `pnpm run test:boundaries` 79/79 (re-ejecutados por el padre); lint, typecheck, boundaries (345 módulos, 0 violaciones), build y `pnpm run verify` verdes según el writer.
+
+### U6
+- Puerto `campaign-gateway.ts` + adaptador HTTP (parsea con `@vaqcrow/contracts`), hook `use-campaign-vault.ts` (preparar → firmar con Freighter y guarda de red → enviar → sondeo acotado → refresco), `campaign-workspace.tsx` con apertura de campaña (la PyME conecta Freighter; D7), estados `Funding`/`Settled`/`Refunding` desde la API, aporte sólo en `funding`, retiro y reembolso sin permisos para cualquier dirección. `funding/page.tsx` usa el nuevo workspace y guarda el id en `?campaign=`.
+- El writer se detuvo por el watchdog (600 s sin progreso) mientras corría la suite web con la máquina cargada (load ~39); el padre completó la verificación y corrigió:
+  - Lint `react-hooks`: `setState` síncrono en el effect de carga → carga con cancelación, escritura de estado sólo al llegar la respuesta y `isLoadingCampaign` derivado de la clave cargada.
+  - Mocks de `next/navigation` en `trust-disclosures.integration.test.tsx` y `prohibited-terms.test.tsx` (la página ahora usa `useRouter`/`useSearchParams`).
+- `pnpm --filter @vaqcrow/web test` 73 archivos, 454/454; `pnpm run test:boundaries` 79/79; lint y typecheck sin errores; `pnpm --filter @vaqcrow/web build` verde; `pnpm run test:e2e` 8/8 (todo re-ejecutado por el padre). `pnpm run boundaries`: 360 módulos, 0 violaciones.

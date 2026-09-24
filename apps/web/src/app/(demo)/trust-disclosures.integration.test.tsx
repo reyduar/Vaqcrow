@@ -29,7 +29,11 @@ import EvidencePage from "./evidence/page";
  * canonical copy it verifies.
  */
 vi.mock("next/navigation", async () => ({
-  usePathname: (await import("@/test/route-harness")).useHarnessPathname
+  usePathname: (await import("@/test/route-harness")).useHarnessPathname,
+  // The funding page keeps its campaign id in `?campaign=`; these routes
+  // render with no query and never navigate.
+  useRouter: () => ({ replace: () => undefined }),
+  useSearchParams: () => new URLSearchParams()
 }));
 vi.mock("next/link", async () => ({
   default: (await import("@/test/route-harness")).HarnessLink
