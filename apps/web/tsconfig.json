@@ -9,5 +9,14 @@
     "plugins": [{ "name": "next" }],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src/**/*", "e2e/**/*.ts", "playwright.config.ts", "vitest.setup.ts", "next-env.d.ts", ".next/types/**/*.ts"]
+  "include": [
+    "src/**/*",
+    "e2e/**/*.ts",
+    "e2e-live/**/*.ts",
+    "playwright.config.ts",
+    "playwright.live.config.ts",
+    "vitest.setup.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ]
 }
