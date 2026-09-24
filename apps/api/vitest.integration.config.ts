@@ -19,6 +19,14 @@ export default defineConfig(({ mode }) => ({
     fileParallelism: false,
     // Vitest does not read non-`VITE_`-prefixed vars from `.env` into
     // `process.env` automatically — load them explicitly from the repo root.
+    //
+    // `mode` selects the environment profile file: `--mode docker` (the
+    // `test:integration:docker` script, and the default `test:integration`)
+    // loads `.env.docker`; `--mode cloud` (`test:integration:cloud`) loads
+    // `.env.cloud`. See docs/architecture/environments.md. Vite's own
+    // layering (`.env`, `.env.local`, then `.env.<mode>[.local]`) still
+    // applies, but this repo no longer keeps a root `.env.local` — the file
+    // that used to hold these credentials is now `.env.cloud`.
     env: loadEnv(mode, repoRoot, "")
   }
 }));

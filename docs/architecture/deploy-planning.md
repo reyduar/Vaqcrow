@@ -303,7 +303,7 @@ tests
 ```
 
 > [!warning] Por qué no es opcional
-> Docker mide el contexto de build con `.dockerignore`, no con `.gitignore`. Medido en este repositorio: `apps/web/.next` pesa **495 MB**, así que sin este archivo cada deploy subiría ~500 MB de build de Next que la imagen de la API nunca usa. Y `.env.local` está en el árbol de trabajo: cualquier `COPY` amplio futuro filtraría secretos a la imagen.
+> Docker mide el contexto de build con `.dockerignore`, no con `.gitignore`. Medido en este repositorio: `apps/web/.next` pesa **495 MB**, así que sin este archivo cada deploy subiría ~500 MB de build de Next que la imagen de la API nunca usa. Y `.env.cloud`/`.env.docker` están en el árbol de trabajo (ver [perfiles de entorno](./environments.md)): cualquier `COPY` amplio futuro filtraría secretos a la imagen.
 
 ---
 
@@ -1080,6 +1080,9 @@ jobs:
 
 ## 7. Secretos y Variables de Entorno
 
+> [!info] Desarrollo local vs. variables de plataforma
+> Esta sección cubre las variables como las setea la **plataforma** (Railway, Vercel). Para desarrollo local contra el proyecto remoto o contra Supabase en Docker, ver [[docs/architecture/environments|Perfiles de entorno]] (`.env.cloud` / `.env.docker`).
+
 ### Railway (API)
 
 > [!warning] Secretos
@@ -1114,6 +1117,7 @@ railway variable set \
 > | `PORT` | No | Default `3000` |
 > | `LOG_LEVEL` | No | Default `info` |
 > | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
+> | `CORS_ALLOWED_ORIGINS` | No | Lista de orígenes exactos separados por coma; default `[]` salvo `APP_ENV=local`. En Railway hay que declarar explícitamente el origen de Vercel — ver [[docs/architecture/environments#8-cors-cors_allowed_origins\|§8 de Perfiles de entorno]] |
 >
 > Correr el contenedor sin configuración falla listando **todas** las claves faltantes de una sola vez, y no imprime ningún valor.
 

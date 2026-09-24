@@ -94,4 +94,69 @@ describe("buildApp", () => {
     expect(correlationIdSchema.safeParse(capturedRequestId).success).toBe(true);
     expect(response.headers["x-correlation-id"]).toBe(capturedRequestId);
   });
+
+  describe("CORS", () => {
+    const ALLOWED_ORIGIN = "https://vaqcrow-web.example.com";
+    const DISALLOWED_ORIGIN = "https://not-allowed.example.com";
+
+    it("answers a preflight for an allowed origin with 204 and the matching allow-origin header", async () => {
+      app = buildApp({ cors: { allowedOrigins: [ALLOWED_ORIGIN] } });
+
+      const response = await app.inject({
+        method: "OPTIONS",
+        url: "/health",
+        headers: {
+          origin: ALLOWED_ORIGIN,
+          "access-control-request-method": "GET"
+        }
+      });
+
+      expect(response.statusCode).toBe(204);
+      expect(response.headers["access-control-allow-origin"]).toBe(ALLOWED_ORIGIN);
+    });
+
+    it("sets the allow-origin and exposed-headers on an ordinary request from an allowed origin", async () => {
+      app = buildApp({ cors: { allowedOrigins: [ALLOWED_ORIGIN] } });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/health",
+        headers: { origin: ALLOWED_ORIGIN }
+      });
+
+      expect(response.headers["access-control-allow-origin"]).toBe(ALLOWED_ORIGIN);
+      expect(response.headers["access-control-expose-headers"]).toContain("x-correlation-id");
+    });
+
+    it("omits the allow-origin header for a disallowed origin", async () => {
+      app = buildApp({ cors: { allowedOrigins: [ALLOWED_ORIGIN] } });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/health",
+        headers: { origin: DISALLOWED_ORIGIN }
+      });
+
+      expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+    });
+
+    it("registers no CORS handling at all when no cors option is given", async () => {
+      app = buildApp();
+
+      const getResponse = await app.inject({
+        method: "GET",
+        url: "/health",
+        headers: { origin: ALLOWED_ORIGIN }
+      });
+      const preflightResponse = await app.inject({
+        method: "OPTIONS",
+        url: "/health",
+        headers: { origin: ALLOWED_ORIGIN, "access-control-request-method": "GET" }
+      });
+
+      expect(getResponse.headers["access-control-allow-origin"]).toBeUndefined();
+      // With no CORS plugin registered, OPTIONS is not a route Fastify knows about.
+      expect(preflightResponse.statusCode).toBe(404);
+    });
+  });
 });

@@ -1,0 +1,41 @@
+# Docker-profile local stack (see docs/architecture/environments.md).
+#
+# Builds apps/api's production image against the local Supabase stack the
+# `supabase` CLI already manages (see scripts/local-env.sh). This compose
+# file owns only the API container: Supabase and the Stellar Quickstart
+# network are started separately, through their own CLIs, because both are
+# already-established, independently versioned tools this repository does
+# not want to re-wrap.
+name: vaqcrow-local-stack
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    env_file:
+      - .env.docker
+    environment:
+      # 127.0.0.1 inside this container is the container itself, not the
+      # Docker Desktop host running `supabase start` — so the value baked
+      # into .env.docker (meant for the API running on the host) is
+      # overridden here to reach the host's published Supabase ports
+      # instead.
+      SUPABASE_URL: http://host.docker.internal:54321
+    extra_hosts:
+      # Docker Desktop resolves this on macOS/Windows; on Linux it needs
+      # `host-gateway`, which this maps explicitly so the same compose file
+      # works on both.
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      # node:24-alpine has no curl; BusyBox wget (bundled with Alpine) is
+      # the smallest dependency-free option already in the base image.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped

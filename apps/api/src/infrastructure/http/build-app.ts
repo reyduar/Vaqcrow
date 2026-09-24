@@ -1,3 +1,4 @@
+import cors from "@fastify/cors";
 import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
@@ -21,6 +22,7 @@ export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly assessment?: AssessmentRouteDependencies;
+  readonly cors?: { readonly allowedOrigins: readonly string[] };
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
 
@@ -30,6 +32,15 @@ export function buildApp(dependencies: {
     genReqId: generateCorrelationId
   });
   // load order: ecosystem plugins -> custom plugins -> decorators -> hooks -> routes
+  if (dependencies.cors && dependencies.cors.allowedOrigins.length > 0) {
+    const allowedOrigins = [...dependencies.cors.allowedOrigins];
+    void app.register(cors, {
+      origin: allowedOrigins,
+      methods: ["GET", "POST", "OPTIONS"],
+      exposedHeaders: ["x-correlation-id"],
+      credentials: false
+    });
+  }
   app.addHook("onRequest", (request, reply, done) => {
     reply.header("x-correlation-id", request.id);
     done();

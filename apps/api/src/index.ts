@@ -34,7 +34,8 @@ const app = buildApp({
   assessment: {
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
-  }
+  },
+  cors: config.cors
 });
 
 await app.listen({ port: config.port, host: "0.0.0.0" });

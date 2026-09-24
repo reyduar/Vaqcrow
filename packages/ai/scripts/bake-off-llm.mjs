@@ -17,7 +17,7 @@
  * Usage (build first, so `dist/` exists):
  *
  *   pnpm run build
- *   node --env-file=.env.local packages/ai/scripts/bake-off-llm.mjs
+ *   node --env-file=.env.cloud packages/ai/scripts/bake-off-llm.mjs
  *
  * Environment:
  *   LLM_API_KEY          required — never printed.
@@ -110,7 +110,7 @@ async function main() {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) {
     console.error(
-      "LLM_API_KEY is not set. Run with: node --env-file=.env.local packages/ai/scripts/bake-off-llm.mjs"
+      "LLM_API_KEY is not set. Run with: node --env-file=.env.cloud packages/ai/scripts/bake-off-llm.mjs"
     );
     process.exitCode = 1;
     return;
