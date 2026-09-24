@@ -30,7 +30,7 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - [x] **U2 — Clave pública de la PyME en la campaña.** Columna `sme_account_id` en `campaign` (migración probada en docker y aplicada al remoto), campo en el puerto/adaptador de campaña y esquemas compartidos en `packages/contracts` para abrir la bóveda y para el estado de campaña. La captura con Freighter va en U6 (D7). Ruta: writer delegado.
 - [x] **U3 — Adaptadores Soroban.** Puertos en `application/`; lector de estado de la bóveda (`state`, `total`, `contribution_of`), constructor+simulación de `contribute`/`withdraw`/`refund`, verificación del XDR firmado y envío/sondeo por RPC. Ruta: writer delegado.
 - [x] **U4 — Apertura de la bóveda.** Caso de uso: verificar/crear la cuenta de la PyME → `factory.deploy` firmado por la plataforma → `campaign.create` en el espejo. Ruta: writer delegado.
-- [ ] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
+- [x] **U5 — Rutas HTTP de campaña.** Estado (lee cadena + reconcilia), preparar invocación, enviar; cableado en `index.ts`. Ruta: writer delegado.
 - [ ] **U6 — Web de campaña.** Gateway, hook y workspace con los tres estados, aporte, retiro y reembolso sin permisos; copy en español. Ruta: writer delegado.
 - [ ] **U7 — Arranque de la red local.** Script que despliega SAC + fábrica en Quickstart y deja las direcciones para el perfil docker. Ruta: writer delegado.
 - [ ] **U8 — Documento explicativo en español** (pedido del usuario): qué significa fondear una cuenta, los dos pares de claves y por qué fondea la plataforma. Ruta: inline.
@@ -79,3 +79,12 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - Revisión RDD (lente de confiabilidad): `correction_required` con un hallazgo CRITICAL válido, `R3-open-campaign-retry-not-idempotent` — tras un deploy confirmado y una falla posterior, el reintento no encontraba fila en el espejo y redeployaba con el mismo `salt`, fallando para siempre. Corrección en `0eb6f0d`: sonda de la dirección predicha antes del deploy (adopta la bóveda existente; `not_found` → deploy; otra respuesta → `unavailable` sin desplegar). RED: 2 tests nuevos + 4 ajustados fallando; GREEN: 12/12 y API 646/646.
 - Plan de corrección declarado: 80 líneas; corrección real: 104 (presupuesto congelado 200).
 - Tras la corrección, el STATUS vinculado devolvió el estado terminal `captured_artifacts_unverifiable` (lineage `review-1bf004b35f589d76`). Pendiente de decisión del usuario.
+
+### U5
+- Esquemas compartidos: `prepareContractInvocationCommandSchema`, `submitContractInvocationCommandSchema` (campos declarados y anulables), refinamiento común (contribute exige monto; withdraw/refund lo prohíben; contribute/withdraw exigen origen nulo o igual al inversor; refund acepta cualquiera), respuesta de envío y estado de transacción.
+- Rutas `campaign.route.ts` (registradas sólo con dependencias): `POST /campaigns` (201/200/404/409/422/503/400), `GET /campaigns/:id` (lee cadena y reconcilia; 503 si la cadena no responde), `POST …/invocations` (409 `campaign_not_funding`), `POST …/invocations/submission` (202; 422 sin detalles internos), `GET …/transactions/:hash`.
+- Composición: `infrastructure/campaign-dependencies.ts` construye las dependencias sólo si la bóveda está habilitada; deriva el SAC nativo con `Asset.native().contractId(networkPassphrase)` si falta `STELLAR_TOKEN_CONTRACT_ID`.
+- Invariante verificado por el padre: el envío verifica con `sourceAccountId = investorAccountId` para contribute/withdraw (`campaign.route.ts:417`), fijado por tests (líneas 549 y 566); refund lo omite.
+- RED→GREEN: contratos 21 fallos → 325/325; rutas 31 fallos → 34/34 (dos errores de fixtures corregidos). Desvío: `campaign-dependencies` (5 tests) se escribió junto con la implementación tras el corte por límite de uso.
+- El writer se cortó una vez por límite de uso de la sesión (HTTP 429) y se retomó con su contexto.
+- `pnpm --filter @vaqcrow/api test` 685/685 y `pnpm run test:boundaries` 79/79 (re-ejecutados por el padre); lint, typecheck, boundaries (345 módulos, 0 violaciones), build y `pnpm run verify` verdes según el writer.
