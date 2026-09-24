@@ -101,7 +101,29 @@ Llevar la bóveda de campaña al recorrido web: abrir la bóveda al aprobar, per
 - `generate-docker-env.sh`: si existe ese archivo, escribe el bloque Stellar local y toma la clave de plataforma del keystore sin imprimirla (revisado por el padre). `docker-compose.local-network.yml` traduce las URLs host→contenedor sólo cuando `.env.docker` es de red local, para no romper el perfil de Testnet.
 - `bash -n` y `shellcheck` sin hallazgos; lint verde; `test:boundaries` 79/79; boundaries 360 módulos, 0 violaciones (según el writer).
 - Nota: el contenedor Quickstart `vaqcrow-local` había terminado con código 137 (probablemente sin memoria bajo carga alta); el bootstrap lo relanza si no responde.
-- Pendiente: verificación end-to-end ejecutada por el usuario (`pnpm env:docker:bootstrap` → `./scripts/env/generate-docker-env.sh --force` → `pnpm env:docker:up`) y comprobación del padre contra el contenedor, incluida la decodificación del enum `State`.
+- Verificación end-to-end (2026-09-24) contra Quickstart y Supabase local, con el contenedor de la API del perfil docker; ver "Verificación end-to-end en red local".
 
 ### U8
 - `docs/architecture/stellar-accounts-and-keys.md` (español): qué es fondear una cuenta, los dos pares de claves, el paso a paso de la apertura, por qué fondea la plataforma y no Friendbot, y cómo se protege la clave de la plataforma. Enlazado desde `environments.md` §11.
+
+## Verificación end-to-end en red local (2026-09-24)
+
+Pasos del usuario: `pnpm env:docker:bootstrap` (fábrica `CAOIRF2GG3NWAWS5HZOLAM5V2RYD7YYL5ZUCBBJCXP5KUJSYSR5JIFDW`, SAC nativo `CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4`, plataforma `GBO2UKUZ4KCI3ELPZLJTT74XFHSH5OWCCGGVWBNVUZCUKC3VFGDV6ZVQ`) → `./scripts/env/generate-docker-env.sh --force` → `pnpm env:docker:up` (exit 0, API healthy).
+
+Comprobaciones del padre (datos sintéticos sólo en red y base locales; identidades de prueba `vaqcrow-demo-sme` sin fondear y `vaqcrow-demo-investor` fondeada, en el keystore del CLI; el CLI firma en lugar de Freighter):
+
+| Paso | Resultado |
+|---|---|
+| Cuenta de la PyME antes de abrir | 404 en Horizon (no existe) |
+| `POST /campaigns` (objetivo 100 XLM) | 201, bóveda `CCFF6HM5GRQCONCCEBNZVC7ULVXV6RQKCMUPLSYRV2UYW63XJMIWYQQE` en `funding`: la decodificación de `State` como `U32` (supuesto de U3) queda validada |
+| Cuenta de la PyME después | existe con 2 XLM (`CreateAccount` de la plataforma antes del deploy) |
+| Repetir `POST /campaigns` | 200, sin redesplegar |
+| Preparar `contribute` 30 XLM → firmar → `submission` | 200 → XDR firmado → 202 `accepted` → `success` |
+| `GET /campaigns/:id?investor=` | `funding`, total 30 XLM, aporte propio 30 XLM |
+| `contribute` 70 XLM (cruza el objetivo) | `success`; estado `settled`, total 100 XLM |
+| Saldo de la PyME | 2 → 102 XLM (pago en la misma transacción) |
+| `contribute` tras liquidar | 409 `campaign_not_funding` |
+
+Observación para #248: tras un aporte legítimo, la primera reconciliación marca `diverged` (el espejo va un paso atrás de la cadena, semántica heredada de #239) y la lectura siguiente vuelve a `in_sync`. No es un error, pero registra como anomalía un desfase esperado; conviene distinguir "espejo desactualizado por un hecho nuevo" de "divergencia".
+
+No ejercitado todavía en red: `withdraw`, `refund` sin permisos tras el plazo y la firma real con Freighter en el navegador (quedan para #248).
