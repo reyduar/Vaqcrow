@@ -138,6 +138,18 @@ describe("CampaignWorkspace: the three chain states", () => {
     expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Reembolsar/ })).toBeInTheDocument();
   });
+
+  it("offers refund once the deadline has passed even while the chain still reports funding (Task #248/T4: the first permissionless refund enters `Refunding` on-chain; gating the form on state alone would make that first call unreachable from the web forever)", async () => {
+    const gateway = createGateway({
+      getCampaign: vi
+        .fn()
+        .mockResolvedValue(snapshot({ state: "funding", deadline: "2020-01-01T00:00:00.000Z" }))
+    });
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+
+    expect(await screen.findByText("Fondeo abierto")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reembolsar/ })).toBeInTheDocument();
+  });
 });
 
 describe("CampaignWorkspace: contributing", () => {
