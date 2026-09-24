@@ -5,20 +5,29 @@
 # from docker-compose.local.yml. See docs/architecture/environments.md.
 #
 # Usage:
-#   ./scripts/local-env.sh up|down|status [--all]
+#   ./scripts/local-env.sh up|down|status|bootstrap [--all]
 #
-#   up      start Supabase, the Quickstart network (if not already healthy),
-#           generate .env.docker if missing, then build and start the api
-#           container.
-#   down    stop the api container and the local Supabase stack. With
-#           --all, also stop the Stellar Quickstart network.
-#   status  print the state of every piece without starting anything.
+#   bootstrap  deploy the campaign vault (factory + native SAC) on the
+#              Stellar local network — thin wrapper around
+#              contracts/scripts/bootstrap-local-campaign.sh. Run this BEFORE
+#              `up` (or before regenerating .env.docker) to opt the docker
+#              profile into the local-network Stellar block instead of
+#              Testnet; see docs/architecture/environments.md §"Bóveda de
+#              campaña en la red local" for the full command order.
+#   up         start Supabase, the Quickstart network (if not already
+#              healthy), generate .env.docker if missing, then build and
+#              start the api container.
+#   down       stop the api container and the local Supabase stack. With
+#              --all, also stop the Stellar Quickstart network.
+#   status     print the state of every piece without starting anything.
 #
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.local.yml"
+LOCAL_NETWORK_COMPOSE_FILE="${REPO_ROOT}/docker-compose.local-network.yml"
 ENV_FILE="${REPO_ROOT}/.env.docker"
+BOOTSTRAP_SCRIPT="${REPO_ROOT}/contracts/scripts/bootstrap-local-campaign.sh"
 QUICKSTART_SCRIPT="${REPO_ROOT}/contracts/scripts/local-network.sh"
 QUICKSTART_PORT="${QUICKSTART_PORT:-8000}"
 API_HEALTH_URL="http://localhost:3000/health"
@@ -57,6 +66,20 @@ api_healthy() {
   curl -sf --max-time 3 "$API_HEALTH_URL" >/dev/null 2>&1
 }
 
+# Only merges docker-compose.local-network.yml when .env.docker itself was
+# generated for the Stellar local-network profile — see that file's header
+# comment for why it is unsafe to merge unconditionally.
+compose_args() {
+  COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+  if [[ -f "$ENV_FILE" ]] && grep -qx 'STELLAR_NETWORK=local' "$ENV_FILE"; then
+    COMPOSE_ARGS+=(-f "$LOCAL_NETWORK_COMPOSE_FILE")
+  fi
+}
+
+bootstrap() {
+  "$BOOTSTRAP_SCRIPT" "$@"
+}
+
 up() {
   require_docker
 
@@ -91,15 +114,16 @@ up() {
     echo "== .env.docker already present, reusing it (pass --force to scripts/env/generate-docker-env.sh to regenerate) =="
   fi
 
+  compose_args
   echo "== building and starting the api container =="
-  docker compose -f "$COMPOSE_FILE" up -d --build
+  docker compose "${COMPOSE_ARGS[@]}" up -d --build
 
   echo "== waiting up to ${API_WAIT_SECONDS}s for ${API_HEALTH_URL} =="
   local waited=0
   until api_healthy; do
     if [[ "$waited" -ge "$API_WAIT_SECONDS" ]]; then
       echo "api never became healthy within ${API_WAIT_SECONDS}s. Last logs:" >&2
-      docker compose -f "$COMPOSE_FILE" logs --tail 60 api >&2
+      docker compose "${COMPOSE_ARGS[@]}" logs --tail 60 api >&2
       exit 1
     fi
     sleep 2
@@ -114,8 +138,9 @@ down() {
     [[ "$arg" == "--all" ]] && all=1
   done
 
+  compose_args
   echo "== stopping the api container =="
-  docker compose -f "$COMPOSE_FILE" down
+  docker compose "${COMPOSE_ARGS[@]}" down
 
   echo "== stopping local Supabase =="
   supabase stop --workdir "$REPO_ROOT"
@@ -127,8 +152,9 @@ down() {
 }
 
 status() {
+  compose_args
   echo "== api container (docker compose ps) =="
-  docker compose -f "$COMPOSE_FILE" ps || true
+  docker compose "${COMPOSE_ARGS[@]}" ps || true
 
   echo
   echo "== local Supabase (service names and URLs only, no keys) =="
@@ -158,14 +184,25 @@ status() {
   else
     echo "not running or not healthy"
   fi
+
+  echo
+  echo "== Stellar profile (.env.docker) =="
+  if [[ -f "$ENV_FILE" ]] && grep -qx 'STELLAR_NETWORK=local' "$ENV_FILE"; then
+    echo "local (docker-compose.local-network.yml merged)"
+  elif [[ -f "$ENV_FILE" ]]; then
+    echo "testnet"
+  else
+    echo "unknown (.env.docker not generated yet)"
+  fi
 }
 
 case "${1:-}" in
-  up)     up ;;
-  down)   shift; down "$@" ;;
-  status) status ;;
+  up)        up ;;
+  down)      shift; down "$@" ;;
+  status)    status ;;
+  bootstrap) shift; bootstrap "$@" ;;
   *)
-    echo "usage: $0 {up|down|status} [--all]" >&2
+    echo "usage: $0 {up|down|status|bootstrap} [--all]" >&2
     exit 2
     ;;
 esac

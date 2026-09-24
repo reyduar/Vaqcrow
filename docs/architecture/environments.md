@@ -100,7 +100,7 @@ Cuando la variable está seteada, la lista explícita reemplaza el default en to
 
 ## 9. Nota sobre Stellar
 
-`contracts/scripts/local-network.sh` levanta el Stellar Quickstart en Docker para el desarrollo de contratos (Rust/`soroban-sdk`) — es una red determinística y aislada, no un sustituto de Testnet para la evidencia de la demo. `apps/api`, en cambio, mantiene `STELLAR_NETWORK=testnet` incluso en el perfil docker: el parser de configuración sólo acepta `"testnet"`, y desde #250 U4 la API no tiene ningún consumidor Stellar en runtime — conectarla al Quickstart local queda diferido a [#237](https://github.com/reyduar/Vaqcrow/issues/237).
+`contracts/scripts/local-network.sh` levanta el Stellar Quickstart en Docker para el desarrollo de contratos (Rust/`soroban-sdk`) — es una red determinística y aislada, no un sustituto de Testnet para la evidencia de la demo. `apps/api` mantiene `STELLAR_NETWORK=testnet` por defecto incluso en el perfil docker; conectarla al Quickstart local para correr el recorrido completo de la bóveda de campaña de forma determinística es **opt-in** y está descripto en [§11](#11-bóveda-de-campaña-en-la-red-local) ([#237](https://github.com/reyduar/Vaqcrow/issues/237)).
 
 ## 10. Troubleshooting
 
@@ -112,3 +112,30 @@ Cuando la variable está seteada, la lista explícita reemplaza el default en to
 
 > [!tip] `.env.docker` desactualizado
 > Si las credenciales de Supabase local cambiaron (por ejemplo, tras un `supabase stop --no-backup`), regenerá con `./scripts/env/generate-docker-env.sh --force`.
+
+## 11. Bóveda de campaña en la red local
+
+> [!info] Objetivo
+> Correr el recorrido completo de la bóveda de campaña (apertura, aportes, liquidación, reembolso) contra el Stellar Quickstart local en vez de Testnet, de forma determinística. Es **opt-in**: sin este flujo, el perfil docker sigue hablando con Testnet exactamente como antes de [#237](https://github.com/reyduar/Vaqcrow/issues/237).
+
+Orden de comandos, desde la raíz del repositorio:
+
+```bash
+pnpm env:docker:bootstrap                     # despliega la bóveda en la red local
+./scripts/env/generate-docker-env.sh --force  # regenera .env.docker con ese despliegue
+pnpm env:docker:up                            # levanta el contenedor de la API contra él
+```
+
+**Qué escribe cada paso:**
+
+1. **`pnpm env:docker:bootstrap`** (`contracts/scripts/bootstrap-local-campaign.sh`) — levanta el Quickstart si hace falta (reutiliza `contracts/scripts/local-network.sh`), registra la red `local` en la Stellar CLI, crea y fondea con Friendbot la identidad `vaqcrow-platform` (sólo su clave pública participa de esto), despliega la SAC del activo nativo, construye/sube el Wasm de la bóveda y despliega la fábrica apuntando a ese hash. Escribe **sólo datos públicos** en `contracts/.local-deployment.json` (`network`, `rpcUrl`, `horizonUrl`, `platformPublicKey`, `tokenContractId`, `factoryId`, `vaultWasmHash`, `deployedAt`) — nunca la clave secreta, y el archivo está en `.gitignore`. Es reintentable, pero no idempotente en la fábrica: cada corrida la redespliega (id nuevo) y sobreescribe el archivo con esa dirección — la anterior queda inalcanzable desde el registro, no desde la cadena.
+2. **`./scripts/env/generate-docker-env.sh --force`** — al detectar `contracts/.local-deployment.json`, escribe en `.env.docker` el bloque de red local (`STELLAR_NETWORK=local`, `STELLAR_HORIZON_URL`, `STELLAR_RPC_URL`, `STELLAR_CAMPAIGN_FACTORY_ID`, `STELLAR_TOKEN_CONTRACT_ID`) en vez del `STELLAR_NETWORK=testnet` de siempre, y lee `STELLAR_PLATFORM_SECRET_KEY` directamente del keystore de la CLI (`stellar keys secret vaqcrow-platform`) — nunca la imprime, sólo el nombre de la clave en el resumen final.
+3. **`pnpm env:docker:up`** — arranca el contenedor de la API con ese `.env.docker`. `scripts/local-env.sh` detecta `STELLAR_NETWORK=local` en el archivo y agrega `docker-compose.local-network.yml` a la corrida de `docker compose` (`-f docker-compose.local.yml -f docker-compose.local-network.yml`), que traduce `STELLAR_HORIZON_URL`/`STELLAR_RPC_URL` de `http://localhost:8000` (válido desde el host, donde corre Quickstart) a `http://host.docker.internal:8000` (lo único alcanzable desde dentro del contenedor) — el mismo problema que `SUPABASE_URL` ya resuelve en `docker-compose.local.yml`, aplicado sólo a estas dos variables y sólo en este perfil, porque aplicarlo sin condición rompería el perfil Testnet (el parser de `STELLAR_HORIZON_URL`/`STELLAR_RPC_URL` sólo acepta el host canónico de Testnet o un host loopback cuando `STELLAR_NETWORK=testnet`).
+
+**Dónde vive la clave.** Nunca en el repositorio. La identidad `vaqcrow-platform` queda en el keystore de la Stellar CLI (`~/.config/stellar` por defecto en esta máquina), y `generate-docker-env.sh` la lee una sola vez para escribirla en `.env.docker` (ya en `.gitignore`, permisos 600) — el mismo patrón que `LLM_API_KEY`.
+
+> [!warning] Direcciones de Testnet de #245
+> Las direcciones de Testnet documentadas para la demo valen hasta el reset del **16 de diciembre de 2026** (`contracts/README.md` § Procedimiento tras un reset de Testnet). No tienen relación con este bloque local: son dos redes distintas, con sus propias direcciones.
+
+> [!tip] Estado del perfil
+> `pnpm env:docker:status` (`scripts/local-env.sh status`) imprime si `.env.docker` quedó en `local` o `testnet`, sin imprimir ninguna clave.
