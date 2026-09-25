@@ -11,7 +11,7 @@ repo de dos issues de despliegue:
 
 ## Problema
 
-Cuatro defectos verificados el 2026-09-24, ninguno cosmetico:
+Cinco defectos verificados el 2026-09-24, ninguno cosmetico:
 
 1. **El nombre de la variable del backend web está mal en el documento.** El código lee
    `NEXT_PUBLIC_API_BASE_URL` (`apps/web/src`), pero `docs/architecture/deploy-planning.md`
@@ -49,6 +49,13 @@ Cuatro defectos verificados el 2026-09-24, ninguno cosmetico:
    el reemplazo verificado con `--force` (`Cached: 0 cached, 4 total`, 23 s, verde).
    Que el dashboard haya desplegado bien antes significa que **nunca usó este comando**: la
    documentación describía una configuración aspiracional, no la real.
+
+5. **El Root Directory documentado tampoco era el real.** §3 declaraba `/` (raíz del
+   monorepo). El proyecto tiene **`apps/web`**. Vercel resuelve `outputDirectory` relativo al
+   Root Directory, así que `apps/web/.next` se buscaba en `apps/web/apps/web/.next` y fallaba
+   con `NEXT_OUTPUT_DIR_MISSING`. Se omitió `outputDirectory` en `vercel.json` para que
+   Vercel use el default de Next.js. Nota: el Root Directory **no** es un campo de
+   `vercel.json` — es configuración de proyecto, así que se documenta en §3 y no se versiona.
 
 ## Alcance
 

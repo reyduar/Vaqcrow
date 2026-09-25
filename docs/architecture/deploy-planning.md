@@ -318,17 +318,17 @@ tests
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm exec turbo run build --filter=@vaqcrow/web...",
-  "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
   "regions": ["iad1"]
 }
 ```
 
-> [!danger] El comando de build prescrito no funcionaba (corregido el 2026-09-24)
-> El plan original prescribía `pnpm --filter @vaqcrow/web build`. **No puede funcionar en un checkout limpio.** `@vaqcrow/contracts` publica sólo desde `dist/` (`main` y `exports` apuntan a `./dist/index.js`), y `pnpm --filter` ejecuta únicamente el script del paquete elegido: no construye las dependencias del workspace. Turbo sí lo hace, porque `turbo.json` declara `build.dependsOn: ["^build"]`.
+> [!danger] Dos campos del plan original estaban mal (corregidos el 2026-09-24)
+> 1. **`buildCommand`.** El plan prescribía `pnpm --filter @vaqcrow/web build`. **No puede funcionar en un checkout limpio.** `@vaqcrow/contracts` publica sólo desde `dist/` (`main` y `exports` apuntan a `./dist/index.js`), y `pnpm --filter` ejecuta únicamente el script del paquete elegido: no construye las dependencias del workspace. Turbo sí, porque `turbo.json` declara `build.dependsOn: ["^build"]`.
+> 2. **`outputDirectory`.** El plan prescribía `apps/web/.next`, pero el **Root Directory real del proyecto es `apps/web`**, no la raíz del monorepo. Vercel resuelve `outputDirectory` relativo al Root Directory, así que buscaba en `apps/web/apps/web/.next` y fallaba con `NEXT_OUTPUT_DIR_MISSING`. Al omitir el campo, Vercel usa el default de Next.js, que ya es correcto.
 >
-> Reproducido localmente eliminando `packages/contracts/dist`: el comando original falla con `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` y `module-not-found` en cada import de `@vaqcrow/contracts`; `pnpm exec turbo run build --filter=@vaqcrow/web... --force` construye las cuatro tareas desde cero y termina en verde. El primer intento de commitear `vercel.json` con el comando viejo rompió el deploy de Vercel del PR #288, que es cómo se detectó.
+> Ambos se detectaron con el check de Vercel del PR #288, en dos iteraciones: el primer commit falló con `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` y `module-not-found` en cada import de `@vaqcrow/contracts`; corregido el build, el segundo falló con `NEXT_OUTPUT_DIR_MISSING` y la ruta duplicada que delata el Root Directory. El `buildCommand` se reprodujo y verificó localmente desde un estado limpio.
 
 > [!warning] Sin bloque `env`: las variables van en Project Settings
 > El plan original agregaba un bloque `env` con la forma `"<VAR>": "^<VAR>"`. Tiene dos defectos: Vercel **no admite interpolación `^VAR`** en `env` (sólo valores literales o referencias `@secret-name`), así que setearía la variable al string literal `^<VAR>`; y ese nombre no es el que lee el código, que lee `NEXT_PUBLIC_API_BASE_URL`. Por eso el archivo omite `env` y la variable se administra en **Project Settings → Environment Variables** (ver §7).
@@ -344,9 +344,9 @@ tests
 |---|---|
 | **Project name** | `vaqcrow-web` |
 | **Framework** | Next.js |
-| **Root directory** | `/` (monorepo root) |
+| **Root directory** | `apps/web` — **no** la raíz del monorepo (verificado el 2026-09-24) |
 | **Build command** | `pnpm exec turbo run build --filter=@vaqcrow/web...` |
-| **Output directory** | `apps/web/.next` |
+| **Output directory** | *(sin setear — Vercel usa el default de Next.js, relativo al Root Directory)* |
 | **Node.js version** | 24 |
 
 ### Variables de entorno (Vercel)
