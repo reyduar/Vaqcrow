@@ -19,6 +19,16 @@ describe("EvidencePage", () => {
     expect(screen.getByText(disclosures["no-production"].text)).toBeInTheDocument();
   });
 
+  it("renders the custody statement and its honest limits on the panel that evidences refunds", () => {
+    render(<EvidencePage />);
+
+    expect(
+      screen.getByText(/los aportes los custodia el contrato, no una persona/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/no hay recuperación ni clawback/i)).toBeInTheDocument();
+    expect(screen.getByText(/sólo pueden salir por el barrido/i)).toBeInTheDocument();
+  });
+
   it("renders the deterministic-calculation and prior-run-hash microcopy", () => {
     render(<EvidencePage />);
 

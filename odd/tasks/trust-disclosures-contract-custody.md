@@ -84,10 +84,10 @@ reads that prepare a write stay with the writer. No SDD route selected.
 - [x] T5 — Focused tests green; commit
 
 ### #259 — Test the reconciled trust disclosures
-- [ ] T6 — RED: route render assertions for the custody statement and the limits
-- [ ] T7 — RED: semantic phrase pin (custody, immutable, no recovery, no clawback, sweep, permissionless)
-- [ ] T8 — GREEN: assertions pass; claim-by-claim review performed
-- [ ] T9 — Simulation labels asserted; commit
+- [x] T6 — RED: route render assertions for the custody statement and the limits
+- [x] T7 — RED: semantic phrase pin (custody, immutable, no recovery, no clawback, sweep, permissionless)
+- [x] T8 — GREEN: assertions pass; claim-by-claim review performed
+- [x] T9 — Simulation labels asserted; commit
 
 ### #260 — Document evidence for the reconciled trust disclosures
 - [ ] T10 — `docs/planning/trust-disclosures-and-contract-custody-evidence.md` (Spanish)
@@ -107,6 +107,14 @@ reads that prepare a write stay with the writer. No SDD route selected.
   as the exclusive banner for the Stellar Testnet disclosure.
 - 2026-09-25 — Verified the canonical text is byte-identical across `disclosures.ts`, `DEMO.md` §12,
   `demo-ui.md` §2 and `demo-ui.md` §11 (normalized only for markdown bold/quote markers).
+- 2026-09-25 — #259 sensitivity proved by mutation: dropping the "no se dispara solo" statement from
+  the copy failed exactly `contract-custody disclosure > states that the refund is not self-firing`
+  and `FundingPage > renders the custody statement and its honest limits where the user meets
+  custody and the refund path`; restored from HEAD, 57/57 green.
+- 2026-09-25 — Claim-by-claim review performed against `contracts/campaign-vault/src/lib.rs`.
+  One nuance considered and backed: "nadie tiene una clave para moverlos" covers a person holding a
+  discretionary key; the investor's pre-goal `withdraw` and the contract's own payout are the
+  contract's rules, not a key. Findings F1–F5 recorded in the evidence document (#260).
 
 ## Verification evidence
 
@@ -117,7 +125,9 @@ reads that prepare a write stay with the writer. No SDD route selected.
 | #258 GREEN | `pnpm --filter @vaqcrow/web test` | 73 files / 465 tests passed |
 | #258 | `pnpm --filter @vaqcrow/web typecheck` | clean |
 | #258 | `pnpm --filter @vaqcrow/web lint` | 0 errors (1 pre-existing warning in `fetch-http-client.ts`, unrelated) |
+| #259 guard | `pnpm --filter @vaqcrow/web exec vitest run trust "app/(demo)/funding" "app/(demo)/evidence"` | 8 files / 57 tests passed |
+| #259 mutation | same command, copy with "no se dispara solo" removed | exactly 2 failures, both the new assertions; restored, green |
 
 ## Next step
 
-T6: add the #259 route render assertions and the semantic phrase pin.
+T10: write the Spanish evidence document under `docs/planning/`.
