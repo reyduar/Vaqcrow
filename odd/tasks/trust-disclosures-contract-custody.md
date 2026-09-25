@@ -90,9 +90,9 @@ reads that prepare a write stay with the writer. No SDD route selected.
 - [x] T9 — Simulation labels asserted; commit
 
 ### #260 — Document evidence for the reconciled trust disclosures
-- [ ] T10 — `docs/planning/trust-disclosures-and-contract-custody-evidence.md` (Spanish)
-- [ ] T11 — Mapeo de criterios de aceptación + claim-by-claim review + findings
-- [ ] T12 — Commit
+- [x] T10 — `docs/planning/trust-disclosures-and-contract-custody-evidence.md` (Spanish)
+- [x] T11 — Mapeo de criterios de aceptación + claim-by-claim review + findings
+- [x] T12 — Commit
 
 ## Progress
 
@@ -127,7 +127,17 @@ reads that prepare a write stay with the writer. No SDD route selected.
 | #258 | `pnpm --filter @vaqcrow/web lint` | 0 errors (1 pre-existing warning in `fetch-http-client.ts`, unrelated) |
 | #259 guard | `pnpm --filter @vaqcrow/web exec vitest run trust "app/(demo)/funding" "app/(demo)/evidence"` | 8 files / 57 tests passed |
 | #259 mutation | same command, copy with "no se dispara solo" removed | exactly 2 failures, both the new assertions; restored, green |
+| #260 local gate | `pnpm --filter @vaqcrow/web test` | 74 files / 483 tests passed |
+| #260 local gate | `pnpm run lint` / `typecheck` / `build` | 5/5, 8/8, 5/5 tasks, exit 0 |
+| #260 local gate | `pnpm run boundaries` / `test:boundaries` | no dependency violations (361 modules, 1075 dependencies) / 6 files, 79 tests |
+| #260 canonical | python byte-compare across the four sources | identical in `disclosures.ts`, `DEMO.md` §12, `demo-ui.md` §2 and §11 |
+| #260 stale copy | `rg "destino, activo, monto y memo en Freighter" apps/web/src docs/design docs/planning/DEMO.md` | exit 1 (none) |
+
+Known environmental flake (not a regression): under host load average 15–22, `pnpm run verify`'s test step
+times out at 5000 ms in 5–8 untouched component test files; those files pass in isolation (38/38) and the
+full web suite passes on re-run (483/483). Documented in the evidence doc §10. This change did not modify
+`testTimeout` or any of those components.
 
 ## Next step
 
-T10: write the Spanish evidence document under `docs/planning/`.
+Feature complete on the branch. Run the RDD review preflight for the branch range, then open the PR.
