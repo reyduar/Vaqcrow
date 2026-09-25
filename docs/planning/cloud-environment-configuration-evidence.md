@@ -128,8 +128,48 @@ La segunda respuesta es la de Fastify para una ruta **no registrada**; la primer
 2. **`POST /campaigns` nunca se ejercitó.** Que `STELLAR_PLATFORM_SECRET_KEY` corresponda al `owner` de la fábrica se prueba recién ahí.
 3. **Placeholder visible.** "Step content coming soon" aparece en `/request` después del contenido real, y en `/distribution` y `/evidence` (Features #28 y #29, ambas en 0/3).
 4. **`NEXT_PUBLIC_API_BASE_URL` no tiene target `preview`.** Los previews de Vercel quedan sin backend configurado.
-5. **Sin decisión registrada**: almacenamiento/rotación del secreto de plataforma; SSO en los previews; dominio propio.
+5. **Sin decisión registrada**: SSO en los previews; dominio propio.
 6. **Id de campaña malformado**: devuelve `503` en vez de `400`, y la línea de log sale con `correlationId: undefined`.
+
+### 5.1 Decisión registrada — almacenamiento y rotación del secreto de plataforma
+
+Cierra el último criterio abierto de #287. La decisión se apoya en dos hechos verificados en el
+código, no en preferencias:
+
+- `Secret` envuelve `STELLAR_PLATFORM_SECRET_KEY` y su `toString`/`toJSON` devuelven `[redacted]`;
+  `PlatformSigner` llama a `reveal()` una sola vez y no expone el material; Fastify corre con el
+  logger deshabilitado y ningún camino de código serializa la config.
+- La fábrica escribe `owner` **una sola vez** en `__constructor` y no expone `set_owner`,
+  `set_admin`, `transfer_admin`, `upgrade` ni `migrate`. Su superficie pública completa es
+  `__constructor`, `deploy`, `predict`, `owner` y `vault_wasm`, y `deploy` autoriza únicamente a esa
+  dirección almacenada.
+
+**Almacenamiento.** Para el demo, el secreto de plataforma vive como **variable de servicio de
+Railway** en el servicio hosteado `api`. Límite aceptado y explícito: cualquiera con permiso para
+leer las variables del servicio puede leerlo. Es aceptable **sólo porque** esto es Testnet sin valor
+económico y sin fondos de terceros, y porque el secreto no alcanza un log ni una respuesta
+serializada. El camino de producción sigue siendo el ya declarado en `product.md` §16 (KMS/HSM o
+servicio especializado con políticas y rotación); esta decisión no lo reemplaza, lo posterga para la
+etapa de demo.
+
+**Rotación.** No existe rotación en el lugar (*in-place*). Como `owner` es inmutable y no hay función
+que lo reasigne, reemplazar la clave de plataforma exige **desplegar una instancia nueva de la
+fábrica** y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`:
+
+| Paso | Efecto |
+|---|---|
+| Desplegar la fábrica nueva con la clave nueva como `owner` | La fábrica anterior queda inutilizable para abrir bóvedas |
+| Verificar `owner()` en la fábrica nueva | Confirma la correspondencia antes de reapuntar |
+| Actualizar `STELLAR_CAMPAIGN_FACTORY_ID` en el servicio hosteado | Reapunta el camino de apertura |
+| Re-verificar con un `POST /campaigns` | Única prueba real de que la clave nueva firma contra la fábrica nueva |
+
+Dos consecuencias que hay que tener presentes: **toda dirección futura de bóveda cambia**, porque se
+deriva por `(deployer, salt)` y el `deployer` es la fábrica; y las **bóvedas ya desplegadas no se ven
+afectadas**, porque no almacenan referencia a la fábrica ni al `owner`.
+
+**Corolario operativo.** La identidad del keystore del Stellar CLI `vaqcrow-testnet` es el `owner` de
+la fábrica desplegada. Como esa dirección no se puede reasignar, **perder esa clave deja la fábrica
+huérfana de forma permanente**. No debe regenerarse por conveniencia.
 
 ## 6. Mapeo de criterios de aceptación
 
@@ -157,11 +197,12 @@ La segunda respuesta es la de Fastify para una ruta **no registrada**; la primer
 | `.env.cloud.example` documents the vault keys as placeholders, so the cloud profile is complete and reproducible by a contributor. | **Sí** | Bloque agregado con placeholders (§3.1); sin valores secretos (§4.1). |
 | The platform secret never appears in the repository, this issue, a build log, a deploy log or a serialised response — only the key names and their shapes are recorded. | **Sí** | Sólo se nombran claves; el MCP devuelve nombres, no valores (§4.3); `platform-signer.ts` es el único punto de uso y no expone el material (§3.3). |
 | The hosted environment cannot silently enter the half-configured state (one key without the other); the code already fails loudly on that, and the hosted state is confirmed not to be in it. | **Sí** | Ambas claves presentes (leído de la plataforma); con una sola, el proceso no arranca (§3.3). |
-| The decision on where the platform secret is stored, and how it is rotated, is recorded alongside the existing secret-boundary work. | **No** | Sin decisión registrada (§5, límite 5). |
+| The decision on where the platform secret is stored, and how it is rotated, is recorded alongside the existing secret-boundary work. | **Sí** | Registrada en §5.1, con respaldo verificado: inmutabilidad de `owner` en `contracts/campaign-factory/src/lib.rs` y envoltorio `Secret` en `apps/api/src/application/config/secret.ts`. |
 
 ## 7. Estado de entrega
 
 - El lado repositorio de #286 y #287 está mergeado en `main` a través del PR #288 (`370128b`); la configuración de panel (rama de producción, variable de la web, claves del vault) quedó aplicada por la persona operadora y verificada por lectura.
 - Este documento se entrega en la rama `Vaqcrow#286_Task_Document_the_cloud_demo_architecture_and_the_environment_configuration`; el PR lo abre el orquestador.
-- **No se declara cerrado** lo que no se verificó: el recorrido de punta a punta en el navegador, la ausencia de placeholders, el target `preview` de la web y las tres decisiones operativas sin registrar (§5, §6).
-- Seguimientos sugeridos, fuera del alcance de esta unidad de trabajo: ejercitar `POST /campaigns` contra el despliegue hosteado y registrar las decisiones de secreto, SSO y dominio.
+- **No se declara cerrado** lo que no se verificó: el recorrido de punta a punta en el navegador, la ausencia de placeholders, el target `preview` de la web y las dos decisiones operativas que siguen sin registrar — SSO en los previews y dominio propio (§5, §6).
+- La decisión de almacenamiento y rotación del secreto de plataforma quedó registrada el 2026-09-25 (§5.1); el criterio correspondiente de #287 pasa de **No** a **Sí**.
+- Seguimientos sugeridos, fuera del alcance de esta unidad de trabajo: ejercitar `POST /campaigns` contra el despliegue hosteado, y registrar las decisiones de SSO en previews y dominio propio.
