@@ -177,7 +177,7 @@ flowchart TD
     E --> D
     D -->|aprobada| F[Conectar Freighter]
     D -->|requiere cambios o rechazada| B
-    F --> G[Revisar intención y XDR<br/>Testnet explícita]
+    F --> G[Revisar invocación de la bóveda y XDR<br/>Testnet explícita]
     G -->|firma aceptada| H[Enviado<br/>pendiente de Horizon]
     G -->|firma rechazada o red incorrecta| F
     H -->|confirmed| I[Panel y hash de fondeo]

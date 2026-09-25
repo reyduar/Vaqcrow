@@ -10,10 +10,12 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Estado actual
 
-- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado y persistencia Supabase para `application_review` y decisiones humanas.
-- **Evaluación y aprobación humana:** implementada en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La integración credential-gated contra Supabase registró 15/15 tests pasando el 19/09/2026.
-- **Pruebas:** 75 archivos de test (Vitest + Testing Library) cubriendo contratos, dominio, infraestructura API, componentes web, integración y boundaries entre workspaces.
-- **Límites actuales:** la evaluación usa un fixture consultivo simulado, no hay autenticación, `apps/api` todavía no expone el endpoint de solicitudes SME y la web usa rutas provisionales; IA real, Stellar/Freighter y el recorrido vertical completo siguen planificados.
+- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado, `packages/ai`, el workspace Rust `contracts/` (`campaign-vault` y `campaign-factory`) y migraciones Supabase para evaluación, decisiones humanas y persistencia de campañas.
+- **Evaluación y aprobación humana:** implementadas en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La integración credential-gated contra Supabase registró 15/15 tests pasando el 19/09/2026.
+- **IA real:** la evaluación usa el proveedor `opencode-go` detrás de un adaptador reemplazable en `packages/ai`; sigue siendo asesora y no aprueba ni calcula obligaciones.
+- **Stellar y custodia:** Freighter y Stellar Testnet están implementados, y el fondeo se custodia en un contrato Soroban (una bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso permissionless al vencer). La plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME; la persona usuaria firma aportes, retiros y reembolsos con Freighter.
+- **Pruebas:** 125 archivos de test unitarios y de componentes seleccionados por `pnpm run test` (Vitest + Testing Library), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
+- **Límites actuales:** no hay autenticación y `apps/api` todavía no expone el endpoint de solicitudes SME; el cálculo de la obligación de revenue share, la distribución en Testnet y la integración vertical del journey (Días 9–14 del plan) siguen pendientes.
 - **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
 - **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
 
@@ -28,9 +30,9 @@ La historia vertical prevista sigue un único caso sintético —**Panadería Ho
 1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
 2. Una IA real analiza la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
 3. Un operador revisa la evidencia y registra la decisión humana; la IA no autoriza el financiamiento.
-4. Un inversor conecta Freighter, revisa la intención y firma el fondeo de forma no custodial en Stellar Testnet.
-5. La API verifica el XDR y la interfaz distingue `submitted` de la confirmación asíncrona de Horizon.
-6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución firmada, los estados y los hashes de Testnet.
+4. Un inversor conecta Freighter y firma, de forma no custodial, la invocación del contrato que alimenta la bóveda de la campaña en Stellar Testnet.
+5. La bóveda custodia los aportes: el contrato liquida de forma atómica a la PyME al alcanzar el objetivo y habilita el reembolso permissionless si vence el plazo; la API envía la invocación firmada al Soroban RPC y refleja el estado observado en la cadena.
+6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución, que sigue el camino clásico de pagos en Testnet, con sus estados y hashes.
 
 El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina.
 
@@ -41,12 +43,12 @@ El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es rea
 | Empresa, identidad y perfiles | Datos sintéticos, rotulados `SIMULADO` |
 | KYC/KYB | Simulado detrás de un adaptador reemplazable |
 | Historial y feed mensual de ventas | Simulados, reproducibles y con una anomalía/faltante intencionales |
-| Evaluación de riesgo por IA | Actualmente fixture consultivo simulado; integración real planificada |
+| Evaluación de riesgo por IA | Real con el proveedor `opencode-go` detrás de un adaptador reemplazable |
 | Decisión de financiamiento | Real y humana sobre el caso sintético |
 | Entrada/cotización ARS | Simulada; el corredor de producción continúa sin resolver |
 | Wallet y firma | Reales con Freighter, de forma no custodial |
 | Fondeo y distribución | Transacciones reales en Stellar Testnet, sin valor económico |
-| Confirmación | Real y asíncrona mediante Horizon |
+| Confirmación | Real y asíncrona: Soroban RPC para la bóveda y Horizon para cuentas, pagos y distribución |
 | Cálculo de revenue share | Real, determinístico y ajeno al LLM |
 
 ## IA: función y límites
@@ -72,16 +74,98 @@ Estructura actual:
 
 ```text
 apps/web · apps/api                          ← implementados y funcionales
-packages/domain · contracts                  ← implementados con tests
-supabase/                                    ← config.toml + 1 migración (application_review)
+packages/domain · contracts · ai             ← implementados con tests
+contracts/                                   ← workspace Rust: campaign-vault · campaign-factory
+supabase/                                    ← config.toml + migraciones
 ```
 
 Paquetes previstos para etapas futuras:
 
 ```text
 apps/worker (opcional)
-packages/ai · stellar · simulators · db · config · testing · ui
+packages/stellar · simulators · db · config · testing · ui
 ```
+
+## Arquitecturas de la demo
+
+Dos vistas de **despliegue**: qué corre en la máquina de desarrollo con el perfil docker y qué corre en la nube. El flujo de una request y quién firma cada transacción —el detalle fino— está en [Arquitectura de la demo en la nube](./docs/architecture/cloud-demo-architecture.md): acá sólo se ubica cada pieza.
+
+### Arquitectura local (perfil docker)
+
+```mermaid
+graph TB
+    subgraph "Host (tu máquina)"
+        BROWSER["Navegador<br/>Freighter en la extensión"]
+        WEB["Web Next.js — next dev<br/>:3001"]
+        KEYSTORE["Keystore de la Stellar CLI<br/>identidad vaqcrow-platform"]
+    end
+
+    subgraph "Contenedores Docker (Docker Desktop)"
+        API["API Fastify — contenedor<br/>apps/api/Dockerfile · :3000"]
+        SUPABASE["Supabase local (CLI)<br/>kong + postgrest · :54321"]
+        QUICKSTART["Stellar Quickstart (opt-in)<br/>Soroban RPC + Horizon · :8000"]
+    end
+
+    BROWSER -->|"abre http://localhost:3001"| WEB
+    BROWSER -->|"firma de la persona usuaria: la clave nunca sale del navegador"| WEB
+    WEB -->|"NEXT_PUBLIC_API_BASE_URL=http://localhost:3000"| API
+    API -->|"host.docker.internal:54321"| SUPABASE
+    API -.->|"STELLAR_NETWORK=local, bóveda opt-in (Perfiles de entorno §11)"| QUICKSTART
+    KEYSTORE -.->|"generate-docker-env.sh lee la clave de plataforma sin imprimirla"| API
+```
+
+`pnpm env:docker:up` levanta Supabase, la API y (si hace falta) el Quickstart; `next dev` corre en el host, no en un contenedor. El recorrido de la bóveda contra el Quickstart es opt-in y su identidad de plataforma es sólo para la red local: no sirve para Testnet.
+
+### Arquitectura de producción (nube)
+
+```mermaid
+graph TB
+    subgraph "Navegador"
+        USER["Persona usuaria"]
+        FREIGHTER["Freighter — clave privada de la persona"]
+    end
+
+    subgraph "Vercel — despliegue de la web"
+        WEB["Build estático de Next.js<br/>NEXT_PUBLIC_API_BASE_URL horneada en build time"]
+    end
+
+    subgraph "Railway — despliegue de la API"
+        API["Fastify + Node.js — APP_ENV=demo<br/>desde main"]
+        SIGNER["platform-signer.ts<br/>único uso de STELLAR_PLATFORM_SECRET_KEY"]
+    end
+
+    subgraph "Supabase remoto"
+        DB[("PostgreSQL — espejo de la cadena")]
+    end
+
+    subgraph "Stellar Testnet"
+        RPC["Soroban RPC"]
+        HORIZON["Horizon"]
+        FACTORY["Fábrica de bóvedas CDVSSQ55…<br/>owner: cuenta de plataforma"]
+        VAULT["Bóveda de campaña — una por campaña"]
+    end
+
+    subgraph "Proveedor LLM"
+        LLM["opencode-go — evaluación asesora"]
+    end
+
+    USER -->|"https://vaqcrow-web-nine.vercel.app"| WEB
+    WEB -->|"HTTPS + CORS"| API
+    WEB -->|"pide firmar la invocación"| FREIGHTER
+    FREIGHTER -->|"firma de la persona usuaria: aporte / retiro / reembolso"| WEB
+    WEB -->|"invocación firmada"| API
+    API --> DB
+    API -->|"sendTransaction y consulta de estado"| RPC
+    API -->|"cuentas clásicas y pagos"| HORIZON
+    API -->|"evaluación"| LLM
+    API -->|"pide firma de plataforma"| SIGNER
+    SIGNER -->|"firma de la plataforma: factory.deploy / CreateAccount"| API
+    RPC --> FACTORY
+    FACTORY -->|"deploy"| VAULT
+    HORIZON -->|"cuenta de la PyME"| VAULT
+```
+
+La persona usuaria firma con Freighter en su navegador; la plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME con `STELLAR_PLATFORM_SECRET_KEY`, cuyo único punto de uso es `platform-signer.ts`. La cadena es la fuente de verdad del dinero y Supabase es su espejo. Es una demo en **Testnet**: identidad, KYC/KYB y ventas son simulados y los activos no tienen valor económico.
 
 ## Stack previsto para la demo
 
@@ -91,7 +175,7 @@ packages/ai · stellar · simulators · db · config · testing · ui
 | API | Node.js + TypeScript + Fastify para comandos, dominio, verificación XDR y coordinación |
 | Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
 | Stellar | Stellar SDK, Freighter, Horizon y Testnet para firma no custodial, envío y confirmación; **contratos de Stellar (Rust) para la custodia del fondeo** |
-| IA | Proveedor LLM por definir, detrás de un adaptador reemplazable y con salida estructurada |
+| IA | Proveedor LLM `opencode-go`, detrás de un adaptador reemplazable y con salida estructurada |
 | Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el journey crítico en navegador |
 | Workspace y CI | pnpm, Turborepo; GitHub Actions con lockfile congelado y gates de pull request |
 
@@ -99,11 +183,11 @@ El **fondeo se custodia en un contrato de Stellar** (Rust + `soroban-sdk`): cada
 
 ## Despliegue propuesto
 
-- `apps/web` y `apps/api` tendrán artefactos y despliegues independientes. Vercel es el destino recomendado para el frontend, todavía no desplegado; el hosting de la API Fastify continúa **TBD y reemplazable**.
-- `apps/worker` solo se desplegará como proceso independiente si las confirmaciones asíncronas o los jobs acotados no caben de forma segura en la API.
-- Supabase aportará servicios gestionados, sin convertir al cliente web en dueño de la autorización ni de los estados críticos.
+- `apps/web` y `apps/api` tienen artefactos y despliegues independientes: la web en **Vercel** y la API en **Railway**, ambas desplegadas desde `main`. `NEXT_PUBLIC_API_BASE_URL` se incorpora al bundle de la web en tiempo de build.
+- `apps/worker` no existe todavía: las confirmaciones asíncronas viven en la API. Solo se agregará como proceso independiente si esos jobs no caben de forma segura en ella.
+- Supabase aporta servicios gestionados, sin convertir al cliente web en dueño de la autorización ni de los estados críticos.
 
-No existen despliegues productivos actualmente.
+Estos despliegues son la **demo en Stellar Testnet**, no una operación productiva real: la identidad, KYC/KYB y ventas siguen simulados y los activos no tienen valor económico.
 
 ## Cómo ejecutar el proyecto
 
@@ -216,7 +300,7 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 
 ## Próximo paso
 
-El monorepo, el shell de demo, la persistencia, el slice de evaluación/aprobación humana y la configuración de pruebas determinísticas y gates de CI ya están implementados. El roadmap local registra 35 unidades `Done`, 1 `Ready` y 72 `Backlog`; estos conteos reflejan la evidencia disponible en el repositorio y no sustituyen la sincronización del tablero remoto. El siguiente trabajo disponible es la configuración tipada y los límites de secretos (#44). Después siguen el esquema/guardrails de IA, Stellar/Freighter, verificación XDR, confirmación asíncrona, cálculo de revenue share, distribución, dashboard y preparación de la demo.
+El monorepo, el shell de demo, la IA real, la persistencia, el slice de evaluación/aprobación humana, la bóveda de campaña en Testnet y los gates de CI ya están implementados. El grueso pendiente son los Días 9–14 del [plan de la demo](./docs/planning/DEMO.md): ventas y cálculo determinístico de la obligación, distribución en Testnet, integración vertical del journey, resiliencia y evidencias, ensayo con público interno, y freeze y presentación final. El avance por unidad se sigue en el tablero **Vaqcrow-TFM**, que es la fuente de verdad del estado.
 
 ## Licencia
 

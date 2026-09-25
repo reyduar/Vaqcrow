@@ -103,7 +103,7 @@ La respuesta se valida contra un esquema estricto. Si contiene campos desconocid
 
 ## 6. Arquitectura mínima para dos semanas
 
-No se replica la arquitectura completa de producción. Se construyen dos aplicaciones desplegables —web y API—, un worker opcional y paquetes que preservan límites útiles. El proveedor de hosting permanece **TBD y reemplazable**: Next.js y el servicio Node.js con Fastify pueden tener destinos de despliegue distintos.
+No se replica la arquitectura completa de producción. Se construyen dos aplicaciones desplegables —web y API—, un worker opcional y paquetes que preservan límites útiles. El hosting quedó **decidido y desplegado** —Vercel para la web, Railway para la API— y ambos destinos siguen siendo reemplazables: Next.js y el servicio Node.js con Fastify se despliegan por separado.
 
 ### Stack tecnológico recomendado
 
@@ -129,7 +129,7 @@ Esta es la selección planificada para implementación; la tabla no afirma que t
 | PostgreSQL | Persistencia de solicitudes, decisiones, intenciones, estados e idempotencia | Aporta consistencia transaccional y trazabilidad con un modelo conocido |
 | [Auth.js v5 / NextAuth](https://authjs.dev/) | Límite futuro server-side de autenticación y sesión definido en [#134](https://github.com/reyduar/Vaqcrow/issues/134) | Separa identidad/sesión de autorización backend; no está implementado ni pertenece al camino crítico de esta demo |
 | Stellar: Freighter, Horizon y Testnet | Firma no custodial, consulta/envío de transacciones y liquidación de prueba | Demuestra el núcleo técnico del challenge sin usar fondos reales |
-| Proveedor LLM real, TBD | Evaluación estructurada de riesgo detrás de `packages/ai` | Hace real la capacidad diferencial y conserva un adaptador reemplazable |
+| Proveedor LLM real (`opencode-go`) | Evaluación estructurada de riesgo detrás de `packages/ai` | Hace real la capacidad diferencial y conserva un adaptador reemplazable |
 
 ```text
 apps/
@@ -175,17 +175,17 @@ flowchart LR
     DEV[Desarrollador] --> REPO[Repositorio GitHub]
     REPO --> CI[GitHub Actions CI/CD]
 
-    CI -->|despliega| WEB[Destino web TBD<br/>apps/web · Next.js]
-    CI -->|despliega| API[Destino API TBD<br/>apps/api · Node.js + Fastify]
-    CI -.->|despliega si se habilita| WORKER[Destino de jobs TBD<br/>apps/worker opcional]
+    CI -->|despliega| WEB[Vercel<br/>apps/web · Next.js]
+    CI -->|despliega| API[Railway<br/>apps/api · Node.js + Fastify]
+    CI -.->|despliega si se habilita| WORKER[Worker opcional<br/>apps/worker · no desplegado]
 
     BROWSER[Navegador<br/>inversor, PyME u operador] -->|HTTPS| WEB
     BROWSER <-->|firma no custodial| FREIGHTER[Freighter]
     WEB --> WEBUI[Presentación<br/>HeroUI · Tailwind · io5 · React Hook Form]
     WEBUI --> WEBAPP[Aplicación frontend<br/>SWR · Zustand acotado]
     WEBAPP --> HTTP[Puerto HTTP<br/>adaptador Axios]
-    HTTP -->|solicitudes y XDR firmado| API
-    API -->|estado y XDR para revisión| HTTP
+    HTTP -->|solicitudes e invocación firmada de la bóveda| API
+    API -->|estado e invocación para revisión| HTTP
 
     WEB -.->|futuro #134| AUTHJS[Auth.js v5<br/>autenticación y sesión]
     AUTHJS -.-> AUTHPERSIST[(Persistencia auth<br/>server-only)]
@@ -206,9 +206,13 @@ flowchart LR
     API --> STORAGE[Supabase Storage<br/>fixtures/evidencia sintética]
     WORKER --> DB
 
+    STELLARPKG --> RPC[Soroban RPC]
     STELLARPKG --> HORIZON[Horizon]
     WORKER --> HORIZON
+    RPC --> FACTORY[Fábrica de bóvedas]
+    FACTORY --> VAULT[Bóveda de campaña]
     HORIZON --> TESTNET[Stellar Testnet]
+    VAULT --> TESTNET
 ```
 
 Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. El bloque Auth.js v5 corresponde a #134, no a una capacidad ya implementada ni a una dependencia del sprint. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
