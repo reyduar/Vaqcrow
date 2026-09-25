@@ -22,7 +22,7 @@ status: draft
 >
 > | Fase | Alcance | Issue | Estado (18/09/2026) |
 > |---|---|---|---|
-> | 1 — Fundación | `Dockerfile`, `railway.json`, `vercel.json`, `.dockerignore`, secretos | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | **API entregada** por [#101](https://github.com/reyduar/Vaqcrow/issues/101): desplegada y verificada en Railway. Restan la web (Vercel) y los workflows |
+> | 1 — Fundación | `Dockerfile`, `railway.json`, `vercel.json`, `.dockerignore`, secretos | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | **API entregada** por [#101](https://github.com/reyduar/Vaqcrow/issues/101): desplegada y verificada en Railway. **Web desplegada y viva en Vercel** desde el 2026-09-25. Restan los workflows de deploy |
 > | 2 — CI (`ci.yml`: lint/typecheck/test/boundaries/build) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47)/[#48](https://github.com/reyduar/Vaqcrow/issues/48)/[#49](https://github.com/reyduar/Vaqcrow/issues/49) | **`Ready`** — solo dependía de #11, ya cerrada |
 > | 2 — Deploy (`deploy-dev.yml`, `deploy-production.yml`) | [#32](https://github.com/reyduar/Vaqcrow/issues/32) → [#101](https://github.com/reyduar/Vaqcrow/issues/101)/[#102](https://github.com/reyduar/Vaqcrow/issues/102)/[#103](https://github.com/reyduar/Vaqcrow/issues/103) | Igual que Fase 1 |
 > | 3 — Testing E2E (Playwright) | [#15](https://github.com/reyduar/Vaqcrow/issues/15) → [#47](https://github.com/reyduar/Vaqcrow/issues/47) | Igual que Fase 2 (mismo Task, su objetivo nombra Playwright explícitamente) |
@@ -1216,7 +1216,7 @@ vercel env add NEXT_PUBLIC_API_BASE_URL production
 
 | Servicio | Development | Production |
 |---|---|---|
-| Web (Vercel) | `vaqcrow-web-<hash>.vercel.app` | `vaqcrow-web.vercel.app` |
+| Web (Vercel) | `vaqcrow-web-git-<rama>-…vercel.app` (preview, detrás de Vercel Authentication) | `vaqcrow-web-nine.vercel.app` |
 | API (Railway) | `api-production-c07f.up.railway.app` | `api-production-c07f.up.railway.app` |
 | Supabase | `ppvlnwejajxpsmazvnbj.supabase.co` | `ppvlnwejajxpsmazvnbj.supabase.co` (mismo) |
 | Stellar Horizon | `horizon-testnet.stellar.org` | `horizon-testnet.stellar.org` |
@@ -1234,6 +1234,6 @@ vercel env add NEXT_PUBLIC_API_BASE_URL production
 > |---|---|---|
 > | Región Railway | `us-west2` (default actual) vs `eze` (Buenos Aires) vs `iad` (Virginia) | El servicio quedó en `us-west2` por el default de la plataforma; cambiar solo si la latencia se vuelve visible en la demo |
 > | Migración de IaC | `railway.json` (expira 2026-12-01) vs `.railway/railway.ts` vs Dockerfile en la raíz | Migrar antes de que expire, o mover el Dockerfile a la raíz |
-> | Proveedor LLM | OpenAI vs Anthropic vs local | OpenAI para la demo (costo/beneficio) |
+> | Proveedor LLM | **Resuelto**: `opencode-go` | Ya elegido, configurado en la API y medido en [#223](https://github.com/reyduar/Vaqcrow/issues/223) |
 > | Supabase plan | Free vs Pro | Free para la demo |
 > | Playwright browsers | Solo Chromium vs multi-browser | Solo Chromium para la demo |

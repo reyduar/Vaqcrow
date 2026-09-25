@@ -103,7 +103,7 @@ La respuesta se valida contra un esquema estricto. Si contiene campos desconocid
 
 ## 6. Arquitectura mínima para dos semanas
 
-No se replica la arquitectura completa de producción. Se construyen dos aplicaciones desplegables —web y API—, un worker opcional y paquetes que preservan límites útiles. El proveedor de hosting permanece **TBD y reemplazable**: Next.js y el servicio Node.js con Fastify pueden tener destinos de despliegue distintos.
+No se replica la arquitectura completa de producción. Se construyen dos aplicaciones desplegables —web y API—, un worker opcional y paquetes que preservan límites útiles. El hosting quedó **decidido y desplegado** —Vercel para la web, Railway para la API— y ambos destinos siguen siendo reemplazables: Next.js y el servicio Node.js con Fastify se despliegan por separado.
 
 ### Stack tecnológico recomendado
 
@@ -129,7 +129,7 @@ Esta es la selección planificada para implementación; la tabla no afirma que t
 | PostgreSQL | Persistencia de solicitudes, decisiones, intenciones, estados e idempotencia | Aporta consistencia transaccional y trazabilidad con un modelo conocido |
 | [Auth.js v5 / NextAuth](https://authjs.dev/) | Límite futuro server-side de autenticación y sesión definido en [#134](https://github.com/reyduar/Vaqcrow/issues/134) | Separa identidad/sesión de autorización backend; no está implementado ni pertenece al camino crítico de esta demo |
 | Stellar: Freighter, Horizon y Testnet | Firma no custodial, consulta/envío de transacciones y liquidación de prueba | Demuestra el núcleo técnico del challenge sin usar fondos reales |
-| Proveedor LLM real, TBD | Evaluación estructurada de riesgo detrás de `packages/ai` | Hace real la capacidad diferencial y conserva un adaptador reemplazable |
+| Proveedor LLM real (`opencode-go`) | Evaluación estructurada de riesgo detrás de `packages/ai` | Hace real la capacidad diferencial y conserva un adaptador reemplazable |
 
 ```text
 apps/
