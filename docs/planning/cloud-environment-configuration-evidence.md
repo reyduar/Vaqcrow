@@ -125,7 +125,7 @@ La segunda respuesta es la de Fastify para una ruta **no registrada**; la primer
 ## 5. Límites operativos vigentes
 
 1. **No verificado de punta a punta por navegador.** La configuración se verificó por partes (bundle servido, `/health`, preflight CORS); el recorrido completo en el navegador contra producción no se corrió. La API no tiene logging a nivel request, así que no hay rastro servidor de tráfico del frontend.
-2. **`POST /campaigns` nunca se ejercitó.** Que `STELLAR_PLATFORM_SECRET_KEY` corresponda al `owner` de la fábrica se prueba recién ahí.
+2. **`POST /campaigns` ejercitado el 2026-09-25** contra el despliegue hosteado (`CBANYZNPLW…`). Queda pendiente el aporte firmado desde el navegador y el camino de reembolso, que son alcance de #249 y no de este criterio.
 3. **Placeholder visible.** "Step content coming soon" aparece en `/request` después del contenido real, y en `/distribution` y `/evidence` (Features #28 y #29, ambas en 0/3).
 4. **`NEXT_PUBLIC_API_BASE_URL` no tiene target `preview`.** Los previews de Vercel quedan sin backend configurado.
 5. **Sin decisión registrada**: SSO en los previews; dominio propio.
@@ -192,7 +192,7 @@ huérfana de forma permanente**. No debe regenerarse por conveniencia.
 
 | Criterio (textual) | ¿Se cumple? | Verificación |
 |---|---|---|
-| `STELLAR_CAMPAIGN_FACTORY_ID` and `STELLAR_PLATFORM_SECRET_KEY` are set on the hosted API service, matching the factory already deployed on Testnet. | **Parcial** | Las dos claves están seteadas en el servicio (leído de la plataforma) y la fábrica `CDVSSQ55…` es la de Testnet (§4.4). La correspondencia de la **clave** con el `owner` de la fábrica no está probada hasta ejercitar `POST /campaigns` (§5, límite 2). |
+| `STELLAR_CAMPAIGN_FACTORY_ID` and `STELLAR_PLATFORM_SECRET_KEY` are set on the hosted API service, matching the factory already deployed on Testnet. | **Sí** | Las dos claves están seteadas (leído de la plataforma) y la correspondencia quedó **probada** el 2026-09-25: `POST /campaigns` desplegó la bóveda `CBANYZNPLW…` contra la fábrica de Testnet (tx `845f9040…`, ledger 4864817, `InvokeContract` exitoso). Un `factory.deploy()` exitoso sólo es posible si la clave de plataforma es el `owner` almacenado de la fábrica. |
 | The campaign routes are registered on the hosted API, verified by an **observed request** from the deployed web origin rather than by reading the variable list back. | **Sí** | Request observada desde el origen de producción de la web (§4.5): `GET /campaigns/<uuid inexistente>` responde `404 {"code":"not_found"}` — error de dominio, forma distinta de la que Fastify devuelve para una ruta no registrada, con `access-control-allow-origin` devuelto. |
 | `.env.cloud.example` documents the vault keys as placeholders, so the cloud profile is complete and reproducible by a contributor. | **Sí** | Bloque agregado con placeholders (§3.1); sin valores secretos (§4.1). |
 | The platform secret never appears in the repository, this issue, a build log, a deploy log or a serialised response — only the key names and their shapes are recorded. | **Sí** | Sólo se nombran claves; el MCP devuelve nombres, no valores (§4.3); `platform-signer.ts` es el único punto de uso y no expone el material (§3.3). |

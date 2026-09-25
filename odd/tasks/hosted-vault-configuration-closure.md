@@ -58,7 +58,7 @@ with a reproducible, idempotent statement the hosted profile can also run.
       result.
 - [x] **T4 — Record the storage/rotation decision** (#287 criterion). Grounded in the verified
       immutability of the factory `owner`.
-- [ ] **T5 — Exercise the hosted journey on Testnet.** Approval, then `POST /campaigns`, then verify
+- [x] **T5 — Exercise the hosted journey on Testnet.** Approval, then `POST /campaigns`, then verify
       the vault exists on the chain and that the mirror row was written.
 - [ ] **T6 — Contribution through the interface**, capturing the transaction hash and the three
       states (`Funding`, `Settled`, `Refunding`).
@@ -113,6 +113,31 @@ row moved from **No** to **Sí**. Grounded in two verified facts: the factory `o
 in `__constructor` with no setter and no upgrade path, and `deploy` authorizes only that stored
 address — so rotation is a factory redeploy plus a re-pointed `STELLAR_CAMPAIGN_FACTORY_ID`, not an
 in-place key swap.
+
+### T5 — done
+
+Approval and vault opening exercised against the hosted deployment on 2026-09-25.
+
+- `POST /application-reviews/5d1f7c2e-…/decisions` → `201`, `applied: true`, decision
+  `ee723d28-f107-4065-ac49-0cd2bdf33a33`, actor "Operador de la demo", `approvedLimitArs` 25000000.
+- `POST /campaigns` → `201`. Vault `CBANYZNPLW243WBRPJTD5VBBZVKWI6FPIKBAKTMTNZLWTK7SU6ZOWZW6`,
+  campaign `6722f37a-04f3-4491-b94c-da528adf678e`, goal 5 XLM, deadline 2026-10-09, state `funding`.
+
+**This closes #287's hardest criterion.** A successful `factory.deploy()` is only possible if the
+platform signing key is the factory's stored `owner` — precisely the correspondence the issue said
+could not be proven without a real deployment.
+
+Verified in three independent layers:
+
+| Layer | Observed |
+|---|---|
+| Chain | `invoke_host_function` / `HostFunctionTypeInvokeContract`, tx `845f9040ebbab23225f433f3057e5cc17ec53cf45ae1a5dad4080b1d460672d5`, ledger 4864817, `successful: true` |
+| API (fresh chain read) | `GET /campaigns/:id` → `state: "funding"`, `totalStroops: "0"`, with the contract's explorer URL |
+| Mirror | `public.campaign` row with `state: 'open'`, `reconciliation_status: 'in_sync'` |
+
+The SME account already existed (Friendbot had funded it), so `ensureSmeAccount` correctly skipped
+`CreateAccount` and its balance stayed at 10,000 XLM — the funding path only fires for an account that
+does not exist yet.
 
 ### T10 — done
 
