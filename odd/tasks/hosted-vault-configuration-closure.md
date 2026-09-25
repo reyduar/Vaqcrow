@@ -67,6 +67,10 @@ with a reproducible, idempotent statement the hosted profile can also run.
       result's source.
 - [ ] **T9 — Write `docs/planning/campaign-vault-web-journey-evidence.md`** for #249, in Spanish,
       mapping every acceptance criterion of #237 quoted verbatim.
+- [x] **T10 — Operator-facing walkthrough guide.** A step-by-step guide, in Spanish, for setting up
+      Freighter with both roles (PyME and investor), funding them on Testnet, and walking the six
+      demo steps. Requested by the operator; it is what makes the hosted demo usable by someone
+      other than the person who built it.
 
 ## Constraints
 
@@ -109,6 +113,20 @@ row moved from **No** to **Sí**. Grounded in two verified facts: the factory `o
 in `__constructor` with no setter and no upgrade path, and `deploy` authorizes only that stored
 address — so rotation is a factory redeploy plus a re-pointed `STELLAR_CAMPAIGN_FACTORY_ID`, not an
 in-place key swap.
+
+### T10 — done
+
+`docs/guides/freighter-and-testnet-walkthrough.md`. Written from the Stellar Foundation's official
+Testnet guide plus what this repository and the deployed interface actually do, so the two roles are
+not confused:
+
+- Both accounts, their creation and their funding are covered, including the fact that the PyME does
+  **not** need funds to open the vault (the platform creates and funds it) while the investor does.
+- The state labels and button names are taken from `campaign-workspace.tsx`, not paraphrased, so the
+  guide and the screen agree.
+- The honest limits are stated: Testnet with no economic value, the simulated identity/KYC/sales, the
+  two placeholder steps, and the fact that a refund is permissionless but still needs someone to
+  send a transaction.
 
 ### Decision not taken
 
