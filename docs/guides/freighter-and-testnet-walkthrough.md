@@ -13,7 +13,7 @@ status: draft
 # Preparación de Freighter y recorrido completo de la demo
 
 > [!info] Para qué sirve este documento
-> Es la guía operativa para **probar la demo de Vaqcrow en Stellar Testnet**, paso a paso. Sirve tanto para el equipo como para quien recibe el acceso: crea las **dos billeteras** que hacen falta —una para la PyME y una para el inversor—, las fondea con XLM de prueba, y recorre el journey completo.
+> Es la guía operativa para **probar la demo de Vaqcrow en Stellar Testnet**, paso a paso. Sirve tanto para el equipo como para quien recibe el acceso: crea las **dos cuentas** que hacen falta —una para la PyME y una para el inversor—, las fondea con XLM de prueba, y recorre el journey completo.
 >
 > No explica la arquitectura. Dice qué hacer, en qué orden, y **qué deberías ver** en cada pantalla. Para el *por qué* de las cuentas y las claves, ver [[docs/architecture/stellar-accounts-and-keys|Cuentas, claves y fondeo en Stellar]].
 
@@ -68,14 +68,26 @@ Después de instalarla, verificalo **en el navegador**: que la extensión se abr
 
 ## 5. Crear la cuenta del inversor
 
-Freighter permite tener **varias cuentas** dentro de la misma extensión. Agregá una segunda:
+> [!important] Freighter **no** crea una segunda billetera con su propia frase de recuperación
+> Al agregar una cuenta, Freighter **no** te da ni te pide una frase nueva: deriva otra cuenta **de la misma frase de recuperación** que ya tenés, usando otro índice de derivación. Por eso no vas a ver una segunda frase.
+>
+> La dirección y la clave **sí son distintas**, así que sirve perfectamente como rol de inversor. Pero **las dos cuentas comparten una sola frase**: quien la tenga, controla las dos. Para una demo en Testnet sin valor económico es aceptable; si necesitás dos identidades realmente independientes, ver la nota al final de esta sección.
 
-1. En Freighter, abrí el selector de cuenta y elegí **Add account** / **Añadir cuenta**.
-2. Guardá también su frase de recuperación, o dejá registrada qué cuenta es cuál.
-3. Asegurate de que la red siga en **Testnet**.
-4. Copiá su dirección pública (empieza con `G`).
+1. En Freighter, abrí el **selector de cuenta**.
+2. Elegí la opción para **agregar una cuenta** (según la versión aparece como *Add account* / *Añadir cuenta*, o *Create new wallet*).
+3. **No te va a pedir una frase nueva.** Es el comportamiento esperado, no un error: se deriva de la que ya tenés.
+4. Verificá que la **dirección nueva** sea distinta de la de la PyME y que empiece con `G`.
+5. Asegurate de que la red siga en **Testnet**.
 
 Vas a alternar entre estas dos cuentas durante la demo. Ver §8.
+
+> [!tip] Si querés dos identidades independientes de verdad
+> Hay dos caminos soportados por Freighter:
+>
+> - **Un perfil de navegador distinto.** La extensión guarda su estado por perfil del navegador, así que un segundo perfil te da una billetera con su **propia frase de recuperación**, aislada de la primera.
+> - **Agregar una cuenta por clave secreta.** Freighter permite sumar una cuenta pegando la clave secreta de una identidad generada fuera de la extensión.
+>
+> Para esta demo alcanza con las dos cuentas derivadas de la misma frase que describe esta sección. Lo importante es el **efecto**: dos direcciones públicas distintas, una por rol.
 
 ## 6. Fondear cada cuenta con XLM de prueba
 
@@ -275,3 +287,5 @@ Al terminar una ejecución, guardá:
 > Los enlaces de instalación de Freighter, el comportamiento de Friendbot (exige una dirección `G` o `C`) y la disponibilidad de Stellar Lab y de Horizon se verificaron en vivo el **2026-09-20**. Las etiquetas de estado (`Fondeo abierto`, `Meta alcanzada`, `Reembolso disponible`) y los nombres de los botones (`Aportar`, `Retirar mi aporte`, `Reembolsar`) provienen del código de `apps/web/src/presentation/components/campaign-workspace.tsx`. Las rutas de los seis pasos provienen del árbol de rutas de `apps/web/src/app`. La passphrase de red está fijada en `apps/api/src/application/config/stellar-config.ts` y afirmada por un test.
 >
 > La fecha límite del formulario y su conversión a las 00:00 UTC provienen de `campaign-workspace.tsx`; el requisito de vencimiento futuro, de `contracts/campaign-vault/src/lib.rs`.
+>
+> **Corregido el 2026-09-25:** una versión anterior de §5 decía que la segunda cuenta tenía su propia frase de recuperación. Es incorrecto. Freighter no genera una frase nueva al agregar una cuenta: la deriva de la frase existente mediante otro índice de derivación, cosa que está confirmada por el comportamiento de la extensión y por el propio código de Freighter, que ancla el cálculo del índice a la mnemónica (`stellar/freighter-mobile#874`) y ofrece agregar cuentas por clave secreta (`stellar/freighter#2208`). El punto se detectó al ejecutar la guía, no al escribirla.

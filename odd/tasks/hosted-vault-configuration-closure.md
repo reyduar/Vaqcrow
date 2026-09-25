@@ -127,6 +127,12 @@ not confused:
 - The honest limits are stated: Testnet with no economic value, the simulated identity/KYC/sales, the
   two placeholder steps, and the fact that a refund is permissionless but still needs someone to
   send a transaction.
+- **Corrected while being executed.** The first version claimed the second account gets its own
+  recovery phrase. It does not: Freighter derives it from the existing phrase at another derivation
+  index. The error surfaced when the operator tried to follow the guide — which is the whole point of
+  a walkthrough. §5 now states the real behaviour and the consequence (one phrase controls both
+  accounts), and points at the two ways to get genuinely independent identities (a separate browser
+  profile, or adding an account by secret key).
 
 ### Decision not taken
 
