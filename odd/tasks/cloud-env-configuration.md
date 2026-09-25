@@ -11,7 +11,7 @@ repo de dos issues de despliegue:
 
 ## Problema
 
-Tres defectos verificados el 2026-09-24, ninguno cosmetico:
+Cuatro defectos verificados el 2026-09-24, ninguno cosmetico:
 
 1. **El nombre de la variable del backend web está mal en el documento.** El código lee
    `NEXT_PUBLIC_API_BASE_URL` (`apps/web/src`), pero `docs/architecture/deploy-planning.md`
@@ -35,6 +35,20 @@ Tres defectos verificados el 2026-09-24, ninguno cosmetico:
    no sirve para la nube. `.env.docker.example` además arrastra un comentario obsoleto:
    afirma que el parser "sólo acepta testnet" y que conectar la API a la red local "está
    diferido a #237". #237 está cerrado y `generate-docker-env.sh` ya escribe el bloque local.
+
+4. **El comando de build prescrito para Vercel no puede funcionar en un checkout limpio.**
+   §3 documentaba `pnpm --filter @vaqcrow/web build`, y C3 lo copió fielmente al
+   `vercel.json`. `@vaqcrow/contracts` publica sólo desde `dist/` (`main` y `exports`
+   apuntan a `./dist/index.js`), y `pnpm --filter` ejecuta únicamente el script del paquete
+   elegido: **no construye las dependencias del workspace**. Turbo sí, porque `turbo.json`
+   declara `build.dependsOn: ["^build"]`. El comando correcto es
+   `pnpm exec turbo run build --filter=@vaqcrow/web...`.
+   Lo detectó el check de Vercel del PR #288: el deploy falló con
+   `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` y `module-not-found` en cada import de
+   `@vaqcrow/contracts`. Reproducido localmente con `packages/contracts/dist` eliminado, y
+   el reemplazo verificado con `--force` (`Cached: 0 cached, 4 total`, 23 s, verde).
+   Que el dashboard haya desplegado bien antes significa que **nunca usó este comando**: la
+   documentación describía una configuración aspiracional, no la real.
 
 ## Alcance
 
@@ -113,6 +127,11 @@ persona operadora.
 
 ### Desvíos del plan
 
+- **El PR #288 atrapó un cuarto defecto que el plan no conocía.** Mi C3 replicó sin
+  cuestionar el `buildCommand` que §3 documentaba, y ese comando nunca pudo funcionar. El
+  check de Vercel lo frenó antes del merge: si hubiera entrado, habría roto también el build
+  de producción. Lección: copiar una configuración documentada sin ejecutarla no es
+  verificarla.
 - Los commits salieron en orden distinto al sugerido: `deploy-planning.md` mezclaba C4 y C5
   en un mismo hunk, así que el commit de Vercel quedó primero. El agrupamiento por contenido
   se mantiene.
