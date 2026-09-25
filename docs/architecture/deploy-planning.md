@@ -312,20 +312,26 @@ tests
 ### vercel.json
 
 > [!note] Ubicación: `vercel.json` (raíz del monorepo)
+> Éste es el contenido real del archivo versionado; cualquier cambio acá tiene que reflejarse en la raíz.
 
 ```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @vaqcrow/web build",
-  "outputDirectory": "apps/web/.next",
+  "buildCommand": "pnpm exec turbo run build --filter=@vaqcrow/web...",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_API_URL": "^NEXT_PUBLIC_API_URL"
-  }
+  "regions": ["iad1"]
 }
 ```
+
+> [!danger] Dos campos del plan original estaban mal (corregidos el 2026-09-24)
+> 1. **`buildCommand`.** El plan prescribía `pnpm --filter @vaqcrow/web build`. **No puede funcionar en un checkout limpio.** `@vaqcrow/contracts` publica sólo desde `dist/` (`main` y `exports` apuntan a `./dist/index.js`), y `pnpm --filter` ejecuta únicamente el script del paquete elegido: no construye las dependencias del workspace. Turbo sí, porque `turbo.json` declara `build.dependsOn: ["^build"]`.
+> 2. **`outputDirectory`.** El plan prescribía `apps/web/.next`, pero el **Root Directory real del proyecto es `apps/web`**, no la raíz del monorepo. Vercel resuelve `outputDirectory` relativo al Root Directory, así que buscaba en `apps/web/apps/web/.next` y fallaba con `NEXT_OUTPUT_DIR_MISSING`. Al omitir el campo, Vercel usa el default de Next.js, que ya es correcto.
+>
+> Ambos se detectaron con el check de Vercel del PR #288, en dos iteraciones: el primer commit falló con `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL` y `module-not-found` en cada import de `@vaqcrow/contracts`; corregido el build, el segundo falló con `NEXT_OUTPUT_DIR_MISSING` y la ruta duplicada que delata el Root Directory. El `buildCommand` se reprodujo y verificó localmente desde un estado limpio.
+
+> [!warning] Sin bloque `env`: las variables van en Project Settings
+> El plan original agregaba un bloque `env` con la forma `"<VAR>": "^<VAR>"`. Tiene dos defectos: Vercel **no admite interpolación `^VAR`** en `env` (sólo valores literales o referencias `@secret-name`), así que setearía la variable al string literal `^<VAR>`; y ese nombre no es el que lee el código, que lee `NEXT_PUBLIC_API_BASE_URL`. Por eso el archivo omite `env` y la variable se administra en **Project Settings → Environment Variables** (ver §7).
 
 ### Configuración de proyecto en Vercel
 
@@ -338,16 +344,16 @@ tests
 |---|---|
 | **Project name** | `vaqcrow-web` |
 | **Framework** | Next.js |
-| **Root directory** | `/` (monorepo root) |
-| **Build command** | `pnpm --filter @vaqcrow/web build` |
-| **Output directory** | `apps/web/.next` |
+| **Root directory** | `apps/web` — **no** la raíz del monorepo (verificado el 2026-09-24) |
+| **Build command** | `pnpm exec turbo run build --filter=@vaqcrow/web...` |
+| **Output directory** | *(sin setear — Vercel usa el default de Next.js, relativo al Root Directory)* |
 | **Node.js version** | 24 |
 
 ### Variables de entorno (Vercel)
 
 | Variable | Valor | Descripción |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
 
 ---
 
@@ -1091,6 +1097,8 @@ jobs:
 ```bash
 # Las variables se setean en el servicio, nunca en el repositorio.
 # Exportarlas en el shell evita escribirlas en el historial de comandos.
+# Opcionales de la bóveda: STELLAR_TOKEN_CONTRACT_ID y STELLAR_RPC_URL; sin
+# ellas la API deriva la SAC nativa de XLM y usa el RPC canónico de Testnet.
 
 railway variable set \
   APP_ENV=demo \
@@ -1100,6 +1108,8 @@ railway variable set \
   SUPABASE_URL="https://xxx.supabase.co" \
   SUPABASE_SERVICE_ROLE_KEY="..." \
   SUPABASE_PUBLISHABLE_KEY="..." \
+  STELLAR_CAMPAIGN_FACTORY_ID=CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ \
+  STELLAR_PLATFORM_SECRET_KEY="..." \
   --service api --project <PROJECT_ID> --environment <ENVIRONMENT_ID>
 ```
 
@@ -1112,6 +1122,10 @@ railway variable set \
 > |---|---|---|
 > | `APP_ENV` | Sí | `local \| ci \| preview \| demo`. **`production` es rechazado por diseño** |
 > | `STELLAR_NETWORK` | Sí | Solo `testnet`; la red pública se rechaza al arrancar |
+> | `STELLAR_CAMPAIGN_FACTORY_ID` | Juntas | Habilita la bóveda de campaña; dirección **pública** del contrato de la fábrica |
+> | `STELLAR_PLATFORM_SECRET_KEY` | Juntas | Habilita la bóveda de campaña; **secreto**, se setea en el servicio y nunca en el repositorio |
+> | `STELLAR_TOKEN_CONTRACT_ID` | No | Opcional; sin valor la API deriva la SAC nativa de XLM |
+> | `STELLAR_RPC_URL` | No | Opcional; sin valor la API usa el RPC canónico de Testnet |
 > | `SUPABASE_URL` | Sí | Debe ser una URL `http(s)` absoluta |
 > | `SUPABASE_SERVICE_ROLE_KEY` | Sí | Nunca se registra ni se devuelve |
 > | `PORT` | No | Default `3000` |
@@ -1119,16 +1133,18 @@ railway variable set \
 > | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
 > | `CORS_ALLOWED_ORIGINS` | No | Lista de orígenes exactos separados por coma; default `[]` salvo `APP_ENV=local`. En Railway hay que declarar explícitamente el origen de Vercel — ver [[docs/architecture/environments#8-cors-cors_allowed_origins\|§8 de Perfiles de entorno]] |
 >
+> **Las dos claves de la bóveda van juntas** (`STELLAR_CAMPAIGN_FACTORY_ID` + `STELLAR_PLATFORM_SECRET_KEY`): sin ninguna, la bóveda queda deshabilitada y las rutas de campaña no se registran; con una sola, el proceso falla al arrancar.
+>
 > Correr el contenedor sin configuración falla listando **todas** las claves faltantes de una sola vez, y no imprime ningún valor.
 
 ### Vercel (Web)
 
 ```bash
 # Via Vercel CLI
-vercel env add NEXT_PUBLIC_API_URL preview
+vercel env add NEXT_PUBLIC_API_BASE_URL preview
 # Valor: https://api-production-c07f.up.railway.app
 
-vercel env add NEXT_PUBLIC_API_URL production
+vercel env add NEXT_PUBLIC_API_BASE_URL production
 # Valor: https://api-production-c07f.up.railway.app
 ```
 
@@ -1154,7 +1170,7 @@ vercel env add NEXT_PUBLIC_API_URL production
 > - [x] Verificar el endpoint `GET /health` en `apps/api` (lo consumen el health check de `railway.json` y los smoke tests de nivel 5)
 > - [x] Probar el build de Docker localmente (`docker build -f apps/api/Dockerfile .` desde la raíz) antes del primer deploy — encontró el defecto de manifests raíz de la etapa `build`
 > - [x] Crear `.dockerignore` en la raíz
-> - [ ] Crear `vercel.json` en la raíz
+> - [x] Crear `vercel.json` en la raíz
 > - [ ] Configurar proyecto en Vercel (vaqcrow-web)
 > - [x] Crear el servicio en Railway, conectar el repo y confirmar el plan Hobby
 > - [ ] Configurar GitHub Secrets (`VERCEL_TOKEN`, `RAILWAY_TOKEN`, etc.)
