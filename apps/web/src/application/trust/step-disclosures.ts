@@ -27,7 +27,7 @@ export const stepDisclosures: Readonly<Record<DemoStepSlug, StepDisclosureSpec>>
     notes: Object.freeze([microcopy.humanDecision])
   }),
   funding: Object.freeze({
-    canonical: Object.freeze(["testnet", "non-custody"] as const),
+    canonical: Object.freeze(["testnet", "non-custody", "contract-custody"] as const),
     notes: Object.freeze([microcopy.testAssetNoValue, microcopy.preSignCheck])
   }),
   distribution: Object.freeze({
@@ -35,7 +35,13 @@ export const stepDisclosures: Readonly<Record<DemoStepSlug, StepDisclosureSpec>>
     notes: Object.freeze([microcopy.submittedNotConfirmed, microcopy.hashTechnicalOnly])
   }),
   evidence: Object.freeze({
-    canonical: Object.freeze(["simulation", "testnet", "non-custody", "no-production"] as const),
+    canonical: Object.freeze([
+      "simulation",
+      "testnet",
+      "non-custody",
+      "contract-custody",
+      "no-production"
+    ] as const),
     notes: Object.freeze([microcopy.deterministicCalculation, microcopy.priorRunHash])
   })
 });

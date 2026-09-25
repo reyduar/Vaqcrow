@@ -9,12 +9,13 @@ import EvidencePage from "./page";
  * cross-route co-presence are covered by `trust-disclosures.integration.test.tsx`.
  */
 describe("EvidencePage", () => {
-  it("renders the full simulation, testnet, non-custody, and no-production disclosure texts verbatim", () => {
+  it("renders the full simulation, testnet, non-custody, contract-custody, and no-production disclosure texts verbatim", () => {
     render(<EvidencePage />);
 
     expect(screen.getByText(disclosures.simulation.text)).toBeInTheDocument();
     expect(screen.getByText(disclosures.testnet.text)).toBeInTheDocument();
     expect(screen.getByText(disclosures["non-custody"].text)).toBeInTheDocument();
+    expect(screen.getByText(disclosures["contract-custody"].text)).toBeInTheDocument();
     expect(screen.getByText(disclosures["no-production"].text)).toBeInTheDocument();
   });
 

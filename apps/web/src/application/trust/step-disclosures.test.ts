@@ -16,9 +16,9 @@ const requiredByRoute: Readonly<Record<DemoStepSlug, readonly DisclosureId[]>> =
   request: ["simulation"],
   "ai-assessment": ["human-ai"],
   approval: ["human-ai"],
-  funding: ["testnet", "non-custody"],
+  funding: ["testnet", "non-custody", "contract-custody"],
   distribution: ["testnet"],
-  evidence: ["simulation", "testnet", "non-custody", "no-production"]
+  evidence: ["simulation", "testnet", "non-custody", "contract-custody", "no-production"]
 };
 
 describe("stepDisclosures — independently-pinned containment", () => {

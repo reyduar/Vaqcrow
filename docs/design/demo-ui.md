@@ -56,6 +56,7 @@ Al abrir la experiencia, una persona debe entender:
 3. La evaluación de IA es real y explicable, pero **no aprueba ni mueve fondos**.
 4. Las firmas se realizan con Freighter de forma **no custodial**.
 5. Los movimientos visibles usan activos sin valor económico en **Stellar Testnet**.
+6. Durante la campaña, los aportes los **custodia el contrato** de la bóveda: ninguna persona, ni Vaqcrow ni la PyME, tiene una clave para moverlos.
 
 ### Promesa observable
 
@@ -80,7 +81,7 @@ Estas reglas prevalecen sobre cualquier preferencia visual o simplificación de 
 | Testnet persistente | Badge `TESTNET` en encabezado fijo y contexto de red en cada revisión/transacción. | Una pantalla transaccional no indica la red o parece operar con dinero real. |
 | Simulación explícita | Badge `SIMULADO` contiguo al origen sintético; banner en solicitud y panel. | La etiqueta depende de tooltip, color, pie de página o explicación oral. |
 | IA consultiva | Copia visible: “La IA recomienda; una persona decide”. Acción humana separada y atribuida. | Un botón, estado o frase implica aprobación automática. |
-| Custodia | Antes de conectar y firmar: “Freighter firma; Vaqcrow nunca recibe tu seed”. | Se pide una seed, clave privada o permiso ambiguo. |
+| Custodia | Antes de conectar y firmar: “Freighter firma; Vaqcrow nunca recibe tu seed”. Durante la campaña, los aportes los custodia el contrato de la bóveda, no una persona. | Se pide una seed, clave privada o permiso ambiguo; o se sugiere que la persona custodia los fondos durante la campaña. |
 | Pendiente no es confirmado | `Enviado`/`Pendiente de confirmación` nunca usa iconografía o tono de éxito. | La respuesta de envío se muestra como liquidación final. |
 | Sin garantías | Usar “estimado”, “simulado” y “riesgo”; nunca “ganancia segura” o equivalentes. | Se promete retorno, aprobación, solvencia o disponibilidad productiva. |
 | Real versus simulado | Cada evidencia y movimiento declara su naturaleza en el punto de decisión. | La persona debe inferir qué parte es real. |
@@ -93,6 +94,8 @@ Estas reglas prevalecen sobre cualquier preferencia visual o simplificación de 
 > **Stellar Testnet.** Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.
 
 > **Firma no custodial.** Freighter es la wallet e interfaz de firma. La persona usuaria conserva sus claves; Vaqcrow construye y verifica la transacción y nunca recibe su seed.
+
+> **Custodia por contrato.** Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.
 
 > **IA con supervisión humana.** La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.
 
@@ -636,7 +639,7 @@ HeroUI es la base de primitivas accesibles; se compone con tokens centralizados 
 
 **Responsive:** en escritorio, formulario/resumen 5/12 y revisión 7/12; drawer de XDR detallado. En móvil, flujo escalonado y resumen fijo antes de firmar; no mostrar XDR completo como una línea horizontal.
 
-**Disclosures exactos:** mostrar completos “Firma no custodial” y “Stellar Testnet”. Cerca del monto: “Activo de prueba sin valor económico”. Antes de firmar: “Verifica cuenta, red, destino, activo, monto y memo en Freighter”.
+**Disclosures exactos:** mostrar completos “Custodia por contrato”, “Firma no custodial” y “Stellar Testnet”. Cerca del monto: “Activo de prueba sin valor económico”. Antes de firmar: “Verifica cuenta, red, el contrato de la bóveda, el activo y el monto en Freighter”.
 
 **Criterios de aceptación**
 
@@ -726,7 +729,7 @@ HeroUI es la base de primitivas accesibles; se compone con tokens centralizados 
 
 **Responsive:** escritorio combina resumen y evidencia en 4/8 columnas; cálculo ocupa ancho completo antes de firma. Móvil ordena: estado, ventas, cálculo, firma, hashes. Tablas pasan a listas sin perder etiquetas ni totales.
 
-**Disclosures exactos:** mostrar completos “Demostración con datos simulados”, “Firma no custodial”, “Stellar Testnet” y “No apto para producción”. Junto al cálculo: “Cálculo determinístico; la IA no calcula esta obligación”. Para evidencia previa: “Hash de ensayo previo; no corresponde a la ejecución actual”.
+**Disclosures exactos:** mostrar completos “Demostración con datos simulados”, “Custodia por contrato”, “Firma no custodial”, “Stellar Testnet” y “No apto para producción”. Junto al cálculo: “Cálculo determinístico; la IA no calcula esta obligación”. Para evidencia previa: “Hash de ensayo previo; no corresponde a la ejecución actual”.
 
 **Criterios de aceptación**
 
@@ -1106,11 +1109,13 @@ Persistent trust rules:
 5. “Enviada” or “Pendiente” is never shown as confirmed. Only Horizon confirmation may produce “Confirmada”.
 6. Never imply real money, a production approval, legal/regulatory approval, guaranteed returns, solvency, or autonomous AI approval.
 7. At each decision point, clearly separate what is real from what is simulated.
+8. During a campaign, the vault contract holds the contributions: no person — not Vaqcrow, not the SME — holds a key to them. State the limits: the payout destination is fixed and immutable, there is no recovery or clawback, and the deadline refund is permissionless but never self-firing.
 
 Required canonical disclosures, shown in full where the screen prompt requests them:
 “Demostración con datos simulados. La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.”
 “Stellar Testnet. Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.”
 “Firma no custodial. Freighter es la wallet e interfaz de firma. La persona usuaria conserva sus claves; Vaqcrow construye y verifica la transacción y nunca recibe su seed.”
+“Custodia por contrato. Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.”
 “IA con supervisión humana. La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.”
 “No apto para producción. Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.”
 

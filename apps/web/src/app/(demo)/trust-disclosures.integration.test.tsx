@@ -60,6 +60,7 @@ const requiredTextsBySlug: Readonly<Record<DemoStepSlug, readonly string[]>> = {
   funding: [
     disclosures.testnet.text,
     disclosures["non-custody"].text,
+    disclosures["contract-custody"].text,
     microcopy.testAssetNoValue,
     microcopy.preSignCheck
   ],
@@ -68,6 +69,7 @@ const requiredTextsBySlug: Readonly<Record<DemoStepSlug, readonly string[]>> = {
     disclosures.simulation.text,
     disclosures.testnet.text,
     disclosures["non-custody"].text,
+    disclosures["contract-custody"].text,
     disclosures["no-production"].text,
     microcopy.deterministicCalculation,
     microcopy.priorRunHash
