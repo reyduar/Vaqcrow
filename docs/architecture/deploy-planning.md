@@ -312,6 +312,7 @@ tests
 ### vercel.json
 
 > [!note] Ubicación: `vercel.json` (raíz del monorepo)
+> Éste es el contenido real del archivo versionado; cualquier cambio acá tiene que reflejarse en la raíz.
 
 ```json
 {
@@ -320,12 +321,12 @@ tests
   "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_API_URL": "^NEXT_PUBLIC_API_URL"
-  }
+  "regions": ["iad1"]
 }
 ```
+
+> [!warning] Sin bloque `env`: las variables van en Project Settings
+> El plan original agregaba un bloque `env` con la forma `"<VAR>": "^<VAR>"`. Tiene dos defectos: Vercel **no admite interpolación `^VAR`** en `env` (sólo valores literales o referencias `@secret-name`), así que setearía la variable al string literal `^<VAR>`; y ese nombre no es el que lee el código, que lee `NEXT_PUBLIC_API_BASE_URL`. Por eso el archivo omite `env` y la variable se administra en **Project Settings → Environment Variables** (ver §7).
 
 ### Configuración de proyecto en Vercel
 
@@ -347,7 +348,7 @@ tests
 
 | Variable | Valor | Descripción |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
 
 ---
 
@@ -1125,10 +1126,10 @@ railway variable set \
 
 ```bash
 # Via Vercel CLI
-vercel env add NEXT_PUBLIC_API_URL preview
+vercel env add NEXT_PUBLIC_API_BASE_URL preview
 # Valor: https://api-production-c07f.up.railway.app
 
-vercel env add NEXT_PUBLIC_API_URL production
+vercel env add NEXT_PUBLIC_API_BASE_URL production
 # Valor: https://api-production-c07f.up.railway.app
 ```
 
@@ -1154,7 +1155,7 @@ vercel env add NEXT_PUBLIC_API_URL production
 > - [x] Verificar el endpoint `GET /health` en `apps/api` (lo consumen el health check de `railway.json` y los smoke tests de nivel 5)
 > - [x] Probar el build de Docker localmente (`docker build -f apps/api/Dockerfile .` desde la raíz) antes del primer deploy — encontró el defecto de manifests raíz de la etapa `build`
 > - [x] Crear `.dockerignore` en la raíz
-> - [ ] Crear `vercel.json` en la raíz
+> - [x] Crear `vercel.json` en la raíz
 > - [ ] Configurar proyecto en Vercel (vaqcrow-web)
 > - [x] Crear el servicio en Railway, conectar el repo y confirmar el plan Hobby
 > - [ ] Configurar GitHub Secrets (`VERCEL_TOKEN`, `RAILWAY_TOKEN`, etc.)
