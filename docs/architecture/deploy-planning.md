@@ -1092,6 +1092,8 @@ jobs:
 ```bash
 # Las variables se setean en el servicio, nunca en el repositorio.
 # Exportarlas en el shell evita escribirlas en el historial de comandos.
+# Opcionales de la bóveda: STELLAR_TOKEN_CONTRACT_ID y STELLAR_RPC_URL; sin
+# ellas la API deriva la SAC nativa de XLM y usa el RPC canónico de Testnet.
 
 railway variable set \
   APP_ENV=demo \
@@ -1101,6 +1103,8 @@ railway variable set \
   SUPABASE_URL="https://xxx.supabase.co" \
   SUPABASE_SERVICE_ROLE_KEY="..." \
   SUPABASE_PUBLISHABLE_KEY="..." \
+  STELLAR_CAMPAIGN_FACTORY_ID=CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ \
+  STELLAR_PLATFORM_SECRET_KEY="..." \
   --service api --project <PROJECT_ID> --environment <ENVIRONMENT_ID>
 ```
 
@@ -1113,12 +1117,18 @@ railway variable set \
 > |---|---|---|
 > | `APP_ENV` | Sí | `local \| ci \| preview \| demo`. **`production` es rechazado por diseño** |
 > | `STELLAR_NETWORK` | Sí | Solo `testnet`; la red pública se rechaza al arrancar |
+> | `STELLAR_CAMPAIGN_FACTORY_ID` | Juntas | Habilita la bóveda de campaña; dirección **pública** del contrato de la fábrica |
+> | `STELLAR_PLATFORM_SECRET_KEY` | Juntas | Habilita la bóveda de campaña; **secreto**, se setea en el servicio y nunca en el repositorio |
+> | `STELLAR_TOKEN_CONTRACT_ID` | No | Opcional; sin valor la API deriva la SAC nativa de XLM |
+> | `STELLAR_RPC_URL` | No | Opcional; sin valor la API usa el RPC canónico de Testnet |
 > | `SUPABASE_URL` | Sí | Debe ser una URL `http(s)` absoluta |
 > | `SUPABASE_SERVICE_ROLE_KEY` | Sí | Nunca se registra ni se devuelve |
 > | `PORT` | No | Default `3000` |
 > | `LOG_LEVEL` | No | Default `info` |
 > | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
 > | `CORS_ALLOWED_ORIGINS` | No | Lista de orígenes exactos separados por coma; default `[]` salvo `APP_ENV=local`. En Railway hay que declarar explícitamente el origen de Vercel — ver [[docs/architecture/environments#8-cors-cors_allowed_origins\|§8 de Perfiles de entorno]] |
+>
+> **Las dos claves de la bóveda van juntas** (`STELLAR_CAMPAIGN_FACTORY_ID` + `STELLAR_PLATFORM_SECRET_KEY`): sin ninguna, la bóveda queda deshabilitada y las rutas de campaña no se registran; con una sola, el proceso falla al arrancar.
 >
 > Correr el contenedor sin configuración falla listando **todas** las claves faltantes de una sola vez, y no imprime ningún valor.
 
