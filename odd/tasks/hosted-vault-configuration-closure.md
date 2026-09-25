@@ -60,12 +60,12 @@ with a reproducible, idempotent statement the hosted profile can also run.
       immutability of the factory `owner`.
 - [x] **T5 — Exercise the hosted journey on Testnet.** Approval, then `POST /campaigns`, then verify
       the vault exists on the chain and that the mirror row was written.
-- [ ] **T6 — Contribution through the interface**, capturing the transaction hash and the three
+- [x] **T6 — Contribution through the interface**, capturing the transaction hash and the three
       states (`Funding`, `Settled`, `Refunding`).
-- [ ] **T7 — Refund path**, including a trigger by someone other than the investor.
-- [ ] **T8 — Update the cloud evidence doc** with both closed #287 criteria, stating each verification
+- [x] **T7 — Refund path**, including a trigger by someone other than the investor.
+- [x] **T8 — Update the cloud evidence doc** with both closed #287 criteria, stating each verification
       result's source.
-- [ ] **T9 — Write `docs/planning/campaign-vault-web-journey-evidence.md`** for #249, in Spanish,
+- [x] **T9 — Write `docs/planning/campaign-vault-web-journey-evidence.md`** for #249, in Spanish,
       mapping every acceptance criterion of #237 quoted verbatim.
 - [x] **T10 — Operator-facing walkthrough guide.** A step-by-step guide, in Spanish, for setting up
       Freighter with both roles (PyME and investor), funding them on Testnet, and walking the six
@@ -138,6 +138,40 @@ Verified in three independent layers:
 The SME account already existed (Friendbot had funded it), so `ensureSmeAccount` correctly skipped
 `CreateAccount` and its balance stayed at 10,000 XLM — the funding path only fires for an account that
 does not exist yet.
+
+### T6–T7 — done
+
+The full journey ran on the hosted deployment against Testnet.
+
+| Step | Observed |
+|---|---|
+| Contribution (campaign 1) | tx `089ca47b9150316522a077da489ab8d38ba75a3a0c568752a169eca4c91189da`, source = the investor, ledger 4869335 |
+| States in the interface | **Fondeo abierto** → **Meta alcanzada** → **Reembolso disponible**, all three observed on screen |
+| Post-goal rejection | `POST …/invocations` with `contribute` → `409 campaign_not_funding` |
+| Refund (campaign 2) | tx `ff5b65b77b85a418c8c3612dd078a00138044130213a532c1d14335feed9d016`, source = **the PyME**, ledger 4870053 |
+
+The refund proof is arithmetic and needs no interface: the investor's balance went from a
+calculated 9,992.1526108 XLM to an observed **9,994.1526108** — exactly the 2 XLM back. The PyME
+triggered it and the funds still landed on the investor's registered address, because the contract
+fixes the destination.
+
+Findings recorded as limits rather than fixed here (all in the evidence doc §5): the interface does
+not show the contribution hash; a wrong refund target returns a generic `503`; the mirror keeps a
+positive contribution row after the refund (the #285 follow-up, now confirmed on this path too); and
+the web suite is flaky under a full parallel run locally while CI is green.
+
+### T8 — done
+
+Both #287 criteria now read **Sí** in `cloud-environment-configuration-evidence.md`, and limit 2
+records the run instead of the gap.
+
+### T9 — done
+
+`docs/planning/campaign-vault-web-journey-evidence.md`. Every acceptance criterion of #237 quoted
+verbatim and mapped, each result naming its source (a re-run command, a CI run, or an operator
+observation in the interface). The boundary check is recorded as the issue requires: zero imports of
+`@stellar/stellar-sdk` and `packages/domain` in `apps/web/src`, and `pnpm run boundaries` with no
+violations. `demo-tasks-list.md` was not touched.
 
 ### T10 — done
 
