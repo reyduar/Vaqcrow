@@ -102,6 +102,26 @@ Este documento cierra la parte verificable de ambos. La arquitectura de la soluc
 - **Reset de Testnet agendado**: 2026-12-16.
 - La identidad `vaqcrow-platform` es sólo para el Quickstart local y **no funciona contra Testnet**.
 
+### 4.5 Las rutas de campaña, registradas — request observada desde el origen de la web
+
+Corrida el 25/09/2026 contra el despliegue hosteado, con el header `Origin` del dominio de producción de la web. El discriminador es la **forma** de la respuesta 404: Fastify responde distinto según si la ruta existe.
+
+```bash
+curl -i -H "Origin: https://vaqcrow-web-nine.vercel.app" \
+  https://api-production-c07f.up.railway.app/campaigns/00000000-0000-4000-8000-000000000000
+```
+
+| Request | Respuesta observada |
+|---|---|
+| `GET /campaigns/00000000-0000-4000-8000-000000000000` (uuid válido, inexistente) | `404` · `access-control-allow-origin: https://vaqcrow-web-nine.vercel.app` · `{"code":"not_found"}` |
+| `GET /definitely-not-a-route` (control, mismo `Origin`) | `404` · `{"message":"Route GET:/definitely-not-a-route not found","error":"Not Found","statusCode":404}` |
+| `GET /health` (control, mismo `Origin`) | `200` · `{"status":"ok"}` |
+
+La segunda respuesta es la de Fastify para una ruta **no registrada**; la primera es un error **de dominio**, que sólo se produce si la request atravesó el handler y llegó al repositorio. Formas distintas ⇒ la ruta `/campaigns` **está registrada** en el despliegue hosteado. El header `Origin` se envió y CORS lo devolvió, así que la request es la que haría el navegador desde el dominio desplegado.
+
+> [!warning] Lo que esta observación NO prueba
+> No prueba que la cadena responda ni que la firma de plataforma funcione: para eso hace falta un `POST /campaigns` sobre una solicitud aprobada, que crearía estado real en Testnet (límite 2 de §5).
+
 ## 5. Límites operativos vigentes
 
 1. **No verificado de punta a punta por navegador.** La configuración se verificó por partes (bundle servido, `/health`, preflight CORS); el recorrido completo en el navegador contra producción no se corrió. La API no tiene logging a nivel request, así que no hay rastro servidor de tráfico del frontend.
@@ -133,7 +153,7 @@ Este documento cierra la parte verificable de ambos. La arquitectura de la soluc
 | Criterio (textual) | ¿Se cumple? | Verificación |
 |---|---|---|
 | `STELLAR_CAMPAIGN_FACTORY_ID` and `STELLAR_PLATFORM_SECRET_KEY` are set on the hosted API service, matching the factory already deployed on Testnet. | **Parcial** | Las dos claves están seteadas en el servicio (leído de la plataforma) y la fábrica `CDVSSQ55…` es la de Testnet (§4.4). La correspondencia de la **clave** con el `owner` de la fábrica no está probada hasta ejercitar `POST /campaigns` (§5, límite 2). |
-| The campaign routes are registered on the hosted API, verified by an **observed request** from the deployed web origin rather than by reading the variable list back. | **No verificado** | No consta en esta evidencia una request observada a una ruta `/campaigns`. Con el par completo la bóveda resuelve habilitada y las rutas se registran (§3.3), y el preflight CORS desde el origen desplegado responde (§4.3), pero eso no prueba por sí solo el registro de la ruta. Requiere una request observada. |
+| The campaign routes are registered on the hosted API, verified by an **observed request** from the deployed web origin rather than by reading the variable list back. | **Sí** | Request observada desde el origen de producción de la web (§4.5): `GET /campaigns/<uuid inexistente>` responde `404 {"code":"not_found"}` — error de dominio, forma distinta de la que Fastify devuelve para una ruta no registrada, con `access-control-allow-origin` devuelto. |
 | `.env.cloud.example` documents the vault keys as placeholders, so the cloud profile is complete and reproducible by a contributor. | **Sí** | Bloque agregado con placeholders (§3.1); sin valores secretos (§4.1). |
 | The platform secret never appears in the repository, this issue, a build log, a deploy log or a serialised response — only the key names and their shapes are recorded. | **Sí** | Sólo se nombran claves; el MCP devuelve nombres, no valores (§4.3); `platform-signer.ts` es el único punto de uso y no expone el material (§3.3). |
 | The hosted environment cannot silently enter the half-configured state (one key without the other); the code already fails loudly on that, and the hosted state is confirmed not to be in it. | **Sí** | Ambas claves presentes (leído de la plataforma); con una sola, el proceso no arranca (§3.3). |
@@ -143,5 +163,5 @@ Este documento cierra la parte verificable de ambos. La arquitectura de la soluc
 
 - El lado repositorio de #286 y #287 está mergeado en `main` a través del PR #288 (`370128b`); la configuración de panel (rama de producción, variable de la web, claves del vault) quedó aplicada por la persona operadora y verificada por lectura.
 - Este documento se entrega en la rama `Vaqcrow#286_Task_Document_the_cloud_demo_architecture_and_the_environment_configuration`; el PR lo abre el orquestador.
-- **No se declara cerrado** lo que no se verificó: el recorrido de punta a punta en el navegador, la request observada a `/campaigns`, la ausencia de placeholders, el target `preview` de la web y las tres decisiones operativas sin registrar (§5, §6).
+- **No se declara cerrado** lo que no se verificó: el recorrido de punta a punta en el navegador, la ausencia de placeholders, el target `preview` de la web y las tres decisiones operativas sin registrar (§5, §6).
 - Seguimientos sugeridos, fuera del alcance de esta unidad de trabajo: ejercitar `POST /campaigns` contra el despliegue hosteado y registrar las decisiones de secreto, SSO y dominio.
