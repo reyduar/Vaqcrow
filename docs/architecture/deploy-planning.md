@@ -62,8 +62,10 @@ graph TB
 
     subgraph "External Services"
         SUPABASE[(Supabase PostgreSQL)]
-        STELLAR["Stellar Testnet Horizon"]
-        LLM["Proveedor LLM (TBD)"]
+        RPC["Stellar Testnet — Soroban RPC"]
+        HORIZON["Stellar Testnet — Horizon"]
+        FACTORY["Fábrica y bóveda de campaña"]
+        LLM["opencode-go — evaluación asesora"]
         FREIGHTER[Freighter Client-Side]
     end
 
@@ -98,8 +100,10 @@ graph TB
 
     API_DOCKER --> API_RAILWAY
     API_RAILWAY --> SUPABASE
-    API_RAILWAY --> STELLAR
+    API_RAILWAY --> RPC
+    API_RAILWAY --> HORIZON
     API_RAILWAY --> LLM
+    RPC --> FACTORY
 
     WEB_CDN -->|client-side| FREIGHTER
 
