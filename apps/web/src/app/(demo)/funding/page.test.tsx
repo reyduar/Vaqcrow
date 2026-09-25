@@ -23,11 +23,22 @@ import FundingPage from "./page";
  * co-presence are covered by `trust-disclosures.integration.test.tsx`.
  */
 describe("FundingPage", () => {
-  it("renders the full testnet and non-custody disclosure texts verbatim", () => {
+  it("renders the full testnet, non-custody and contract-custody disclosure texts verbatim", () => {
     render(<FundingPage />);
 
     expect(screen.getByText(disclosures.testnet.text)).toBeInTheDocument();
     expect(screen.getByText(disclosures["non-custody"].text)).toBeInTheDocument();
+    expect(screen.getByText(disclosures["contract-custody"].text)).toBeInTheDocument();
+  });
+
+  it("renders the custody statement and its honest limits where the user meets custody and the refund path", () => {
+    render(<FundingPage />);
+
+    expect(
+      screen.getByText(/los aportes los custodia el contrato, no una persona/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/no hay recuperación ni clawback/i)).toBeInTheDocument();
+    expect(screen.getByText(/no se dispara solo/i)).toBeInTheDocument();
   });
 
   it("renders the test-asset-no-value and pre-sign-check microcopy", () => {
