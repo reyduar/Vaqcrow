@@ -63,7 +63,7 @@ implemented routes under `apps/web/src/app/(demo)/`.
 - [x] T1 — Exploration: tokens, components, a11y, 19 flows, business model
 - [x] T2 — Write `docs/design/claude-design-brief.md`
 - [x] T3 — Structural read-back and consistency check against `demo-ui.md`
-- [ ] T4 — Assess for review and report
+- [x] T4 — Assess for review and report
 
 ## Progress
 
@@ -81,7 +81,8 @@ implemented routes under `apps/web/src/app/(demo)/`.
 | --- | --- | --- |
 | T3 | `pnpm run test:boundaries` | 7 files / 83 tests passed — the six canonical disclosures are verbatim in the brief |
 | T3 | `pnpm exec vitest run tests/boundaries.test.ts` | 25/25 in isolation after a 5 s load timeout in the full run |
+| T4 | `gentle-ai review assess --base-ref main --committed-only` on `564e305` | medium (`executable_change` on the root guard), 687 changed lines, `review_due: false` (`already_reviewed`) |
 
 ## Next step
 
-T4: assess the range for review, then open the PR.
+PR against `main` closing #297; merge is the owner's decision.
