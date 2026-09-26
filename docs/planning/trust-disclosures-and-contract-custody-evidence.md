@@ -1,6 +1,6 @@
 # Evidencia de cierre de la Feature #240 — Issue #260
 
-> Documento de cierre de Feature. No re-deriva la implementación: consolida y cita los dos work units ya verificados de la Feature — [#258](https://github.com/reyduar/Vaqcrow/issues/258) (reescritura, commit `db6a1dc`) y [#259](https://github.com/reyduar/Vaqcrow/issues/259) (pruebas, commit `b7ef310`) — y agrega lo que ninguno de los dos documenta: la revisión afirmación por afirmación contra el contrato (§5), los hallazgos y su resolución (§6), la consistencia entre los dos documentos actualizados (§8) y el mapeo contra los criterios de aceptación propios del [#240](https://github.com/reyduar/Vaqcrow/issues/240) (§9). No reporta un estado mergeado: la rama está commiteada y aún no mergeada.
+> Documento de cierre de Feature. No re-deriva la implementación: consolida y cita los dos work units ya verificados de la Feature — [#258](https://github.com/reyduar/Vaqcrow/issues/258) (reescritura, commit `db6a1dc`) y [#259](https://github.com/reyduar/Vaqcrow/issues/259) (pruebas, commit `b7ef310`) — y agrega lo que ninguno de los dos documenta: la revisión afirmación por afirmación contra el contrato (§5), los hallazgos y su resolución (§6), la consistencia entre los dos documentos actualizados (§8) y el mapeo contra los criterios de aceptación propios del [#240](https://github.com/reyduar/Vaqcrow/issues/240) (§9). Se actualizó tras el merge: la Feature y sus Tasks se mergearon en `main` vía [PR #294](https://github.com/reyduar/Vaqcrow/pull/294), merge commit `57be415`.
 
 ## 1. Contexto y objetivo
 
@@ -13,7 +13,7 @@ El objetivo de este documento es dar a un revisor un único punto de entrada que
 - **Regla de citación.** Las secciones 3 y 4 **citan** los work units y sus resultados; ninguna cifra se re-deriva salvo la re-ejecución fechada de §4.1, que es un gate de regresión de este propio cambio y no una fuente nueva.
 - **Autoría nueva.** Las secciones 5, 6, 7, 8 y 9 son autoría de este documento: la revisión contra el contrato, los hallazgos, la consistencia entre documentos y el mapeo de criterios no existen en ningún artefacto previo.
 - **Formato.** Los comandos aparecen en bloques ```sh``` con `$ <comando>` seguido de su salida real.
-- **Fuente de cada resultado.** Todo resultado de §3/§4/§4.1 proviene de un **comando re-ejecutado en el árbol de trabajo** sobre el commit `b7ef310` (nodo `v24.21.0`). El repositorio ya tiene CI (`.github/workflows/ci.yml`, que corre `pnpm run verify`, Playwright y los contratos), pero **no hay una corrida de CI para esta rama**: no está pusheada todavía. No se reporta ningún resultado de CI inexistente.
+- **Fuente de cada resultado.** Todo resultado de §3/§4/§4.1 proviene de un **comando re-ejecutado en el árbol de trabajo** sobre el commit `b7ef310` (nodo `v24.21.0`), salvo lo que se indica en §4.2. La corrida de CI de este cambio se agrega en §4.2, ya sobre la rama pusheada: corre `.github/workflows/ci.yml` (`pnpm run verify`, Playwright y los contratos) y su resultado es de **CI**, no local.
 
 ## 3. Qué quedó implementado
 
@@ -23,7 +23,7 @@ Work unit #258 (commit `db6a1dc`), verificado en el árbol de trabajo:
 - **Ubicación por ruta** en `apps/web/src/application/trust/step-disclosures.ts`, donde la persona usuaria encuentra la decisión de custodia y el camino de reembolso: `funding` pasa a `["testnet", "non-custody", "contract-custody"]` y `evidence` a `["simulation", "testnet", "non-custody", "contract-custody", "no-production"]`.
 - **Reconciliación del checklist pre-firma** `microcopy.preSignCheck`, cuyo único consumidor es el paso de fondeo (hoy la bóveda, no el pago): pasó de `"Verifica cuenta, red, destino, activo, monto y memo en Freighter"` a `"Verifica cuenta, red, el contrato de la bóveda, el activo y el monto en Freighter"`. No quedó ninguna referencia al checklist de pago directo (`rg` en §8).
 - **Documentos actualizados en lockstep**: `docs/planning/DEMO.md` §12 (+1 aviso) y `docs/design/demo-ui.md` §1 (comprensión en 30 s, punto 6), §2 (fila de la regla "Custodia" + bloque de avisos canónicos), §8 (líneas "Disclosures exactos" de Pantalla 4 y Pantalla 6) y §11 (regla persistente 8 + lista de avisos canónicos).
-- **Alcance acotado**: 11 archivos, 259 inserciones / 13 eliminaciones, de las cuales 133 líneas son el log de iteración `odd/tasks/trust-disclosures-contract-custody.md`. El cambio de producto y documentación es de ~139 líneas autoradas, por debajo del presupuesto de revisión de 400. No se tocó `docs/planning/demo-tasks-list.md`.
+- **Alcance acotado**: la PR mergeada tiene 12 archivos y 450 adiciones / 13 eliminaciones. Esa cifra incluye el log de iteración `odd/tasks/trust-disclosures-contract-custody.md` (143 líneas) y este mismo documento de evidencia (181 líneas); el cambio de producto y pruebas —copia, tests y los dos documentos canónicos— es de ~139 líneas autoradas. No se tocó `docs/planning/demo-tasks-list.md` en esa PR; su sincronización de roadmap va aparte (issue #295).
 
 ## 4. Qué quedó probado
 
@@ -76,7 +76,21 @@ $ pnpm run test:boundaries
       Tests  79 passed (79)
 ```
 
-`pnpm run verify` no se reporta como verde de punta a punta: su paso de tests falló por timeouts de 5 s bajo carga del host, no por este cambio. Se documenta como limitación acotada en §10, con su causa y su prueba de aislamiento.
+`pnpm run verify` no se reporta como verde de punta a punta **en local**: su paso de tests falló por timeouts de 5 s bajo carga del host, no por este cambio. Se documenta como limitación acotada en §10, con su causa y su prueba de aislamiento; la corrida de CI sobre la rama pusheada (§4.2) pasó limpia y confirma el diagnóstico.
+
+### 4.2 Corrida de CI de este cambio
+
+Al abrir la PR #294, el CI del repositorio corrió sobre la rama y pasó en sus tres jobs:
+
+```sh
+$ gh pr checks 294 --repo reyduar/Vaqcrow
+Contracts (build, test, deploy on a local network)	pass	4m12s
+Playwright (deterministic, local double)	pass	1m39s
+Quality gates (lint, types, tests, build, boundaries)	pass	2m20s
+Vercel	pass	0
+```
+
+`Quality gates` ejecuta `pnpm run verify` en `ubuntu-latest`, sin la contención de carga del host local: que pase corrobora que el flake de §10 era del entorno, no de la copia.
 
 ## 5. Revisión afirmación por afirmación
 
@@ -164,18 +178,18 @@ exit=1
 
 **Flake de timeout por carga del host — ajeno a este cambio.** `pnpm run verify` falló en su paso de tests con timeouts del default de 5000 ms (5 a 8 según la corrida) en archivos que este cambio no toca (`campaign-workspace`, `human-decision-form`, `sales-evidence-table`, `sme-request-workspace`, `layout.traversal`), siempre en el primer test de cada archivo, que carga el costo de transformación. La causa es carga del host, no la copia: con load average 15–22 los mismos 5 archivos pasan aislados (38/38) y la suite completa pasa al re-ejecutarla (74 archivos / 483 tests). Es la misma clase ya documentada como flake preexistente en `trust-disclosures-and-synthetic-fixtures-evidence.md` §9. Este cambio no modificó `testTimeout` ni ningún archivo de esos componentes. CI corre `pnpm run verify` sobre `ubuntu-latest`, sin esa contención local.
 
-**CI aún no ejecutado para esta rama.** `.github/workflows/ci.yml` existe y corre `pnpm run verify`, Playwright y los contratos, pero la rama no está pusheada, así que no hay corrida de CI que citar. Los resultados de este documento son re-ejecuciones locales fechadas sobre `b7ef310`.
+**CI sobre la rama pusheada.** `.github/workflows/ci.yml` corrió al abrir la PR #294 y pasó en sus tres jobs (`Quality gates`, `Playwright` y `Contracts`), además del deploy de Vercel (ver §4.2). Eso deja el flake local como una limitación del entorno de desarrollo, no del cambio.
 
 ## 11. Estado de entrega
 
-Con este documento completo, la Feature [#240](https://github.com/reyduar/Vaqcrow/issues/240) queda cerrada al mergear esta rama. La implementación se entregó como tres work units sobre la rama de integración `Vaqcrow#240_Feat_Reconcile_trust_disclosures_with_contract_custody`: `db6a1dc` (#258, reescritura), `b7ef310` (#259, pruebas) y el commit de este documento (#260, evidencia). Es una sola unidad de revisión de ~139 líneas autoradas de producto y documentación, por debajo del presupuesto de 400, sin necesidad de encadenar PRs. No se tocó el contrato, la API, la lógica de la bóveda ni `docs/planning/demo-tasks-list.md`.
+Con este documento completo, la Feature [#240](https://github.com/reyduar/Vaqcrow/issues/240) quedó cerrada al mergear su rama: [PR #294](https://github.com/reyduar/Vaqcrow/pull/294), merge commit `57be415`. #240 y sus Tasks #258/#259/#260 cerraron como completadas, y el Epic padre [#235](https://github.com/reyduar/Vaqcrow/issues/235) se cerró manualmente. La implementación se entregó como tres work units sobre la rama de integración `Vaqcrow#240_Feat_Reconcile_trust_disclosures_with_contract_custody`: `db6a1dc` (#258, reescritura), `b7ef310` (#259, pruebas) y el commit de este documento (#260, evidencia). El cambio de producto y pruebas es de ~139 líneas autoradas; la PR completa suma 450 adiciones porque incluye el log de iteración y este documento. No se tocó el contrato, la API ni la lógica de la bóveda; `docs/planning/demo-tasks-list.md` se sincroniza aparte, en el issue #295.
 
 ### Qué queda desbloqueado
 
-Con #240 completo, la rama del Feature puede mergearse. El issue hermano del mismo padre [#235](https://github.com/reyduar/Vaqcrow/issues/235) que cierra el camino de la bóveda ya está mergeado en `main`; no queda un bloqueo nativo pendiente que este cambio libere. El hallazgo F2 (narrativa de pantalla desactualizada) queda como trabajo posterior independiente.
+Con #240 mergeado, el camino de custodia por contrato queda cerrado en `main`: el Epic [#235](https://github.com/reyduar/Vaqcrow/issues/235) y sus cinco Features están completos. No queda un bloqueo nativo pendiente que este cambio libere. El hallazgo F2 (narrativa de pantalla desactualizada) se resuelve en el issue #295, junto con los tres avisos no bloqueantes de la revisión y la corrección de este propio documento.
 
 ### Próximos pasos sugeridos
 
-1. Revisar y mergear el Pull Request de esta rama contra `main`; el CI correrá `pnpm run verify` sin la contención de carga local.
-2. Abrir un issue de seguimiento para F2: reescribir `DEMO.md` §3 y `demo-ui.md` §8 "Contenido clave" de Pantalla 4, que todavía describen el fondeo clásico retirado.
-3. Considerar la limpieza de `microcopy.kycStatusLabel` (F5) en un cambio de copia aparte.
+1. Mergear la PR del issue #295 (sincronización del roadmap y follow-ups), que además cierra `R3-PRESIGN-NOT-PINNED`, `R3-CANON-DUP-NO-GUARD`, `R3-DENYLIST-GARANTIA` y F2.
+2. Considerar la limpieza de `microcopy.kycStatusLabel` (F5) en un cambio de copia aparte.
+3. Evaluar si el bloque de prompts de Stitch de `demo-ui.md` §11/§12 conserva el brief original del fondeo clásico a propósito o también debe reconciliarse con la bóveda.
