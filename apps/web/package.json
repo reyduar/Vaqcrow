@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
-    "test:e2e:live": "playwright test --config=playwright.live.config.ts"
+    "test:e2e:live": "playwright test --config=playwright.live.config.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@heroui/react": "^3.2.6",
@@ -33,6 +35,8 @@
     "@eslint/js": "catalog:",
     "@playwright/test": "^1.63.0",
     "@stellar/stellar-sdk": "^17.1.0",
+    "@storybook/addon-a11y": "10.6.0",
+    "@storybook/nextjs-vite": "10.6.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -43,9 +47,11 @@
     "globals": "catalog:",
     "jsdom": "^30.0.1",
     "postcss": "^8.5.28",
+    "storybook": "10.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
+    "vite": "^7.3.6",
     "vitest": "catalog:"
   }
 }
