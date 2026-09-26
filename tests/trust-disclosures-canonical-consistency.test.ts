@@ -31,8 +31,12 @@ const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 const DISCLOSURES_SOURCE = "apps/web/src/application/trust/disclosures.ts";
 
-/** The documents that own the canonical copy: `DEMO.md` §12 and `demo-ui.md` §2/§11. */
-const DOCUMENTS = ["docs/planning/DEMO.md", "docs/design/demo-ui.md"] as const;
+/** The documents that own the canonical copy: `DEMO.md` §12, `demo-ui.md` §2/§11 and the Claude Design brief §6.2. */
+const DOCUMENTS = [
+  "docs/planning/DEMO.md",
+  "docs/design/demo-ui.md",
+  "docs/design/claude-design-brief.md"
+] as const;
 
 /** How many canonical disclosures the record is expected to carry. */
 const CANONICAL_DISCLOSURE_COUNT = 6;
