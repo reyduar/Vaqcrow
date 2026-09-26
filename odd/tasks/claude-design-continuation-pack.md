@@ -71,14 +71,33 @@ and `docs/design/demo-ui.md` §2/§8 for the trust constraints and the inherited
 
 - [x] T1 — Explore the format and the exact gap
 - [x] T2 — Write the continuation pack
-- [ ] T3 — Structural verification and commit
+- [x] T3 — Structural verification and commit
+
+## Verification evidence
+
+| Unit | Command | Result |
+| --- | --- | --- |
+| T3 | `grep` de control sobre las piezas reales | Filtro=2, Riesgo=2, Sector=0, Monto=0, Plazo=0 en `Explorar PyMEs`; `Gestión de PyMEs`=0 en `Admin`; `Billetera`=0 en la nav |
+| T3 | `grep -c 'Portafolio\|Informes'` como control de alternancia | 4 — confirma que el `grep` citado en el pack discrimina |
+| T3 | `pnpm run test:boundaries` | 7 archivos / 83 tests |
+| T3 | RDD assess desde el límite revisado (`564e305`) | `risk=passive`, 3 paths, 419 líneas, `review_due=false` (`passive`) — sin revisión debida |
+
+> [!note] Sobre el límite usado
+> El assess se corrió desde el commit del brief (`564e305`), que es el último límite revisado. Eso
+> re-incluye el commit del log del brief (`a53fe82`), ya revisado; el resultado sigue siendo `passive`
+> y no cambia la decisión.
 
 ## Progress
 
 - 2026-09-26 — Read the shell, the token block, the `DCLogic` script and the `sc-if`/`sc-for` grammar
   from the existing pieces; measured per-file composition (style ~1 KB, script 3–14 KB, the rest is
   markup) and confirmed the pieces are generated, not hand-authored to a simple pattern.
+- 2026-09-26 — Wrote the pack (330 líneas): hueco con evidencia, tabla de derivación hermana por
+  pantalla, convenciones del set, 6 prompts llenos, checklist de verificación y limpieza.
+- 2026-09-26 — El assess ahora **exige declarar los archivos sin trackear**: el árbol de 25 MB de
+  `docs/design/template/` lo dispara. Se corrió con `--untracked-scope=exclude` y el hash de inventario
+  esperado, que es la intención real (no trackearlo todavía).
 
 ## Next step
 
-T2: write the pack.
+Listo para pushear y extender PR #298.
