@@ -63,6 +63,19 @@ was verified sensitive by mutation rather than by an invented RED.
 | T4 sensitivity | change one word of the custody text in `DEMO.md` | exactly `quotes every canonical disclosure verbatim in docs/planning/DEMO.md` failed |
 | all | mutations restored from `HEAD`; suites green again | 37/37 and 82/82 |
 
+## RDD assessment of this slice
+
+```sh
+$ gentle-ai review assess --cwd <repo> --agent opencode --base-ref main --committed-only --json
+risk=medium   changed_paths=8   changed_lines=291
+review_due=False   review_due_reason=under_budget
+reason: executable_change apps/web/src/application/trust/contract-custody.test.ts
+```
+
+Tier recorded: **medium**, and `review_due` is **false** because the range stays under the delivery
+budget (`under_budget`). No review is due for this slice yet; the boundary stays pending until a later
+commit reaches the budget.
+
 ## Next step
 
 Run the RDD preflight for this branch range, then open the PR.
