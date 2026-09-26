@@ -51,7 +51,11 @@ describe("contract-custody disclosure", () => {
   it("never makes a claim about legality, solvency, returns or provider quality", () => {
     expect(text).not.toMatch(/legalidad/i);
     expect(text).not.toMatch(/solvencia/i);
+    // Both the verb forms (garantizado/garantizar) and the noun (garantía):
+    // the stem alone would let a future "garantía" phrasing through
+    // (review finding R3-DENYLIST-GARANTIA).
     expect(text).not.toMatch(/garantiz/i);
+    expect(text).not.toMatch(/garantía/i);
     expect(text).not.toMatch(/rentabilidad/i);
     expect(text).not.toMatch(/asegur/i);
     expect(text).not.toMatch(/retorno/i);

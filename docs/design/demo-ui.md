@@ -607,37 +607,40 @@ HeroUI es la base de primitivas accesibles; se compone con tokens centralizados 
 - [ ] Recomendación y decisión humana no comparten el mismo badge ni bloque.
 - [ ] El LLM no calcula montos ni inicia acciones de wallet.
 
-### Pantalla 4 — Fondeo, Freighter y revisión de transacción
+### Pantalla 4 — Fondeo por bóveda de campaña, Freighter y revisión de la invocación
 
 **Ruta:** `/demo/invertir`  
-**Propósito:** permitir que el inversor defina un monto de prueba, conecte Freighter, revise la intención/XDR y firme en Testnet.  
-**Actor principal:** inversor.
+**Propósito:** permitir que la PyME abra la bóveda del contrato con su meta y su fecha límite, y que el inversor defina un monto de prueba, conecte Freighter, revise la invocación del contrato de la bóveda y la firme en Testnet.  
+**Actor principal:** inversor; la PyME conecta su wallet para declarar la cuenta que recibe la liquidación.
 
 **Contenido clave**
 
 - Resumen del caso aprobado por una persona y límite permitido.
-- Input de monto con activo de prueba **TBD**, precisión y saldo Testnet.
+- Apertura de la bóveda: meta en XLM y fecha límite declaradas por la PyME; la PyME no firma nada en este paso.
+- Input de monto a aportar con activo de prueba **TBD**, precisión y saldo Testnet.
 - Estado de Freighter, cuenta pública abreviada/copiar y red detectada.
-- Revisión decodificada: red Testnet, fuente, destino, activo, monto, memo, secuencia, timeout y operaciones.
+- Estado de la bóveda leído de la cadena: `Fondeo abierto`, `Meta alcanzada` o `Reembolso disponible`, con meta, total aportado, fecha límite y el aporte propio.
+- Revisión de la invocación: red Testnet, cuenta que firma, contrato de la bóveda, activo y monto. El destino de la liquidación lo fija el contrato al abrirse la bóveda y es inmutable: la persona no lo elige.
 - Confirmación explícita antes de abrir Freighter.
-- Nota de que Vaqcrow verificará el XDR firmado antes de enviarlo.
+- Nota de que Vaqcrow verificará la invocación firmada antes de enviarla.
+- Controles del aporte propio: `Aportar`; `Retirar mi aporte` mientras la campaña siga abierta; `Reembolsar` cuando vence la fecha sin alcanzar la meta.
 
-**Componentes:** amount input, wallet connect, network badge, transaction review, disclosure panel, checkbox de reconocimiento, dialog/drawer, buttons.  
-**Acción primaria por etapa:** `Conectar Freighter` → `Revisar transacción` → `Firmar en Freighter`.  
-**Acción secundaria:** `Cancelar y volver al caso`.
+**Componentes:** amount input, wallet connect, network badge, vault state badge, vault summary, contribute/withdraw/refund controls, disclosure panel, buttons.  
+**Acción primaria por etapa:** `Abrir bóveda` (la PyME, con su wallet conectada) → `Conectar wallet` → `Aportar` → `Firmar en Freighter`.  
+**Acción secundaria:** `Retirar mi aporte` mientras la campaña siga abierta; `Reembolsar` cuando venza la fecha sin alcanzar la meta.
 
 **Estados**
 
 | Estado | Comportamiento |
 |---|---|
 | Vacío | Monto vacío y wallet desconectada; mostrar requisitos sin error prematuro. |
-| Carga | Detectando extensión/cuenta o construyendo XDR; preservar monto. |
-| Error | Freighter no instalado, conexión rechazada, red incorrecta, saldo insuficiente, XDR alterado o expirado; mensaje específico y recuperación. |
-| Deshabilitado | Firma bloqueada sin monto válido, aprobación humana, cuenta conectada, Testnet correcta y reconocimiento de detalles. |
-| Éxito | Firma recibida y XDR verificado; aún no mostrar “Confirmado”. |
+| Carga | Detectando extensión/cuenta o leyendo el estado de la bóveda; preservar monto. |
+| Error | Freighter no instalado, conexión rechazada, red incorrecta, saldo insuficiente, o el contrato rechaza la operación (fuera del estado de fondeo, monto inválido, meta ya alcanzada); mensaje específico y recuperación. |
+| Deshabilitado | Firma bloqueada sin monto válido, cuenta conectada y Testnet correcta; el aporte se deshabilita cuando la bóveda ya no acepta aportes. |
+| Éxito | Firma recibida e invocación verificada; aún no mostrar “Confirmado”. |
 | Pendiente | “Esperando confirmación en Freighter” o “Verificando firma”; permitir cancelar solo cuando sea seguro. |
 
-**Responsive:** en escritorio, formulario/resumen 5/12 y revisión 7/12; drawer de XDR detallado. En móvil, flujo escalonado y resumen fijo antes de firmar; no mostrar XDR completo como una línea horizontal.
+**Responsive:** en escritorio, formulario/resumen 5/12 y revisión de la invocación 7/12; en móvil, flujo escalonado y resumen fijo antes de firmar; no mostrar la invocación completa como una línea horizontal.
 
 **Disclosures exactos:** mostrar completos “Custodia por contrato”, “Firma no custodial” y “Stellar Testnet”. Cerca del monto: “Activo de prueba sin valor económico”. Antes de firmar: “Verifica cuenta, red, el contrato de la bóveda, el activo y el monto en Freighter”.
 
@@ -645,11 +648,11 @@ HeroUI es la base de primitivas accesibles; se compone con tokens centralizados 
 
 - [ ] Nunca se solicita seed ni clave privada.
 - [ ] `TESTNET` aparece en encabezado, wallet y resumen de firma.
-- [ ] Cuenta, destino, activo, monto, memo y timeout son legibles antes de abrir Freighter.
+- [ ] Cuenta, contrato de la bóveda, activo y monto son legibles antes de abrir Freighter.
 - [ ] Red incorrecta bloquea la firma y explica cómo cambiar a Testnet.
 - [ ] Rechazar la conexión o firma conserva la intención y ofrece reintento.
 - [ ] Recibir una firma conduce a verificación y `submitted`, no directamente a `confirmed`.
-- [ ] El activo de prueba permanece como TBD hasta decisión explícita.
+- [ ] El destino de la liquidación queda fijado por el contrato y no es editable desde esta pantalla.
 
 ### Pantalla 5 — Procesamiento y estado de transacción
 

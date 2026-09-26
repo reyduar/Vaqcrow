@@ -35,9 +35,9 @@ La demostración debe seguir una sola PyME sintética y evitar journeys paralelo
 2. **KYC y ventas simulados:** los adaptadores devuelven un caso KYC aprobado y una serie de ventas con faltantes y una anomalía intencional.
 3. **Evaluación real de IA:** el modelo analiza únicamente los datos entregados, detecta faltantes/anomalías y devuelve riesgo, razones, evidencia citada, incertidumbre y preguntas pendientes bajo un esquema validado.
 4. **Aprobación humana:** un operador revisa evidencia y alertas, ajusta límites si corresponde y registra una decisión explícita. La salida de IA no aprueba por sí sola.
-5. **Fondeo no custodial:** el inversor conecta Freighter, revisa una transacción construida por Vaqcrow con passphrase de Testnet explícita y firma el XDR sin entregar su clave.
-6. **Verificación y envío:** el backend verifica red, cuenta fuente, destino, activo, monto, memo, secuencia, timeout, operaciones permitidas y firmas antes de enviar la transacción clásica.
-7. **Confirmación asíncrona:** la interfaz muestra `submitted`; un worker acotado o un job durable consulta Horizon hasta `confirmed` o `failed`. La respuesta inicial nunca se presenta como liquidación final.
+5. **Fondeo por bóveda de campaña:** tras la aprobación, Vaqcrow abre la bóveda del contrato con la meta y la fecha límite declaradas por la PyME. El inversor conecta Freighter, revisa la invocación que Vaqcrow construye con passphrase de Testnet explícita y la firma sin entregar su clave; los aportes quedan custodiados por la bóveda, donde nadie —ni Vaqcrow ni la PyME— tiene una clave para moverlos.
+6. **Verificación y envío:** el backend verifica red, cuenta fuente, el contrato de la bóveda, el activo, el monto y las firmas antes de enviar la invocación. Al alcanzar la meta, el contrato liquida a la PyME en la misma transacción; si vence sin alcanzarla, habilita el reembolso permissionless.
+7. **Confirmación asíncrona:** la interfaz muestra `submitted`; un worker acotado o un job durable consulta la red hasta `confirmed` o `failed`. La respuesta inicial nunca se presenta como liquidación final.
 8. **Ventas mensuales simuladas:** el feed registra el siguiente período de ventas y aporta evidencia sintética claramente rotulada.
 9. **Cálculo determinístico:** código de dominio calcula la obligación de revenue share con enteros/unidades mínimas y reglas versionadas; el LLM no calcula ni mueve fondos.
 10. **Distribución real en Testnet:** la PyME revisa y firma con Freighter una transacción clásica de distribución. El sistema la verifica, envía y confirma de forma asíncrona.
@@ -262,10 +262,10 @@ Los simuladores y proveedores reales implementan los mismos contratos normalizad
 - Usar `@stellar/stellar-sdk` para construir, decodificar, verificar y consultar transacciones.
 - Integrar Freighter mediante `@stellar/freighter-api` detrás de un adaptador propio.
 - Enviar a Freighter el XDR y la passphrase explícita de **Testnet** para cada solicitud de firma.
-- Usar Horizon para cuentas, operaciones y confirmación de pagos clásicos.
+- Usar Horizon para cuentas, operaciones y confirmación del **camino clásico**, que es la **distribución** de revenue share. El **fondeo** no usa un pago clásico: invoca la bóveda del contrato por Soroban RPC y su confirmación se lee del ledger.
 - Persistir intención, hash, XDR pertinente, cuenta, sequence number, expiración y estado, sin secretos.
 - Responder `202 Accepted` o equivalente al envío y mostrar `submitted`; confirmar después por polling.
-- Antes de enviar un XDR firmado, verificar en backend red, fuente, destino, activo, monto, memo, secuencia, timeout, operaciones permitidas y firmas esperadas.
+- Antes de enviar una transacción o invocación firmada, verificar en backend red, cuenta fuente, destino (o el contrato de la bóveda), activo, monto y firmas esperadas; en un pago clásico, además memo, secuencia, timeout y operaciones permitidas.
 
 Freighter es una **wallet e interfaz de firma**, no un custodio. Cada participante controla su clave y acepta la transacción. Vaqcrow prepara y verifica transacciones, pero nunca solicita, recibe ni almacena seeds de usuarios.
 

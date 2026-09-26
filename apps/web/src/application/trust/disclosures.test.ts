@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { disclosures } from "./disclosures";
+import { disclosures, microcopy } from "./disclosures";
 
 // Canonical texts quoted verbatim from docs/planning/DEMO.md §12 and
 // docs/design/demo-ui.md §2 — byte-for-byte, including punctuation.
@@ -33,4 +33,41 @@ describe("disclosures", () => {
     expect(Object.isFrozen(disclosures)).toBe(true);
     expect(Object.isFrozen(disclosures.simulation)).toBe(true);
   });
+});
+
+/**
+ * Contextual microcopy pinned byte-for-byte, independently of its consumers
+ * (Feature #240 follow-up; review finding R3-PRESIGN-NOT-PINNED). The route
+ * tests assert these values by reference to `microcopy`, so without this map a
+ * garbled literal — including the checklist reconciled to the vault invocation
+ * in #258 — would pass every one of them.
+ */
+const PINNED_MICROCOPY: Record<string, string> = {
+  humanDecision:
+    "Esta decisión la registra una persona. La recomendación de IA no aprueba ni transfiere fondos.",
+  aiFallback: "Respuesta de respaldo previamente generada; no corresponde a una llamada en vivo",
+  testAssetNoValue: "Activo de prueba sin valor económico",
+  preSignCheck: "Verifica cuenta, red, el contrato de la bóveda, el activo y el monto en Freighter",
+  submittedNotConfirmed: "La transacción fue enviada, pero todavía no está confirmada",
+  hashTechnicalOnly:
+    "El hash demuestra ejecución técnica en Testnet; no representa una inversión ni dinero real",
+  deterministicCalculation: "Cálculo determinístico; la IA no calcula esta obligación",
+  priorRunHash: "Hash de ensayo previo; no corresponde a la ejecución actual",
+  kycSimulated: "Resultado simulado para esta demo; no constituye una verificación de identidad",
+  salesSynthetic:
+    "Serie sintética y reproducible; abril está ausente y junio contiene una anomalía intencional",
+  kycStatusLabel: "KYC aprobado · SIMULADO",
+  testnetBadge: "TESTNET · Activos sin valor económico"
+};
+
+describe("microcopy", () => {
+  it("holds exactly the pinned contextual labels", () => {
+    expect(Object.keys(microcopy).sort()).toEqual(Object.keys(PINNED_MICROCOPY).sort());
+  });
+
+  for (const [key, value] of Object.entries(PINNED_MICROCOPY)) {
+    it(`matches the pinned literal verbatim for "${key}"`, () => {
+      expect(microcopy[key as keyof typeof microcopy]).toBe(value);
+    });
+  }
 });
