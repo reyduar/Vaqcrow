@@ -86,3 +86,10 @@ Thumbs.db
 
 # Obsidian vault state (mutates constantly)
 .obsidian/
+
+# Claude Design template — generated prototypes, 25 MB, dominated by a 2.9 MB
+# bundled export with its images inlined as base64. It is design reference, no
+# build step reads it, and versioning it costs every clone forever. Kept on
+# disk, deliberately out of the repository; see
+# odd/tasks/template-stays-out-of-the-repo.md
+docs/design/template/
