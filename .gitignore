@@ -15,6 +15,7 @@ next-env.d.ts
 out/
 build/
 dist/
+storybook-static/
 .turbo/
 .vercel/
 
