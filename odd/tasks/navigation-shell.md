@@ -101,6 +101,8 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ### T1 — `DemoNavbar` + `SiteFooter` (2026-09-27)
 
+- Work-unit implementation commit: `f869bb8` (`feat(web): add static navigation shell`).
+
 #### Reconciliation and TDD
 
 - Reconciled the cancelled writer's uncommitted implementation, tests, stories, guide rows and this log.
