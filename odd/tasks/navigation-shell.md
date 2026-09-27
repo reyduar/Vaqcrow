@@ -193,6 +193,7 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 | Storybook cleanup | Deleted `apps/web/storybook-static/`; confirmed `apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` unchanged |
 | `pnpm run boundaries` | Passed: 437 modules and 1277 dependencies, no violations |
 | `pnpm run test:boundaries` | Passed first run: 7 files, 83 tests; no host-load timeout, so no retry was needed |
+| Native RDD assessment | Medium executable change, 324 changed lines from `4a32553`; `under_budget`, so review was not due and no consent was requested |
 
 ## Next step
 
