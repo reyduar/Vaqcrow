@@ -98,6 +98,11 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Confianza/HashDisplay` | Hash de transacción, id de contrato, con link al explorador y un valor corto que no se trunca |
 | `Confianza/DistributionCalculation` | El cálculo de agosto y una segunda regla (septiembre) con otros montos |
 | `Confianza/CustodyNote` | Sólo custodia del contrato, y con firmante (paso de fondeo) |
+| `Datos/KpiTile` | El tile de una métrica, con y sin nota e ícono, con badge SIMULADO y una fila de dos tiles |
+| `Datos/CampaignCard` | La tarjeta de campaña en progreso, los tres niveles de riesgo, la meta alcanzada sólo con confirmación explícita, la acción como link o botón, el encabezado configurable y una grilla de dos tarjetas |
+| `Datos/BarChart` | La serie mensual con el hueco "Sin dato" y la anomalía "Atípico" (ambos con marca de texto, no sólo color), su tabla accesible, el aviso canónico de serie sintética y el encabezado configurable |
+| `Datos/Timeline` | El recorrido de la demo con sus tres estados (completado, paso actual, pendiente), todos los pasos completados y una variante sin descripciones |
+| `Datos/TransactionStatusList` | La progresión firmada → enviada → confirmada con `aria-live`, el estado fallido, el encabezado configurable y una variante sin subtítulo; la copia canónica de "enviada sin confirmar" vive en el componente |
 
 ### Agregar una historia
 
