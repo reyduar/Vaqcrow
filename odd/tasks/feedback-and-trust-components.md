@@ -50,17 +50,17 @@ choice for #306 (2026-09-26): `stacked-to-main`. Slices: PR 1 = T1 (this branch)
 
 - [x] T1 — `Skeleton`, `EmptyState`, `ErrorState`, `ProgressBar` (tests RED→GREEN, stories)
 - [x] T2 — `HashDisplay`, `DistributionCalculation`, `CustodyNote` (tests, stories, canonical copy)
-- [ ] T3 — `demo-step-loading` / `demo-step-error` adopt the states (tests unchanged); guide; full matrix
+- [x] T3 — `demo-step-loading` / `demo-step-error` adopt the states (tests unchanged); guide; full matrix
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ## Acceptance criteria
 
-- [ ] Each component covers the states listed in #310 and renders in light and dark
-- [ ] Each component has a unit test and a Storybook story
-- [ ] Trust components use only canonical copy; the consistency guard passes
-- [ ] `demo-step-loading` / `demo-step-error` adopt the states with their tests unedited
-- [ ] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries`,
+- [x] Each component covers the states listed in #310 and renders in light and dark
+- [x] Each component has a unit test and a Storybook story
+- [x] Trust components use only canonical copy; the consistency guard passes
+- [x] `demo-step-loading` / `demo-step-error` adopt the states with their tests unedited
+- [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries`,
       `test:e2e` pass
 
 ## Verification evidence
@@ -177,6 +177,98 @@ only synthetic data (a fake 64-hex-char tx hash and a fake `CDLZ…` contract id
 key or seed). Full verification matrix above; every command passed clean on this run, including
 the two flake-prone ones (`pnpm run test`, `pnpm run test:boundaries`).
 
+### T3 — adoption
+
+**`demo-step-loading`** now renders `<Skeleton label="Loading step…" />` instead of a plain
+`<section role="status" aria-live="polite"><p>Loading step…</p></section>`. `Skeleton`'s own
+`role="status"` div already carries the ARIA-implicit `aria-live="polite"` that role grants, so
+dropping the explicit attribute is not a behaviour change. The visible text moved into `Skeleton`'s
+`sr-only` announcement span; `screen.getByText("Loading step…")` still finds it because `sr-only`
+uses clip/absolute positioning, not `display:none` (confirmed by `Skeleton`'s own T1 test using the
+same pattern). Default `shapes = ["line"]` renders one decorative, `aria-hidden` line — no visible or
+accessible difference from before. Its unit test (`demo-step-loading.test.tsx`) and caller test
+(`app/(demo)/loading.test.tsx`) both pass unedited.
+
+**`demo-step-error`** now renders `<ErrorState title="Something went wrong loading this step."
+onRetry={onRetry} retryLabel="Retry" />`, unwrapped (no extra `<section role="alert">`) — `ErrorState`
+already renders its own single `role="alert"` region, so wrapping it again would have produced two
+nested `alert` regions and broken `screen.getByRole("alert")` (single-match query). The original text
+was one line with no separate title/detail split; `ErrorState` required both `title` and `message` as
+non-empty strings, which would have forced either an empty second paragraph or genuinely new UI copy
+neither one true to "same visible texts, no new wording". Extended `ErrorState.message` to optional
+(RED→GREEN below) instead: when omitted, `ErrorState` renders only the title paragraph, and the
+original single line of text now flows through unchanged. `retryLabel="Retry"` reproduces the
+original "Retry" button text exactly (default is `"Reintentar"`). Its unit test
+(`demo-step-error.test.tsx`) and both caller tests (`app/(demo)/error.test.tsx`, isolated real
+`DemoRouteError` fallback; `app/(demo)/error.recovery.test.tsx`, a real React error boundary catching
+a render-time throw and recovering on retry) all pass unedited.
+
+Nothing was left un-adopted: both components now compose the shared states with no behaviour change
+observable to any existing test, and no new component extension beyond the one documented below.
+
+**`ErrorState.message` optional (RED→GREEN).** Added a test asserting that with no `message` prop,
+`ErrorState` renders only the title, the alert role still resolves to exactly one match, and no
+`<p class="text-sm">` element exists in the DOM — RED failed with `expected document not to contain
+element, found <p class="text-sm" />` (message was unconditionally rendered as `""`). Implementation:
+`message` became `readonly message?: string` and its `<p>` is now `{message ? <p
+className="text-sm">{message}</p> : null}`. GREEN: 4/4 `error-state.test.tsx` tests passed, including
+the three pre-existing ones unedited.
+
+### T3 — Verification matrix
+
+| Command | Result |
+| --- | --- |
+| Baseline (before edits): `demo-step-loading.test.tsx`, `demo-step-error.test.tsx`, `app/(demo)/error.test.tsx`, `app/(demo)/error.recovery.test.tsx`, `app/(demo)/loading.test.tsx` | 5 files / 10 tests passed |
+| `error-state.test.tsx` RED (new optional-`message` test, before the `ErrorState` change) | 1 failed / 3 passed — `expected document not to contain element, found <p class="text-sm" />` |
+| `error-state.test.tsx` GREEN (after the `ErrorState` change) | 4/4 passed |
+| After edits: same 5 caller/component files + `error-state.test.tsx` + `skeleton.test.tsx` | 7 files / 18 tests passed, all pre-existing tests unedited |
+| `pnpm run lint` | 0 errors (1 pre-existing unrelated warning in `fetch-http-client.ts`, same as T1/T2) |
+| `pnpm run typecheck` | passed, 8/8 tasks |
+| `pnpm run test` | 90/90 files, 572/572 tests passed (571 + 1 new `ErrorState` test) — no timeout flake this run |
+| `pnpm run build` | 5/5 tasks passed |
+| `pnpm --filter @vaqcrow/web test:e2e` | 17/17 Playwright specs passed |
+| `pnpm --filter @vaqcrow/web build-storybook` | built successfully; `storybook-static/` deleted afterwards |
+| `pnpm run boundaries` | no dependency violations (412 modules, 1205 dependencies cruised) |
+| `pnpm run test:boundaries` | 1 timeout on first run (`boundary fixtures stay outside build/typecheck/boundaries globs > the real \`boundaries\` script glob … never reaches the fixtures`, 6816ms vs. the 5000ms default under host load — the documented environmental flake) — re-run in isolation with `-t` still hit the same 5000ms budget at 5576ms; re-run again with `--testTimeout=30000` on the same unmodified test passed at 2370ms, confirming pure timing, not a regression. 82/83 passed on the full first run, 1/1 passed in the timed isolation re-run. |
+
+`apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` were checked after `build-storybook` — neither
+was rewritten this run.
+
+### T3 — Design decisions
+
+- **`ErrorState.message` became optional rather than inventing new detail copy for
+  `demo-step-error`.** The alternative (keep `message` required, pass an empty string) would have
+  rendered a genuinely empty `<p class="text-sm">` — harmless to the tests but not a clean read of
+  "same visible texts", and would have left a meaningless empty paragraph in the DOM. Making the prop
+  optional and skipping the paragraph entirely when absent is the minimal extension the task
+  anticipated, mirrors the `onRetry`-optionality example already called out in the task brief, and
+  keeps `ErrorState`'s two-line title+detail design intact for every existing caller (all of which
+  still pass `message`).
+- **`demo-step-error` never re-wraps `ErrorState` in its own `role="alert"`.** `ErrorState` already
+  owns that region; nesting a second one would have produced two `alert` landmarks and broken every
+  `getByRole("alert")` single-match assertion across `demo-step-error.test.tsx`, `error.test.tsx` and
+  `error.recovery.test.tsx` (a real error-boundary recovery test, most sensitive to structural
+  drift).
+- **`demo-step-loading` keeps `Skeleton`'s default single `"line"` shape** rather than composing a
+  richer skeleton (e.g. `["line", "line", "block"]` as in the `CardWithLines` story) — the route-level
+  loading fallback covers an unknown step shape, so a single generic line placeholder is the honest
+  minimum; a step-specific richer skeleton was out of scope for T3 (no such requirement in the issue
+  or the original component).
+
+### Progress (2026-09-27)
+
+T3 complete: `demo-step-loading` now renders through `Skeleton`, `demo-step-error` now renders through
+`ErrorState`, with no behaviour change to either component's external contract — every pre-existing
+unit test (`demo-step-loading.test.tsx`, `demo-step-error.test.tsx`) and every caller test
+(`app/(demo)/loading.test.tsx`, `app/(demo)/error.test.tsx`, `app/(demo)/error.recovery.test.tsx`)
+passed unedited, both before and after the change. One minimal, TDD'd extension was needed:
+`ErrorState.message` became optional so a single-line error (no separate detail text) does not force
+either an empty paragraph or new UI copy. `docs/guides/storybook.md`'s "Qué está cubierto hoy" table
+now lists all eleven stories present in the repo (four pre-existing `Primitivas/*` untouched, plus the
+`Estados/*` and `Confianza/*` rows from T1/T2 that were missing from the table). Full verification
+matrix above; every command passed, including one documented pure-timing flake in
+`pnpm run test:boundaries` (re-run in isolation and with a longer timeout, both reported).
+
 ## Next step
 
-Commit T2, assess for review, open PR 2.
+Commit T3, assess for review, open PR 3; then close #310.

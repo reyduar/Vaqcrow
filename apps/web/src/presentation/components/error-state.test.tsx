@@ -35,4 +35,13 @@ describe("ErrorState", () => {
 
     expect(screen.getByRole("button", { name: "Volver a intentar" })).toBeInTheDocument();
   });
+
+  it("renders only the title when no message is provided", () => {
+    render(<ErrorState title="Something went wrong loading this step." onRetry={() => {}} />);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Something went wrong loading this step.")).toBeInTheDocument();
+    expect(screen.queryByText("Algo salió mal.")).not.toBeInTheDocument();
+    expect(document.querySelector("p.text-sm")).not.toBeInTheDocument();
+  });
 });
