@@ -93,5 +93,13 @@ export const microcopy = {
   salesSynthetic:
     "Serie sintética y reproducible; abril está ausente y junio contiene una anomalía intencional",
   kycStatusLabel: "KYC aprobado · SIMULADO",
-  testnetBadge: "TESTNET · Activos sin valor económico"
+  testnetBadge: "TESTNET · Activos sin valor económico",
+  /**
+   * `docs/design/demo-ui.md:1173`: "Wrong network must block signing and
+   * say 'Cambia a Stellar Testnet para continuar'." Added 2026-09-27, owner
+   * approved, after native review found the wrong-network alert could
+   * otherwise render empty (see `TransactionReviewModal`'s
+   * `TransactionReviewNetworkState` doc comment).
+   */
+  wrongNetwork: "Cambia a Stellar Testnet para continuar"
 } as const;

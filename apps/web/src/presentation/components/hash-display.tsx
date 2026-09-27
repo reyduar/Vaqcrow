@@ -35,7 +35,14 @@ export interface HashDisplayProps {
 const HEAD_CHARS = 10;
 const TAIL_CHARS = 8;
 
-function truncateMiddle(value: string): string {
+/**
+ * Middle-truncation shared with other components that need the same visual
+ * rule without the rest of `HashDisplay`'s chrome (label, TESTNET badge,
+ * explorer link) — e.g. `TransactionReviewModal`'s own `<dd>` values. Kept
+ * here as the single source of the truncation rule; `HashDisplay`'s public
+ * behavior for its existing callers is unchanged.
+ */
+export function truncateMiddle(value: string): string {
   if (value.length <= HEAD_CHARS + TAIL_CHARS + 1) {
     return value;
   }
