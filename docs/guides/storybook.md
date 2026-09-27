@@ -106,6 +106,7 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Navegación/DemoNavbar` | El encabezado pegajoso con marca, badges `DEMO`/`TESTNET` y navegación: el ítem activo (`aria-current="page"` más subrayado de 2px), una variante sin ítem activo, una lista larga de etiquetas, el estado colapsado sobre un contenedor angosto y el espacio de acciones |
 | `Navegación/SiteFooter` | El pie con el aviso canónico "No apto para producción" (verbatim, desde las constantes) y la fila legal con las cadenas del llamador; incluye la variante sin fila legal |
 | `Navegación/AccountMenu` | La identidad de cuenta con Avatar compartido, subtítulo opcional, respaldo de iniciales, nombre largo y el panel interactivo de enlaces y acciones del llamador |
+| `Overlays/TransactionReviewModal` | La revisión antes de firmar con el checkbox de reconocimiento requerido, sin ese checkbox, red incorrecta bloqueando la firma, estado firmando, firma rechazada, verificación rechazada y valores largos truncados y copiables |
 
 ### Agregar una historia
 
