@@ -84,7 +84,7 @@ export type TransactionReviewNetworkState =
   | { readonly isWrongNetwork: true; readonly wrongNetworkMessage: string };
 
 interface TransactionReviewModalBaseProps {
-  /** Fired on Escape, backdrop dismiss, "Cancelar" and the close button. */
+  /** Fired on Escape, backdrop dismiss, "Cancelar" and the close button — never while signing. */
   readonly onClose: () => void;
   /** Fired when "Firmar en Freighter" is pressed while enabled. */
   readonly onSign: () => void;
@@ -161,7 +161,7 @@ function TransactionReviewModalContent({
 
   return (
     <Modal.Dialog className="flex flex-col gap-4">
-      <Modal.CloseTrigger aria-label="Cerrar" />
+      <Modal.CloseTrigger aria-label="Cerrar" isDisabled={isSigning} />
       <Modal.Header className="flex flex-col gap-1 pr-8">
         <span className="text-sm font-medium text-brand-accent">Revisión antes de firmar</span>
         <Modal.Heading>{title}</Modal.Heading>
@@ -222,7 +222,7 @@ function TransactionReviewModalContent({
       </Modal.Body>
 
       <Modal.Footer className="flex justify-end gap-2">
-        <Button variant="secondary" onPress={onClose}>
+        <Button variant="secondary" isDisabled={isSigning} onPress={onClose}>
           Cancelar
         </Button>
         <Button
@@ -294,11 +294,17 @@ function MonoValue({ label, value }: MonoValueProps) {
 }
 
 export function TransactionReviewModal({ isOpen, onClose, ...rest }: TransactionReviewModalProps) {
+  // While Freighter holds the signature request, the review stays on screen so
+  // its outcome is never lost behind a dismissed dialog (R3-dismiss-during-signing).
+  const isSigning = rest.signingStatus === "signing";
+
   return (
     <Modal.Backdrop
       isOpen={isOpen}
+      isDismissable={!isSigning}
+      isKeyboardDismissDisabled={isSigning}
       onOpenChange={(open) => {
-        if (!open) {
+        if (!open && !isSigning) {
           onClose();
         }
       }}

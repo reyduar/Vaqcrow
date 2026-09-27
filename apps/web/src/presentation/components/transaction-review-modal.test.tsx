@@ -293,6 +293,38 @@ describe("TransactionReviewModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("R3-dismiss-during-signing: ignores Escape while a Freighter signature is in progress", () => {
+    const { onClose } = renderModal({ signingStatus: "signing" });
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("R3-dismiss-during-signing: disables Cancelar and the close button while signing", () => {
+    const { onClose } = renderModal({ signingStatus: "signing" });
+    const cancel = screen.getByRole("button", { name: "Cancelar" });
+    const close = screen.getByRole("button", { name: "Cerrar" });
+
+    expect(cancel).toBeDisabled();
+    expect(close).toBeDisabled();
+
+    fireEvent.click(cancel);
+    fireEvent.click(close);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("R3-dismiss-during-signing: allows dismissal again once signing ends in a rejection", () => {
+    const { onClose } = renderModal({ signingStatus: "signature-rejected" });
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it("resets the acknowledgement checkbox and disables signing again on the next opening", () => {
     const ackLabel = "Revisé la red, las cuentas, el activo, el monto y el memo";
     const { rerender } = renderModal({ acknowledgementLabel: ackLabel });

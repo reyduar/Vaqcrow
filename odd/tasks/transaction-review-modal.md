@@ -475,6 +475,35 @@ vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNe
 | `pnpm run boundaries` | no dependency violations (440 modules) |
 | `pnpm run test:boundaries` | 83 passed |
 
+### T1 — fourth native review and dismissal lock while signing (2026-09-27)
+
+- The stop hook required a review of the whole branch against `main` (8 paths / 1339 lines, risk
+  `medium`). Owner granted consent. Lineage `review-dbfd251809c2bdc0` (`review-reliability`): **approved**,
+  acknowledged; two advisory `SUGGESTION`s:
+  - `R3-blank-rejection-message` — the known residual limitation (a rejected status with a blank message
+    renders an empty alert). Still open: it needs owner-approved fallback copy.
+  - `R3-dismiss-during-signing` — "Cancelar", the close button, `Escape` and the backdrop all called
+    `onClose` while a Freighter signature was in progress.
+- Owner decision (2026-09-27): lock dismissal while signing before opening the PR.
+- RED: three new tests; `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/transaction-review-modal.test.tsx`
+  — 2 failed / 31 passed (`expected "spy" to not be called at all, but actually been called 1 times`) for
+  `Escape` and for Cancelar/close while signing. The third test (dismissal allowed again after a rejection)
+  passed from the start as a regression guard.
+- GREEN: `Modal.Backdrop` gets `isDismissable={!isSigning}` and `isKeyboardDismissDisabled={isSigning}`,
+  `onOpenChange` ignores close requests while signing, and "Cancelar" plus `Modal.CloseTrigger` get
+  `isDisabled={isSigning}` — 33 passed.
+
+| Command | Observed result |
+| --- | --- |
+| focused vitest (modal) | 33 passed |
+| `pnpm run lint` | 5/5 tasks; 1 pre-existing warning, 0 errors |
+| `pnpm run typecheck` | 8/8 tasks |
+| `pnpm run test` | 8/8 tasks; web 683 passed |
+| `pnpm run build` | 5/5 tasks |
+| `pnpm --filter @vaqcrow/web build-storybook` | exit 0; `storybook-static/` deleted |
+| `pnpm run boundaries` | no dependency violations (440 modules) |
+| `pnpm run test:boundaries` | 83 passed |
+
 ## Next step
 
 Guard commit `6b5ecab` assessed: risk `medium`, 48 lines, `review_due: false` (`under_budget`) — it stays pending in the slice. Push and open the PR (owner decision).
