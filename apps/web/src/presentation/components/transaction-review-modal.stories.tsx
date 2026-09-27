@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { microcopy } from "@/application/trust/disclosures";
 import { TransactionReviewModal, type TransactionReviewDescriptionRow } from "./transaction-review-modal";
 
 /**
@@ -8,15 +9,14 @@ import { TransactionReviewModal, type TransactionReviewDescriptionRow } from "./
  * prop, so these stories render with `isOpen` already true instead of
  * requiring a trigger interaction.
  *
- * `wrongNetworkMessage` and the acknowledgement checkbox's label are
- * caller-supplied: neither string lives in `application/trust`'s canonical
- * copy (recorded deviation in `odd/tasks/transaction-review-modal.md`), so
- * these stories are their only home in the demo today.
+ * The wrong-network story uses the canonical `microcopy.wrongNetwork`. The
+ * acknowledgement label is caller-supplied: it is not canonical copy
+ * (recorded deviation in `odd/tasks/transaction-review-modal.md`).
  */
 const SYNTHETIC_SOURCE_ACCOUNT = "GDEMOACCTFAKESYNTHETICTESTNETONLYNOTREALSTELLARPUBKEY001";
 const SYNTHETIC_VAULT_CONTRACT_ID = "CDEMOCONTRACTFAKESYNTHETICTESTNETONLYNOTREALVAULTID00001";
 const ACK_LABEL = "Revisé la red, las cuentas, el activo, el monto y el memo";
-const WRONG_NETWORK_MESSAGE = "Cambia a Stellar Testnet para continuar";
+const WRONG_NETWORK_MESSAGE = microcopy.wrongNetwork;
 
 const ROWS: readonly TransactionReviewDescriptionRow[] = [
   { label: "Cuenta origen", value: SYNTHETIC_SOURCE_ACCOUNT, mono: true },

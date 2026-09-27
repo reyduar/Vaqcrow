@@ -512,6 +512,19 @@ vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNe
 - Size: ~1400 added lines, over the ~450 forecast, mostly this log (~510) and tests (~450). The component
   itself is ~320 lines. The planned `-02-stories` split was not applied; the owner asked for one PR.
 
+### Fifth native review and canonical copy in stories (2026-09-27)
+
+- The stop hook required another whole-branch review (8 paths / 1415 lines). Owner granted consent.
+  Lineage `review-bf36ff72afb79522` (`review-reliability`): **approved**, acknowledged. Advisories:
+  - `R3-blank-rejection-message` (`WARNING`) — the open follow-up; still needs owner-approved fallback copy.
+  - `R3-stale-wrong-network-story-copy` (`SUGGESTION`) — stories and the test helper retyped the canonical
+    string after `microcopy.wrongNetwork` existed, and the stories doc comment still called it
+    non-canonical.
+- Fixed inline: stories and the test helper import `microcopy.wrongNetwork`; the caller-message test uses a
+  distinct caller string so it proves the caller text wins over the fallback. No behaviour change, so no
+  RED phase. Checks: focused modal suite 33 passed; `lint` 0 errors (1 pre-existing warning); `typecheck`
+  8/8; `test` 8/8 (web 683); `build-storybook` exit 0, `storybook-static/` deleted.
+
 ## Next step
 
 Wait for PR #322 checks and the owner's merge; then the evidence document, and step 6 (adopting the shell and

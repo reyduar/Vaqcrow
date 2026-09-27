@@ -43,7 +43,7 @@ function buildElement(overrides: RenderOverrides, onClose: () => void, onSign: (
   const networkProps: TransactionReviewNetworkState = overrides.isWrongNetwork
     ? {
         isWrongNetwork: true,
-        wrongNetworkMessage: overrides.wrongNetworkMessage ?? "Cambia a Stellar Testnet para continuar"
+        wrongNetworkMessage: overrides.wrongNetworkMessage ?? microcopy.wrongNetwork
       }
     : { isWrongNetwork: false };
 
@@ -146,9 +146,9 @@ describe("TransactionReviewModal", () => {
   });
 
   it("blocks signing and shows the caller-supplied message on the wrong network", () => {
-    renderModal({ isWrongNetwork: true, wrongNetworkMessage: "Cambia a Stellar Testnet para continuar" });
+    renderModal({ isWrongNetwork: true, wrongNetworkMessage: "Mensaje de red del llamador" });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Cambia a Stellar Testnet para continuar");
+    expect(screen.getByRole("alert")).toHaveTextContent("Mensaje de red del llamador");
     expect(screen.getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
   });
 
