@@ -193,7 +193,13 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 | Storybook cleanup | Deleted `apps/web/storybook-static/`; confirmed `apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` unchanged |
 | `pnpm run boundaries` | Passed: 437 modules and 1277 dependencies, no violations |
 | `pnpm run test:boundaries` | Passed first run: 7 files, 83 tests; no host-load timeout, so no retry was needed |
-| Native RDD assessment | Medium executable change, 324 changed lines from `4a32553`; `under_budget`, so review was not due and no consent was requested |
+| Native RDD review | Medium executable change reviewed by explicit user request. The `review-reliability` lens found no findings; lineage `review-8bcdb0aec9f42599` was approved and acknowledged for target `sha256:33f0b53ce75e6f60b1d99cf15274aa5938c79164e1d4a585860209e726b954d3` |
+
+#### Delivery evidence
+
+- PR #320: https://github.com/reyduar/Vaqcrow/pull/320
+- This is the second stacked slice for #318, after PR #319 merged the static shell. The issue was already
+  closed by PR #319; PR #320 retains the link as the remaining AccountMenu evidence slice.
 
 ## Next step
 
