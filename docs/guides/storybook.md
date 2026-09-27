@@ -103,6 +103,8 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Datos/BarChart` | La serie mensual con el hueco "Sin dato" y la anomalía "Atípico" (ambos con marca de texto, no sólo color), su tabla accesible, el aviso canónico de serie sintética y el encabezado configurable |
 | `Datos/Timeline` | El recorrido de la demo con sus tres estados (completado, paso actual, pendiente), todos los pasos completados y una variante sin descripciones |
 | `Datos/TransactionStatusList` | La progresión firmada → enviada → confirmada con `aria-live`, el estado fallido, el encabezado configurable y una variante sin subtítulo; la copia canónica de "enviada sin confirmar" vive en el componente |
+| `Navegación/DemoNavbar` | El encabezado pegajoso con marca, badges `DEMO`/`TESTNET` y navegación: el ítem activo (`aria-current="page"` más subrayado de 2px), una variante sin ítem activo, una lista larga de etiquetas, el estado colapsado sobre un contenedor angosto y el espacio de acciones |
+| `Navegación/SiteFooter` | El pie con el aviso canónico "No apto para producción" (verbatim, desde las constantes) y la fila legal con las cadenas del llamador; incluye la variante sin fila legal |
 
 ### Agregar una historia
 
