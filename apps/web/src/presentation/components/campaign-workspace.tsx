@@ -1,7 +1,6 @@
 "use client";
 
-import { Button, Input, Label } from "@heroui/react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -12,6 +11,8 @@ import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { useCampaignVault } from "@/state/use-campaign-vault";
 import type { CampaignState } from "@vaqcrow/contracts";
 import { Badge } from "./badge";
+import { Button } from "./button";
+import { TextField } from "./text-field";
 
 /** The wallet and gateway the demo uses when none is supplied; module scope keeps them stable across renders. */
 const defaultWallet = new FreighterWallet();
@@ -34,8 +35,6 @@ const STATE_TONE: Readonly<Record<CampaignState, "info" | "neutral" | "caution">
   settled: "neutral",
   refunding: "caution"
 };
-
-const INPUT_CLASS = "w-full";
 
 /** Whole XLM plus up to 7 decimal digits, trailing zeros trimmed. Display only; it never crosses the wire. */
 function formatStroopsAsXlm(stroops: bigint): string {
@@ -78,7 +77,6 @@ export function CampaignWorkspace({
   campaignId = null,
   onCampaignOpened
 }: CampaignWorkspaceProps) {
-  const idPrefix = useId();
   const {
     publicKey,
     isConnecting,
@@ -163,36 +161,18 @@ export function CampaignWorkspace({
         {connectButton}
 
         <form onSubmit={handleOpen} noValidate aria-label="Abrir bóveda de campaña" className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${idPrefix}-goal`}>Meta (XLM)</Label>
-            <Input
-              id={`${idPrefix}-goal`}
-              className={INPUT_CLASS}
-              inputMode="decimal"
-              value={goal}
-              aria-invalid={goalError ? "true" : undefined}
-              onChange={(event) => {
-                setGoal(event.target.value);
-                setGoalError(undefined);
-              }}
-            />
-            {goalError ? (
-              <span role="alert" className="text-sm text-trust-critical">
-                {goalError}
-              </span>
-            ) : null}
-          </div>
+          <TextField
+            label="Meta (XLM)"
+            inputMode="decimal"
+            value={goal}
+            {...(goalError ? { error: goalError } : {})}
+            onChange={(value) => {
+              setGoal(value);
+              setGoalError(undefined);
+            }}
+          />
 
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${idPrefix}-deadline`}>Fecha límite</Label>
-            <Input
-              id={`${idPrefix}-deadline`}
-              type="date"
-              className={INPUT_CLASS}
-              value={deadline}
-              onChange={(event) => setDeadline(event.target.value)}
-            />
-          </div>
+          <TextField label="Fecha límite" type="date" value={deadline} onChange={setDeadline} />
 
           {errorBanner}
 
@@ -294,25 +274,16 @@ export function CampaignWorkspace({
           aria-label="Aportar a la campaña"
           className="flex flex-col gap-3"
         >
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${idPrefix}-amount`}>Monto a aportar (XLM)</Label>
-            <Input
-              id={`${idPrefix}-amount`}
-              className={INPUT_CLASS}
-              inputMode="decimal"
-              value={amount}
-              aria-invalid={amountError ? "true" : undefined}
-              onChange={(event) => {
-                setAmount(event.target.value);
-                setAmountError(undefined);
-              }}
-            />
-            {amountError ? (
-              <span role="alert" className="text-sm text-trust-critical">
-                {amountError}
-              </span>
-            ) : null}
-          </div>
+          <TextField
+            label="Monto a aportar (XLM)"
+            inputMode="decimal"
+            value={amount}
+            {...(amountError ? { error: amountError } : {})}
+            onChange={(value) => {
+              setAmount(value);
+              setAmountError(undefined);
+            }}
+          />
           <Button type="submit" isDisabled={isSubmitting || !publicKey}>
             {isSubmitting && pendingOperation === "contribute" ? "Firmando y enviando…" : "Aportar"}
           </Button>
@@ -336,19 +307,12 @@ export function CampaignWorkspace({
 
       {canRefund ? (
         <form onSubmit={handleRefund} noValidate aria-label="Reembolsar aporte" className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor={`${idPrefix}-refund-target`}>Cuenta a reembolsar (opcional)</Label>
-            <Input
-              id={`${idPrefix}-refund-target`}
-              className={INPUT_CLASS}
-              value={refundTarget}
-              onChange={(event) => setRefundTarget(event.target.value)}
-            />
-            <span className="text-sm text-muted">
-              Dejalo vacío para reembolsar tu propio aporte. El destino lo fija el contrato: activar el reembolso de
-              otra cuenta no puede redirigir sus fondos, sólo dispararlo.
-            </span>
-          </div>
+          <TextField
+            label="Cuenta a reembolsar (opcional)"
+            value={refundTarget}
+            helperText="Dejalo vacío para reembolsar tu propio aporte. El destino lo fija el contrato: activar el reembolso de otra cuenta no puede redirigir sus fondos, sólo dispararlo."
+            onChange={setRefundTarget}
+          />
           <Button type="submit" isDisabled={isSubmitting || !publicKey}>
             {isSubmitting && pendingOperation === "refund" ? "Reembolsando…" : "Reembolsar"}
           </Button>

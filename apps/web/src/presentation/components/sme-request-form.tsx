@@ -1,20 +1,30 @@
 "use client";
 
-import { Button, Input, Label } from "@heroui/react";
-import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { Controller, useForm, type RegisterOptions } from "react-hook-form";
 import type {
   SmeRequestFormField,
   SmeRequestFormValues,
   SmeRequestSubmitError
 } from "@/application/evidence/review-view-model";
 import { Badge } from "./badge";
+import { Button } from "./button";
+import { TextField } from "./text-field";
 
 /**
- * SmeRequestForm (Task #56 / T4). React Hook Form owns only browser form
+ * SmeRequestForm (Task #56 / T4; migrated to the shared `TextField`/`Button`
+ * primitives under Issue #306 / T3). React Hook Form owns only browser form
  * state plus required/format hints. Business validation (totals, period
  * order, contracts) stays with the backend: values are handed to `onSubmit`
  * as raw strings and `submitError` is rendered verbatim, never interpreted.
+ *
+ * `TextField` is a controlled component (`value`/`onChange(value: string)`),
+ * not a ref-forwarding one, so each field is wired through RHF's `Controller`
+ * instead of `register()` — the officially supported pattern for a custom
+ * controlled input. `field.onChange` accepts the raw string directly (RHF
+ * treats a non-event argument as the new value), so the "pass raw strings
+ * through untouched" contract and the per-field `dismiss` callback both carry
+ * over unchanged.
  */
 export interface SmeRequestFormProps {
   /** SIMULADO label sourced from the fixture/request record, never hardcoded here. */
@@ -44,14 +54,12 @@ export function SmeRequestForm({
   isSubmitting = false
 }: SmeRequestFormProps) {
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors }
   } = useForm<SmeRequestFormValues>({
     defaultValues: { declaredTotalArs: "", periodStart: "", periodEnd: "" }
   });
-
-  const idPrefix = useId();
 
   // Server errors are dismissed per field when the user edits it. Dismissals
   // belong to one `submitError` object: a new error from the caller starts
@@ -76,34 +84,30 @@ export function SmeRequestForm({
     name: SmeRequestFormField,
     label: string,
     hint: string,
-    rules: Parameters<typeof register>[1],
+    rules: Pick<RegisterOptions, "required" | "pattern">,
     inputMode: "numeric" | "text"
   ) => {
     const error = errorFor(name);
-    const inputId = `${idPrefix}-${name}`;
-    const hintId = `${inputId}-hint`;
-    const errorId = `${inputId}-error`;
     return (
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={inputId}>{label}</Label>
-        <Input
-          id={inputId}
-          type="text"
-          inputMode={inputMode}
-          aria-required="true"
-          aria-invalid={error ? "true" : undefined}
-          aria-describedby={error ? `${hintId} ${errorId}` : hintId}
-          {...register(name, { ...rules, onChange: () => dismiss(name) })}
-        />
-        <span id={hintId} className="text-sm text-muted">
-          {hint}
-        </span>
-        {error ? (
-          <span id={errorId} role="alert" className="text-sm text-trust-critical">
-            {error}
-          </span>
-        ) : null}
-      </div>
+      <Controller
+        name={name}
+        control={control}
+        rules={rules}
+        render={({ field: rhfField }) => (
+          <TextField
+            label={label}
+            helperText={hint}
+            {...(error ? { error } : {})}
+            isRequired
+            inputMode={inputMode}
+            value={rhfField.value}
+            onChange={(value) => {
+              rhfField.onChange(value);
+              dismiss(name);
+            }}
+          />
+        )}
+      />
     );
   };
 

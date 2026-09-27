@@ -3,8 +3,8 @@ import { Select, type SelectOption } from "./select";
 
 /**
  * Select primitive: a fixed-option picker, e.g. the SME's province. Follows
- * the same label/helper/error shape as `TextField` — error XOR helper text,
- * never both.
+ * the same label/helper/error shape as `TextField` — the helper stays visible
+ * next to the error.
  */
 const meta = {
   title: "Primitivas/Select",

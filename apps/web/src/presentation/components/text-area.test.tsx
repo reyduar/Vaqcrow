@@ -28,4 +28,28 @@ describe("TextArea", () => {
     expect(textarea).toHaveAccessibleDescription("Campo obligatorio.");
     expect(screen.getByText("Campo obligatorio.")).toBeInTheDocument();
   });
+
+  it("keeps the helper text visible and described while the field is in error", () => {
+    render(
+      <TextArea
+        label="Razón de la decisión"
+        helperText="Explicá el motivo en una o dos oraciones."
+        error="Campo obligatorio."
+      />
+    );
+
+    const textarea = screen.getByLabelText("Razón de la decisión");
+
+    expect(textarea).toHaveAccessibleDescription(expect.stringContaining("Campo obligatorio."));
+    expect(textarea).toHaveAccessibleDescription(
+      expect.stringContaining("Explicá el motivo en una o dos oraciones.")
+    );
+    expect(screen.getByText("Explicá el motivo en una o dos oraciones.")).toBeVisible();
+  });
+
+  it("marks the visible error region as an alert for assistive tech (T3: needed by HumanDecisionForm's migrated reason field)", () => {
+    render(<TextArea label="Razón de la decisión" error="La razón es obligatoria." />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("La razón es obligatoria.");
+  });
 });

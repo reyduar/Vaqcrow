@@ -38,4 +38,13 @@ describe("ComboBox", () => {
 
     expect(screen.getByText("No se encontraron ciudades.")).toBeInTheDocument();
   });
+
+  it("shows a visible error next to the helper text", () => {
+    render(
+      <ComboBox label="Ciudad" items={CITIES} helperText="Escribí para filtrar." error="Elegí una ciudad." />
+    );
+
+    expect(screen.getByText("Elegí una ciudad.")).toBeInTheDocument();
+    expect(screen.getByText("Escribí para filtrar.")).toBeVisible();
+  });
 });

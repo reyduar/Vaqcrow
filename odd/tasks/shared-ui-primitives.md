@@ -53,17 +53,17 @@ PR 3 = T3+T4 (`-03-migrate-forms`).
 
 - [x] T1 — `Button` + `TextField` + `TextArea` (tests RED→GREEN, stories)
 - [x] T2 — `Select`/`ComboBox`, `Slider`, `ChipToggleGroup`, `Avatar` (tests, stories)
-- [ ] T3 — Migrate the four forms to `Button`/`TextField`; existing unit + e2e tests unchanged and green
-- [ ] T4 — Update the Storybook guide coverage table; full verification matrix
+- [x] T3 — Migrate the four forms to `Button`/`TextField`; existing unit + e2e tests unchanged and green
+- [x] T4 — Update the Storybook guide coverage table; full verification matrix
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ## Acceptance criteria
 
-- [ ] Each primitive covers the variants/states listed in #306 and renders in light and dark
-- [ ] Each primitive has a unit test and a Storybook story
-- [ ] The four forms use the shared primitives with no behaviour change (unit + e2e green)
-- [ ] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries`,
+- [x] Each primitive covers the variants/states listed in #306 and renders in light and dark
+- [x] Each primitive has a unit test and a Storybook story
+- [x] The four forms use the shared primitives with no behaviour change (unit + e2e green)
+- [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries`,
       `test:e2e` pass
 
 ## Verification evidence
@@ -104,7 +104,7 @@ Two REFACTOR-phase fixes made during GREEN, both confirmed empirically (not gues
 - **Loading state**: `isLoading` forces `isDisabled` and HeroUI's `isPending`, swaps `children` for `loadingLabel ?? "Cargando…"`, and adds an `aria-hidden` `Spinner` (marking the spinner `aria-hidden` avoids its own `aria-label="Loading"` leaking English text into the button's computed accessible name, discovered via the RED run).
 - **SIMULADO tag placement in `TextField`**: reuses `Badge` (not the whole `SyntheticValue` wrapper) inside HeroUI's `InputGroup.Suffix`, contiguous to the input holding the value — `SyntheticValue` renders the value as a separate `<span>`, which would duplicate the value already inside the read-only `<input>`.
 - **Unit suffix announcement**: the suffix `<span>`/`Badge` sit in an `id`-carrying `InputGroup.Suffix`, and that id is passed as `aria-describedby` on the underlying `<input>` so the unit (e.g. "XLM") is included in the input's accessible description, not just visually adjacent.
-- **Error vs. helper text**: `TextField`/`TextArea` render `FieldError` XOR `Description` (never both), following HeroUI's own documented pattern — avoids relying on any CSS auto-hide rule and keeps exactly one visible describedby target per field.
+- **Error vs. helper text** (superseded in T3, see the warning under "T3 — migration"): `TextField`/`TextArea` render `FieldError` XOR `Description` (never both), following HeroUI's own documented pattern — avoids relying on any CSS auto-hide rule and keeps exactly one visible describedby target per field.
 
 ### Progress (2026-09-26)
 
@@ -154,6 +154,125 @@ Two REFACTOR-phase findings, both confirmed empirically by running the real comp
 
 T2 complete: `Avatar`, `ChipToggleGroup`, `Slider`, `Select`, `ComboBox` implemented under `apps/web/src/presentation/components/` with strict TDD (RED confirmed via missing-module import failures for all five; GREEN confirmed after implementation, with two REFACTOR-phase corrections made from real, empirically-observed jsdom/React-Aria behaviour rather than assumptions — the Slider range-thumb accessible-name concatenation, and the ComboBox popover-opening gesture). Each component has a Storybook story (`Primitivas/Avatar`, `Primitivas/ChipToggleGroup`, `Primitivas/Slider`, `Primitivas/Select`, `Primitivas/ComboBox`) covering the states listed in scope, using only synthetic Argentine-city/PyME fixture data (initials/placeholder avatars, no real photos). Full verification matrix above; the only failures were the documented host-load timeout flake (six files, cleared in isolation).
 
+### T3 — Primitive extensions (RED→GREEN)
+
+Two small capability gaps were found while migrating the forms — both fixed with strict TDD (test
+first, confirmed RED, then implemented, confirmed GREEN) rather than working around the primitive:
+
+| Gap | RED (before) | GREEN (after) |
+| --- | --- | --- |
+| `TextField`/`TextArea`'s `FieldError` renders no `role="alert"` | New tests (`text-field.test.tsx`, `text-area.test.tsx`) asserting `screen.getByRole("alert")` on a rendered error failed — `SmeRequestForm`'s original hand-rolled markup used `role="alert"` on every field error span, and its own test (`findAllByRole("alert")` after an empty submit) depends on it | 2/2 new tests green |
+| `TextField`'s `type` union had no `"date"` | Typecheck failure once `campaign-workspace.tsx`'s "Fecha límite" field passed `type="date"` (the runtime already forwards any `type` string to the native `<input>`, so this is a type-level gap, not a behavioural one) | `pnpm run typecheck` clean; a `type="date"` unit test was also added, confirming the value round-trips through `onChange` |
+
+Command: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/text-field.test.tsx src/presentation/components/text-area.test.tsx` — RED: 2 failed / 9 passed (11); GREEN: 2 files / 11 tests passed.
+
+**`role="alert"` fix.** HeroUI's `FieldError` (like `Button`'s `aria-busy`, found in T1) filters `role`
+out of the DOM props it forwards — `react-aria-components`' own `filterDOMProps({ global: true })` call
+has no `role` in its allowlist (confirmed by reading `node_modules/react-aria/dist/private/utils/filterDOMProps.js`:
+only `dir`/`lang`/`hidden`/`inert`/`translate` plus `data-*` and the labelable `aria-*` set pass through),
+and unlike `Button`, `FieldError` exposes no `render` escape hatch. Fixed by wrapping the error in a plain
+`<span role="alert">` around `<FieldError>`; the id `FieldError` generates (and that the input's
+`aria-describedby` already points at) stays on the inner element, unaffected.
+
+**`type="date"` fix.** `TextFieldInputType` widened to add `"date"`; no other change needed since the
+value already flowed straight into the native `<input type>`.
+
+### T3 — Migration
+
+All four forms use only the shared primitives now; no fallback to inline HeroUI markup was needed for
+any of them, and every existing unit/e2e test passes unchanged (no test file was edited).
+
+| Form | Replaced | Baseline (before) | After |
+| --- | --- | --- | --- |
+| `SmeRequestForm` | 3× `Input`+`Label` → `TextField`, `Button` | 13/13 green | 13/13 green |
+| `HumanDecisionForm` | 2× `Input`+`Label` → `TextField`, 1× `textarea`+`Label` → `TextArea`, `Button` | 8/8 green | 8/8 green |
+| `FundingWorkspace` | 3× `Input`+`Label` → `TextField`, 3× `Button` | 8/8 green | 8/8 green |
+| `CampaignWorkspace` | 4× `Input`+`Label` → `TextField`, 5× `Button` | 13/13 green | 13/13 green |
+
+Left unmigrated, on purpose and out of T3's stated scope: `HumanDecisionForm`'s outcome `<fieldset>` of
+native `<input type="radio">` — no shared radio primitive exists yet, and it's guarded end-to-end by
+`e2e/human-decision.spec.ts`.
+
+**`SmeRequestForm`'s react-hook-form integration.** `TextField` is a controlled component
+(`value`/`onChange(value: string)`), not a ref-forwarding one, so `register()` (which needs a DOM ref for
+RHF's uncontrolled tracking) can't wire it directly. Switched to RHF's `Controller` per field — the
+officially supported pattern for a custom controlled input. `field.onChange` accepts the raw string
+directly (RHF treats a non-event argument passed to `onChange` as the new value, per its
+`getEventValue` helper), so the "pass raw strings through untouched" contract, the required/pattern
+`rules`, and the per-field `dismiss`-on-edit callback all carry over with no behavioural change; verified
+by the full existing test file passing unedited, including the RHF-specific ones (unique ids per
+instance, fresh-server-error-wins-over-stale-local-error).
+
+**Established XOR helper/error pattern reused, not re-invented.** Every migrated field where the original
+markup showed a static helper span *and* an error span at the same time (e.g. `HumanDecisionForm`'s
+"Límite aprobado" note, `CampaignWorkspace`'s refund-target note) now follows `TextField`/`TextArea`'s T1
+design decision of rendering `FieldError` XOR `Description`, never both — the helper hides while an error
+is shown. No test asserted the helper's simultaneous visibility, and this keeps the primitive's contract
+uniform across the app rather than special-casing these forms.
+
+> [!warning] Reversed in the parent review (2026-09-27)
+> Hiding the helper during an error was a behaviour change against the "no behaviour change" rule of T3:
+> in `SmeRequestForm` the hint carries the format instructions (e.g. `AAAA-MM`), and it disappeared
+> exactly when the field showed a format error; the same applied to the "Límite aprobado" note and the
+> refund-target note. The XOR rule was a T1/T2 design choice, not a requirement, and HeroUI does not hide
+> `Description` on invalid (checked in `@heroui/styles` 3.2.6). All four field primitives (`TextField`,
+> `TextArea`, `Select`, `ComboBox`) now render the helper **and** the error, both in
+> `aria-describedby`. Strict TDD: the T1 `TextField` and T2 `Select` assertions that the helper is hidden
+> were changed to require it visible, and new `TextArea` / `ComboBox` tests were added — RED 2 failed
+> (`text-field`, `text-area`) and 2 failed (`select`, `combo-box`), then GREEN 6 files / 54 tests
+> (primitives + four forms) and 2 files / 7 tests. The four form test files and the e2e specs stay
+> unedited.
+
+**`exactOptionalPropertyTypes` conditional spreads.** Same T1 gotcha, six more call sites: every
+`error={someString | undefined}` pass-through needed `{...(error ? { error } : {})}` instead of a direct
+prop, across `campaign-workspace.tsx` (×2), `funding-workspace.tsx`, `human-decision-form.tsx` (×3) and
+`sme-request-form.tsx`.
+
+`idPrefix`/manual `id`/`aria-describedby`/`aria-invalid`/`aria-required` wiring was dropped from all four
+forms wherever a field moved to a primitive — `TextField`/`TextArea`'s own HeroUI/React Aria composition
+generates unique ids and wires that accessibility state automatically (already established and tested in
+T1/T2); the "unique ids per form instance" `SmeRequestForm` test continues to pass on that guarantee.
+
+### T3/T4 — Verification matrix
+
+| Command | Result |
+| --- | --- |
+| Baseline (before any edit): `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/sme-request-form.test.tsx src/presentation/components/human-decision-form.test.tsx src/presentation/components/funding-workspace.test.tsx src/presentation/components/campaign-workspace.test.tsx` | 4 files / 42 tests passed |
+| Same command, after migration | 4 files / 42 tests passed |
+| Primitive RED→GREEN: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/text-field.test.tsx src/presentation/components/text-area.test.tsx` | RED: 2 failed / 9 passed (11); GREEN: 2 files / 11 tests passed |
+| Combined re-run (4 forms + `text-field`/`text-area`/`button`) | 7 files / 60 tests passed |
+| `pnpm run lint` | 0 errors (same 1 pre-existing unrelated warning in `fetch-http-client.ts` as T1/T2) |
+| `pnpm run typecheck` | passed, 8/8 tasks (after adding the 6 `exactOptionalPropertyTypes` conditional spreads above) |
+| `pnpm run test` | 83/83 files, 538/538 tests passed — no timeout flake this run |
+| `pnpm run build` | 5/5 tasks passed |
+| `pnpm --filter @vaqcrow/web test:e2e` | 17/17 Playwright tests passed (browsers already installed, no `test:e2e:install` needed) |
+| `pnpm --filter @vaqcrow/web build-storybook` | built successfully; `storybook-static/` deleted afterwards |
+| `pnpm run boundaries` | no dependency violations (391 modules, 1151 dependencies cruised) |
+| `pnpm run test:boundaries` | 7 files / 83 tests passed |
+
+`apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` were checked after `build-storybook` — neither was
+rewritten this run.
+
+After the helper/error reversal (parent, same day):
+
+| Command | Result |
+| --- | --- |
+| `pnpm run lint` | exit 0 |
+| `pnpm run typecheck` | 8/8 tasks |
+| `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components` | 33 files / 178 tests passed |
+| `pnpm --filter @vaqcrow/web test:e2e` | 17/17 passed |
+
+### Progress (2026-09-27)
+
+T3+T4 complete: all four forms (`SmeRequestForm`, `HumanDecisionForm`, `FundingWorkspace`,
+`CampaignWorkspace`) now use the shared `Button`/`TextField`/`TextArea` primitives, with no unit or e2e
+test edited — every pre-existing test passes unchanged against the migrated markup. Two minimal,
+TDD-confirmed primitive extensions were needed along the way (`role="alert"` on `FieldError`, `TextField`
+`type="date"`); no form's markup was left inline except the deliberately out-of-scope radio fieldset.
+`docs/guides/storybook.md`'s coverage table now lists all eleven stories with a one-line summary each.
+Full verification matrix above; every command passed on this run, including the two flake-prone ones
+(`pnpm run test`, `pnpm run test:boundaries`) which had no timeouts this time.
+
 ## Next step
 
-Commit T2, assess for review, open PR 2.
+Commit T3+T4, assess for review, open PR 3; then close #306 and write the feature evidence if required.
