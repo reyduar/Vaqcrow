@@ -504,6 +504,15 @@ vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNe
 | `pnpm run boundaries` | no dependency violations (440 modules) |
 | `pnpm run test:boundaries` | 83 passed |
 
+### Delivery (2026-09-27)
+
+- Fix commit `b0ef07d` assessed: risk `medium`, 75 lines, `review_due: false` (`under_budget`).
+- Branch pushed; PR #322: https://github.com/reyduar/Vaqcrow/pull/322 (closes #321), labels `enhancement`,
+  `type:feature`.
+- Size: ~1400 added lines, over the ~450 forecast, mostly this log (~510) and tests (~450). The component
+  itself is ~320 lines. The planned `-02-stories` split was not applied; the owner asked for one PR.
+
 ## Next step
 
-Guard commit `6b5ecab` assessed: risk `medium`, 48 lines, `review_due: false` (`under_budget`) — it stays pending in the slice. Push and open the PR (owner decision).
+Wait for PR #322 checks and the owner's merge; then the evidence document, and step 6 (adopting the shell and
+the modal in the six demo routes). Open follow-up: fallback copy for a blank rejected-signing message.
