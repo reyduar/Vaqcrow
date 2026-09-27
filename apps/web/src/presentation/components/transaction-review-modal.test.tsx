@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { microcopy } from "@/application/trust/disclosures";
 import {
   TransactionReviewModal,
   type TransactionReviewDescriptionRow,
   type TransactionReviewModalProps,
+  type TransactionReviewNetworkState,
+  type TransactionReviewSigningState,
   type TransactionReviewSigningStatus
 } from "./transaction-review-modal";
 
@@ -33,32 +35,26 @@ interface RenderOverrides {
 }
 
 function buildElement(overrides: RenderOverrides, onClose: () => void, onSign: () => void) {
-  // Branched (rather than spreading `isWrongNetwork`/`wrongNetworkMessage`
-  // conditionally into one JSX call) so each branch's props literally match
-  // one arm of `TransactionReviewNetworkState` — a conditional spread can't
-  // prove the pair is complete under the discriminated union.
-  if (overrides.isWrongNetwork) {
-    return (
-      <TransactionReviewModal
-        isOpen={overrides.isOpen ?? true}
-        onClose={onClose}
-        onSign={onSign}
-        title={overrides.title ?? "Fondeo de campaña"}
-        amount={overrides.amount ?? "500"}
-        assetCode={overrides.assetCode ?? "USDC-test"}
-        descriptionRows={overrides.descriptionRows ?? ROWS}
-        signingStatus={overrides.signingStatus ?? "idle"}
-        isWrongNetwork
-        wrongNetworkMessage={overrides.wrongNetworkMessage ?? "Cambia a Stellar Testnet para continuar"}
-        {...(overrides.acknowledgementLabel !== undefined
-          ? { acknowledgementLabel: overrides.acknowledgementLabel }
-          : {})}
-        {...(overrides.signingErrorMessage !== undefined
-          ? { signingErrorMessage: overrides.signingErrorMessage }
-          : {})}
-      />
-    );
-  }
+  // Each union slice is built as a normal, fully-typed variable (one whole
+  // object per branch) rather than spread conditionally piece-by-piece into
+  // the JSX call — a conditional spread of just `isWrongNetwork` (or just
+  // `signingStatus`) can't prove the paired field is complete under a
+  // discriminated union, which is exactly the shape TypeScript now enforces.
+  const networkProps: TransactionReviewNetworkState = overrides.isWrongNetwork
+    ? {
+        isWrongNetwork: true,
+        wrongNetworkMessage: overrides.wrongNetworkMessage ?? "Cambia a Stellar Testnet para continuar"
+      }
+    : { isWrongNetwork: false };
+
+  const isRejectedStatus =
+    overrides.signingStatus === "signature-rejected" || overrides.signingStatus === "verification-rejected";
+  const signingProps: TransactionReviewSigningState = isRejectedStatus
+    ? {
+        signingStatus: overrides.signingStatus as "signature-rejected" | "verification-rejected",
+        signingErrorMessage: overrides.signingErrorMessage ?? "Ocurrió un problema con la firma."
+      }
+    : { signingStatus: (overrides.signingStatus as "idle" | "signing" | undefined) ?? "idle" };
 
   return (
     <TransactionReviewModal
@@ -69,12 +65,10 @@ function buildElement(overrides: RenderOverrides, onClose: () => void, onSign: (
       amount={overrides.amount ?? "500"}
       assetCode={overrides.assetCode ?? "USDC-test"}
       descriptionRows={overrides.descriptionRows ?? ROWS}
-      signingStatus={overrides.signingStatus ?? "idle"}
+      {...networkProps}
+      {...signingProps}
       {...(overrides.acknowledgementLabel !== undefined
         ? { acknowledgementLabel: overrides.acknowledgementLabel }
-        : {})}
-      {...(overrides.signingErrorMessage !== undefined
-        ? { signingErrorMessage: overrides.signingErrorMessage }
         : {})}
     />
   );
@@ -158,6 +152,28 @@ describe("TransactionReviewModal", () => {
     expect(screen.getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
   });
 
+  it("R3-empty-wrong-network-message: falls back to the canonical wrongNetwork message when the caller's message is empty", () => {
+    renderModal({ isWrongNetwork: true, wrongNetworkMessage: "" });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(microcopy.wrongNetwork);
+    expect(screen.getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
+  });
+
+  it("R3-empty-wrong-network-message: falls back to the canonical wrongNetwork message when the caller's message is whitespace-only", () => {
+    renderModal({ isWrongNetwork: true, wrongNetworkMessage: "   " });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(microcopy.wrongNetwork);
+    expect(screen.getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
+  });
+
+  it("R3-empty-wrong-network-message: residual limitation — a rejected status with an empty signingErrorMessage still renders an alert with no visible reason (no canonical fallback was authorized for this case; the type already requires the field, but not that it be non-empty)", () => {
+    renderModal({ signingStatus: "signature-rejected", signingErrorMessage: "" });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent("");
+  });
+
   it("renders the canonical pre-sign check and non-custody disclosure from the shared constants", () => {
     renderModal();
 
@@ -224,6 +240,12 @@ describe("TransactionReviewModal", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos verificar la transacción firmada.");
     expect(screen.queryByText(/confirmad/i)).not.toBeInTheDocument();
+  });
+
+  it("R3-silent-rejection: a rejected signing status always shows its message via role=alert (enforced by the type)", () => {
+    renderModal({ signingStatus: "signature-rejected", signingErrorMessage: "Rechazaste la firma en Freighter." });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Rechazaste la firma en Freighter.");
   });
 
   it("closes on Escape", () => {
@@ -316,5 +338,62 @@ describe("TransactionReviewModal prop types", () => {
     };
 
     expect(invalid).toBeDefined();
+  });
+
+  it("requires signingErrorMessage whenever signingStatus is rejected (compile-time contract, R3-silent-rejection)", () => {
+    // @ts-expect-error signingStatus: "signature-rejected" must be paired with signingErrorMessage under
+    // the discriminated union — this object is intentionally invalid to prove the type rejects it.
+    const invalid: TransactionReviewModalProps = {
+      isOpen: true,
+      onClose: () => undefined,
+      onSign: () => undefined,
+      title: "x",
+      amount: "1",
+      assetCode: "X",
+      descriptionRows: [],
+      signingStatus: "signature-rejected"
+    };
+
+    expect(invalid).toBeDefined();
+  });
+});
+
+describe("MonoValue copy behavior (R3-copy-untested)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("copies the FULL value to the clipboard (not the truncated glyph) and announces success", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: /copiar cuenta origen/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(SOURCE_ACCOUNT));
+    const confirmation = await screen.findByText("Copiado");
+    expect(confirmation.closest('[aria-live="polite"]')).toBeInTheDocument();
+  });
+
+  it("shows a visible failure message when the clipboard write rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: /copiar cuenta origen/i }));
+
+    expect(await screen.findByText(/no se pudo copiar/i)).toBeInTheDocument();
+  });
+
+  it("shows a visible failure message when the clipboard API is unavailable", async () => {
+    vi.stubGlobal("navigator", { ...navigator, clipboard: undefined });
+
+    renderModal();
+
+    fireEvent.click(screen.getByRole("button", { name: /copiar cuenta origen/i }));
+
+    expect(await screen.findByText(/no se pudo copiar/i)).toBeInTheDocument();
   });
 });

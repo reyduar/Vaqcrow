@@ -24,6 +24,17 @@ const ROWS: readonly TransactionReviewDescriptionRow[] = [
   { label: "Memo", value: "aporte-demo-001" }
 ];
 
+/**
+ * `signingStatus`/`isWrongNetwork` are now discriminated unions (native
+ * review advisories R3-silent-rejection and parent readback finding #3): a
+ * rejected status always pairs with `signingErrorMessage`, and
+ * `isWrongNetwork: true` always pairs with `wrongNetworkMessage`. `meta.args`
+ * below deliberately omits both `acknowledgementLabel` and any signing/network
+ * override — under `exactOptionalPropertyTypes`, a per-story `args` override
+ * can't set a field to `undefined` to "unset" a base default, so
+ * `WithoutAcknowledgement` needing no checkbox is the *default* shape here,
+ * and every other story adds `acknowledgementLabel` back explicitly instead.
+ */
 const meta = {
   title: "Overlays/TransactionReviewModal",
   component: TransactionReviewModal,
@@ -35,8 +46,7 @@ const meta = {
     amount: "500",
     assetCode: "USDC-test",
     descriptionRows: ROWS,
-    signingStatus: "idle",
-    acknowledgementLabel: ACK_LABEL
+    signingStatus: "idle"
   }
 } satisfies Meta<typeof TransactionReviewModal>;
 
@@ -45,33 +55,27 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Idle, with the acknowledgement checkbox required before signing. */
-export const Default: Story = {};
-
-export const WithoutAcknowledgement: Story = {
-  render: (args) => (
-    <TransactionReviewModal
-      isOpen={args.isOpen}
-      onClose={args.onClose}
-      onSign={args.onSign}
-      title={args.title}
-      amount={args.amount}
-      assetCode={args.assetCode}
-      descriptionRows={args.descriptionRows}
-      signingStatus={args.signingStatus}
-    />
-  )
+export const Default: Story = {
+  args: { acknowledgementLabel: ACK_LABEL }
 };
 
+export const WithoutAcknowledgement: Story = {};
+
 export const WrongNetwork: Story = {
-  args: { isWrongNetwork: true, wrongNetworkMessage: WRONG_NETWORK_MESSAGE }
+  args: {
+    acknowledgementLabel: ACK_LABEL,
+    isWrongNetwork: true,
+    wrongNetworkMessage: WRONG_NETWORK_MESSAGE
+  }
 };
 
 export const Signing: Story = {
-  args: { signingStatus: "signing" }
+  args: { acknowledgementLabel: ACK_LABEL, signingStatus: "signing" }
 };
 
 export const SignatureRejected: Story = {
   args: {
+    acknowledgementLabel: ACK_LABEL,
     signingStatus: "signature-rejected",
     signingErrorMessage: "Rechazaste la firma en Freighter."
   }
@@ -79,6 +83,7 @@ export const SignatureRejected: Story = {
 
 export const VerificationRejected: Story = {
   args: {
+    acknowledgementLabel: ACK_LABEL,
     signingStatus: "verification-rejected",
     signingErrorMessage: "No pudimos verificar la transacción firmada."
   }
@@ -86,6 +91,7 @@ export const VerificationRejected: Story = {
 
 export const LongValues: Story = {
   args: {
+    acknowledgementLabel: ACK_LABEL,
     title: "Fondeo de campaña con memo extenso y contrato de bóveda largo",
     descriptionRows: [
       ...ROWS,

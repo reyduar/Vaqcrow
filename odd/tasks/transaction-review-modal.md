@@ -278,6 +278,179 @@ narrowed `{ isWrongNetwork?: false }` branch).
     re-enables signing; same class as the wrong-network gap fixed during readback.
   - `R3-copy-untested` — `MonoValue`'s clipboard outcomes (copied, no API, rejected) are not exercised.
 
+### T1 — review advisory follow-up (2026-09-27)
+
+Fixed all three advisories from native review with strict TDD (RED observed first, then GREEN). No
+commits, no pushes, no `gentle-ai review` commands run from this pass. A second native review — lineage
+`review-2e3f8a8610236ee0`, candidate including commit `5f45934` — was approved and acknowledged covering
+these same three advisories.
+
+#### R3-silent-rejection
+
+`signingStatus: "signature-rejected"` (or `"verification-rejected"`) could be passed without
+`signingErrorMessage`; the rejection then rendered nothing and signing looked untouched-idle.
+
+- **Fix**: same pattern as the wrong-network discriminated union.
+  `TransactionReviewSigningState = { signingStatus: "idle" | "signing" } | { signingStatus:
+  "signature-rejected" | "verification-rejected"; signingErrorMessage: string }`, intersected into
+  `TransactionReviewModalContentProps` alongside `TransactionReviewNetworkState`.
+- **RED (compile-time)**: added a `TransactionReviewModalProps` object typed with `signingStatus:
+  "signature-rejected"` and no `signingErrorMessage`, guarded by `@ts-expect-error`. To get a genuine
+  (not fabricated) RED, the fix was temporarily reverted to the old shape (`{ signingStatus: ...;
+  signingErrorMessage?: string }`) and `pnpm --filter @vaqcrow/web exec tsc -p tsconfig.json --noEmit`
+  was run: `error TS2578: Unused '@ts-expect-error' directive` — proving the old type accepted the
+  invalid state. The fix was then restored (`diff` against the pre-revert file confirmed a byte-identical
+  restore).
+- **Runtime test**: `R3-silent-rejection: a rejected signing status always shows its message via
+  role=alert (enforced by the type)` — this was GREEN immediately (the old implementation already
+  rendered a *provided* message correctly; the bug was only the ability to omit it). Recorded honestly:
+  the compile-time guard is the real RED/GREEN evidence here, the runtime test is a characterization of
+  already-correct behavior now protected by the type.
+- **Two follow-on type errors surfaced while wiring this in, both fixed**:
+  1. `TransactionReviewModalContentProps` already had to be its own named intersection (not `Omit`) from
+     the earlier network-state fix; the same reasoning now also covers the signing-state discriminant.
+  2. `transaction-review-modal.stories.tsx`'s `WithoutAcknowledgement` story used a custom `render`
+     manually re-listing individual `args.*` fields, which lost the union discriminant the same way a
+     conditional spread does. Fixed by restructuring the stories: `meta.args` no longer sets
+     `acknowledgementLabel` or any network/signing override by default (so `WithoutAcknowledgement` needs
+     no custom render — it's just `{}`), and every other story adds `acknowledgementLabel` back
+     explicitly. The test file's `buildElement` was similarly restructured to build fully-typed
+     `networkProps`/`signingProps` local variables (one full object per union arm) instead of conditional
+     spreads, mirroring the pattern already used for the network state.
+- **GREEN**: `tsc -p tsconfig.json --noEmit` clean; full test file passes.
+
+#### R3-copy-untested
+
+`MonoValue`'s clipboard outcomes (copied, rejected, API unavailable) had no test coverage.
+
+- **Tests added** (`describe("MonoValue copy behavior (R3-copy-untested)")`, `vi.stubGlobal`/
+  `vi.unstubAllGlobals()` in `afterEach`, mirroring `hash-display.test.tsx`'s existing convention):
+  1. stubbed `navigator.clipboard.writeText` resolving → asserts it was called with the **full** value
+     (`SOURCE_ACCOUNT`, not the truncated glyph) and that "Copiado" appears in an `aria-live="polite"`
+     region.
+  2. `writeText` rejecting → the visible failure message appears.
+  3. no `clipboard` API → the same failure message appears.
+- **Honest characterization**: all three went **GREEN immediately** — `MonoValue`'s existing
+  implementation was already correct, just untested. To prove test (1) is actually meaningful (not a
+  false-positive), the implementation was temporarily broken (`clipboard.writeText(value)` →
+  `clipboard.writeText(truncated)`) and re-run:
+  `pnpm --filter @vaqcrow/web exec vitest run ... -t "copies the FULL value"` → **RED**, timed out waiting
+  for `writeText` to be called with `SOURCE_ACCOUNT` (`Test Files 1 failed`). The implementation was then
+  restored and confirmed byte-identical to the working version via `diff`.
+- **GREEN**: restored implementation, all three tests pass.
+
+#### R3-empty-wrong-network-message
+
+Follow-up finding on the two discriminated unions above: the type only requires the message *field* to be
+present, not non-empty — `wrongNetworkMessage: ""` (or `signingErrorMessage: ""` on a rejected status)
+still type-checked, and the old render condition (`isWrongNetwork && wrongNetworkMessage`) gated on the
+message's truthiness, so an empty string hid the alert entirely while `isSignDisabled` stayed `true`:
+signing blocked with nothing visible explaining why.
+
+- **RED**: added two tests — `wrongNetworkMessage: ""` should still show `role="alert"` and keep signing
+  disabled; a rejected status with `signingErrorMessage: ""` should still show `role="alert"`. Against the
+  pre-fix render (message-truthiness gate):
+  `expect(screen.getByRole("alert")).toBeInTheDocument()` failed both times — `Unable to find an
+  accessible element with the role "alert"` (`Test Files 1 failed`, 2/2 new tests failing).
+- **Investigated a canonical-constant fix first, per instruction, and rejected it**: no
+  `application/trust` constant fits either condition — `disclosures.testnet` is a general Testnet blurb
+  (doesn't say signing is blocked) and `microcopy.preSignCheck` is a pre-sign checklist, not an error
+  state; substituting either would misrepresent why signing is disabled. TypeScript also has no built-in
+  non-empty-string type, so the type-level fix from the two findings above can't close this gap by itself.
+  Inventing new trust wording inside the component was out of scope.
+- **Fix (runtime, documented in a code comment on `TransactionReviewNetworkState`)**: gate the alert on
+  the *state* (`isWrongNetwork`, `isRejectedStatus`) instead of the message's truthiness — `{isWrongNetwork
+  ? <p role="alert">{wrongNetworkMessage}</p> : null}` and `{isRejectedStatus ? <p
+  role="alert">{rejectedMessage}</p> : null}`. The alert element (and therefore the assistive-tech
+  announcement) is now never silently dropped, even for a degenerate empty caller message; `isRejectedStatus`
+  is computed once and reused to narrow `unionState.signingErrorMessage` for `rejectedMessage` (TypeScript's
+  aliased-condition narrowing, confirmed by a clean `tsc` run).
+- **GREEN**: both new tests pass; full file 28/28.
+
+#### Parent readback: the R3-empty-wrong-network-message fix was vacuous (2026-09-27)
+
+Parent readback found the fix above insufficient: gating the alert on `isWrongNetwork` rather than the
+message's truthiness makes `role="alert"` present, but with `wrongNetworkMessage: ""` the element still
+renders **empty** — the person sees no reason signing is blocked, only that a test now technically finds
+an alert node. The test was checking existence, not content, and mistook that for a fix.
+
+**Owner decision**: authorized exactly one new canonical string —
+`microcopy.wrongNetwork: "Cambia a Stellar Testnet para continuar"` (source: `docs/design/demo-ui.md:1173`,
+"Wrong network must block signing and say 'Cambia a Stellar Testnet para continuar'", approved 2026-09-27).
+No fallback was authorized for the rejected-signing case; that gap is a documented residual limitation
+instead, per the owner's instruction not to invent wording.
+
+**1. Added the canonical string, checked and updated the enumeration guard.** Searched
+`apps/web/src/application/trust/disclosures.ts` and `rg microcopy apps/web/src tests` for anything
+enumerating microcopy keys before touching the source. Found
+`apps/web/src/application/trust/disclosures.test.ts`'s `PINNED_MICROCOPY` map, which pins every
+`microcopy` key/value byte-for-byte and asserts `Object.keys(microcopy)` equals exactly its keys — the
+guard this instruction anticipated.
+- **RED**: added `wrongNetwork: "Cambia a Stellar Testnet para continuar"` to `PINNED_MICROCOPY` before
+  touching the source. `pnpm --filter @vaqcrow/web exec vitest run src/application/trust/disclosures.test.ts`
+  → 2 failures: `"holds exactly the pinned contextual labels"` (`Object.keys` mismatch, missing
+  `"wrongNetwork"`) and `'matches the pinned literal verbatim for "wrongNetwork"'` (`expected undefined to
+  be 'Cambia a Stellar Testnet para continuar'`).
+- Added `wrongNetwork` to `microcopy` in `disclosures.ts` with a comment citing the source line and the
+  2026-09-27 approval. **GREEN**: `disclosures.test.ts` 22/22.
+- Checked the other guards for impact: `tests/trust-disclosures-canonical-consistency.test.ts` only
+  enumerates the 6 `disclosures` (not `microcopy`) `text:` literals — unaffected, still expects
+  `CANONICAL_DISCLOSURE_COUNT = 6`. `apps/web/src/app/(demo)/prohibited-terms.test.tsx` renders the six
+  demo routes and checks for prohibited phrases; `TransactionReviewModal` isn't wired into any route (out
+  of scope per this feature's own Scope section), so the new string is never rendered there, and it
+  doesn't match any `PROHIBITED_PHRASES` entry or the "Retorno as certainty" pattern regardless. Both
+  confirmed still passing.
+
+**2. Wired the fallback into the modal.** Changed the existing (now corrected) test to assert the alert's
+*visible text*, not just its presence:
+- **RED**: rewrote the test to `expect(screen.getByRole("alert")).toHaveTextContent(microcopy.wrongNetwork)`
+  for both an empty (`""`) and a whitespace-only (`"   "`) `wrongNetworkMessage`, and ran against the
+  vacuous implementation:
+  `Expected element to have text content: "Cambia a Stellar Testnet para continuar" / Received: ""` — both
+  new/changed assertions failed.
+- **Fix**: `wrongNetworkMessage` now falls back to `microcopy.wrongNetwork` when
+  `unionState.wrongNetworkMessage.trim() === ""`. Updated the `TransactionReviewNetworkState` doc comment
+  to replace the outdated "no canonical constant fits, render empty" reasoning with the actual resolution
+  and the residual limitation for the rejected-signing case.
+- **GREEN**: both tests pass (`transaction-review-modal.test.tsx` 29/29).
+
+**3. Rejected-signing empty message — corrected the test to stop overclaiming, no behavior change.** The
+owner did not authorize a fallback here (deliberately: a rejection's cause is caller-specific — Freighter
+denial vs. verification failure — and a single generic string would misrepresent it as the wrong-network
+case does not). Rewrote the test from a bare "alert exists" assertion to one that explicitly asserts empty
+content, naming this a residual limitation in its own description
+(`"residual limitation — a rejected status with an empty signingErrorMessage still renders an alert with
+no visible reason (no canonical fallback was authorized for this case; the type already requires the
+field, but not that it be non-empty)"`). This test was already passing before and after — the point was
+correcting what it claims, not the runtime behavior — so there is no RED/GREEN pair for this item, only
+the corrected assertion and the residual-limitation note recorded here.
+
+**Residual limitation (recorded, not fixed):** a caller passing `signingStatus: "signature-rejected"` (or
+`"verification-rejected"`) with `signingErrorMessage: ""` gets a present-but-visually-empty `role="alert"`
+element. The discriminated union requires the field but cannot require it be non-empty (TypeScript has no
+built-in non-empty-string type), and no canonical fallback exists or was authorized for this case. Any
+real caller in this demo already supplies a real message (see the `SignatureRejected`/`VerificationRejected`
+stories); this is a defense against a hypothetical misuse of the prop, not an observed demo defect.
+
+#### Required checks (re-run after the vacuous-fix correction)
+
+| Command | Observed result |
+|---|---|
+| `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/transaction-review-modal.test.tsx` | Pass — 29/29 |
+| `pnpm --filter @vaqcrow/web exec vitest run src/application/trust/disclosures.test.ts` | Pass — 22/22 |
+| `pnpm run lint` | Pass — 0 errors (same 1 pre-existing unrelated warning in `fetch-http-client.ts`) |
+| `pnpm run typecheck` | Pass — all 5 packages |
+| `pnpm run test` | Pass — 99 files / 679 tests, all workspaces |
+| `pnpm run build` | Pass — all 5 packages, `@vaqcrow/web` production build succeeded |
+| `pnpm --filter @vaqcrow/web build-storybook` | Pass — static build succeeded; `apps/web/storybook-static/` deleted afterward |
+| `pnpm run boundaries` | Pass — no dependency violations (440 modules, 1290 dependencies) |
+| `pnpm run test:boundaries` | Pass — 7 files / 83 tests (includes `trust-disclosures-canonical-consistency.test.ts`, confirmed unaffected above; `prohibited-terms.test.tsx` runs under `pnpm run test`, also confirmed unaffected) |
+
+Stories updated: `transaction-review-modal.stories.tsx` restructured as described under R3-silent-rejection
+(no visual/behavioral change to any story's rendered content — `WithoutAcknowledgement` still renders
+without the checkbox, every other story still renders with it). No story changes were needed for the
+vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNetworkMessage`.
+
 ## Next step
 
-Fix the two advisory findings (T1 follow-up commit), then push and open the PR (owner decision).
+Push and open the PR (owner decision).

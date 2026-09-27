@@ -24,6 +24,21 @@ export type TransactionReviewSigningStatus =
   | "signature-rejected"
   | "verification-rejected";
 
+/**
+ * Discriminated so a rejected signing status can never be constructed
+ * without its visible reason — same pattern as `TransactionReviewNetworkState`
+ * below. Native review advisory R3-silent-rejection (2026-09-27): before this
+ * fix, `signingStatus: "signature-rejected"` (or `"verification-rejected"`)
+ * with no `signingErrorMessage` rendered nothing and left signing enabled —
+ * indistinguishable from an untouched idle modal.
+ */
+export type TransactionReviewSigningState =
+  | { readonly signingStatus: "idle" | "signing" }
+  | {
+      readonly signingStatus: "signature-rejected" | "verification-rejected";
+      readonly signingErrorMessage: string;
+    };
+
 export interface TransactionReviewDescriptionRow {
   readonly label: string;
   readonly value: string;
@@ -42,6 +57,27 @@ export interface TransactionReviewDescriptionRow {
  * visible reason: an earlier version made `wrongNetworkMessage` independently
  * optional, which let signing be silently blocked with no explanation on
  * screen (parent readback finding #3, 2026-09-27).
+ *
+ * The type alone doesn't stop a caller from passing `wrongNetworkMessage: ""`
+ * or a rejected `signingErrorMessage: ""` (a non-empty-string type would
+ * reject legitimate whitespace/edge content too, and TypeScript has no
+ * built-in non-empty-string type) — native review advisory
+ * R3-empty-wrong-network-message (2026-09-27) found exactly that gap. A first
+ * fix only gated the alert element on `isWrongNetwork`/the rejected status
+ * rather than the message's truthiness, so the alert was never silently
+ * dropped — but parent readback correctly called this vacuous for the
+ * wrong-network case: an empty `<p role="alert">` still shows the user no
+ * reason. No `application/trust` constant fit at the time
+ * (`disclosures.testnet` is a general Testnet blurb, `microcopy.preSignCheck`
+ * is a pre-sign checklist — neither says signing is currently blocked), so
+ * the owner authorized exactly one new one for this exact condition:
+ * `microcopy.wrongNetwork` ("Cambia a Stellar Testnet para continuar",
+ * `demo-ui.md:1173`). `wrongNetworkMessage` below falls back to it when the
+ * caller's string is blank or whitespace-only. No equivalent fallback was
+ * authorized for a rejected signing status: `rejectedMessage` has no
+ * fallback, so a caller passing `signingErrorMessage: ""` still gets a
+ * visually empty (though present, `role="alert"`) element — a documented
+ * residual limitation, not a fix.
  */
 export type TransactionReviewNetworkState =
   | { readonly isWrongNetwork?: false }
@@ -64,20 +100,20 @@ interface TransactionReviewModalBaseProps {
    * copy (recorded deviation in `odd/tasks/transaction-review-modal.md`).
    */
   readonly acknowledgementLabel?: string;
-  readonly signingStatus: TransactionReviewSigningStatus;
-  /** Caller-supplied message for a rejected signing status. */
-  readonly signingErrorMessage?: string;
 }
 
 /**
  * Declared as its own intersection (rather than deriving the content props
  * from `TransactionReviewModalProps` via `Omit`) so the `isWrongNetwork` /
- * `wrongNetworkMessage` discriminant survives object-rest destructuring.
- * `Omit` over an intersection-with-union collapses the union into a single
- * widened shape (`{ isWrongNetwork?: boolean }`), which silently defeats the
- * whole point of the discriminated union below.
+ * `wrongNetworkMessage` and `signingStatus` / `signingErrorMessage`
+ * discriminants survive object-rest destructuring. `Omit` over an
+ * intersection-with-union collapses a union into a single widened shape
+ * (e.g. `{ isWrongNetwork?: boolean }`), which silently defeats the whole
+ * point of the discriminated unions below.
  */
-export type TransactionReviewModalContentProps = TransactionReviewModalBaseProps & TransactionReviewNetworkState;
+export type TransactionReviewModalContentProps = TransactionReviewModalBaseProps &
+  TransactionReviewNetworkState &
+  TransactionReviewSigningState;
 
 export type TransactionReviewModalProps = { readonly isOpen: boolean } & TransactionReviewModalContentProps;
 
@@ -99,16 +135,27 @@ function TransactionReviewModalContent({
   assetCode,
   descriptionRows,
   acknowledgementLabel,
-  signingStatus,
-  signingErrorMessage,
-  ...networkState
+  ...unionState
 }: TransactionReviewModalContentProps) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
-  const isWrongNetwork = networkState.isWrongNetwork ?? false;
-  const wrongNetworkMessage = networkState.isWrongNetwork ? networkState.wrongNetworkMessage : undefined;
+  const isWrongNetwork = unionState.isWrongNetwork ?? false;
+  // A blank/whitespace-only caller message would otherwise render a visually
+  // empty (but still `role="alert"`-present) element — native review advisory
+  // R3-empty-wrong-network-message (2026-09-27), parent readback found the
+  // earlier "at least the alert exists" fix vacuous. The owner authorized one
+  // canonical fallback (`microcopy.wrongNetwork`, `demo-ui.md:1173`) for this
+  // exact condition; no equivalent fallback was authorized for a rejected
+  // signing status (see `rejectedMessage` below).
+  const wrongNetworkMessage = unionState.isWrongNetwork
+    ? unionState.wrongNetworkMessage.trim() === ""
+      ? microcopy.wrongNetwork
+      : unionState.wrongNetworkMessage
+    : undefined;
   const requiresAcknowledgement = Boolean(acknowledgementLabel);
-  const isSigning = signingStatus === "signing";
-  const isRejected = signingStatus === "signature-rejected" || signingStatus === "verification-rejected";
+  const isSigning = unionState.signingStatus === "signing";
+  const isRejectedStatus =
+    unionState.signingStatus === "signature-rejected" || unionState.signingStatus === "verification-rejected";
+  const rejectedMessage = isRejectedStatus ? unionState.signingErrorMessage : undefined;
   const isSignDisabled = isWrongNetwork || (requiresAcknowledgement && !isAcknowledged);
 
   return (
@@ -144,7 +191,7 @@ function TransactionReviewModalContent({
           <span className="text-sm font-medium text-foreground">Red</span>
           <Badge variant="testnet" label={disclosures.testnet.title} tone="info" lang="es" />
         </div>
-        {isWrongNetwork && wrongNetworkMessage ? (
+        {isWrongNetwork ? (
           <p role="alert" className="text-sm text-trust-critical">
             {wrongNetworkMessage}
           </p>
@@ -166,9 +213,9 @@ function TransactionReviewModalContent({
           </Checkbox>
         ) : null}
 
-        {isRejected && signingErrorMessage ? (
+        {isRejectedStatus ? (
           <p role="alert" className="text-sm text-trust-critical">
-            {signingErrorMessage}
+            {rejectedMessage}
           </p>
         ) : null}
       </Modal.Body>

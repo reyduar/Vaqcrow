@@ -57,7 +57,8 @@ const PINNED_MICROCOPY: Record<string, string> = {
   salesSynthetic:
     "Serie sintética y reproducible; abril está ausente y junio contiene una anomalía intencional",
   kycStatusLabel: "KYC aprobado · SIMULADO",
-  testnetBadge: "TESTNET · Activos sin valor económico"
+  testnetBadge: "TESTNET · Activos sin valor económico",
+  wrongNetwork: "Cambia a Stellar Testnet para continuar"
 };
 
 describe("microcopy", () => {
