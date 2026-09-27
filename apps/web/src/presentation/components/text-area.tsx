@@ -56,7 +56,16 @@ export function TextArea({
         fullWidth={fullWidth}
         onChange={onChange ? (event) => onChange(event.target.value) : undefined}
       />
-      {error ? <FieldError>{error}</FieldError> : helperText ? <Description>{helperText}</Description> : null}
+      {/* Same as text-field.tsx: the helper stays visible next to the error. */}
+      {helperText ? <Description>{helperText}</Description> : null}
+      {error ? (
+        // See text-field.tsx's identical comment: HeroUI's `FieldError` filters
+        // "role" out of the DOM props it forwards, so the alert role is set on
+        // a plain wrapping element instead.
+        <span role="alert">
+          <FieldError>{error}</FieldError>
+        </span>
+      ) : null}
     </HeroTextField>
   );
 }

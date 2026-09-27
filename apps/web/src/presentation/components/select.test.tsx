@@ -29,7 +29,7 @@ describe("Select", () => {
     expect(trigger).toHaveTextContent("Mendoza");
   });
 
-  it("shows a visible error linked via aria-describedby, hiding the helper text", () => {
+  it("shows a visible error next to the helper text", () => {
     render(
       <Select
         label="Provincia"
@@ -40,6 +40,6 @@ describe("Select", () => {
     );
 
     expect(screen.getByText("Elegí una provincia.")).toBeInTheDocument();
-    expect(screen.queryByText("Usada para estimar el riesgo.")).not.toBeInTheDocument();
+    expect(screen.getByText("Usada para estimar el riesgo.")).toBeVisible();
   });
 });

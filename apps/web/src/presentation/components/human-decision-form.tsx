@@ -1,6 +1,5 @@
 "use client";
 
-import { Button, Input, Label } from "@heroui/react";
 import { useId, useState } from "react";
 import {
   ACTOR_MAX_LENGTH,
@@ -11,12 +10,21 @@ import {
   type DecisionInput
 } from "@/application/decision/decision-form";
 import type { DecisionSubmitError } from "@/application/decision/human-decision-errors";
+import { Button } from "./button";
+import { TextArea } from "./text-area";
+import { TextField } from "./text-field";
 
 /**
- * HumanDecisionForm (Issue #62 T6): the explicit, human-only decision. Nothing
- * is pre-selected and the AI recommendation never enables or fills anything
- * here. Local validation only mirrors the contract for fast feedback; the
- * backend stays authoritative and its outcome is shown via `error`.
+ * HumanDecisionForm (Issue #62 T6; migrated to the shared `TextField`/
+ * `TextArea`/`Button` primitives under Issue #306 / T3). The explicit,
+ * human-only decision. Nothing is pre-selected and the AI recommendation
+ * never enables or fills anything here. Local validation only mirrors the
+ * contract for fast feedback; the backend stays authoritative and its
+ * outcome is shown via `error`.
+ *
+ * The outcome fieldset stays a native `<input type="radio">` group (out of
+ * T3's scope, already guarded by `human-decision.spec.ts`): no shared radio
+ * primitive exists yet.
  */
 export interface HumanDecisionFormProps {
   readonly defaultActor: string;
@@ -30,10 +38,6 @@ const OUTCOMES: ReadonlyArray<{ readonly value: "approved" | "changes_requested"
   { value: "changes_requested", label: "Solicitar información" },
   { value: "rejected", label: "Rechazar" }
 ];
-
-const INPUT_CLASS = "w-full";
-const TEXTAREA_CLASS =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export function HumanDecisionForm({ defaultActor, onSubmit, error, isSubmitting = false }: HumanDecisionFormProps) {
   const idPrefix = useId();
@@ -104,53 +108,35 @@ export function HumanDecisionForm({ defaultActor, onSubmit, error, isSubmitting 
         {fieldError("outcome")}
       </fieldset>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${idPrefix}-actor`}>Quién decide</Label>
-        <Input
-          id={`${idPrefix}-actor`}
-          className={INPUT_CLASS}
-          value={values.actor}
-          maxLength={ACTOR_MAX_LENGTH}
-          aria-invalid={fieldErrors.actor ? "true" : undefined}
-          aria-describedby={describedBy("actor")}
-          onChange={(event) => update({ actor: event.target.value })}
-        />
-        {fieldError("actor")}
-      </div>
+      <TextField
+        label="Quién decide"
+        value={values.actor}
+        maxLength={ACTOR_MAX_LENGTH}
+        {...(fieldErrors.actor ? { error: fieldErrors.actor } : {})}
+        onChange={(value) => update({ actor: value })}
+      />
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${idPrefix}-reason`}>Razón de la decisión</Label>
-        <textarea
-          id={`${idPrefix}-reason`}
-          className={TEXTAREA_CLASS}
-          rows={4}
-          value={values.reason}
-          maxLength={REASON_MAX_LENGTH}
-          aria-required="true"
-          aria-invalid={fieldErrors.reason ? "true" : undefined}
-          aria-describedby={describedBy("reason")}
-          onChange={(event) => update({ reason: event.target.value })}
-        />
-        {fieldError("reason")}
-      </div>
+      <TextArea
+        label="Razón de la decisión"
+        rows={4}
+        value={values.reason}
+        maxLength={REASON_MAX_LENGTH}
+        isRequired
+        {...(fieldErrors.reason ? { error: fieldErrors.reason } : {})}
+        onChange={(value) => update({ reason: value })}
+      />
 
       {values.outcome === "approved" ? (
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-limit`}>Límite aprobado (ARS)</Label>
-          <Input
-            id={`${idPrefix}-limit`}
-            className={INPUT_CLASS}
-            type="text"
-            inputMode="numeric"
-            value={values.approvedLimitArs}
-            aria-required="true"
-            aria-invalid={fieldErrors.approvedLimitArs ? "true" : undefined}
-            aria-describedby={describedBy("approvedLimitArs")}
-            onChange={(event) => update({ approvedLimitArs: event.target.value })}
-          />
-          <span className="text-sm text-muted">Pesos enteros, sin puntos. Monto simulado de la demo.</span>
-          {fieldError("approvedLimitArs")}
-        </div>
+        <TextField
+          label="Límite aprobado (ARS)"
+          type="text"
+          inputMode="numeric"
+          value={values.approvedLimitArs}
+          isRequired
+          {...(fieldErrors.approvedLimitArs ? { error: fieldErrors.approvedLimitArs } : {})}
+          helperText="Pesos enteros, sin puntos. Monto simulado de la demo."
+          onChange={(value) => update({ approvedLimitArs: value })}
+        />
       ) : null}
 
       {error ? (

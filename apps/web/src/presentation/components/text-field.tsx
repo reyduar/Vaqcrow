@@ -13,7 +13,7 @@ import { Badge } from "./badge";
  * that can show the SIMULADO tag contiguous to the value — reusing `Badge`
  * (see `badge.tsx`/`synthetic-value.tsx`) rather than re-inventing the tag.
  */
-export type TextFieldInputType = "text" | "email" | "password" | "number" | "tel" | "url";
+export type TextFieldInputType = "text" | "email" | "password" | "number" | "tel" | "url" | "date";
 
 export interface TextFieldProps {
   readonly label: string;
@@ -94,7 +94,21 @@ export function TextField({
       ) : (
         <Input {...inputProps} fullWidth={fullWidth} />
       )}
-      {error ? <FieldError>{error}</FieldError> : helperText ? <Description>{helperText}</Description> : null}
+      {/* The helper carries format instructions, which matter most while the
+          field is in error, so it stays next to the error instead of yielding. */}
+      {helperText ? <Description>{helperText}</Description> : null}
+      {error ? (
+        // HeroUI's `FieldError` (like `Button`) filters "role" out of the DOM
+        // props it forwards to react-aria-components' own `FieldError`, whose
+        // `filterDOMProps({ global: true })` call has no `role` in its
+        // allowlist — the same gap T1 hit for Button's `aria-busy`. There is
+        // no `render` escape hatch here, so the alert role is set on a plain
+        // wrapping element instead; the id `FieldError` generates (and that
+        // the input's `aria-describedby` points at) stays on the inner node.
+        <span role="alert">
+          <FieldError>{error}</FieldError>
+        </span>
+      ) : null}
     </HeroTextField>
   );
 }

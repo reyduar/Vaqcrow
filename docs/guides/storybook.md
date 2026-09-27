@@ -83,6 +83,14 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Primitivas/Badge` | Las familias de badge, y que ningún tono lee como éxito |
 | `Primitivas/TrustBanner` | Las cuatro variantes de banner de confianza |
 | `Primitivas/CanonicalDisclosure` | Los seis avisos canónicos, verbatim |
+| `Primitivas/Button` | Las cuatro variantes, el estado de carga (etiqueta visible + `aria-busy`), deshabilitado con razón visible y ancho completo |
+| `Primitivas/TextField` | Texto de ayuda, error visible con `aria-describedby`, sufijo de unidad anunciado, campo requerido con error y valor de sólo lectura con tag SIMULADO |
+| `Primitivas/TextArea` | Estado básico, texto de ayuda y campo requerido con error visible |
+| `Primitivas/Select` | Placeholder, valor preseleccionado, texto de ayuda, requerido con error y deshabilitado |
+| `Primitivas/ComboBox` | Filtro básico, valor preseleccionado, resultados vacíos, requerido con error y deshabilitado |
+| `Primitivas/Slider` | Valor por defecto, sufijo de unidad, formato de fecha, rango de dos thumbs y deshabilitado |
+| `Primitivas/ChipToggleGroup` | Sin selección, con selección, deshabilitado y el filtro de perfil de riesgo |
+| `Primitivas/Avatar` | Iniciales de respaldo, tamaños, imagen rota y variante decorativa con nombre adyacente |
 
 ### Agregar una historia
 

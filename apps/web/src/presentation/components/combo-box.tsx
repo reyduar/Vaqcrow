@@ -86,7 +86,8 @@ export function ComboBox({
           ))}
         </ListBox>
       </HeroComboBox.Popover>
-      {error ? <FieldError>{error}</FieldError> : helperText ? <Description>{helperText}</Description> : null}
+      {helperText ? <Description>{helperText}</Description> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
     </HeroComboBox>
   );
 }

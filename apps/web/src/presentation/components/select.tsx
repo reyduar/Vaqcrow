@@ -8,7 +8,7 @@ import type { Key } from "react";
  * (`Select.Trigger`/`Select.Value`/`Select.Indicator`/`Select.Popover` +
  * `ListBox`, itself `react-aria-components`) for fixed-option pickers, e.g.
  * a province. Follows the same label/helper/error shape as `TextField`
- * (error XOR helper text, never both) so a caller can swap between the two
+ * (the helper stays visible next to the error) so a caller can swap between the two
  * primitives without relearning the pattern.
  */
 export interface SelectOption {
@@ -77,7 +77,8 @@ export function Select({
           ))}
         </ListBox>
       </HeroSelect.Popover>
-      {error ? <FieldError>{error}</FieldError> : helperText ? <Description>{helperText}</Description> : null}
+      {helperText ? <Description>{helperText}</Description> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
     </HeroSelect>
   );
 }

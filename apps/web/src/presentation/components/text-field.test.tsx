@@ -18,7 +18,7 @@ describe("TextField", () => {
     expect(screen.getByText("Formato AAAA-MM.")).toBeInTheDocument();
   });
 
-  it("marks the field invalid and shows a visible error linked via aria-describedby, hiding the helper text", () => {
+  it("marks the field invalid and shows a visible error next to the helper text, both linked via aria-describedby", () => {
     render(
       <TextField
         label="Período desde"
@@ -30,8 +30,13 @@ describe("TextField", () => {
     const input = screen.getByLabelText("Período desde");
 
     expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveAccessibleDescription("Usá el formato AAAA-MM, por ejemplo 2026-01.");
-    expect(screen.queryByText("Formato AAAA-MM.")).not.toBeInTheDocument();
+    // The helper carries the format instructions, which are needed most while
+    // the field is in error, so it stays visible and described.
+    expect(input).toHaveAccessibleDescription(
+      expect.stringContaining("Usá el formato AAAA-MM, por ejemplo 2026-01.")
+    );
+    expect(input).toHaveAccessibleDescription(expect.stringContaining("Formato AAAA-MM."));
+    expect(screen.getByText("Formato AAAA-MM.")).toBeVisible();
   });
 
   it("renders a visible, announced unit suffix next to the value", () => {
@@ -53,5 +58,22 @@ describe("TextField", () => {
     expect(input).toHaveValue("Panadería Horizonte SRL");
     expect(input).toHaveAttribute("readonly");
     expect(screen.getByText("SIMULADO")).toBeInTheDocument();
+  });
+
+  it("marks the visible error region as an alert for assistive tech (T3: needed by SmeRequestForm's migrated fields)", () => {
+    render(<TextField label="Período desde" error="Campo obligatorio." />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Campo obligatorio.");
+  });
+
+  it("renders a native date input when type is date (T3: CampaignWorkspace's deadline field)", () => {
+    const onChange = vi.fn();
+    render(<TextField label="Fecha límite" type="date" value="" onChange={onChange} />);
+
+    const input = screen.getByLabelText("Fecha límite");
+    expect(input).toHaveAttribute("type", "date");
+
+    fireEvent.change(input, { target: { value: "2026-12-01" } });
+    expect(onChange).toHaveBeenLastCalledWith("2026-12-01");
   });
 });

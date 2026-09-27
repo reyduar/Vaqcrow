@@ -1,7 +1,6 @@
 "use client";
 
-import { Button, Input, Label } from "@heroui/react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { FundingIntentGateway } from "@/application/ports/funding-intent-gateway";
@@ -11,6 +10,8 @@ import { createFundingIntentGateway } from "@/infrastructure/funding/default-gat
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { useFundingIntent } from "@/state/use-funding-intent";
 import { Badge } from "./badge";
+import { Button } from "./button";
+import { TextField } from "./text-field";
 
 /** The wallet the demo uses when none is supplied; module scope keeps it stable across renders. */
 const defaultWallet = new FreighterWallet();
@@ -21,8 +22,6 @@ const AMOUNT_ERROR: Readonly<Record<XlmAmountError, string>> = {
   too_many_decimals: "El monto admite hasta 7 decimales (1 XLM = 10.000.000 stroops).",
   not_positive: "El monto tiene que ser mayor que cero."
 };
-
-const INPUT_CLASS = "w-full";
 
 export interface FundingWorkspaceProps {
   /** Injectable for tests; `undefined` uses the env-configured gateway, `null` forces "no backend". */
@@ -47,7 +46,6 @@ export function FundingWorkspace({
   wallet = defaultWallet,
   applicationId = null
 }: FundingWorkspaceProps) {
-  const idPrefix = useId();
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
@@ -90,47 +88,21 @@ export function FundingWorkspace({
       )}
 
       <form onSubmit={handleSubmit} noValidate aria-label="Envío de fondeo" className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-destination`}>Cuenta de destino</Label>
-          <Input
-            id={`${idPrefix}-destination`}
-            className={INPUT_CLASS}
-            value={destination}
-            onChange={(event) => setDestination(event.target.value)}
-          />
-        </div>
+        <TextField label="Cuenta de destino" value={destination} onChange={setDestination} />
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-amount`}>Monto (XLM)</Label>
-          <Input
-            id={`${idPrefix}-amount`}
-            className={INPUT_CLASS}
-            inputMode="decimal"
-            value={amount}
-            aria-invalid={amountError ? "true" : undefined}
-            onChange={(event) => {
-              setAmount(event.target.value);
-              setAmountError(undefined);
-            }}
-          />
-          <span className="text-sm text-muted">Monto simulado de la demo. 1 XLM = 10.000.000 stroops.</span>
-          {amountError ? (
-            <span role="alert" className="text-sm text-trust-critical">
-              {amountError}
-            </span>
-          ) : null}
-        </div>
+        <TextField
+          label="Monto (XLM)"
+          inputMode="decimal"
+          value={amount}
+          {...(amountError ? { error: amountError } : {})}
+          helperText="Monto simulado de la demo. 1 XLM = 10.000.000 stroops."
+          onChange={(value) => {
+            setAmount(value);
+            setAmountError(undefined);
+          }}
+        />
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-memo`}>Memo (opcional)</Label>
-          <Input
-            id={`${idPrefix}-memo`}
-            className={INPUT_CLASS}
-            value={memo}
-            maxLength={28}
-            onChange={(event) => setMemo(event.target.value)}
-          />
-        </div>
+        <TextField label="Memo (opcional)" value={memo} maxLength={28} onChange={setMemo} />
 
         {error ? (
           <p role="alert" className="text-sm text-trust-critical">
