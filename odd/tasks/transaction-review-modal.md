@@ -451,6 +451,30 @@ Stories updated: `transaction-review-modal.stories.tsx` restructured as describe
 without the checkbox, every other story still renders with it). No story changes were needed for the
 vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNetworkMessage`.
 
+### T1 — third native review and untyped-caller guard (2026-09-27)
+
+- Advisory follow-up commit: `377731c` (`fix(web): surface every blocked signing state in the review modal`).
+- RDD assessment (`--base-ref 5f45934 --committed-only`): risk `medium`, 6 paths / 458 lines,
+  `slice_budget_reached`. Owner granted consent. Lineage `review-1e39b157feac1053` (`review-reliability`):
+  **approved**, acknowledged; one advisory `SUGGESTION`:
+  - `R3-untyped-wrong-network-trim` — `.trim()` on the wrong-network message throws when an untyped caller
+    (Storybook controls, plain JS) flips `isWrongNetwork` without the message.
+- Fixed inline (parent, one-line mechanical change). RED:
+  `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/transaction-review-modal.test.tsx`
+  — 1 failed / 29 passed, `TypeError: Cannot read properties of undefined (reading 'trim')`. GREEN after
+  `(message ?? "").trim()`: 30 passed.
+
+| Command | Observed result |
+| --- | --- |
+| focused vitest (modal) | 30 passed |
+| `pnpm run lint` | 5/5 tasks; 1 pre-existing warning, 0 errors |
+| `pnpm run typecheck` | 8/8 tasks |
+| `pnpm run test` | 8/8 tasks; web 680, api 686, ai 107 passed |
+| `pnpm run build` | 5/5 tasks |
+| `pnpm --filter @vaqcrow/web build-storybook` | exit 0; `storybook-static/` deleted |
+| `pnpm run boundaries` | no dependency violations (440 modules) |
+| `pnpm run test:boundaries` | 83 passed |
+
 ## Next step
 
 Push and open the PR (owner decision).

@@ -166,6 +166,27 @@ describe("TransactionReviewModal", () => {
     expect(screen.getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
   });
 
+  it("R3-untyped-wrong-network-trim: falls back to the canonical wrongNetwork message when an untyped caller omits the message", () => {
+    // Storybook controls or plain JS can flip isWrongNetwork without the paired message.
+    const untypedNetworkProps = { isWrongNetwork: true } as unknown as TransactionReviewNetworkState;
+    render(
+      <TransactionReviewModal
+        isOpen
+        onClose={vi.fn()}
+        onSign={vi.fn()}
+        title="Fondeo de campaña"
+        amount="500"
+        assetCode="USDC-test"
+        descriptionRows={ROWS}
+        signingStatus="idle"
+        {...untypedNetworkProps}
+      />
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(microcopy.wrongNetwork);
+    expect(screen.getByRole("button", { name: /Firmar en Freighter/ })).toBeDisabled();
+  });
+
   it("R3-empty-wrong-network-message: residual limitation — a rejected status with an empty signingErrorMessage still renders an alert with no visible reason (no canonical fallback was authorized for this case; the type already requires the field, but not that it be non-empty)", () => {
     renderModal({ signingStatus: "signature-rejected", signingErrorMessage: "" });
 

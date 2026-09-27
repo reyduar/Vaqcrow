@@ -147,7 +147,8 @@ function TransactionReviewModalContent({
   // exact condition; no equivalent fallback was authorized for a rejected
   // signing status (see `rejectedMessage` below).
   const wrongNetworkMessage = unionState.isWrongNetwork
-    ? unionState.wrongNetworkMessage.trim() === ""
+    ? // `?? ""` covers untyped callers (Storybook controls, plain JS) that omit the message.
+      (unionState.wrongNetworkMessage ?? "").trim() === ""
       ? microcopy.wrongNetwork
       : unionState.wrongNetworkMessage
     : undefined;
