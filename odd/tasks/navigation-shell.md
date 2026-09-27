@@ -86,16 +86,16 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ## Acceptance criteria
 
-- [ ] The header carries the brand, the `DEMO` badge, the `TESTNET` badge and a primary navigation whose
+- [x] The header carries the brand, the `DEMO` badge, the `TESTNET` badge and a primary navigation whose
       active link is marked with `aria-current="page"` plus a visible non-colour cue
-- [ ] The primary navigation collapses on small screens while `TESTNET` stays visible
-- [ ] The account menu exposes `aria-haspopup`/`aria-expanded`, a `role="menu"` panel, closes on outside
+- [x] The primary navigation collapses on small screens while `TESTNET` stays visible
+- [x] The account menu exposes `aria-haspopup`/`aria-expanded`, a `role="menu"` panel, closes on outside
       click and on `Escape`, and returns focus to its trigger
-- [ ] The footer renders the canonical "No apto para producción" disclosure from the shared constants,
+- [x] The footer renders the canonical "No apto para producción" disclosure from the shared constants,
       plus the legal row
-- [ ] Each component has a unit test and a Storybook story, rendering in light and dark
-- [ ] Trust copy only from canonical constants; the consistency guards pass
-- [ ] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass
+- [x] Each component has a unit test and a Storybook story, rendering in light and dark
+- [x] Trust copy only from canonical constants; the consistency guards pass
+- [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass
 
 ## Verification evidence
 
@@ -155,6 +155,8 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ### T2 — `AccountMenu` (2026-09-27)
 
+- Work-unit implementation commit: `f96d17b` (`feat(web): add account menu`).
+
 #### TDD
 
 - RED: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/account-menu.test.tsx`
@@ -194,5 +196,5 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ## Next step
 
-T2: implement `AccountMenu` in the stacked `-02-account-menu` slice. Do not adopt these shell components
-into routes until the separate adoption step.
+Create and merge the T2 pull request, then begin the separate shell-adoption step. Do not adopt these shell
+components into routes in this feature.
