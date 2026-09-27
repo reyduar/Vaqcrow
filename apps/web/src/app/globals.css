@@ -95,3 +95,21 @@ body {
   background-color: var(--color-canvas);
   color: var(--color-text-primary);
 }
+
+/*
+ * `Skeleton` (Issue #310 / T1) already picks `animationType="none"` in
+ * JavaScript when `matchMedia("(prefers-reduced-motion: reduce)")` matches,
+ * but that check is inert without a real `matchMedia` (SSR, or an
+ * environment that never implements it). This global rule is the CSS-only
+ * backstop so the shimmer/pulse animation never runs against the OS/browser
+ * preference regardless of how the page was rendered — HeroUI's own
+ * `.skeleton--shimmer`/`.skeleton--pulse` classes (`@heroui/styles`) do not
+ * check this preference on their own.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton--shimmer,
+  .skeleton--shimmer::before,
+  .skeleton--pulse {
+    animation: none;
+  }
+}
