@@ -477,4 +477,4 @@ vacuous-fix correction; `WrongNetwork` already passes a real, non-empty `wrongNe
 
 ## Next step
 
-Push and open the PR (owner decision).
+Guard commit `6b5ecab` assessed: risk `medium`, 48 lines, `review_due: false` (`under_budget`) — it stays pending in the slice. Push and open the PR (owner decision).
