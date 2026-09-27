@@ -49,16 +49,16 @@ PR 2 = T2 (`-02-chart-and-timeline`), PR 3 = T3 (`-03-transaction-status`).
 
 - [x] T1 — `KpiTile`, `CampaignCard` (tests RED→GREEN, stories)
 - [x] T2 — `BarChart` with accessible table, `Timeline` (tests, stories)
-- [ ] T3 — `TransactionStatusList`; guide; full matrix
+- [x] T3 — `TransactionStatusList`; guide; full matrix
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
 ## Acceptance criteria
 
-- [ ] Each component covers the states listed in #314 and renders in light and dark
-- [ ] Each component has a unit test and a Storybook story
-- [ ] Trust copy only from canonical constants; the consistency guard passes
-- [ ] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass
+- [x] Each component covers the states listed in #314 and renders in light and dark
+- [x] Each component has a unit test and a Storybook story
+- [x] Trust copy only from canonical constants; the consistency guard passes
+- [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass
 
 ## Verification evidence
 
@@ -159,6 +159,63 @@ T2 complete: `BarChart`, `Timeline` implemented under `apps/web/src/presentation
 
 None. No new trust wording was needed: `BarChart`'s `notice` slot is caller-supplied (the story passes `microcopy.salesSynthetic` verbatim; the component never hardcodes it), and `Timeline`'s status/step copy ("Completado", "Paso actual", "Pendiente") is ordinary UI microcopy, not a trust disclosure sourced from `docs/planning/DEMO.md` §12 or `demo-ui.md` §2 — no canonical constant exists or was needed for it.
 
+### T3 — RED→GREEN
+
+| Component | RED (before implementation) | GREEN (after implementation) |
+| --- | --- | --- |
+| `TransactionStatusList` | `Failed to resolve import "./transaction-status-list"` — module did not exist | 11/11 tests green on first implementation; 12/12 after the parent's contrast fix added one more test |
+
+RED command: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/transaction-status-list.test.tsx` — the suite failed on the missing-module import before the component existed.
+GREEN command: same command, `Test Files 1 passed (1)` / `Tests 12 passed (12)`.
+
+### T3 — Verification matrix
+
+| Command | Result |
+| --- | --- |
+| `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/transaction-status-list.test.tsx` | 1 file / 12 tests passed |
+| `pnpm run lint` | 0 errors (same pre-existing unrelated warning in `fetch-http-client.ts` as T1/T2/#306/#310) |
+| `pnpm run typecheck` | passed, 8/8 tasks |
+| `pnpm run test` | 95/95 files, 627/627 tests passed — no timeout flake this run |
+| `pnpm run build` | 5/5 tasks passed |
+| `pnpm --filter @vaqcrow/web build-storybook` | built successfully (`transaction-status-list.stories` compiled); `storybook-static/` deleted afterwards |
+| `pnpm run boundaries` | no dependency violations (427 modules, 1248 dependencies cruised) |
+| `pnpm run test:boundaries` | 7 files / 83 tests passed — no timeout flake this run |
+
+`apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` were checked after `build-storybook` — neither was rewritten this run.
+
+### T3 — Design decisions
+
+- **No new state colour exists, and none was invented.** There is no `success` `BadgeTone` and no `--color-ok-*` token (Feature #17 decision, still enforced), so `sent`/`confirmed`/`failed` map onto `trust-caution`/`trust-info`/`trust-critical`. The template's `--ok-s`/`--warn-s`/`--err-s`/`--text2`/`--control` tokens do not exist here at all and were not introduced.
+- **The state colour lives on the surface and the icon, never on a text run** (parent correction, see the accessibility finding below). The `<li>` carries the tint and border; the icon carries the colour; the label and detail inherit the page foreground. This is exactly what `Timeline` (#314/T2) already does with its coloured dot and neutral text, so the family stays consistent.
+- **The canonical pending sentence is owned by the component, not the caller.** `microcopy.submittedNotConfirmed` is imported from `@/application/trust/disclosures` and rendered only for `sent` — never a prop, never retyped. The test imports `microcopy` and asserts the same constant, so the assertion cannot drift from the source. This is the `StepTrustDisclosures` precedent (a component rendering canonical copy directly), not `KpiTile`'s caller-supplied-strings precedent.
+- **`aria-live="polite"` sits on a plain `<ol>`**, not routed through a HeroUI component — HeroUI v3 drops some ARIA props (the recurring #306/#310 gotcha), so the attribute is asserted present in the DOM by a test.
+- **`HashDisplay` is deliberately not composed.** The API exposes no transaction-hash prop, and the only hash-like value in the template markup is a caller-formatted *account* label inside `detail`. Composing it would add surface this component never renders. Recorded in the module doc.
+- **The template's terminal chips were folded into the list.** The template draws its third `<ol>` item muted/dashed while waiting for Horizon and prints the real outcomes in a separate chip grid ("Confirmada. Ledger …" / "Fallida. Saldo insuficiente"). Issue #314 fixes the list itself as signed → sent-pending → confirmed, so `confirmed`/`failed` became list states; a caller that has not yet seen confirmation omits the `confirmed` item, and appending it is what `aria-live` announces.
+- **`headingLevel` reuses the `HEADING_TAGS` pattern** from `CampaignCard`/`BarChart` verbatim (default `3`), keeping `Datos/*` APIs consistent.
+
+### T3 — Accessibility finding (parent spot check, fixed before commit)
+
+The first implementation gave the `<li>` a `text-trust-*` colour and put the detail line at `opacity-80`, both inherited from the `Badge` tone vocabulary. Measured over the state's own `/10` tint in light mode, that lands under the 4.5:1 AA floor this issue requires for 13–14px text:
+
+| State | state colour as text on its own `/10` tint | detail at `opacity-80` | page foreground on the same tint |
+| --- | --- | --- | --- |
+| `signed` | 6.52 ok | 4.11 fail | 16.25 |
+| `sent` | 4.38 fail | 3.19 fail | 16.48 |
+| `confirmed` | 4.50 fail (borderline) | 3.27 fail | 16.44 |
+| `failed` | 5.46 ok | 4.10 fail | 15.95 |
+
+Fix: the tint/border/icon keep the state colour and every text run inherits the page foreground, with the `opacity-80` dropped; hierarchy is carried by weight and size instead. A regression test scans every element for an `opacity-*` utility and asserts the sent item recolours no text, so the pattern cannot come back silently.
+
+**Out of scope, not fixed here:** `Badge` (`badge.tsx`) has the same `bg-trust-X/10 text-trust-X` pairing, so `caution`/`info` badges measure 4.38:1 / 4.50:1 as text. That is pre-existing Feature #17 code, not this task's, and changing the shared `TONE_CLASSES` would touch every badge in the app — it belongs in its own change.
+
+### T3 — Open questions
+
+None. No new trust wording was needed: the only canonical text this component renders is `microcopy.submittedNotConfirmed`, which already exists; the per-state labels ("Firmada en Freighter", "Enviada · pendiente de confirmación", "Confirmada en el ledger", "Fallida") are ordinary UI microcopy, the same category as `Timeline`'s "Completado"/"Paso actual".
+
+### Progress (2026-09-27)
+
+T3 complete: `TransactionStatusList` implemented under `apps/web/src/presentation/components/` with strict TDD (RED confirmed via a missing-module import failure; GREEN on the first implementation pass at 11/11, then 12/12 after the parent's contrast fix). The component renders the signed → sent → confirmed progression with `aria-live="polite"`, folds the template's terminal chips in as `confirmed`/`failed`, owns the canonical `microcopy.submittedNotConfirmed` sentence, and keeps every text run on the page foreground so the state colour can never push contrast under AA. Story `Datos/TransactionStatusList` with six stories on synthetic data. `docs/guides/storybook.md`'s coverage table gained the whole missing `Datos/*` group (KpiTile, CampaignCard, BarChart, Timeline, TransactionStatusList) — the group had no rows at all before this task. Full verification matrix above; every command passed clean, no timeout flake in `pnpm run test` or `pnpm run test:boundaries`.
+
 ## Next step
 
-Commit T2, assess for review, open PR 2.
+T3 committed; assess for review, then open PR 3 (closes #314). After that: template step 4 (navigation), step 5 (overlays, transaction-review modal first), then adoption in the six demo routes.
