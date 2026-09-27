@@ -49,7 +49,7 @@ choice for #306 (2026-09-26): `stacked-to-main`. Slices: PR 1 = T1 (this branch)
 ## Tasks
 
 - [x] T1 — `Skeleton`, `EmptyState`, `ErrorState`, `ProgressBar` (tests RED→GREEN, stories)
-- [ ] T2 — `HashDisplay`, `DistributionCalculation`, `CustodyNote` (tests, stories, canonical copy)
+- [x] T2 — `HashDisplay`, `DistributionCalculation`, `CustodyNote` (tests, stories, canonical copy)
 - [ ] T3 — `demo-step-loading` / `demo-step-error` adopt the states (tests unchanged); guide; full matrix
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per task).
@@ -120,6 +120,63 @@ reduced-motion backstop for `Skeleton` was added to `apps/web/src/app/globals.cs
 verification matrix above; every command passed clean on this run, including the two
 flake-prone ones (`pnpm run test`, `pnpm run test:boundaries`).
 
+### T2 — RED→GREEN
+
+| Component | RED (before implementation) | GREEN (after implementation) |
+| --- | --- | --- |
+| `HashDisplay` | `Failed to resolve import "./hash-display"` — module did not exist | 8/8 tests green on first implementation |
+| `DistributionCalculation` | `Failed to resolve import "./distribution-calculation"` — module did not exist | 4/4 tests green on first implementation |
+| `CustodyNote` | `Failed to resolve import "./custody-note"` — module did not exist | 3/3 tests green on first implementation |
+
+RED command: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/hash-display.test.tsx src/presentation/components/distribution-calculation.test.tsx src/presentation/components/custody-note.test.tsx` — all three suites failed on the missing-module import before any component existed.
+GREEN command: same command, `Test Files 3 passed (3)` / `Tests 15 passed (15)` after implementation — no REFACTOR-phase correction was needed for any of the three (unlike T1's `ProgressBar`/`Skeleton` findings).
+
+### T2 — Verification matrix
+
+| Command | Result |
+| --- | --- |
+| `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/hash-display.test.tsx src/presentation/components/distribution-calculation.test.tsx src/presentation/components/custody-note.test.tsx` | 3 files / 15 tests passed |
+| `pnpm --filter @vaqcrow/web exec vitest run src/application/trust` | 3 files / 45 tests passed |
+| `pnpm exec vitest run tests/trust-disclosures-canonical-consistency.test.ts` (repo root) | 4 tests passed |
+| `pnpm run lint` | 0 errors (1 pre-existing unrelated warning in `fetch-http-client.ts`, same as T1) |
+| `pnpm run typecheck` | passed, 8/8 tasks |
+| `pnpm run test` | 90/90 files, 571/571 tests passed — no timeout flake this run |
+| `pnpm run build` | 5/5 tasks passed |
+| `pnpm --filter @vaqcrow/web build-storybook` | built successfully (all 3 new stories compiled: `hash-display.stories`, `distribution-calculation.stories`, `custody-note.stories`); `storybook-static/` deleted afterwards |
+| `pnpm run boundaries` | no dependency violations (412 modules, 1203 dependencies cruised) |
+| `pnpm run test:boundaries` | 7 files / 83 tests passed |
+
+`apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` were checked after `build-storybook` — neither was rewritten this run.
+
+### T2 — Design decisions
+
+- **`HashDisplay` truncates `value.slice(0, 10) + "…" + value.slice(-8)`**, matching the template's own hash treatment (`Vaqcrow Sistema.dc.html`: `fullHash.slice(0, 10) + '…' + fullHash.slice(-8)`). A value too short to benefit (`length <= 19`) renders in full instead, with no duplicate `sr-only` copy (nothing to disambiguate). The full value stays available two ways: the `title` attribute on the wrapping `<span>`, and — only when actually truncated — a `sr-only` span carrying the untruncated text next to the `aria-hidden` visible glyph, so assistive tech is never handed the value twice for an already-short id.
+- **Copy state is three-way (`idle | copied | failed`), not a boolean.** `navigator.clipboard?.writeText` is optional-chained so an unavailable Clipboard API (no `navigator.clipboard`, or `writeText` missing) fails the same visible path as a rejected promise, rather than throwing. The confirmation (`"Copiado"`) lives in a permanent `aria-live="polite"` region rather than toggling the copy button's own label — `Button` (T1/#306) has no `aria-label` passthrough in its prop surface, so the button's accessible name comes from its children text; giving it a dynamic `Copiar ${label}` (e.g. "Copiar hash de transacción") disambiguates multiple `HashDisplay` instances on one screen without needing an `aria-label` escape hatch.
+- **The TESTNET badge is unconditional, not a prop.** `HashDisplay` always renders `Badge` with `microcopy.testnetBadge` — the exact pair `campaign-workspace.tsx`/`funding-workspace.tsx` already use for the same context — rather than accepting caller-supplied Testnet copy, keeping the canonical-copy rule enforceable at the type level (there is no prop through which a caller could substitute different wording).
+- **`DistributionCalculation` renders an HTML `<table>` with `<caption>`, not a `<dl>`.** The task explicitly asks for "an accessible caption"; `<caption>` is a table's native accessible-name mechanism (confirmed via the `getByRole("table", { name: … })` test), while a definition list has no built-in caption element — reaching for a table over a `<dl>` here was a direct answer to that literal requirement, not a stylistic choice. `inputs`/`rounding`/`total` are all pre-formatted strings; the component contains no arithmetic and no number formatting, matching the T1 `ProgressBar`/`Slider` precedent of pushing all formatting to the caller. It renders no `Badge` and imports nothing from `ai-assessment-panel.tsx`, verified by a test asserting the absence of `[data-variant="risk"]` and any "Evaluación de IA" text — the explicit "must be visually distinct from AI panels" requirement.
+- **`CustodyNote` is a two-line composition over `CanonicalDisclosure`**, not a new disclosure renderer: it always renders `contract-custody` and, only when `includeSigner` is true, also renders `non-custody` — mirroring how `step-disclosures.ts` pairs `testnet`/`non-custody`/`contract-custody` at the `funding` step (the one step where a wallet signer is in context). No markup is duplicated from `TrustBanner`/`CanonicalDisclosure`.
+
+### T2 — Canonical constants used
+
+| Component | Canonical constant(s) | Source |
+| --- | --- | --- |
+| `HashDisplay` | `microcopy.testnetBadge` | `apps/web/src/application/trust/disclosures.ts` |
+| `DistributionCalculation` | `microcopy.deterministicCalculation` | `apps/web/src/application/trust/disclosures.ts` |
+| `CustodyNote` | `disclosures["contract-custody"]`, `disclosures["non-custody"]` (via `CanonicalDisclosure`) | `apps/web/src/application/trust/disclosures.ts` |
+
+No new trust wording was introduced; every canonical text a T2 component needed already existed in `disclosures.ts` — no open question to record.
+
+### Progress (2026-09-27)
+
+T2 complete: `HashDisplay`, `DistributionCalculation`, `CustodyNote` implemented under
+`apps/web/src/presentation/components/` with strict TDD (RED confirmed via missing-module
+import failures for all three; GREEN confirmed after implementation on the first pass, no
+REFACTOR-phase correction needed). Each has a Storybook story under `Confianza/<Name>`
+(`Confianza/HashDisplay`, `Confianza/DistributionCalculation`, `Confianza/CustodyNote`) using
+only synthetic data (a fake 64-hex-char tx hash and a fake `CDLZ…` contract id, never a real
+key or seed). Full verification matrix above; every command passed clean on this run, including
+the two flake-prone ones (`pnpm run test`, `pnpm run test:boundaries`).
+
 ## Next step
 
-Commit T1, assess for review, open PR 1.
+Commit T2, assess for review, open PR 2.
