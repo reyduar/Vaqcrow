@@ -91,6 +91,13 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Primitivas/Slider` | Valor por defecto, sufijo de unidad, formato de fecha, rango de dos thumbs y deshabilitado |
 | `Primitivas/ChipToggleGroup` | Sin selección, con selección, deshabilitado y el filtro de perfil de riesgo |
 | `Primitivas/Avatar` | Iniciales de respaldo, tamaños, imagen rota y variante decorativa con nombre adyacente |
+| `Estados/Skeleton` | Línea, bloque, card y una composición de tarjeta (dos líneas + bloque) |
+| `Estados/EmptyState` | Estado básico, con acción y con ícono decorativo más acción |
+| `Estados/ErrorState` | Título y mensaje con acción de reintentar, y etiqueta de reintentar personalizada |
+| `Estados/ProgressBar` | En progreso, recién arrancado, sobrefondeado (clamp visual al 100 %) y meta alcanzada (color de éxito sólo con confirmación explícita) |
+| `Confianza/HashDisplay` | Hash de transacción, id de contrato, con link al explorador y un valor corto que no se trunca |
+| `Confianza/DistributionCalculation` | El cálculo de agosto y una segunda regla (septiembre) con otros montos |
+| `Confianza/CustodyNote` | Sólo custodia del contrato, y con firmante (paso de fondeo) |
 
 ### Agregar una historia
 
