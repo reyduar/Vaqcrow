@@ -124,6 +124,17 @@ tree. Verified each piece against the acceptance criteria above, fixed the `--co
 leftover `storybook-static/` build directory that was breaking lint, and ran the full verification
 matrix. All checks pass, with the two known flakes both confirmed as environmental by isolated re-run.
 
+## Delivery (2026-09-26)
+
+- `b817f38` — the work unit. RDD: medium risk (`slice_budget_reached`, 638 lines), consent granted,
+  reliability lens approved with no findings, authority acknowledged. PR #305.
+- CI on PR #305: Playwright failed `e2e/human-decision.spec.ts` › "never preselects a decision…":
+  `input[type="radio"]:checked` was page-wide and matched the theme switcher, which is a radio group
+  and always has a selection. A real regression of the guard's scope, not a flake. Fix: scope the
+  assertion to the `Decisión humana` form and also assert that form has radios, so the scoped guard
+  cannot pass vacuously. The switcher keeps its radio-group semantics (correct for a single choice).
+  `pnpm --filter @vaqcrow/web test:e2e` locally: 17/17 passed.
+
 ## Next step
 
-Commit, assess for review, open PR closing #304.
+Push the e2e fix and wait for CI on PR #305; merge is the owner's decision.
