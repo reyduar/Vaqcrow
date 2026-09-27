@@ -80,7 +80,7 @@ the PR growing.
 ## Tasks
 
 - [x] T1 — `DemoNavbar` + `SiteFooter` (tests RED→GREEN, stories, guide rows)
-- [ ] T2 — `AccountMenu` (tests, story, guide row)
+- [x] T2 — `AccountMenu` (tests, story, guide row)
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 
@@ -146,6 +146,50 @@ Route: delegated direct (writer trigger: 2+ non-trivial files per task).
 | `pnpm --filter @vaqcrow/web build-storybook` | Passed: Storybook completed successfully; emitted known Vite `use client` and chunk-size warnings |
 | Storybook cleanup | Deleted `apps/web/storybook-static/`; confirmed `apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` unchanged |
 | `pnpm run boundaries` | Passed: 433 modules and 1269 dependencies, no violations |
+| `pnpm run test:boundaries` | Passed first run: 7 files, 83 tests; no host-load timeout, so no retry was needed |
+
+#### Merge evidence
+
+- PR #319 (`DemoNavbar` + `SiteFooter`) merged into `main` at `4a32553`; all CI checks were green
+  (quality gates, Playwright, contracts and Vercel preview comments).
+
+### T2 — `AccountMenu` (2026-09-27)
+
+#### TDD
+
+- RED: `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/account-menu.test.tsx`
+  failed before implementation with `Failed to resolve import "./account-menu" from
+  "src/presentation/components/account-menu.test.tsx". Does the file exist?`.
+- GREEN: the same focused command passed with 1 file and 6 tests after implementing the component.
+
+#### Decisions
+
+- `AccountMenu` is presentational and caller-owned: `name`, optional `subtitle`, optional `avatarSrc`,
+  and a readonly list of link/action items are props. It owns no route, network, storage or session state.
+- The menu trigger is a native `button type="button"` with the critical `aria-haspopup`,
+  `aria-expanded` and open-only `aria-controls` directly on the DOM. The panel and entries use native
+  `role="menu"` and `role="menuitem"`; links remain anchors and actions remain buttons.
+- Escape closes the panel and returns focus to the trigger. A document `pointerdown` closes it only when
+  the event target is outside the relative wrapper. Selection invokes the optional callback and closes.
+- With no items, the component renders the shared Avatar plus account identity as non-interactive text:
+  no empty trigger and no menu panel. Avatar initials/image fallback remains delegated to `Avatar`.
+- The panel is absolutely positioned inside a relative wrapper. It uses existing semantic tokens and no
+  portal, focus trap, timer or popover dependency.
+- Added `Navegación/AccountMenu` to the Storybook guide. Its stories cover the normal account, no
+  subtitle, intentionally invalid image fallback, long name and a `play`-opened visual panel state.
+
+#### Required checks
+
+| Command | Observed result |
+| --- | --- |
+| `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/account-menu.test.tsx` | GREEN: 1 file, 6 tests passed (jsdom reports its expected non-fatal "Not implemented: navigation to another Document" message after the link click) |
+| `pnpm run lint` | Passed: 5 tasks successful; one pre-existing warning in `apps/web/src/infrastructure/http/fetch-http-client.ts` (`_request` unused) |
+| `pnpm run typecheck` | Passed: 8 tasks successful |
+| `pnpm run test` | Passed: 8 tasks successful; web 98 files/649 tests, API 37 files/686 tests |
+| `pnpm run build` | Passed: 5 tasks successful; Next.js compiled and generated 9 static pages |
+| `pnpm --filter @vaqcrow/web build-storybook` | Passed: Storybook completed successfully; emitted known Vite `use client` and chunk-size warnings |
+| Storybook cleanup | Deleted `apps/web/storybook-static/`; confirmed `apps/web/postcss.config.mjs` and `apps/web/AGENTS.md` unchanged |
+| `pnpm run boundaries` | Passed: 437 modules and 1277 dependencies, no violations |
 | `pnpm run test:boundaries` | Passed first run: 7 files, 83 tests; no host-load timeout, so no retry was needed |
 
 ## Next step
