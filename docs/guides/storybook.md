@@ -105,6 +105,7 @@ Así, `dark:` de Tailwind y los tokens de HeroUI conmutan con el mismo interrupt
 | `Datos/TransactionStatusList` | La progresión firmada → enviada → confirmada con `aria-live`, el estado fallido, el encabezado configurable y una variante sin subtítulo; la copia canónica de "enviada sin confirmar" vive en el componente |
 | `Navegación/DemoNavbar` | El encabezado pegajoso con marca, badges `DEMO`/`TESTNET` y navegación: el ítem activo (`aria-current="page"` más subrayado de 2px), una variante sin ítem activo, una lista larga de etiquetas, el estado colapsado sobre un contenedor angosto y el espacio de acciones |
 | `Navegación/SiteFooter` | El pie con el aviso canónico "No apto para producción" (verbatim, desde las constantes) y la fila legal con las cadenas del llamador; incluye la variante sin fila legal |
+| `Navegación/AccountMenu` | La identidad de cuenta con Avatar compartido, subtítulo opcional, respaldo de iniciales, nombre largo y el panel interactivo de enlaces y acciones del llamador |
 
 ### Agregar una historia
 
