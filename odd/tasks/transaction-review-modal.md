@@ -264,6 +264,20 @@ prop to an existing story's combination (`WrongNetwork` already paired `isWrongN
 `wrongNetworkMessage`; every other story never set `isWrongNetwork` at all, which still satisfies the
 narrowed `{ isWrongNetwork?: false }` branch).
 
+### T1 — commit and native review (2026-09-27)
+
+- Work-unit implementation commit: `88af75f` (`feat(web): add transaction review modal`).
+- Parent spot check: focused suites `transaction-review-modal.test.tsx` + `hash-display.test.tsx` — 2 files,
+  29 tests passed; `pnpm --filter @vaqcrow/web typecheck` clean.
+- RDD assessment (`--base-ref main --committed-only`): risk `medium` (`executable_change` in
+  `hash-display.tsx`), 6 paths / 961 changed lines, `review_due: true`, reason `slice_budget_reached`.
+- Owner granted candidate consent. Lineage `review-12a0456d258d9754`, one lens (`review-reliability`):
+  **approved**, acknowledged (`gentle-ai.review-acknowledged/v1`); review authority burned.
+- Advisory, non-blocking findings (accepted as follow-up within T1's acceptance criteria):
+  - `R3-silent-rejection` — a rejected `signingStatus` without `signingErrorMessage` renders nothing and
+    re-enables signing; same class as the wrong-network gap fixed during readback.
+  - `R3-copy-untested` — `MonoValue`'s clipboard outcomes (copied, no API, rejected) are not exercised.
+
 ## Next step
 
-Record the T1 commit and RDD assessment, then push and open the PR (owner decision).
+Fix the two advisory findings (T1 follow-up commit), then push and open the PR (owner decision).
