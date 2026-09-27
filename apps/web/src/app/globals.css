@@ -2,12 +2,29 @@
 @import "@heroui/styles";
 
 /*
- * Trust-disclosure and chart design tokens for Feature #17.
- * Single source of style tokens for Badge/TrustBanner/SalesEvidenceTable
- * primitives — no feature-local color constants elsewhere.
+ * Trust-disclosure and chart design tokens for Feature #17, extended with the
+ * light and dark themes the design corpus requires (`demo-ui.md` §5.3/§5.4 and
+ * the design brief §8).
  *
- * Trust tones map 1:1 to `BadgeTone` (design decision: no "success" tone,
- * so pending/submitted states never read as success).
+ * Single source of style tokens for the primitives — no feature-local colour
+ * constants elsewhere. Trust tones map 1:1 to `BadgeTone` (design decision: no
+ * "success" tone, so pending/submitted states never read as success).
+ *
+ * The dark values for the trust and chart tokens come from the design corpus
+ * where it specifies them (`--color-status-*`) and from the generated
+ * templates' dark palette otherwise, mapped to the matching semantics. They are
+ * decisions, not a measured contrast certification: each pair still has to be
+ * verified against WCAG 2.2 AA before it is trusted.
+ *
+ * `--color-muted`, `--color-surface`, `--color-border` and the rest of the
+ * HeroUI semantic set are NOT redefined here on purpose: `@heroui/styles`
+ * already declares each of those names (`themes/shared/theme.css`) with its
+ * own light/dark pair keyed off the same `.dark, [data-theme="dark"]`
+ * selector this file uses, so redeclaring one of those exact names here would
+ * silently override — not extend — HeroUI's own value everywhere it is
+ * already used (`border-border`, `bg-surface`, `text-muted`, …). The app's
+ * own page-level tokens below use a `page-` prefix precisely to stay clear of
+ * that reserved set.
  */
 @theme {
   --color-trust-neutral: #475569;
@@ -19,4 +36,62 @@
   --color-chart-anomaly: #b91c1c;
   --color-chart-missing: #94a3b8;
   --color-chart-grid: #e2e8f0;
+
+  /* Surfaces, text and chrome, theme-aware below. */
+  --color-canvas: #ffffff;
+  --color-page-surface: #f5f5f5;
+  --color-text-primary: #111111;
+  --color-text-secondary: #666666;
+  --color-page-border: rgba(17, 17, 17, 0.16);
+  --color-focus-ring: #8a05be;
+  --color-brand-accent: #8a05be;
+}
+
+/*
+ * `dark:` follows the same switch as the tokens. Tailwind's default is
+ * `prefers-color-scheme`, which would disagree with an explicit choice, so the
+ * variant tracks the markers the bootstrap script, the switcher and the
+ * Storybook toolbar set — either one alone is enough.
+ */
+@custom-variant dark (&:where(.dark, [data-theme="dark"], .dark *, [data-theme="dark"] *));
+
+/*
+ * The theme is opt-in per element through `data-theme` plus the `dark` class,
+ * set together on `<html>` by the bootstrap script in `layout.tsx` and by the
+ * switcher. `Sistema` resolves to one of the two explicit values before first
+ * paint, so no component has to know about the preference.
+ *
+ * Both markers are kept in sync because HeroUI documents `class="dark"
+ * data-theme="dark"` and its own stylesheet accepts either.
+ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-trust-neutral: #a0a0a0;
+  --color-trust-info: #a9ccff;
+  --color-trust-caution: #ffd27a;
+  --color-trust-critical: #ffb3ae;
+
+  --color-chart-primary: #a9ccff;
+  --color-chart-anomaly: #ffb3ae;
+  --color-chart-missing: #7a7a7a;
+  --color-chart-grid: rgba(255, 255, 255, 0.14);
+
+  --color-canvas: #111111;
+  --color-page-surface: #1f1f1f;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0a0;
+  --color-page-border: rgba(255, 255, 255, 0.14);
+  --color-focus-ring: #d9a6f2;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
 }

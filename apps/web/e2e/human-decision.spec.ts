@@ -15,7 +15,11 @@ test("never preselects a decision and keeps the AI recommendation advisory", asy
 
   await expect(page.getByRole("heading", { name: "Recomendación de IA" })).toBeVisible();
   await expect(page.getByText("Solo asesora. No decide ni sustituye la decisión de la persona.")).toBeVisible();
-  await expect(page.locator('input[type="radio"]:checked')).toHaveCount(0);
+  // Scoped to the decision form: the header's theme switcher is its own radio group
+  // and always has a selection, which says nothing about the decision.
+  const decision = page.getByRole("form", { name: "Decisión humana" });
+  await expect(decision.locator('input[type="radio"]')).not.toHaveCount(0);
+  await expect(decision.locator('input[type="radio"]:checked')).toHaveCount(0);
 });
 
 test("refuses an incomplete decision locally and records nothing", async ({ page }) => {

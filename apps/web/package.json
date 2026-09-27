@@ -36,6 +36,7 @@
     "@playwright/test": "^1.63.0",
     "@stellar/stellar-sdk": "^17.1.0",
     "@storybook/addon-a11y": "10.6.0",
+    "@storybook/addon-themes": "10.6.0",
     "@storybook/nextjs-vite": "10.6.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
