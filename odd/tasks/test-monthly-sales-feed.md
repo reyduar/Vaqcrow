@@ -119,17 +119,20 @@ task record.
 ## Delivery evidence
 
 - Staged diff: 3 files, 175 additions, 0 deletions; below the 400-line `ask-on-risk` threshold.
-- One local work-unit commit contains the parity guard and this log.
-- Engram mirror: this full document is mirrored before commit under
-  `odd/test-monthly-sales-feed/tasks`.
+- Work-unit commit: `5ded965 test(sales): add monthly feed parity guard`.
+- Delivery PR: [#333](https://github.com/reyduar/Vaqcrow/pull/333),
+  `test(sales): add deterministic monthly feed parity guard`, targets `main` from
+  `Vaqcrow#84_Task_Test_monthly_sales_feed`.
+- Board state: issue #84 is In review.
+- Engram mirror: this full document is mirrored under `odd/test-monthly-sales-feed/tasks`.
 
 ## RDD and parent spot-check evidence
 
-- RDD is enabled globally. The committed #84 candidate `ec6c000` (base `main`) was assessed after its
+- RDD is enabled globally. The committed #84 candidate `5ded965` (base `main`) was assessed after its
   tests passed with `gentle-ai review assess --cwd /Users/arielduarte/Workspaces/Vaqcrow --agent opencode
   --base-ref main --committed-only --json`. The result schema was `gentle-ai.review-assessment/v1`:
   `risk: medium`, reason `executable_change` at `tests/monthly-sales-feed-parity.test.ts`, 3 changed
-  paths, 175 changed lines, candidate kind `base-diff`, base ref `main`, and `review_due: false` with
+  paths, 188 changed lines, candidate kind `base-diff`, base ref `main`, and `review_due: false` with
   `review_due_reason: under_budget`.
 - This medium-risk range is pending because `under_budget`; it is not approved, declined, or reviewed.
   The next work-unit commit must reassess against the same last reviewed boundary: `main`.
