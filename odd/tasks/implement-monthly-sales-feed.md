@@ -105,12 +105,13 @@ this log file, which was untracked before the T1 commit):
 
 - After T1: 197
 - After T2: 630
+- After T3: 950
 
 ## Tasks
 
 - [x] T1 — `packages/contracts`: optional `provenance` on `salesPeriodSchema` + focused test (RED→GREEN) — commit `c04de71`
-- [x] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN) — commit `T2HASH`
-- [ ] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN)
+- [x] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN) — commit `8031302`
+- [x] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN) — commit `T3HASH`
 - [ ] T4 — Full `pnpm run verify`, update log, work-unit commits complete; RDD review + PR (orchestrator)
 
 Routes: T1-T3 delegated direct (writer trigger: 2+ non-trivial files, ~9 files); mapping delegated to
@@ -146,7 +147,7 @@ explore (4-file rule); this log authored inline by the orchestrator.
     unchanged even for periods that now carry a backend provenance. (Recorded for #84/#85: the web
     still overrides backend provenance with its neutral label; honoring it is a web-side decision out
     of #83 scope.)
-- 2026-09-28: T2 complete (commit `T2HASH`). Three new files in `apps/api`, no existing file touched:
+- 2026-09-28: T2 complete (commit `8031302`). Three new files in `apps/api`, no existing file touched:
   - `src/application/ports/sales-data-provider-port.ts` — plain-data port (only import is the
     type-only `SalesPeriodContract`; `api-application-stays-provider-free` safe). Result shape
     `{ ok: true, value } | { ok: false, error: { code } }` with codes `not_found` | `unavailable`;
@@ -166,6 +167,30 @@ explore (4-file rule); this log authored inline by the orchestrator.
     option exists so route tests can exercise the sanitized failure path.
   Naming choices for #84/#85: provider serves `SalesPeriodContract` directly (the T1 optional
   `provenance` makes the contract type sufficient — no API-local period type needed).
+- 2026-09-28: T3 complete (commit `T3HASH`). HTTP surface + wiring:
+  - `src/infrastructure/http/routes/sales-feed.route.ts` — `GET /businesses/:businessId/sales-periods`
+    (200 `{ businessId, periods }`, 404 `{ code: "not_found" }`, 503 `{ code: "unavailable" }`) and
+    `POST` on the same collection path to record the next period (201 `{ applied: true, period }`
+    first call, 200 `{ applied: false, period }` on replay — the `applied ? 201 : 200` convention of
+    `human-decision.route.ts`/`campaign.route.ts`). Endpoint shape follows the sub-resource convention
+    of `/application-reviews/:applicationId/decisions`; no HTTP path is prescribed anywhere in
+    docs/design or docs/planning (checked demo-ui.md and DEMO.md — only the provider interface at
+    DEMO.md:250-253 is documented).
+  - Exact-body-key validation on POST with an EMPTY allowed key set: which period comes next is the
+    provider's decision, never the caller's, so a body carrying any key is refused 400 before the
+    provider is called (same drifted-body-first convention as `assessment.route.ts`; the test proves
+    the provider is not called via a stub). No body at all is also 400 — the exact key set is `{}`.
+  - Error mapping leaks nothing: only the port's typed codes reach the wire; the simulated adapter has
+    no internal detail to sanitize (no I/O), and the route adds none.
+  - `build-app.ts` — optional `salesFeed?: SalesFeedRouteDependencies` slice, registered only when
+    supplied (same pattern as `campaign`/`assessment`); route test pins the unregistered 404.
+  - `index.ts` — `createSimulatedSalesDataProvider()` wired inline at the composition root. No
+    `sales-feed-dependencies.ts` factory was created: the campaign factory exists to wire seven
+    config-gated adapters; a single config-free simulated provider does not justify the indirection
+    (writer brief: factory only "if that matches campaign-dependencies.ts style" — it does not).
+  - Route tests parse every response period with `parseSalesPeriod` from `@vaqcrow/contracts`, so
+    "payloads consistent with the shared contracts (including the new optional provenance)" is an
+    assertion, not a comment.
 
 ## Verification evidence
 
@@ -193,6 +218,22 @@ explore (4-file rule); this log authored inline by the orchestrator.
   optional `provenance` against current declarations, not the stale pre-T1 build).
 - `pnpm --filter @vaqcrow/api typecheck`: exit 0, no output.
 - `pnpm --filter @vaqcrow/api lint`: exit 0, no output.
+
+### T3 — HTTP route + buildApp slice + composition-root wiring
+
+- `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/routes/sales-feed.route.test.ts`
+  (RED, route test authored first): 10 failed | 2 passed — `AssertionError: expected 404 to be 200`
+  (route not registered; `buildApp` had no `salesFeed` slice). The 2 trivially-green guards: the
+  correlation-id header (set by the global hook even on 404) and the unregistered-404 expectation.
+- Same command (GREEN, after route + buildApp + index wiring): 12 tests passed (GET happy path with
+  contract-parsed periods incl. April null/June anomalous, GET-after-POST shows 9 periods, GET 404
+  unknown business, GET 503 sanitized unavailable, correlation id; POST 201 applied:true with
+  contract-parsed 2026-09 period, replay 200 applied:false same period, extra-key body 400 with
+  provider-not-called stub, no-body 400, POST 404, POST 503; unregistered slice 404).
+- `pnpm --filter @vaqcrow/api typecheck`: exit 0, no output.
+- `pnpm --filter @vaqcrow/api lint`: exit 0, no output.
+- `pnpm --filter @vaqcrow/api test`: 39 files, 709 tests passed (full unit suite — the `buildApp`
+  signature change regressed nothing).
 
 ## Next step
 

@@ -1,6 +1,7 @@
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
+import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-client.js";
@@ -35,6 +36,11 @@ const campaign = buildCampaignDependencies(config, {
   applicationReviews: applicationReviewRepository
 });
 
+// The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
+// frozen synthetic data, no I/O — a real authorized source would replace it
+// here, at the composition root, and nowhere else.
+const salesDataProvider = createSimulatedSalesDataProvider();
+
 const app = buildApp({
   applicationReviewRepository,
   assessment: {
@@ -42,6 +48,7 @@ const app = buildApp({
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
+  salesFeed: { provider: salesDataProvider },
   cors: config.cors
 });
 

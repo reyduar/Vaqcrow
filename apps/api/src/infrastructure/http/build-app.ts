@@ -11,6 +11,8 @@ import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
+import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
+import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
 
 function assertRandomUUIDAvailable(): void {
   const crypto = Reflect.get(globalThis, "crypto") as { randomUUID?: unknown } | undefined;
@@ -25,6 +27,7 @@ export function buildApp(dependencies: {
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly assessment?: AssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
+  readonly salesFeed?: SalesFeedRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
@@ -60,6 +63,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.campaign) {
     registerCampaignRoute(app, dependencies.campaign);
+  }
+  if (dependencies.salesFeed) {
+    registerSalesFeedRoute(app, dependencies.salesFeed);
   }
   return app;
 }
