@@ -46,7 +46,7 @@ Es útil para revisar en un dispositivo que no corre el repo, o para adjuntar la
 
 ## Versión publicada
 
-Esa misma salida se publica en GitHub Pages: **[reyduar.github.io/Vaqcrow/storybook/](https://reyduar.github.io/Vaqcrow/storybook/)**.
+Esa misma salida se publica en GitHub Pages: **[reyduar.github.io/Vaqcrow/storybook](https://reyduar.github.io/Vaqcrow/storybook)**.
 
 El workflow [`.github/workflows/storybook.yml`](../../.github/workflows/storybook.yml) la construye y la despliega
 en cada push a `main`; en un pull request sólo construye, sin publicar, para que un Storybook roto falle antes

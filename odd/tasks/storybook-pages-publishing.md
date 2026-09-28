@@ -73,6 +73,7 @@ Observed, not assumed:
   `/Vaqcrow/` → 200 and contains `url=./storybook/`; `/Vaqcrow/storybook/` → 200 with
   `<title>storybook - Storybook</title>`; `/Vaqcrow/storybook/iframe.html` → 200; and a relative asset
   referenced by that iframe → 200, which is what proves the sub-path staging actually resolves.
-- `README.md` and `docs/guides/storybook.md` link the URL with its trailing slash, which is the canonical
-  directory form GitHub Pages serves.
+- `README.md` and `docs/guides/storybook.md` document the published URL as
+  `https://reyduar.github.io/Vaqcrow/storybook` — the form without the trailing slash. Pages answers that
+  form with a **301** to the directory form, verified with a real request; both resolve to the workshop.
 
