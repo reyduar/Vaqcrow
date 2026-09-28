@@ -262,5 +262,35 @@ full Playwright 17 passed) and the parent's spot checks.
   4 passed, `campaign-vault` 9 passed).
 - [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass.
 
+## Delivery outcome
+
+Two stacked PRs, both under the 400-line review budget; the branch pair was reordered before pushing so that
+each PR is internally coherent:
+
+| PR | Branch | Base | Changed lines | Contents |
+| --- | --- | --- | --- | --- |
+| [#324](https://github.com/reyduar/Vaqcrow/pull/324) | `Vaqcrow#323_Task_…_in_the_demo_routes` | `main` | 347 | Slice 1 (shell adoption) + the owner copy corrections |
+| [#325](https://github.com/reyduar/Vaqcrow/pull/325) | `…-02-review-modal-in-funding` | the shell branch | 394 | Slice 2 (funding review) + the README Storybook section |
+
+**Reorder.** The owner corrections (`Inversor`, `Vaqcrow · 2026`) were first committed on the child branch,
+which would have left the base PR shipping the copy the owner had just rejected. Before anything was pushed,
+the corrections commit was cherry-picked onto the shell branch and the child was rebuilt on the new shell
+tip, dropping the moved commit. The rebuilt child tip is **byte-identical** to the original one
+(`git diff` between both tips is empty), so the verification evidence above is unchanged. The shell branch's
+tree is a strict prefix: it contains no `campaign-workspace` change.
+
+**Assessment (per PR, HEAD on the branch being measured).** Shell: medium, 347 lines, `under_budget`.
+Funding: medium, 394 lines, `under_budget`. The combined stack against `main` is 673 lines and is
+`slice_budget_reached` → `review_due`.
+
+**Review state.** Owner decision 2026-09-28: leave the failing review pending for later. The combined
+candidate's review (lineage `review-639ee5569047c097`) never closed — the single selected lens slot
+(`review-reliability`, order 0) returned an empty result three times (`opencode_task_output_empty`); per the
+review contract an empty sub-agent result is a client-runtime failure, so nothing was acknowledged, no PASS
+was fabricated and the authority was not burned. No new review was started for either PR.
+
+**Board.** Issue #323 moved to `In review` (the PRs are open and CI runs on them).
+
+
 
 
