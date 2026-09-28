@@ -6,7 +6,7 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#22 — Derivar los fallos de IA a revisión manual](#^issue-22), [#26 — Implementar el feed mensual de ventas](#^issue-26) y [#83 — Implementar el feed mensual de ventas](#^issue-83).**
+> **Unidades actualmente `Ready`: [#22 — Derivar los fallos de IA a revisión manual](#^issue-22) y [#26 — Implementar el feed mensual de ventas](#^issue-26).**
 >
 > **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y la Feature [#14](#^issue-14) con sus Tasks [#44](#^issue-44), [#45](#^issue-45) y [#46](#^issue-46), respaldadas por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183), [#184](https://github.com/reyduar/Vaqcrow/pull/184) y [#187](https://github.com/reyduar/Vaqcrow/pull/187) y por la [evidencia de configuración tipada y límites de secretos](./typed-configuration-and-secret-boundaries-evidence.md); y la Feature [#23](#^issue-23) con sus Tasks [#74](#^issue-74), [#75](#^issue-75) y [#76](#^issue-76), respaldadas por los PRs [#191](https://github.com/reyduar/Vaqcrow/pull/191), [#192](https://github.com/reyduar/Vaqcrow/pull/192), [#193](https://github.com/reyduar/Vaqcrow/pull/193) y [#194](https://github.com/reyduar/Vaqcrow/pull/194) y por la [evidencia de integración de Stellar y Freighter](./stellar-and-freighter-integration-evidence.md); y la Feature [#24](#^issue-24) con sus Tasks [#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79), respaldadas por los PRs [#199](https://github.com/reyduar/Vaqcrow/pull/199), [#200](https://github.com/reyduar/Vaqcrow/pull/200), [#201](https://github.com/reyduar/Vaqcrow/pull/201), [#202](https://github.com/reyduar/Vaqcrow/pull/202) y [#203](https://github.com/reyduar/Vaqcrow/pull/203) y por la [evidencia de intención de fondeo](./funding-intent-submission-and-xdr-verification-evidence.md); y la Feature [#20](#^issue-20) con sus Tasks [#65](#^issue-65), [#66](#^issue-66) y [#67](#^issue-67), respaldadas por los PRs [#214](https://github.com/reyduar/Vaqcrow/pull/214), [#216](https://github.com/reyduar/Vaqcrow/pull/216) y [#217](https://github.com/reyduar/Vaqcrow/pull/217), integradas a `main` por el tracker [#215](https://github.com/reyduar/Vaqcrow/pull/215), y por la [evidencia de esquema y guardrails de IA](./ai-assessment-schema-and-guardrails-evidence.md); y la Feature [#21](#^issue-21) con sus Tasks [#68](#^issue-68), [#69](#^issue-69) y [#70](#^issue-70), respaldadas por los PRs [#219](https://github.com/reyduar/Vaqcrow/pull/219), [#221](https://github.com/reyduar/Vaqcrow/pull/221) y [#222](https://github.com/reyduar/Vaqcrow/pull/222), integradas a `main` por el tracker [#220](https://github.com/reyduar/Vaqcrow/pull/220), y por la [evidencia del adaptador LLM reemplazable](./replaceable-llm-adapter-evidence.md); y la Feature [#240](#^issue-240) con sus Tasks [#258](#^issue-258), [#259](#^issue-259) y [#260](#^issue-260), respaldadas por el [PR #294](https://github.com/reyduar/Vaqcrow/pull/294) y por la [evidencia de avisos de confianza y custodia por contrato](./trust-disclosures-and-contract-custody-evidence.md).**
 >
@@ -807,24 +807,24 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-83
 
 - **Título original:** `Task: Implement monthly sales feed`
-- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Ready`.
+- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); sin bloqueos nativos propios.
 - **Objetivo:** implementar el feed mensual dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#84](#^issue-84).
 
-**Rama propuesta.** `Vaqcrow#83_Task_Implement_monthly_sales_feed` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#83_Task_Implement_monthly_sales_feed`, entregada por el PR [#332](https://github.com/reyduar/Vaqcrow/pull/332).
 
 ### #84 — Probar el feed mensual de ventas
 
 ^issue-84
 
 - **Título original:** `Task: Test monthly sales feed`
-- **GitHub y estado:** [issue #84](https://github.com/reyduar/Vaqcrow/issues/84) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #84](https://github.com/reyduar/Vaqcrow/issues/84) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); bloqueada nativamente por [#83](#^issue-83).
 - **Objetivo:** demostrar el feed con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#85](#^issue-85).
 
-**Rama propuesta.** `Vaqcrow#84_Task_Test_monthly_sales_feed` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#84_Task_Test_monthly_sales_feed`, entregada por el PR [#333](https://github.com/reyduar/Vaqcrow/pull/333).
 
 ### #85 — Documentar evidencia del feed mensual de ventas
 
