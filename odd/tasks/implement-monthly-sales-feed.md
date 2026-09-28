@@ -104,11 +104,12 @@ Running authored count (`git diff --stat c87a327..HEAD`, additions+deletions; in
 this log file, which was untracked before the T1 commit):
 
 - After T1: 197
+- After T2: 630
 
 ## Tasks
 
-- [x] T1 — `packages/contracts`: optional `provenance` on `salesPeriodSchema` + focused test (RED→GREEN) — commit `T1HASH`
-- [ ] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN)
+- [x] T1 — `packages/contracts`: optional `provenance` on `salesPeriodSchema` + focused test (RED→GREEN) — commit `c04de71`
+- [x] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN) — commit `T2HASH`
 - [ ] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN)
 - [ ] T4 — Full `pnpm run verify`, update log, work-unit commits complete; RDD review + PR (orchestrator)
 
@@ -145,6 +146,26 @@ explore (4-file rule); this log authored inline by the orchestrator.
     unchanged even for periods that now carry a backend provenance. (Recorded for #84/#85: the web
     still overrides backend provenance with its neutral label; honoring it is a web-side decision out
     of #83 scope.)
+- 2026-09-28: T2 complete (commit `T2HASH`). Three new files in `apps/api`, no existing file touched:
+  - `src/application/ports/sales-data-provider-port.ts` — plain-data port (only import is the
+    type-only `SalesPeriodContract`; `api-application-stays-provider-free` safe). Result shape
+    `{ ok: true, value } | { ok: false, error: { code } }` with codes `not_found` | `unavailable`;
+    `RecordedSalesPeriodOutcome.applied` mirrors `ApplicationReviewTransitionOutcome.applied` replay
+    semantics. Methods follow DEMO.md §6 naming (`getPeriods(businessId)`) plus `recordNextPeriod`.
+  - `src/infrastructure/adapters/simulated-sales-dataset.ts` — frozen constants: 8 historical periods
+    duplicating `apps/web/src/application/fixtures/panaderia-horizonte.ts` values EXACTLY (D4 comment
+    names the canonical fixture; fixture-only fields `label`/`note` deliberately do not cross the
+    strict contract — June's "no cause asserted" is pinned in the adapter test by asserting the exact
+    key set). `DEMO_BUSINESS_ID = "panaderia-horizonte"` (no identifier is established by
+    `smeRequestSchema` or the fixture, so the slug is frozen per the writer brief). Next period 2026-09:
+    `reported`, frozen `3_860_000` ARS (~3% over August's `3_745_800`, continuing the trend),
+    `sales:2026-09`, provenance + SIMULADO like every datum (D5).
+  - `src/infrastructure/adapters/simulated-sales-data-provider.ts` — factory in the
+    `createSimulatedAssessmentProvider` style; in-memory per-process recording state (D2: restart
+    resets the feed, honest for SIMULADO data, no money fact depends on it); `failWith: "unavailable"`
+    option exists so route tests can exercise the sanitized failure path.
+  Naming choices for #84/#85: provider serves `SalesPeriodContract` directly (the T1 optional
+  `provenance` makes the contract type sufficient — no API-local period type needed).
 
 ## Verification evidence
 
@@ -157,6 +178,21 @@ explore (4-file rule); this log authored inline by the orchestrator.
   round-trip with provenance, parse without provenance, extra keys still rejected alongside a
   provenance, empty provenance rejected).
 - `pnpm --filter @vaqcrow/contracts typecheck`: exit 0, no output.
+
+### T2 — port + simulated adapter + frozen dataset
+
+- `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/simulated-sales-data-provider.test.ts`
+  (RED, test authored first): 1 file failed — `Failed to load url ./simulated-sales-dataset.js …
+  Does the file exist?` (implementation modules did not exist yet).
+- Same command (GREEN, after port + dataset + adapter): 11 tests passed (dataset: period order,
+  April null-not-0, June anomalous with exact key set, SIMULADO + Spanish provenance on every datum,
+  2026-09 frozen reported integer; provider: 8 periods before recording, not_found on both methods,
+  record-once-then-replay `applied:false`, 9 periods after recording, per-instance state, failWith
+  unavailable on both methods).
+- `pnpm --filter @vaqcrow/contracts build`: exit 0 (refreshes `dist` so `apps/api` typechecks the new
+  optional `provenance` against current declarations, not the stale pre-T1 build).
+- `pnpm --filter @vaqcrow/api typecheck`: exit 0, no output.
+- `pnpm --filter @vaqcrow/api lint`: exit 0, no output.
 
 ## Next step
 
