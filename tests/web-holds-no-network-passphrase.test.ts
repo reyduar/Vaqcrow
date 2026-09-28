@@ -24,9 +24,10 @@ import { describe, expect, it } from "vitest";
  * state hook, and a text scan would flag every mention while proving nothing.
  * The AST sees string values, which is where a passphrase could actually hide.
  *
- * Note: `tests/**` is executed by `pnpm run test:boundaries` but sits outside
- * `turbo run lint` and `turbo run typecheck` (there is no root tsconfig), so
- * this file gets no static analysis. Keep it explicit.
+ * Note: `tests/**` is executed by `pnpm run test:boundaries` and covered from
+ * the root by `pnpm run lint:tests` and `pnpm run typecheck:tests`
+ * (`tsconfig.tests.json`), outside the workspace-only `turbo run lint` and
+ * `turbo run typecheck`. Keep it explicit.
  */
 
 const WEB_SRC = fileURLToPath(new URL("../apps/web/src", import.meta.url));

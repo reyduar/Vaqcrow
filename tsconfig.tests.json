@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": true
+  },
+  "include": ["tests/**/*.ts"],
+  "exclude": ["tests/fixtures/boundaries/**"]
+}

@@ -42,7 +42,7 @@ async function cruiseFixture(target: string, extraModules: readonly string[] = [
       // resolved path inside the symlinked node_modules dir instead, matching the
       // `/@vaqcrow/<pkg>/` alternative every affected rule also carries for this exact reason.
       preserveSymlinks: true,
-      ruleSet: { forbidden: config.forbidden },
+      ruleSet: { forbidden: config.forbidden ?? [] },
       validate: true,
       baseDir: FIXTURE_ROOT
     },
@@ -251,7 +251,7 @@ describe("Stellar SDK split across workspaces", () => {
     // above forbid in the other workspace.
     const { output } = await cruise(
       ["apps/*/src"],
-      { ...config.options, ruleSet: { forbidden: config.forbidden }, validate: true },
+      { ...config.options, ruleSet: { forbidden: config.forbidden ?? [] }, validate: true },
       { modules: ["node_modules"], bustTheCache: true }
     );
 
@@ -312,7 +312,7 @@ describe("boundary fixtures stay outside build/typecheck/boundaries globs", () =
   it("the real `boundaries` script glob (`apps/*/src packages/*/src`) never reaches the fixtures", async () => {
     const { output } = await cruise(
       ["apps/*/src", "packages/*/src"],
-      { ...config.options, ruleSet: { forbidden: config.forbidden }, validate: true },
+      { ...config.options, ruleSet: { forbidden: config.forbidden ?? [] }, validate: true },
       { modules: ["node_modules"], bustTheCache: true }
     );
 

@@ -12,9 +12,10 @@ import { describe, expect, it } from "vitest";
  * hand-maintained list — a boundary test that silently stops matching is worse
  * than no test, so the scanners are themselves asserted to find something.
  *
- * Note: `tests/**` is executed by `pnpm run test:boundaries` but is outside
- * `turbo run lint` and `turbo run typecheck` (there is no root tsconfig), so
- * this file gets no static analysis. Keep it explicit.
+ * Note: `tests/**` is executed by `pnpm run test:boundaries` and covered from
+ * the root by `pnpm run lint:tests` and `pnpm run typecheck:tests`
+ * (`tsconfig.tests.json`), outside the workspace-only `turbo run lint` and
+ * `turbo run typecheck`. Keep it explicit.
  */
 
 const WEB_SRC = fileURLToPath(new URL("../apps/web/src", import.meta.url));
