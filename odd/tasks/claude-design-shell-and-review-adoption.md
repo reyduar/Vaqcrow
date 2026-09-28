@@ -67,10 +67,12 @@ lines; each slice stays under the 400-line review budget, so neither splits furt
   is removed with it (a removed component has no test); this is the allowed "removed" branch of the
   issue, not a deleted test hiding a failure.
 - **D2 — `AccountMenu` is non-interactive (`items={[]}`).** Name `Sesión de demostración`, subtitle
-  `PyME` (the template's `userRole` for the `Vaqcrow Onboarding PyME.dc.html` flow; there is no real
-  session, so no person name and no "Cerrar sesión" — no auth claims). No nav/auth copy is invented.
-- **D3 — `SiteFooter` legal row reuses existing strings:** `copyright="Vaqcrow · Trabajo Fin de Máster ·
-  2026"` and `environment={microcopy.testnetBadge}`, both already sanctioned in the component's story.
+  `Inversor` (owner decision 2026-09-28; the template's `userRole` for the investor is `INVERSOR`). There
+  is no real session, so no person name and no "Cerrar sesión" — no auth claims. No nav/auth copy is
+  invented.
+- **D3 — `SiteFooter` legal row reuses existing strings:** `copyright="Vaqcrow · 2026"` (owner decision
+  2026-09-28: the "Trabajo Fin de Máster" marker is dropped from the demo chrome) and
+  `environment={microcopy.testnetBadge}`.
 - **D4 — Nav items are the six `demoSteps` labels verbatim** (English), current one marked
   `aria-current="page"` by the navbar. No translated labels are introduced.
 - **D5 — One error owner at a time.** While the review modal is open it owns the contribute/signing
@@ -193,6 +195,28 @@ Review assessment (slice 2): `gentle-ai review assess --base-ref 3fc5d46 --commi
 `risk: medium`, `changed_lines: 273`, `review_due: false`, `review_due_reason: "under_budget"`. Per the
 ODD rule the commit stays pending in the slice until a later commit reaches the ~400-line budget; no
 review was started for this slice, and the last reviewed boundary remains `3fc5d46`.
+
+### Owner corrections + README (commit below)
+
+Owner decisions 2026-09-28: the demo session is the investor (`Inversor`) and the footer drops the
+"Trabajo Fin de Máster" marker (`Vaqcrow · 2026`). Both review advisories are closed in the same commit:
+
+- **R3-1 resolved.** The disclosure guard went back to strict single-match assertions: each required
+  text is scoped to the `Trust disclosures` region that `StepTrustDisclosures` owns, and the chrome
+  Testnet badge is scoped to the navbar header instead of counting matches. One route-level exception is
+  documented in the test: `microcopy.aiFallback` is rendered by the AI assessment standing banner beside
+  the region, so it is asserted at route scope. Nothing counts matches anymore.
+- **R3-2 resolved.** `demo-shell.test.tsx` now asserts the footer's caller-supplied copyright renders
+  verbatim.
+
+The `Trabajo Fin de Máster` string was also removed from the `SiteFooter` story args and the component's
+JSDoc example, so no file still teaches it.
+
+`README.md` gained a `Storybook (taller de componentes)` section: what the workshop is, how to run and
+build it, why it is outside `pnpm run verify`, a link to the guide, and the honest cloud state (no
+Storybook URL is published today; `vercel.json` builds only `@vaqcrow/web`, CI does not publish it, and
+`storybook-static/` is git-ignored).
+
 
 ## Acceptance criteria (from issue #323)
 
