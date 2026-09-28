@@ -1,0 +1,86 @@
+name: Storybook
+
+# Publishes the component workshop as a static site on GitHub Pages.
+#
+# Deliberately separate from ci.yml: the documented pull-request gate stays fast
+# and focused, and a Storybook regression fails its own job instead of the gate.
+# Pull requests only build (no deploy), so a broken workshop is caught before
+# merge; pushes to main build and publish. Like every other job in this
+# repository, it reaches no external service and needs no repository secret.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storybook-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Storybook (static)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.27.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # The static build emits relative asset paths, so it also resolves
+      # correctly when Pages serves it under a sub-path.
+      - name: Build the static Storybook
+        run: pnpm --filter @vaqcrow/web run build-storybook
+
+      # The artifact root is the Pages site root (/Vaqcrow/), so the workshop is
+      # staged under storybook/ and the root forwards to it.
+      - name: Stage the Pages artifact
+        run: |
+          mkdir -p pages/storybook
+          cp -R apps/web/storybook-static/. pages/storybook/
+          cp .github/pages/index.html pages/index.html
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    # Publishing is a main-branch action: a pull request only proves the build.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # `enablement: true` turns GitHub Pages on with "GitHub Actions" as its
+      # source the first time this runs, so the site needs no manual setup.
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

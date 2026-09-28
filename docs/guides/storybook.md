@@ -44,6 +44,16 @@ python3 -m http.server 6006 --directory apps/web/storybook-static
 
 Es útil para revisar en un dispositivo que no corre el repo, o para adjuntar la carpeta como evidencia.
 
+## Versión publicada
+
+Esa misma salida se publica en GitHub Pages: **[reyduar.github.io/Vaqcrow/storybook](https://reyduar.github.io/Vaqcrow/storybook)**.
+
+El workflow [`.github/workflows/storybook.yml`](../../.github/workflows/storybook.yml) la construye y la despliega
+en cada push a `main`; en un pull request sólo construye, sin publicar, para que un Storybook roto falle antes
+del merge. El build estático usa rutas relativas, así que resuelve bien bajo el sub-path `/Vaqcrow/storybook/`
+de un site de proyecto. Es un destino propio: no forma parte del despliegue de la web (Vercel) ni del de la API
+(Railway), y no suma tiempo al gate de `pnpm run verify`.
+
 ## Cambiar de tema (claro / oscuro)
 
 En la barra superior de Storybook hay un selector **Claro / Oscuro**. Cambia el atributo `data-theme`
