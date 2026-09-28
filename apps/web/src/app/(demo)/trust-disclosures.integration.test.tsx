@@ -101,18 +101,24 @@ describe("Cross-route trust disclosure integration", () => {
       renderDemoRoute(slug);
 
       expect(screen.getByText("DEMO")).toBeInTheDocument();
-      // The navbar badge and the footer legal row both carry this text now, so
-      // presence (not uniqueness) is what the chrome assertion can require.
-      expect(screen.getAllByText(microcopy.testnetBadge).length).toBeGreaterThanOrEqual(1);
+      const navbar = screen.getByRole("link", { name: "Vaqcrow, inicio" }).closest("header");
+      if (!navbar) throw new Error("navbar header not found");
+      expect(within(navbar).getByText(microcopy.testnetBadge)).toBeInTheDocument();
 
+      const region = screen.getByRole("region", { name: "Trust disclosures" });
       for (const text of requiredTextsBySlug[slug]) {
-        // The persistent footer renders the `no-production` copy canonically, so
-        // on the evidence route (which renders it too) that one text is no longer
-        // unique. Every other required text stays a strict single-match assertion.
-        if (text === disclosures["no-production"].text) {
-          expect(screen.getAllByText(text).length).toBeGreaterThanOrEqual(1);
-        } else {
+        // `StepTrustDisclosures` renders this route's canonical disclosures and
+        // step notes inside the `Trust disclosures` region, so each of those is
+        // a strict, region-scoped single match — the footer chrome can no longer
+        // satisfy the assertion on its own. `microcopy.aiFallback` is the one
+        // route-level exception: the `ai-assessment` page renders that standing
+        // "AI unavailable" banner from `AssessmentWorkspace`, beside the region
+        // rather than inside it, so it is asserted at route scope. Both branches
+        // are strict single matches; nothing counts matches anymore.
+        if (text === microcopy.aiFallback) {
           expect(screen.getByText(text)).toBeInTheDocument();
+        } else {
+          expect(within(region).getByText(text)).toBeInTheDocument();
         }
       }
     }
@@ -122,7 +128,9 @@ describe("Cross-route trust disclosure integration", () => {
     renderDemoRoute("request");
 
     expect(screen.getByText("DEMO")).toBeInTheDocument();
-    expect(screen.getAllByText(microcopy.testnetBadge).length).toBeGreaterThanOrEqual(1);
+    const navbar = screen.getByRole("link", { name: "Vaqcrow, inicio" }).closest("header");
+    if (!navbar) throw new Error("navbar header not found");
+    expect(within(navbar).getByText(microcopy.testnetBadge)).toBeInTheDocument();
 
     expect(simuladoBadgeNear(panaderiaHorizonte.legalName)).toHaveAttribute("data-variant", "simulado");
     expect(simuladoBadgeNear(panaderiaHorizonte.kyc.status)).toHaveAttribute("data-variant", "simulado");

@@ -31,7 +31,7 @@ import { CanonicalDisclosure } from "./canonical-disclosure";
  *   the canonical disclosure's own title; it is never split or retyped.
  */
 export interface SiteFooterProps {
-  /** Left legal line, e.g. "Vaqcrow · Trabajo Fin de Máster · 2026". */
+  /** Left legal line, e.g. "Vaqcrow · 2026". */
   readonly copyright?: string;
   /** Right legal line. The story passes the canonical `microcopy.testnetBadge`. */
   readonly environment?: string;

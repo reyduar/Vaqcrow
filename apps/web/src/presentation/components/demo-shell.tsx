@@ -20,13 +20,14 @@ export interface DemoShellProps {
  * (`docs/design/template/`, git-ignored). The demo has no authentication, so the
  * navbar's actions slot shows a non-interactive identity instead of a session
  * menu: there is no person name and no "Cerrar sesión" in the corpus, and
- * `AccountMenu` renders identity only when its `items` list is empty. The footer
- * legal row is the template's "Trabajo Fin de Máster" line plus the canonical
- * Testnet badge, never a retyped string.
+ * `AccountMenu` renders identity only when its `items` list is empty. The demo
+ * session is shown as the investor (the template's `userRole` is `INVERSOR`), so
+ * the subtitle reads "Inversor". The footer legal row is the "Vaqcrow · 2026"
+ * copyright line plus the canonical Testnet badge, never a retyped string.
  */
 const DEMO_SESSION_NAME = "Sesión de demostración";
-const DEMO_SESSION_SUBTITLE = "PyME";
-const DEMO_FOOTER_COPYRIGHT = "Vaqcrow · Trabajo Fin de Máster · 2026";
+const DEMO_SESSION_SUBTITLE = "Inversor";
+const DEMO_FOOTER_COPYRIGHT = "Vaqcrow · 2026";
 
 export function DemoShell({ children }: DemoShellProps) {
   const demoStep = useDemoStep();

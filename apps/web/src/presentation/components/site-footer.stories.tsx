@@ -13,7 +13,7 @@ const meta = {
   title: "Navegación/SiteFooter",
   component: SiteFooter,
   args: {
-    copyright: "Vaqcrow · Trabajo Fin de Máster · 2026",
+    copyright: "Vaqcrow · 2026",
     environment: microcopy.testnetBadge
   }
 } satisfies Meta<typeof SiteFooter>;

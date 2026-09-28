@@ -62,8 +62,12 @@ describe("DemoShell", () => {
     expect(screen.getAllByText(microcopy.testnetBadge).length).toBeGreaterThanOrEqual(1);
 
     expect(screen.getByText("Sesión de demostración")).toBeInTheDocument();
-    expect(screen.getByText("PyME")).toBeInTheDocument();
+    expect(screen.getByText("Inversor")).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "Tema" })).toBeInTheDocument();
+
+    // The footer legal row renders the caller-supplied copyright verbatim.
+    // `DemoShell` does not export the constant, so the literal is asserted here.
+    expect(screen.getByText("Vaqcrow · 2026")).toBeInTheDocument();
 
     expect(screen.getByText(disclosures["no-production"].text)).toBeInTheDocument();
   });
