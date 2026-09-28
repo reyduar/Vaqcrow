@@ -217,6 +217,26 @@ build it, why it is outside `pnpm run verify`, a link to the guide, and the hone
 Storybook URL is published today; `vercel.json` builds only `@vaqcrow/web`, CI does not publish it, and
 `storybook-static/` is git-ignored).
 
+### Review of the corrections slice — NOT CLOSED (client runtime)
+
+`gentle-ai review assess --base-ref 3fc5d46 --committed-only` on these commits returned
+`risk: medium`, `changed_lines: 423`, `review_due: true`, `review_due_reason: "slice_budget_reached"`,
+so the returned preflight was executed and a review was created (lineage
+`review-639ee5569047c097`, target `sha256:e1013b94…`, base tree `cf4c893…`). The owner granted the
+candidate consent.
+
+The single selected lens slot (`review-reliability`, order 0) returned an EMPTY reviewer result three
+times (`opencode_task_output_empty`). After each empty result the exact-lineage STATUS was re-queried and
+it re-offered the same bound slot, so each relaunch was contract-legal; the third empty result ends the
+retries. No acknowledgement was issued, nothing was marked PASS, and the review authority was not burned.
+
+Per the review contract this is a client-runtime failure of the sub-agent (an empty sub-agent result),
+not a candidate defect, so it is reported plainly here and no provider-defect report was filed. The
+review remains pending: a later STATUS for lineage `review-639ee5569047c097` still offers the slot.
+The work itself is not unverified — it carries the writer's foreground verification (`pnpm run verify`,
+full Playwright 17 passed) and the parent's spot checks.
+
+
 
 ## Acceptance criteria (from issue #323)
 
