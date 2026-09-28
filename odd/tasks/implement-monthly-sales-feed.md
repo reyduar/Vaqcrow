@@ -121,7 +121,7 @@ final verify evidence — it is the branch HEAD at hand-off.
 - [x] T1 — `packages/contracts`: optional `provenance` on `salesPeriodSchema` + focused test (RED→GREEN) — commit `c04de71`
 - [x] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN) — commit `8031302`
 - [x] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN) — commit `b1fbac9`
-- [ ] T4 — Full `pnpm run verify`, update log, work-unit commits complete; RDD review + PR (orchestrator)
+- [x] T4 — Full `pnpm run verify` (exit 0), log updated, work-unit commits complete; RDD review offered and declined by the owner (medium, candidate-scoped); PR [#332](https://github.com/reyduar/Vaqcrow/pull/332) — this docs commit
 
 Routes: T1-T3 delegated direct (writer trigger: 2+ non-trivial files, ~9 files); mapping delegated to
 explore (4-file rule); this log authored inline by the orchestrator.
@@ -275,11 +275,33 @@ explore (4-file rule); this log authored inline by the orchestrator.
   are the pre-existing sanitization tests exercising their own console.error path — expected output,
   not failures.
 
+### T4 (orchestrator) — verification gate, review outcome and delivery
+
+- Orchestrator spot check (parent re-run before delivery):
+  `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/routes/sales-feed.route.test.ts`:
+  12 passed (12), 847ms — matches the writer report; `git diff c87a327..HEAD -- apps/web` empty;
+  working tree clean; structural readback of the contract diff and the port confirms plain-data
+  boundary and sanitized error codes.
+- RDD (receipt-driven development, mode ON by global config): `gentle-ai review assess
+  --base-ref c87a327 --committed-only` → risk **medium**, `review_due: true`
+  (`slice_budget_reached`, 11 files / 995 lines). Preflight STATUS → START →
+  `gentle-ai.review-integration.consent/v3` relayed losslessly to the owner; the owner chose
+  **"Omitir esta vez"** → exact captured declined invocation executed once →
+  `action: "declined"`, `consent: "declined_this_candidate"` (candidate-scoped; future reviews stay
+  enabled; no review record created). Per the RDD-off path for a medium tier: verification of record
+  is the writer self-verification above plus the parent spot check; the writer did not run on a
+  small-model profile, so no separate verifier was launched.
+- Delivery (ordinary repository policy; one PR with `size:exception` accepted by the owner, D6):
+  branch pushed (one-shot HTTPS via `gh auth git-credential`; origin SSH fails this session with
+  `Permission denied (publickey)` — repository config untouched) and PR
+  [#332](https://github.com/reyduar/Vaqcrow/pull/332) opened against `main` with `Closes #83`.
+  Authored lines: 710 excluding this log, 995 total — over the ~450-550 forecast, covered by the
+  accepted exception. Board: #83 and #26 moved to In progress at start; #83 to In review with the PR.
+
 ## Next step
 
-T4 (orchestrator): RDD review + PR. All writer work is complete: T1-T3 committed as work units
-(`c04de71`, `8031302`, `b1fbac9`) plus this closing log commit; full `pnpm run verify` exit 0 at
-HEAD; branch `Vaqcrow#83_Task_Implement_monthly_sales_feed` ready, unpushed. Delivery is one PR with
-`size:exception` accepted by the owner (D6); the PR body can be written from this log. Suggested
-review hooks: the dataset duplication comment in `simulated-sales-dataset.ts` (D4 drift risk → #84
-cross-check) and the empty-body-key rule on the record-next POST.
+Owner reviews/merges PR #332. Then #84 (Task: Test monthly sales feed) — deterministic tests plus the
+D4 dataset-drift cross-check against the web fixture — and #85 (evidence document, Spanish,
+`docs/planning/monthly-sales-feed-evidence.md`), writable from this log. Suggested review hooks for
+#332: the dataset duplication comment in `simulated-sales-dataset.ts` and the empty-body-key rule on
+the record-next POST.
