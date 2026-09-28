@@ -61,8 +61,8 @@ entregado antes de su merge.
 - [x] T85-05 — Redactar la evidencia de cierre en español, con trazabilidad, límites y criterios mapeados.
 - [x] T85-06 — Aplicar el cambio mínimo de estado de #83/#84 en el roadmap, sin adelantar #85.
 - [x] T85-07 — Hacer lectura estructural, registrar diff, límite de rollback y resultados en este log.
-- [ ] T85-08 — Reflejar el registro completo final en Engram, verificar la lectura y crear un commit
-      convencional local de una unidad de trabajo.
+- [x] T85-08 — Reflejar el registro completo final en Engram, verificar la lectura y crear el commit
+      convencional local `29488dc` de la unidad de trabajo.
 
 ## Comprobaciones aplicables
 
@@ -121,6 +121,20 @@ contratos, pruebas, dependencias ni configuración.
 
 ## Diff final y próximo paso
 
-El diff staged de entrega contiene 3 archivos, 228 inserciones y 5 eliminaciones; `git diff --cached --check`
-no reportó errores. Reflejar este registro completo en Engram, leerlo de vuelta y crear el commit local
-convencional de esta única unidad documental.
+La primera unidad entregada (`29488dc`) contiene 3 archivos, 228 inserciones y 5 eliminaciones;
+`git diff --cached --check` no reportó errores. El siguiente paso es revisar y mergear #85; no se debe
+marcar la Task ni la Feature como entregadas hasta que ese flujo ocurra.
+
+## Evaluación RDD pasiva
+
+Tras los commits actuales `29488dc` y `ce2b977`, contra `main`, se ejecutó:
+
+```text
+gentle-ai review assess --cwd /Users/arielduarte/Workspaces/Vaqcrow --agent opencode --base-ref main --committed-only --json
+```
+
+El resultado observado fue el esquema `gentle-ai.review-assessment/v1`, con `risk: passive`, razón
+`non_executable_only`, 3 rutas modificadas y 233 líneas modificadas en el diff candidato contra `main`.
+Indicó `review_due: false` y `review_due_reason: passive`. Por lo tanto, no corresponde revisión nativa
+ni consentimiento en esta unidad. Esta evaluación pasiva no constituye un recibo de revisión ni una
+aprobación.
