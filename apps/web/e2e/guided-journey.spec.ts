@@ -30,9 +30,14 @@ test("the root redirects to the first demo step", async ({ page }) => {
 test("the shell renders the demo chrome and the step progress", async ({ page }) => {
   await page.goto("/request");
 
-  await expect(page.getByText("Vaqcrow")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Vaqcrow, inicio" })).toBeVisible();
   await expect(page.getByText("DEMO", { exact: true })).toBeVisible();
-  await expect(page.getByText("TESTNET · Activos sin valor económico")).toBeVisible();
+  // `TrustBanner`'s inner `<header>` makes the footer disclosure a second
+  // banner, so scope the badge to the navbar header via its brand link.
+  const demoHeader = page
+    .locator("header")
+    .filter({ has: page.getByRole("link", { name: "Vaqcrow, inicio" }) });
+  await expect(demoHeader.getByText("TESTNET · Activos sin valor económico")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Demo progress" })).toContainText("Step 1 of 6: Request");
 });
 
@@ -48,7 +53,12 @@ test("walks the six guided steps in order", async ({ page }) => {
 
     const next = STEPS[index + 1];
     if (next) {
-      await page.getByRole("link", { name: next.label }).click();
+      // The step labels are also primary-nav links, so target the dedicated
+      // step-navigation landmark instead of the ambiguous global link name.
+      await page
+        .getByRole("navigation", { name: "Demo step navigation" })
+        .getByRole("link", { name: next.label })
+        .click();
     }
   }
 });

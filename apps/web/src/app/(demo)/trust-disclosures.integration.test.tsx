@@ -101,10 +101,25 @@ describe("Cross-route trust disclosure integration", () => {
       renderDemoRoute(slug);
 
       expect(screen.getByText("DEMO")).toBeInTheDocument();
-      expect(screen.getByText(microcopy.testnetBadge)).toBeInTheDocument();
+      const navbar = screen.getByRole("link", { name: "Vaqcrow, inicio" }).closest("header");
+      if (!navbar) throw new Error("navbar header not found");
+      expect(within(navbar).getByText(microcopy.testnetBadge)).toBeInTheDocument();
 
+      const region = screen.getByRole("region", { name: "Trust disclosures" });
       for (const text of requiredTextsBySlug[slug]) {
-        expect(screen.getByText(text)).toBeInTheDocument();
+        // `StepTrustDisclosures` renders this route's canonical disclosures and
+        // step notes inside the `Trust disclosures` region, so each of those is
+        // a strict, region-scoped single match — the footer chrome can no longer
+        // satisfy the assertion on its own. `microcopy.aiFallback` is the one
+        // route-level exception: the `ai-assessment` page renders that standing
+        // "AI unavailable" banner from `AssessmentWorkspace`, beside the region
+        // rather than inside it, so it is asserted at route scope. Both branches
+        // are strict single matches; nothing counts matches anymore.
+        if (text === microcopy.aiFallback) {
+          expect(screen.getByText(text)).toBeInTheDocument();
+        } else {
+          expect(within(region).getByText(text)).toBeInTheDocument();
+        }
       }
     }
   );
@@ -113,7 +128,9 @@ describe("Cross-route trust disclosure integration", () => {
     renderDemoRoute("request");
 
     expect(screen.getByText("DEMO")).toBeInTheDocument();
-    expect(screen.getByText(microcopy.testnetBadge)).toBeInTheDocument();
+    const navbar = screen.getByRole("link", { name: "Vaqcrow, inicio" }).closest("header");
+    if (!navbar) throw new Error("navbar header not found");
+    expect(within(navbar).getByText(microcopy.testnetBadge)).toBeInTheDocument();
 
     expect(simuladoBadgeNear(panaderiaHorizonte.legalName)).toHaveAttribute("data-variant", "simulado");
     expect(simuladoBadgeNear(panaderiaHorizonte.kyc.status)).toHaveAttribute("data-variant", "simulado");

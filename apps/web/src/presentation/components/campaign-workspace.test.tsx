@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { WalletError } from "@/application/ports/wallet-port";
+import { microcopy } from "@/application/trust/disclosures";
 import type { CampaignSnapshot } from "@vaqcrow/contracts";
 import { CampaignWorkspace } from "./campaign-workspace";
 
@@ -153,7 +154,37 @@ describe("CampaignWorkspace: the three chain states", () => {
 });
 
 describe("CampaignWorkspace: contributing", () => {
-  it("prevents a double submit: two rapid clicks call prepareInvocation once", async () => {
+  it("opens the review with the real intent and signs nothing until Firmar en Freighter", async () => {
+    const gateway = createGateway();
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    await connect();
+    await screen.findByText("Fondeo abierto");
+
+    fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("1.5")).toBeInTheDocument();
+    expect(within(dialog).getByText("XLM")).toBeInTheDocument();
+    expect(within(dialog).getByText(CONTRACT)).toBeInTheDocument();
+    expect(within(dialog).getByText("contribute")).toBeInTheDocument();
+    expect(within(dialog).getByText(INVESTOR)).toBeInTheDocument();
+    expect(within(dialog).getByText(microcopy.testAssetNoValue)).toBeInTheDocument();
+    expect(within(dialog).getByText(microcopy.preSignCheck)).toBeInTheDocument();
+    const disclosure = within(dialog).getByRole("note");
+    expect(within(disclosure).getByText("Firma no custodial")).toBeInTheDocument();
+    expect(within(disclosure).getByText(/Freighter es la wallet/)).toBeInTheDocument();
+
+    // Opening the review must not touch the wallet: nothing is prepared yet.
+    expect(gateway.prepareInvocation).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(gateway.prepareInvocation).not.toHaveBeenCalled();
+  });
+
+  it("prevents a double submit: two rapid Firmar en Freighter clicks call prepareInvocation once", async () => {
     let resolvePrepare!: (value: unknown) => void;
     const prepareInvocation = vi.fn().mockReturnValue(new Promise((resolve) => (resolvePrepare = resolve)));
     const gateway = createGateway({ prepareInvocation });
@@ -162,9 +193,11 @@ describe("CampaignWorkspace: contributing", () => {
     await screen.findByText("Fondeo abierto");
 
     fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
-    const button = screen.getByRole("button", { name: /^Aportar$/ });
-    fireEvent.click(button);
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+
+    const signButton = within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" });
+    fireEvent.click(signButton);
+    fireEvent.click(signButton);
 
     expect(prepareInvocation).toHaveBeenCalledTimes(1);
 
@@ -178,7 +211,7 @@ describe("CampaignWorkspace: contributing", () => {
     await waitFor(() => expect(gateway.submitInvocation).toHaveBeenCalledTimes(1));
   });
 
-  it("shows a wallet network mismatch message", async () => {
+  it("shows the canonical wrong-network message in the dialog and blocks signing, with no duplicate banner", async () => {
     const signTransaction = vi.fn().mockRejectedValue(new WalletError("network_mismatch", "another network"));
     const gateway = createGateway();
     render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} campaignId={CAMPAIGN_ID} />);
@@ -187,11 +220,18 @@ describe("CampaignWorkspace: contributing", () => {
 
     fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
     fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/otra red/i);
+    const dialog = screen.getByRole("dialog");
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent(microcopy.wrongNetwork);
+    expect(within(dialog).getByRole("button", { name: "Firmar en Freighter" })).toBeDisabled();
+    // One error owner (D5): the dialog's alert is the only one on screen — the workspace banner
+    // must not repeat it.
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 
-  it("shows a gateway error message when the backend refuses", async () => {
+  it("shows the gateway unavailable message in the dialog when the backend refuses", async () => {
     const prepareInvocation = vi.fn().mockRejectedValue(new HttpClientError("http", 503));
     const gateway = createGateway({ prepareInvocation });
     render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
@@ -200,11 +240,13 @@ describe("CampaignWorkspace: contributing", () => {
 
     fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
     fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/no está disponible/i);
+    const alert = await within(screen.getByRole("dialog")).findByRole("alert");
+    expect(alert).toHaveTextContent(/no está disponible/i);
   });
 
-  it("shows a reverted-contribution message and keeps Aportar available, claiming no success", async () => {
+  it("shows the reverted-contribution message in the dialog and keeps Aportar available, claiming no success", async () => {
     const getTransaction = vi.fn().mockResolvedValue({ transactionHash: HASH, status: "failed" });
     const gateway = createGateway({ getTransaction });
     render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
@@ -213,11 +255,31 @@ describe("CampaignWorkspace: contributing", () => {
 
     fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
     fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" }));
 
-    const alert = await screen.findByRole("alert");
+    const dialog = screen.getByRole("dialog");
+    const alert = await within(dialog).findByRole("alert");
     expect(alert).not.toHaveTextContent(/éxito|confirmad/i);
-    expect(screen.getByRole("button", { name: /^Aportar$/ })).toBeEnabled();
+    // The modal stays open for a retry, so the contribute control behind it is merely
+    // aria-hidden (HeroUI's modal hides the background), never removed.
+    expect(screen.getByRole("button", { name: /^Aportar$/, hidden: true })).toBeEnabled();
     expect(screen.getByText("Fondeo abierto")).toBeInTheDocument();
+  });
+
+  it("reports a missing Freighter at signing time as a rejected state, never as a success", async () => {
+    const signTransaction = vi.fn().mockRejectedValue(new WalletError("unavailable", "Freighter is not available"));
+    const gateway = createGateway();
+    render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} campaignId={CAMPAIGN_ID} />);
+    await connect();
+    await screen.findByText("Fondeo abierto");
+
+    fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" }));
+
+    const alert = await within(screen.getByRole("dialog")).findByRole("alert");
+    expect(alert).toHaveTextContent(/instalá o habilitá freighter/i);
+    expect(alert).not.toHaveTextContent(/éxito|confirmad/i);
   });
 });
 
@@ -249,6 +311,7 @@ describe("CampaignWorkspace: the live funding-to-settled transition", () => {
 
     fireEvent.change(screen.getByLabelText(/Monto a aportar/), { target: { value: "1.5" } });
     fireEvent.click(screen.getByRole("button", { name: /^Aportar$/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Firmar en Freighter" }));
 
     expect(await screen.findByText("Meta alcanzada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();

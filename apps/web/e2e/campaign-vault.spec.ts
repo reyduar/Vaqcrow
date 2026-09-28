@@ -120,6 +120,7 @@ test.describe("contributing", () => {
 
     await page.getByLabel("Monto a aportar (XLM)").fill("5");
     await page.getByRole("button", { name: "Aportar" }).click();
+    await page.getByRole("button", { name: "Firmar en Freighter" }).click();
 
     await expect(ddValueFor(page, "Total aportado")).toHaveText("5 XLM");
     await expect(page.getByText("Fondeo abierto")).toBeVisible();
@@ -142,6 +143,7 @@ test.describe("contributing", () => {
     // The fixture's goal is 20 XLM; this alone reaches it.
     await page.getByLabel("Monto a aportar (XLM)").fill("20");
     await page.getByRole("button", { name: "Aportar" }).click();
+    await page.getByRole("button", { name: "Firmar en Freighter" }).click();
 
     await expect(page.getByText("Meta alcanzada")).toBeVisible();
     await expect(ddValueFor(page, "Total aportado")).toHaveText("20 XLM");
@@ -202,9 +204,10 @@ test.describe("error paths", () => {
 
     await page.getByLabel("Monto a aportar (XLM)").fill("5");
     await page.getByRole("button", { name: "Aportar" }).click();
+    await page.getByRole("button", { name: "Firmar en Freighter" }).click();
 
-    await expect(errorBanner(page)).toContainText(
-      "Tu wallet está en otra red. Cambiala a la red que declara la transacción y volvé a firmar."
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+      "Cambia a Stellar Testnet para continuar"
     );
     // Nothing was signed or submitted: the total stays untouched.
     await expect(ddValueFor(page, "Total aportado")).toHaveText("0 XLM");
@@ -225,8 +228,9 @@ test.describe("error paths", () => {
 
     await page.getByLabel("Monto a aportar (XLM)").fill("5");
     await page.getByRole("button", { name: "Aportar" }).click();
+    await page.getByRole("button", { name: "Firmar en Freighter" }).click();
 
-    await expect(errorBanner(page)).toContainText(
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
       "Rechazaste la firma en la wallet. No se envió nada; podés volver a firmar."
     );
     await expect(ddValueFor(page, "Total aportado")).toHaveText("0 XLM");
@@ -246,8 +250,9 @@ test.describe("error paths", () => {
 
     await page.getByLabel("Monto a aportar (XLM)").fill("5");
     await page.getByRole("button", { name: "Aportar" }).click();
+    await page.getByRole("button", { name: "Firmar en Freighter" }).click();
 
-    await expect(errorBanner(page)).toContainText(
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
       "El servicio rechazó la operación. No se registró nada; revisá el estado de la campaña y volvé a intentar."
     );
     // The reverted contribution never landed: the total and state are untouched.
