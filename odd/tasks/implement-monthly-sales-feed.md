@@ -106,12 +106,21 @@ this log file, which was untracked before the T1 commit):
 - After T1: 197
 - After T2: 630
 - After T3: 950
+- Final (this closing log commit): 995 (0 deletions)
+
+Note: the forecast was ~450-550 code lines; the count above also carries this log file (134 lines at
+first commit plus the running evidence appended per unit), which is why it lands higher. Code+tests
+only (excluding `odd/`): 710. The owner accepted `size:exception` for this single vertical
+(D6), so the overage is reported, not shrunk — per the work-unit skill, the budget is not code-golf.
+Commit convention: each unit's log update rode in that unit's commit; a commit cannot contain its own
+hash, so each hash was recorded by the next commit, and this closing `docs(odd)` commit carries the
+final verify evidence — it is the branch HEAD at hand-off.
 
 ## Tasks
 
 - [x] T1 — `packages/contracts`: optional `provenance` on `salesPeriodSchema` + focused test (RED→GREEN) — commit `c04de71`
 - [x] T2 — `apps/api` port `sales-data-provider-port.ts` + simulated adapter with frozen dataset (mirror fixture) + focused tests (RED→GREEN) — commit `8031302`
-- [x] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN) — commit `T3HASH`
+- [x] T3 — HTTP route (GET series, POST record-next, idempotent) + `buildApp` slice + `index.ts` wiring + route tests (RED→GREEN) — commit `b1fbac9`
 - [ ] T4 — Full `pnpm run verify`, update log, work-unit commits complete; RDD review + PR (orchestrator)
 
 Routes: T1-T3 delegated direct (writer trigger: 2+ non-trivial files, ~9 files); mapping delegated to
@@ -119,13 +128,20 @@ explore (4-file rule); this log authored inline by the orchestrator.
 
 ## Acceptance criteria (from issue #83)
 
-- [ ] Feature #26 behavior implemented within its documented boundary (next synthetic period loaded
-      with provenance, known anomaly and explicit simulated labeling).
-- [ ] Periods, provenance, evidence references, the intentional anomaly and missing periods exposed
-      through the replaceable provider with visible simulation labeling.
-- [ ] Failure paths truthful; domain/adapter boundaries preserved; no secrets, PII, user seeds or
-      unsupported production claims.
-- [ ] Focused checks pass; the ordered test Task (#84) can validate the slice.
+- [x] Feature #26 behavior implemented within its documented boundary (next synthetic period loaded
+      with provenance, known anomaly and explicit simulated labeling). — POST records frozen 2026-09
+      with provenance + SIMULADO; June anomaly and April missing exposed unchanged (T2/T3 tests).
+- [x] Periods, provenance, evidence references, the intentional anomaly and missing periods exposed
+      through the replaceable provider with visible simulation labeling. — `SalesDataProviderPort`
+      (plain data, replaceable at the composition root); every datum carries `simuladoLabel` and
+      per-datum Spanish provenance (dataset tests pin both).
+- [x] Failure paths truthful; domain/adapter boundaries preserved; no secrets, PII, user seeds or
+      unsupported production claims. — typed `not_found`/`unavailable` → 404/503 sanitized codes only;
+      `pnpm run boundaries` clean; dataset is fictional-bakery data, no seeds/keys/PII; SIMULADO on
+      every datum, in-memory recording state documented as reset-on-restart (no production claim).
+- [x] Focused checks pass; the ordered test Task (#84) can validate the slice. — 23 focused tests
+      (11 adapter + 12 route) plus 4 contract tests; full `pnpm run verify` exit 0 (see below). #84
+      hooks: dataset-drift cross-check against the web fixture (D4), suite-level determinism.
 
 ## Progress log
 
@@ -167,7 +183,7 @@ explore (4-file rule); this log authored inline by the orchestrator.
     option exists so route tests can exercise the sanitized failure path.
   Naming choices for #84/#85: provider serves `SalesPeriodContract` directly (the T1 optional
   `provenance` makes the contract type sufficient — no API-local period type needed).
-- 2026-09-28: T3 complete (commit `T3HASH`). HTTP surface + wiring:
+- 2026-09-28: T3 complete (commit `b1fbac9`). HTTP surface + wiring:
   - `src/infrastructure/http/routes/sales-feed.route.ts` — `GET /businesses/:businessId/sales-periods`
     (200 `{ businessId, periods }`, 404 `{ code: "not_found" }`, 503 `{ code: "unavailable" }`) and
     `POST` on the same collection path to record the next period (201 `{ applied: true, period }`
@@ -235,6 +251,35 @@ explore (4-file rule); this log authored inline by the orchestrator.
 - `pnpm --filter @vaqcrow/api test`: 39 files, 709 tests passed (full unit suite — the `buildApp`
   signature change regressed nothing).
 
+### T4 (writer portion) — full branch verification, run at HEAD `b1fbac9`
+
+- `pnpm run verify`: **exit 0**, first run, no flake retry needed. Stages:
+  - `lint` (turbo): 5/5 successful — one PRE-EXISTING warning, not from this branch:
+    `apps/web/src/infrastructure/http/fetch-http-client.ts:8 '_request' is defined but never used`
+    (`git diff c87a327..HEAD -- apps/web` is empty — this branch touches no web file).
+  - `typecheck` (turbo): 8/8 successful.
+  - `lint:tests` + `typecheck:tests` (root `tests/`): clean.
+  - `test` (turbo): 8/8 — contracts 9 files/329 tests, domain 1/60, ai 5/107, web 98/686,
+    api 39/709. The web component suites (campaign-workspace, human-decision-form,
+    sales-evidence-table, sme-request-workspace, layout.traversal) all passed first-run; the known
+    environmental timeout flake class did not occur.
+  - `build` (turbo): 5/5 — includes the Next.js production build with its own TypeScript pass over
+    `apps/web`, which is the machine proof of the D1 ripple: the web strict parsers and
+    `toAssessmentEvidence` compile and run against the widened contract untouched.
+  - `boundaries` (depcruise): "no dependency violations found (444 modules, 1312 dependencies
+    cruised)" — the new port (application/), adapter + dataset (infrastructure/) and route respect
+    `api-application-stays-provider-free`, `contracts-never-import-node-core`,
+    `contracts-never-import-frameworks` and `no-cross-app-imports`.
+  - `test:boundaries` (root vitest): 8 files, 92 tests passed.
+- The `[SupabaseApplicationReviewRepository] persistence error` stderr lines inside `@vaqcrow/api:test`
+  are the pre-existing sanitization tests exercising their own console.error path — expected output,
+  not failures.
+
 ## Next step
 
-Launch the delegated writer for T1-T3 with strict TDD and work-unit commits.
+T4 (orchestrator): RDD review + PR. All writer work is complete: T1-T3 committed as work units
+(`c04de71`, `8031302`, `b1fbac9`) plus this closing log commit; full `pnpm run verify` exit 0 at
+HEAD; branch `Vaqcrow#83_Task_Implement_monthly_sales_feed` ready, unpushed. Delivery is one PR with
+`size:exception` accepted by the owner (D6); the PR body can be written from this log. Suggested
+review hooks: the dataset duplication comment in `simulated-sales-dataset.ts` (D4 drift risk → #84
+cross-check) and the empty-body-key rule on the record-next POST.
