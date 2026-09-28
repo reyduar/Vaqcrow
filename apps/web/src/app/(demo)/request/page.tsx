@@ -1,7 +1,6 @@
 import { panaderiaHorizonte } from "@/application/fixtures/panaderia-horizonte";
 import { SalesEvidenceTable } from "@/presentation/components/sales-evidence-table";
 import { SmeRequestWorkspace } from "@/presentation/components/sme-request-workspace";
-import { StepPlaceholder } from "@/presentation/components/step-placeholder";
 import { StepTrustDisclosures } from "@/presentation/components/step-trust-disclosures";
 import { SyntheticValue } from "@/presentation/components/synthetic-value";
 
@@ -24,7 +23,6 @@ export default function RequestPage() {
         <SalesEvidenceTable />
         <SmeRequestWorkspace />
       </section>
-      <StepPlaceholder />
     </>
   );
 }

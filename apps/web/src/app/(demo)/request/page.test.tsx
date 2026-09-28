@@ -45,4 +45,14 @@ describe("RequestPage", () => {
       }
     }
   });
+
+  it("renders no step placeholder: this route carries its own content", () => {
+    render(<RequestPage />);
+
+    // Issue #286: the journey surface a person walks must not show the
+    // "Step content coming soon" placeholder. `/request` has real content, so
+    // the leftover placeholder block was removed; `/distribution` and
+    // `/evidence` keep theirs until Features #28 and #29 give them content.
+    expect(screen.queryByText(/Step content coming soon/i)).not.toBeInTheDocument();
+  });
 });
