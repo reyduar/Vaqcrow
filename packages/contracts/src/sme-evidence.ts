@@ -20,6 +20,14 @@ export const salesPeriodSchema = z.strictObject({
   // null (never 0) when the figure is not available.
   amountArs: z.number().nonnegative().nullable(),
   status: salesPeriodStatusSchema,
+  /**
+   * Per-datum provenance (DEMO.md §5: "Serie mensual de ventas con procedencia
+   * por dato"). Additive and optional so pre-existing strict consumers — the
+   * web parsers, `toAssessmentEvidence`'s five-field projection and the AI
+   * evidence bundle — stay valid untouched; the sales-feed provider always
+   * populates it, and optionality exists only for legacy payloads.
+   */
+  provenance: z.string().min(1).optional(),
   evidenceRef: evidenceReferenceSchema,
   simuladoLabel: simuladoLabelSchema
 });
