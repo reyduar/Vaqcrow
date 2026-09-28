@@ -67,7 +67,7 @@ La suite de integración `apps/api/tests/integration/human-decision-persistence.
 - **Sin autenticación.** El actor es un campo de texto editable que por defecto trae un actor de demo (`DEMO_ACTOR`). El actor registrado es, por lo tanto, autodeclarado y no una identidad autenticada. La autenticación está registrada en [#134](https://github.com/reyduar/Vaqcrow/issues/134).
 - **Id de aplicación de marcador.** El workspace usa `DEMO_APPLICATION_ID` (`apps/web/src/application/fixtures/demo-application.ts`) hasta que la Feature #18 aporte un flujo real de solicitudes.
 - **Separación web/dominio.** La web consume solo `packages/contracts`; la decisión la validan y aplican la API y la base de datos.
-- **Sin políticas RLS.** El control de acceso se apoya en los grants (ver la evidencia de #43 y [#134](https://github.com/reyduar/Vaqcrow/issues/134)).
+- **Sin políticas RLS.** El control de acceso se apoya en los grants; la decisión que resuelve [#196](https://github.com/reyduar/Vaqcrow/issues/196) y por qué las políticas siguen diferidas están en [[docs/architecture/identity-and-rls-boundaries|Límites de identidad y RLS]] (ver también la evidencia de #43).
 
 ## 6. Resultado visible en la demo
 
@@ -98,7 +98,7 @@ Commits: `a2ee438`, `b879602`, `9b63a8e`, `0552b2f`, `d4a8a2b`, `c2c3d6e`, `268d
 
 - **El copy de UI está en español**, siguiendo el copy web existente y `docs/design/demo-ui.md`; el código, los tests y los commits van en inglés, y este documento va en español por la convención de evidencia del repositorio.
 - **El historial remoto de migraciones lista `create_application_review` dos veces.** Es anterior al #62 y no se alteró acá.
-- **Sin políticas RLS.** El control de acceso se apoya en grants (ver la evidencia de #43 y [#134](https://github.com/reyduar/Vaqcrow/issues/134)).
+- **Sin políticas RLS.** El control de acceso se apoya en grants; la decisión que resuelve [#196](https://github.com/reyduar/Vaqcrow/issues/196) y por qué las políticas siguen diferidas están en [[docs/architecture/identity-and-rls-boundaries|Límites de identidad y RLS]] (ver también la evidencia de #43).
 - **Avisos de revisión no bloqueantes**, dejados para trabajo posterior; las notas de los últimos cinco dan solo el id del hallazgo y su ubicación reportada por el revisor (un aviso anterior, R3-idem-conflict-retry, se corrigió en `2e57ec1`):
 
 | Aviso | Nota |
