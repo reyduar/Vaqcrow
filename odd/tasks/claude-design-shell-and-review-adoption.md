@@ -73,18 +73,29 @@ lines; each slice stays under the 400-line review budget, so neither splits furt
   2026"` and `environment={microcopy.testnetBadge}`, both already sanctioned in the component's story.
 - **D4 — Nav items are the six `demoSteps` labels verbatim** (English), current one marked
   `aria-current="page"` by the navbar. No translated labels are introduced.
-- **D5 — Slice 2 keeps the workspace `errorBanner` as-is** and additionally reflects the signing state in
-  the modal. Wallet state mapping (existing canonical copy only):
+- **D5 — One error owner at a time.** While the review modal is open it owns the contribute/signing
+  failure; the workspace `errorBanner` does not re-render that same error (it stays for every other
+  operation and for failures outside a review). Wallet state mapping (existing canonical copy only):
   - `wallet_rejected` → `signingStatus: "signature-rejected"` + the canonical
     `campaignVaultErrorOfKind("wallet_rejected").message`.
-  - `wallet_network_mismatch` → `isWrongNetwork: true` + `microcopy.wrongNetwork`.
+  - `wallet_network_mismatch` → `isWrongNetwork: true` + `microcopy.wrongNetwork` (`demo-ui.md:1173`).
   - every other contribute failure (missing wallet, refused, unavailable, …) →
     `signingStatus: "verification-rejected"` + the canonical `error.message`.
   Recorded gap: `TransactionReviewModal` has no dedicated "wallet unavailable" state; `verification-
   rejected` is the closest existing prop, and inventing a state is out of scope.
+  Consequence for the E2E: the wrong-network case now asserts the modal's canonical
+  `microcopy.wrongNetwork` instead of the workspace banner's wallet message; the rejection/refused
+  messages are unchanged, only relocated to the dialog.
+- **D8 — The review's error is scoped by a baseline.** The review stores the `error` value observed when
+  it opened and only treats a *different* error as its own, so a stale error from a previous operation
+  never appears inside a fresh review.
 - **D6 — No acknowledgement checkbox.** `demo-ui.md:1173`'s checkbox label is not in
   `application/trust/`; supplying it would be new copy, which the issue puts out of scope. Recorded gap.
-- **D7 — Modal title reuses the existing form label** `Aportar a la campaña`.
+- **D7 — Modal title reuses the existing form label** `Aportar a la campaña`, and the intent rows reuse
+  field labels already present in the corpus: `Contrato de la bóveda` and `Cuenta de origen` from
+  `microcopy.preSignCheck`'s own wording ("cuenta, red, el contrato de la bóveda, el activo y el
+  monto"), plus `Función` with the literal operation `contribute`. No trust or marketing copy is added;
+  field labels are not the trust corpus.
 
 ## Verification
 
@@ -105,10 +116,10 @@ Slice 1 — shell adoption:
   the guided-journey E2E selectors for the new chrome.
 
 Slice 2 — funding review:
-- [ ] T2.1 "Aportar" opens `TransactionReviewModal` with the real intent; the modal closes on Cancelar.
-- [ ] T2.2 "Firmar en Freighter" runs the existing `contribute`; the modal reflects signing / rejected /
+- [x] T2.1 "Aportar" opens `TransactionReviewModal` with the real intent; the modal closes on Cancelar.
+- [x] T2.2 "Firmar en Freighter" runs the existing `contribute`; the modal reflects signing / rejected /
   wrong-network, stays open while signing, never shows a signature as confirmed, and closes on success.
-- [ ] T2.3 Update `campaign-workspace.test.tsx` and the campaign-vault E2E (contribute + error paths).
+- [x] T2.3 Update `campaign-workspace.test.tsx` and the campaign-vault E2E (contribute + error paths).
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per slice).
 
@@ -163,4 +174,42 @@ non-landmark element (or `role="presentation"`).
 
 Stale doc reference (out of `apps/web` scope): `docs/planning/trust-disclosures-and-synthetic-fixtures-evidence.md:119`
 still names `DemoEnvironmentHeader`.
+
+Review receipt (slice 1, advisory only): lineage `review-5aeddd0aee05796b`, risk medium (7 files / 330
+lines), **approved** and acknowledged (authority burned). Two non-blocking advisories, recorded as
+later work:
+- **R3-1 (WARNING, guard weakened):** the per-route disclosure guard now uses presence
+  (`getAllByText(...).length >= 1`) for `microcopy.testnetBadge` and the `no-production` text, which the
+  footer chrome alone can satisfy, so a route-level disclosure regression would pass unnoticed.
+- **R3-2 (SUGGESTION, wiring unproved):** `SiteFooter`'s `copyright`/`environment` wiring is not
+  asserted (the copyright string is never checked; the footer's testnet badge is covered only by a
+  presence check the navbar badge already satisfies).
+
+### Slice 2 — funding review before signing (commit `613bc5e`)
+
+Route: delegated direct (writer trigger: 2+ non-trivial files). Strict TDD RED→GREEN.
+
+RED: `vitest run src/presentation/components/campaign-workspace.test.tsx` → 7 failed | 8 passed — the
+seven modal-aware tests failed with `Unable to find an accessible element with the role "dialog"`.
+
+GREEN (observed):
+- `vitest run src/presentation/components/campaign-workspace.test.tsx` → 15 passed.
+- `pnpm --filter @vaqcrow/web run test` → 98 files / 685 tests passed.
+- `pnpm --filter @vaqcrow/web run typecheck` → clean; `lint` → 1 pre-existing unrelated warning.
+- `playwright test e2e/campaign-vault.spec.ts` → 9 passed.
+- `pnpm run verify` → 5 tasks successful; `dependency-cruiser` clean (438 modules); boundary fixture
+  suite 7 files / 83 tests passed.
+- `pnpm --filter @vaqcrow/web run build-storybook` → completed; `apps/web/storybook-static/` removed.
+
+Deviations recorded:
+- **Money stays a string.** The review stores `stroops` as the decimal-integer string `xlmToStroops`
+  returns and `contribute` takes; a `bigint` state field would not typecheck.
+- **Close-on-success uses render-time state adjustment, not an effect.** `eslint-plugin-react-hooks@7`
+  raises `react-hooks/set-state-in-effect` as an error for a synchronous `setState` in an effect body,
+  which the originally planned effect tripped. The conditional render-time adjustment is lint-clean and
+  keeps the behavior: closes only on success, stays open on failure, never claims a confirmed signature.
+- **The reverted-contribution test reads the background "Aportar" with `{ hidden: true }`**, because
+  HeroUI's modal aria-hides the page behind it; the accessible "Aportar" is still covered by the
+  three-chain-states test.
+
 
