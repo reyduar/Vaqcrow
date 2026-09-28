@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CampaignVaultError } from "@/application/campaign/campaign-vault-errors";
 import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -13,6 +14,11 @@ import type { CampaignState } from "@vaqcrow/contracts";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import { TextField } from "./text-field";
+import {
+  TransactionReviewModal,
+  type TransactionReviewNetworkState,
+  type TransactionReviewSigningState
+} from "./transaction-review-modal";
 
 /** The wallet and gateway the demo uses when none is supplied; module scope keeps them stable across renders. */
 const defaultWallet = new FreighterWallet();
@@ -35,6 +41,29 @@ const STATE_TONE: Readonly<Record<CampaignState, "info" | "neutral" | "caution">
   settled: "neutral",
   refunding: "caution"
 };
+
+/**
+ * Maps a contribute failure to the review modal's signing state (D5 in
+ * `odd/tasks/claude-design-shell-and-review-adoption.md`). `wallet_rejected`
+ * is the only failure the modal calls a signature rejection; a wrong network
+ * is surfaced through the network state instead (it blocks signing, so
+ * `idle`); every other failure — missing wallet, refused, unavailable, … — is
+ * the closest existing prop, `verification-rejected`. There is no dedicated
+ * "wallet unavailable" state in the modal, so no new component state is
+ * invented (`recorded gap`, not patched).
+ */
+function reviewSigningState(
+  isSigning: boolean,
+  reviewError: CampaignVaultError | undefined
+): TransactionReviewSigningState {
+  if (isSigning) return { signingStatus: "signing" };
+  if (!reviewError) return { signingStatus: "idle" };
+  if (reviewError.kind === "wallet_network_mismatch") return { signingStatus: "idle" };
+  if (reviewError.kind === "wallet_rejected") {
+    return { signingStatus: "signature-rejected", signingErrorMessage: reviewError.message };
+  }
+  return { signingStatus: "verification-rejected", signingErrorMessage: reviewError.message };
+}
 
 /** Whole XLM plus up to 7 decimal digits, trailing zeros trimmed. Display only; it never crosses the wire. */
 function formatStroopsAsXlm(stroops: bigint): string {
@@ -112,6 +141,35 @@ export function CampaignWorkspace({
     return () => clearInterval(timer);
   }, [campaignState]);
 
+  // The pending "Aportar" review (slice 2 of #323): "Aportar" no longer signs
+  // inline — it opens `TransactionReviewModal` with the real intent, and only
+  // "Firmar en Freighter" runs `contribute`. `errorBaseline` scopes the
+  // review's error to failures produced *during* this review (D8), so a stale
+  // error from a previous operation never shows inside a fresh one. `stroops`
+  // is the decimal-integer string `xlmToStroops` returns and `contribute`
+  // takes — money never passes through a `number`.
+  const [review, setReview] = useState<{
+    readonly amount: string;
+    readonly stroops: string;
+    readonly errorBaseline: CampaignVaultError | undefined;
+    readonly attempted: boolean;
+  } | null>(null);
+
+  const reviewError = review && review.errorBaseline !== error ? error : undefined;
+  // One error owner at a time (D5): while the review shows its own error, the
+  // workspace banner must not repeat it. Every other operation's error still
+  // reaches the banner.
+  const bannerError = reviewError !== undefined ? undefined : error;
+  const isReviewSigning = isSubmitting && pendingOperation === "contribute";
+
+  // Close on success: once a signing attempt finished with no error of its
+  // own, the updated campaign view is what the person should see. A failure
+  // keeps the review open so the person can retry; a signature is never shown
+  // as confirmed. Adjusting state during render (React's own escape hatch for
+  // state derived from a just-finished operation) closes it in the same commit
+  // instead of cascading an extra render from an effect.
+  if (review?.attempted && !isReviewSigning && !reviewError) setReview(null);
+
   const walletStatus = (
     <p aria-live="polite" className="text-sm">
       {publicKey ? `Wallet conectada: ${publicKey}` : "Wallet no conectada"}
@@ -124,11 +182,12 @@ export function CampaignWorkspace({
     </Button>
   );
 
-  const errorBanner = error ? (
-    <p role="alert" className="text-sm text-trust-critical">
-      {error.message}
-    </p>
-  ) : null;
+  const renderErrorBanner = (banner: CampaignVaultError | undefined) =>
+    banner ? (
+      <p role="alert" className="text-sm text-trust-critical">
+        {banner.message}
+      </p>
+    ) : null;
 
   if (!campaignId) {
     const handleOpen = (event: React.FormEvent) => {
@@ -174,7 +233,7 @@ export function CampaignWorkspace({
 
           <TextField label="Fecha límite" type="date" value={deadline} onChange={setDeadline} />
 
-          {errorBanner}
+          {renderErrorBanner(error)}
 
           <Button type="submit" isDisabled={isOpening || !publicKey}>
             {isOpening ? "Abriendo bóveda…" : "Abrir bóveda"}
@@ -190,7 +249,7 @@ export function CampaignWorkspace({
         {walletStatus}
         {connectButton}
         <p aria-live="polite">Cargando la campaña…</p>
-        {errorBanner}
+        {renderErrorBanner(error)}
       </section>
     );
   }
@@ -215,8 +274,23 @@ export function CampaignWorkspace({
       return;
     }
     setAmountError(undefined);
-    void contribute(parsed.stroops);
+    // Opening the review is the only thing "Aportar" does: the wallet is not
+    // touched until "Firmar en Freighter" (`claude-design-brief.md:218`).
+    setReview({ amount, stroops: parsed.stroops, errorBaseline: error, attempted: false });
   };
+
+  // "Firmar en Freighter" inside the review runs the existing contribute flow.
+  const handleSign = () => {
+    if (!review) return;
+    setReview({ ...review, attempted: true });
+    void contribute(review.stroops);
+  };
+
+  const networkProps: TransactionReviewNetworkState =
+    reviewError?.kind === "wallet_network_mismatch"
+      ? { isWrongNetwork: true, wrongNetworkMessage: microcopy.wrongNetwork }
+      : {};
+  const signingProps = reviewSigningState(isReviewSigning, reviewError);
 
   const handleRefund = (event: React.FormEvent) => {
     event.preventDefault();
@@ -265,7 +339,7 @@ export function CampaignWorkspace({
         ) : null}
       </dl>
 
-      {errorBanner}
+      {renderErrorBanner(bannerError)}
 
       {canContribute ? (
         <form
@@ -293,6 +367,22 @@ export function CampaignWorkspace({
           La bóveda ya no acepta aportes: el contrato rechaza cualquier aporte fuera del estado de fondeo.
         </p>
       )}
+
+      <TransactionReviewModal
+        isOpen={review !== null}
+        onClose={() => setReview(null)}
+        onSign={handleSign}
+        title="Aportar a la campaña"
+        amount={review?.amount ?? ""}
+        assetCode="XLM"
+        descriptionRows={[
+          { label: "Contrato de la bóveda", value: campaign.contractAddress, mono: true },
+          { label: "Función", value: "contribute" },
+          { label: "Cuenta de origen", value: publicKey ?? "", mono: true }
+        ]}
+        {...networkProps}
+        {...signingProps}
+      />
 
       {canWithdraw ? (
         <Button

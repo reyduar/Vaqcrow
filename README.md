@@ -252,6 +252,21 @@ pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_
 - **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
 - **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
+## Storybook (taller de componentes)
+
+El taller de componentes vive en `apps/web/.storybook/` y renderiza las primitivas reales con los tokens reales, en claro y en oscuro. No es una maqueta paralela: usa los mismos componentes y el mismo CSS que la app. La guía completa —requisitos, temas, qué está cubierto y problemas frecuentes— está en [Storybook y los dos temas](./docs/guides/storybook.md).
+
+```bash
+pnpm --filter @vaqcrow/web storybook          # taller en http://localhost:6006
+pnpm --filter @vaqcrow/web build-storybook    # build estático en apps/web/storybook-static/
+python3 -m http.server 6006 --directory apps/web/storybook-static   # servir ese build
+```
+
+- `apps/web/storybook-static/` es la salida del build estático y está ignorada por Git.
+- Storybook queda **fuera de `pnpm run verify` a propósito**: no se suma al gate documentado ni lo vuelve más lento. El addon de accesibilidad reporta en su panel pero no bloquea, y el taller no involucra backend, wallet ni Testnet: sólo componentes y CSS.
+
+**Estado en la nube.** Hoy **no hay una URL publicada de Storybook**. El despliegue de la web ([`vercel.json`](./vercel.json)) construye sólo `@vaqcrow/web` con el framework Next.js; el CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) corre los gates y el journey de Playwright, y no publica Storybook; y `storybook-static/` está en `.gitignore`, así que nada la genera ni la sirve en el ambiente cloud. Publicarla exige un destino propio, fuera de los despliegues actuales.
+
 ## Planificación y gestión del desarrollo
 
 La fuente de alcance para implementar la demo es el [plan de la demo](./docs/planning/DEMO.md). La planificación y la implementación se mantienen deliberadamente separadas: el plan define el resultado esperado y el backlog de GitHub organiza el trabajo ejecutable.
@@ -297,6 +312,7 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 - [Plan de la demo](./docs/planning/DEMO.md) — historia de dos semanas, arquitectura, pruebas, demo y límites.
 - [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
 - [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md) — inventario visual, flujos, estados, accesibilidad y pendientes de diseño.
+- [Storybook y los dos temas](./docs/guides/storybook.md) — taller de componentes, temas claro/oscuro y qué está cubierto.
 
 ## Próximo paso
 
