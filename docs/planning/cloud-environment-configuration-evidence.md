@@ -122,13 +122,13 @@ La segunda respuesta es la de Fastify para una ruta **no registrada**; la primer
 > [!warning] Lo que esta observación NO prueba
 > No prueba que la cadena responda ni que la firma de plataforma funcione: para eso hace falta un `POST /campaigns` sobre una solicitud aprobada, que crearía estado real en Testnet (límite 2 de §5).
 
-## 5. Límites operativos vigentes
+## 5. Límites operativos y decisiones vigentes
 
 1. **No verificado de punta a punta por navegador.** La configuración se verificó por partes (bundle servido, `/health`, preflight CORS); el recorrido completo en el navegador contra producción no se corrió. La API no tiene logging a nivel request, así que no hay rastro servidor de tráfico del frontend.
 2. **`POST /campaigns` ejercitado el 2026-09-25** contra el despliegue hosteado (`CBANYZNPLW…`). Queda pendiente el aporte firmado desde el navegador y el camino de reembolso, que son alcance de #249 y no de este criterio.
-3. **Placeholder visible.** "Step content coming soon" aparece en `/request` después del contenido real, y en `/distribution` y `/evidence` (Features #28 y #29, ambas en 0/3).
-4. **`NEXT_PUBLIC_API_BASE_URL` no tiene target `preview`.** Los previews de Vercel quedan sin backend configurado.
-5. **Sin decisión registrada**: SSO en los previews; dominio propio.
+3. **Placeholder visible sólo donde todavía no hay contenido.** "Step content coming soon" **ya no** aparece en `/request` —se eliminó el bloque que arrastraba, con un test que lo fija—; sigue en `/distribution` y `/evidence`, cuyas Features (#28 y #29) están en 0/3. Por decisión, el criterio de #286 se limita a las pantallas que ya tienen contenido (§5.3).
+4. **`NEXT_PUBLIC_API_BASE_URL` no tiene target `preview` — por decisión, no por pendiente.** Los previews de Vercel no llevan backend **a propósito**; el fundamento verificado está en §5.2.
+5. **SSO en previews y dominio propio: decisiones registradas** el 2026-09-28 (§5.3). Dejan de ser un pendiente.
 6. **Id de campaña malformado**: devuelve `503` en vez de `400`, y la línea de log sale con `correlationId: undefined`.
 
 ### 5.1 Decisión registrada — almacenamiento y rotación del secreto de plataforma
@@ -171,6 +171,53 @@ afectadas**, porque no almacenan referencia a la fábrica ni al `owner`.
 la fábrica desplegada. Como esa dirección no se puede reasignar, **perder esa clave deja la fábrica
 huérfana de forma permanente**. No debe regenerarse por conveniencia.
 
+### 5.2 Decisión registrada — los previews de Vercel no llevan backend
+
+Cierra el criterio del target `preview` de `NEXT_PUBLIC_API_BASE_URL` **reformulándolo**, porque su
+letra era inalcanzable. La decisión: la variable queda seteada **sólo para `production`**, y los
+previews **no** reciben backend, a propósito.
+
+Tres hechos verificados sostienen la decisión:
+
+- **El CORS de la API es una lista exacta y rechaza `*`.** `apps/api/src/infrastructure/http/build-app.ts`
+  registra `@fastify/cors` con `origin: allowedOrigins` — un arreglo de orígenes exactos — y
+  `apps/api/src/application/config/cors-config.ts` rechaza una entrada `*`, con un test que lo fija
+  (`api-config.test.ts`). `docs/architecture/environments.md` §8 documenta el mismo contrato.
+- **Los orígenes de preview son efímeros.** Vercel los deriva de la rama
+  (`vaqcrow-web-git-<rama>-<team>.vercel.app`), así que no se pueden enumerar de antemano.
+- **Verificado con un preflight real** el 2026-09-28 contra la API hosteada:
+
+  | Origen enviado | `access-control-allow-origin` |
+  |---|---|
+  | `https://vaqcrow-web-nine.vercel.app` (producción) | **devuelto** |
+  | `https://vaqcrow-web-git-<rama>-reyduars-projects.vercel.app` (preview) | **ausente** |
+
+  Sin ese header el navegador bloquea la llamada. Setear la variable para `preview` no haría que un
+  preview funcione: cambiaría un estado honesto y visible ("No hay backend configurado") por un error
+  de CORS en la consola.
+
+**Por qué no se abre el CORS a los previews.** La API es una sola y escribe en la base de la demo:
+habilitar orígenes de preview significa que **cualquier rama sin mergear puede escribir en esa base**.
+Para datos sintéticos es tolerable, pero es una decisión de riesgo que no corresponde tomar sólo para
+cumplir una letra. El valor de un preview acá es **revisar UI**, no ejercitar datos.
+
+**Consecuencia para el criterio.** Además del target, el criterio pedía verificar "con una request real
+desde el origen desplegado". Para un preview eso es imposible con el contrato de CORS vigente, así que
+se interpreta cumplido **en su intención** —que la URL que se comparte tenga backend y no sea una
+promesa vacía— y no en su letra: producción queda verificada por el preflight CORS desde el origen
+desplegado (§4.2, §4.3) y por la request observada con el header `Origin` (§4.5). Si algún día se quiere
+un preview con datos, el camino es una API/DB de preview separada, no abrir la de la demo.
+
+### 5.3 Decisiones registradas — SSO en previews, dominio propio y alcance del recorrido
+
+Registradas el **2026-09-28**. Cierran los tres puntos que quedaban abiertos en §6.
+
+| Decisión | Qué se decidió | Por qué |
+|---|---|---|
+| SSO en previews | Los previews **siguen detrás de Vercel Authentication**. | Son superficies de revisión, no de demo, y las comparte quien las necesita. El criterio de "alcanzable sin cuenta" se cumple por otro lado: la URL de **producción** —`https://vaqcrow-web-nine.vercel.app`— responde `200` **sin cuenta de Vercel**, verificado con una request anónima (§4.2). |
+| Dominio propio | **Diferido explícitamente** para la etapa de demo. | El `*.vercel.app` alcanza para presentar: es estable, sin costo ni trámite, y el nombre definitivo depende de decisiones de producto que no son de esta unidad. El camino de producción sigue declarado en `product.md`. |
+| Alcance del recorrido | El criterio "ningún placeholder en el recorrido" se limita a las **pantallas que ya tienen contenido**. | `/distribution` y `/evidence` están vacías **a propósito** —son las Features #28 y #29, en 0/3—, así que su placeholder no es un defecto de configuración sino el estado normal de una pantalla sin implementar. `/request`, que sí tiene contenido, ya no lo muestra. |
+
 ## 6. Mapeo de criterios de aceptación
 
 ### Issue #286 — Restore the Vercel production deployment and its configuration
@@ -178,14 +225,14 @@ huérfana de forma permanente**. No debe regenerarse por conveniencia.
 | Criterio (textual) | ¿Se cumple? | Verificación |
 |---|---|---|
 | A production deployment exists whose commit matches the current `main` HEAD, and the production branch is either `main` or a branch that is actually maintained — no production configuration pointing at a branch that does not exist. | **Sí** | Deploy `dpl_7E3vD4ttHkMfb8oHAZjntB197jKm`, sha `370128b` = `main` HEAD; Production Branch = `main`. Leído de la plataforma. |
-| `NEXT_PUBLIC_API_BASE_URL` is set for Production and Preview, pointing at the Railway API, and verified by a real request from the deployed origin rather than by reading the setting back. | **Parcial** | Seteada **sólo** para `production` (§5, límite 4). Verificada horneada en el bundle servido y por el preflight CORS desde el origen desplegado (§4.2, §4.3), no por lectura del panel. Sin recorrido de navegador (§5, límite 1). |
-| `vercel.json` is committed at the repository root with the configuration `deploy-planning.md` §3 already prescribes (build command, `outputDirectory: apps/web/.next`, region, framework), and the document and the file agree. | **Parcial** | El archivo existe, parsea y coincide con el documento (build command turbo, `framework`, `regions`); **no** incluye `outputDirectory: apps/web/.next` porque se omitió deliberadamente (defecto 5). El documento y el archivo **sí** coinciden: §3 documenta la omisión. |
+| `NEXT_PUBLIC_API_BASE_URL` is set for Production and Preview, pointing at the Railway API, and verified by a real request from the deployed origin rather than by reading the setting back. | **Cumple en su intención** (la letra es inalcanzable) | **Producción:** seteada para `production`, verificada horneada en el bundle servido y por el preflight CORS desde el origen desplegado (§4.2, §4.3), no por lectura del panel. **Preview:** por **decisión** no lleva backend — el target `preview` no existe a propósito (§5.2): el CORS de la API es una lista exacta que no admite orígenes de preview efímeros, y abrirlo dejaría que cualquier rama sin mergear escriba en la base de la demo. Sin recorrido de navegador (§5, límite 1). |
+| `vercel.json` is committed at the repository root with the configuration `deploy-planning.md` §3 already prescribes (build command, `outputDirectory: apps/web/.next`, region, framework), and the document and the file agree. | **Cumple en su intención** (la letra es inalcanzable) | El archivo existe, parsea y coincide con el documento (build command turbo, `framework`, `regions`, sin `outputDirectory`). La letra pedía `outputDirectory: apps/web/.next`, que **rompe** el deploy: el Root Directory del proyecto Vercel es `apps/web`, así que Vercel resuelve el output relativo a él y buscaría `apps/web/apps/web/.next` (`NEXT_OUTPUT_DIR_MISSING`). El documento y el archivo coinciden en la versión que funciona: §3 documenta la omisión (defecto 5). Interpretación de la persona operadora, registrada el 2026-09-25. |
 | Every occurrence of the web base URL in `deploy-planning.md` names the variable the code actually reads, including the CLI commands, so following the document cannot reproduce the current broken state. | **Sí** | Cuatro ocurrencias corregidas a `NEXT_PUBLIC_API_BASE_URL` (§4.1); `NEXT_PUBLIC_API_URL` no aparece en `docs/`. |
 | The web base URL is documented where a contributor will look for it, not only in the dashboard. | **Sí** | `deploy-planning.md` §3/§7 y `.env.cloud.example`. Re-ejecutado en el árbol. |
 | The stale `vaqcrow-web-git-release-*` domain is removed. | **Sí** | Leído de la plataforma. |
-| No placeholder block is visible anywhere on the demo journey surface. | **No** | Visible en `/request`, `/distribution` y `/evidence` (§3.5, §5 límite 3). |
-| The decision on Vercel Authentication for previews is recorded, and the URL shared with the tribunal is reachable without a Vercel account. | **Parcial** | La URL de producción es pública sin cuenta; la decisión sobre el SSO de previews **no** está registrada (§5, límite 5). |
-| The custom-domain decision is recorded, whether adopted or explicitly deferred. | **No** | Sin decisión registrada (§5, límite 5). |
+| No placeholder block is visible anywhere on the demo journey surface. | **Cumple en el alcance declarado** | Se eliminó el bloque que arrastraba `/request`, con un test que lo fija (`request/page.test.tsx`). El criterio se limita a las pantallas que ya tienen contenido (§5.3): `/distribution` y `/evidence` conservan el suyo porque sus Features (#28 y #29) están en 0/3 (§5, límite 3). |
+| The decision on Vercel Authentication for previews is recorded, and the URL shared with the tribunal is reachable without a Vercel account. | **Sí** | Decisión registrada el 2026-09-28 (§5.3): los previews siguen protegidos. La URL de producción es pública **sin cuenta de Vercel**, verificada con una request anónima (§4.2). |
+| The custom-domain decision is recorded, whether adopted or explicitly deferred. | **Sí** | Registrada el 2026-09-28 como **diferida**, con su fundamento (§5.3). |
 | No secret, seed or PII is committed, and no `NEXT_PUBLIC_` variable carries a secret value. | **Sí** | Cero valores con forma de clave secreta en los `.example` (§4.1); `NEXT_PUBLIC_API_BASE_URL` porta una URL pública. |
 
 ### Issue #287 — Enable the campaign-vault configuration on the hosted API
@@ -202,7 +249,9 @@ huérfana de forma permanente**. No debe regenerarse por conveniencia.
 ## 7. Estado de entrega
 
 - El lado repositorio de #286 y #287 está mergeado en `main` a través del PR #288 (`370128b`); la configuración de panel (rama de producción, variable de la web, claves del vault) quedó aplicada por la persona operadora y verificada por lectura.
-- Este documento se entrega en la rama `Vaqcrow#286_Task_Document_the_cloud_demo_architecture_and_the_environment_configuration`; el PR lo abre el orquestador.
-- **No se declara cerrado** lo que no se verificó: el recorrido de punta a punta en el navegador, la ausencia de placeholders, el target `preview` de la web y las dos decisiones operativas que siguen sin registrar — SSO en los previews y dominio propio (§5, §6).
+- Este documento se mergeó en `main` vía el PR #289 (`c1ed01e`). La revisión del 2026-09-28 —§5.2, §5.3 y las filas correspondientes de §6— llega en el PR #329.
+- **No se declara verificado** lo que sigue sin verificarse: el recorrido de punta a punta en el navegador contra producción (§5, límite 1) y el id de campaña malformado (§5, límite 6). Ninguno de los dos es un criterio de aceptación de #286 ni de #287; quedan como límites de esta evidencia.
 - La decisión de almacenamiento y rotación del secreto de plataforma quedó registrada el 2026-09-25 (§5.1); el criterio correspondiente de #287 pasa de **No** a **Sí**.
-- Seguimientos sugeridos, fuera del alcance de esta unidad de trabajo: ejercitar `POST /campaigns` contra el despliegue hosteado, y registrar las decisiones de SSO en previews y dominio propio.
+- La decisión sobre los previews de la web quedó registrada el 2026-09-28 (§5.2): la variable vive sólo en `production` y los previews **no** llevan backend por diseño, con el CORS verificado como imposibilidad. El criterio correspondiente de #286 pasa de **Parcial** a **cumplido en su intención**.
+- Las decisiones de SSO en previews, dominio propio y alcance del recorrido quedaron registradas el 2026-09-28 (§5.3), y el bloque de placeholder que arrastraba `/request` se eliminó con un test que lo fija. Con eso **todos los criterios de #286 quedan verificados o cumplidos por una interpretación registrada**, y el issue puede cerrarse.
+- Seguimiento sugerido, fuera del alcance de esta unidad de trabajo: ejercitar `POST /campaigns` contra el despliegue hosteado.
