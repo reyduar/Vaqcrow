@@ -43,15 +43,36 @@ and any change to the Vercel or Railway deployments.
 
 - [x] T1 — workflow that builds the static workshop and publishes it to Pages
 - [x] T2 — README + guide point at the published URL
-- [ ] T3 — verify the build job on the pull request, and the published URL after the merge
+- [x] T3 — verify the build job on the pull request, and the published URL after the merge
 
 ## Verification
 
 - The static build is already exercised locally (`pnpm --filter @vaqcrow/web run build-storybook`).
 - The pull request runs the workflow's build job without publishing.
-- After merge, `https://reyduar.github.io/Vaqcrow/storybook` serves the workshop.
+- After merge, `https://reyduar.github.io/Vaqcrow/storybook/` serves the workshop.
 
 ## Progress
 
 The workflow, the redirect page and the two documentation pointers are in this branch's first commit. No
 `apps/web` source is touched, so `pnpm run verify` and `pnpm run test:boundaries` are unaffected.
+
+### Verified (PR #327, merge commit `2f350b9`)
+
+Observed, not assumed:
+
+- On the pull request, `Build Storybook (static)` passed and `Deploy to GitHub Pages` was `skipping` — the
+  intended shape (pull requests build, `main` publishes).
+- On the first `main` run the build passed and the **deploy failed**: `Configure Pages` reported
+  `Create Pages site failed. Error: Resource not accessible by integration`. `actions/configure-pages@v5`
+  with `enablement: true` cannot create the Pages site, because the workflow's `GITHUB_TOKEN` has no
+  permission to do so even with `pages: write`. **A new Pages site needs one out-of-band enablement:**
+  `gh api -X POST repos/<owner>/<repo>/pages -f build_type=workflow`, run by the repository owner. With the
+  site enabled, re-running the failed job succeeded and no workflow change was needed; keeping
+  `enablement: true` is harmless once the site exists.
+- Live checks after the deploy, with real requests (not the workflow's own status):
+  `/Vaqcrow/` → 200 and contains `url=./storybook/`; `/Vaqcrow/storybook/` → 200 with
+  `<title>storybook - Storybook</title>`; `/Vaqcrow/storybook/iframe.html` → 200; and a relative asset
+  referenced by that iframe → 200, which is what proves the sub-path staging actually resolves.
+- `README.md` and `docs/guides/storybook.md` link the URL with its trailing slash, which is the canonical
+  directory form GitHub Pages serves.
+

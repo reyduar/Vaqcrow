@@ -265,7 +265,7 @@ python3 -m http.server 6006 --directory apps/web/storybook-static   # servir ese
 - `apps/web/storybook-static/` es la salida del build estático y está ignorada por Git.
 - Storybook queda **fuera de `pnpm run verify` a propósito**: no se suma al gate documentado ni lo vuelve más lento. El addon de accesibilidad reporta en su panel pero no bloquea, y el taller no involucra backend, wallet ni Testnet: sólo componentes y CSS.
 
-**Versión publicada.** El workflow [`.github/workflows/storybook.yml`](./.github/workflows/storybook.yml) construye esa misma salida y la publica en GitHub Pages: **[reyduar.github.io/Vaqcrow/storybook](https://reyduar.github.io/Vaqcrow/storybook)**. Un pull request sólo construye, sin publicar, así que un Storybook roto falla antes del merge; los push a `main` publican. Es un destino propio: no toca el despliegue de la web ([`vercel.json`](./vercel.json), que sigue construyendo sólo `@vaqcrow/web` con el framework Next.js) ni el de la API.
+**Versión publicada.** El workflow [`.github/workflows/storybook.yml`](./.github/workflows/storybook.yml) construye esa misma salida y la publica en GitHub Pages: **[reyduar.github.io/Vaqcrow/storybook/](https://reyduar.github.io/Vaqcrow/storybook/)**. Un pull request sólo construye, sin publicar, así que un Storybook roto falla antes del merge; los push a `main` publican. Es un destino propio: no toca el despliegue de la web ([`vercel.json`](./vercel.json), que sigue construyendo sólo `@vaqcrow/web` con el framework Next.js) ni el de la API.
 
 ## Planificación y gestión del desarrollo
 
