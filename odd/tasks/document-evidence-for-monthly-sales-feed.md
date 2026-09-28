@@ -127,14 +127,22 @@ marcar la Task ni la Feature como entregadas hasta que ese flujo ocurra.
 
 ## Evaluación RDD pasiva
 
-Tras los commits actuales `29488dc` y `ce2b977`, contra `main`, se ejecutó:
+Tras los commits actuales `29488dc` y `9979b6f`, contra `main`, se ejecutó:
 
 ```text
 gentle-ai review assess --cwd /Users/arielduarte/Workspaces/Vaqcrow --agent opencode --base-ref main --committed-only --json
 ```
 
 El resultado observado fue el esquema `gentle-ai.review-assessment/v1`, con `risk: passive`, razón
-`non_executable_only`, 3 rutas modificadas y 233 líneas modificadas en el diff candidato contra `main`.
+`non_executable_only`, 3 rutas modificadas y 247 líneas modificadas en el diff candidato contra `main`.
 Indicó `review_due: false` y `review_due_reason: passive`. Por lo tanto, no corresponde revisión nativa
 ni consentimiento en esta unidad. Esta evaluación pasiva no constituye un recibo de revisión ni una
 aprobación.
+
+## Entrega en PR #334 (pendiente de merge)
+
+La evidencia principal quedó registrada en `29488dc` y el cierre del registro ODD en `9979b6f`. La entrega
+está abierta como PR #334, `docs(planning): record monthly sales feed evidence`, desde
+`Vaqcrow#85_Task_Document_evidence_for_monthly_sales_feed` hacia `main`, con la etiqueta `type:task`.
+El alcance revisable permanece documental y pasivo; #85 no está entregada ni la Feature #26 está cerrada
+hasta que el PR sea mergeado.
