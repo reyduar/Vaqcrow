@@ -56,7 +56,7 @@ Vitest y Testing Library ya existían de Features anteriores; #47 agregó lo que
 - **El doble no es un backend.** `stub-api-server.mjs` existe sólo para los tests de navegador: no lo importa ningún código de aplicación y no se despliega. Los endpoints reales de solicitud PyME en `apps/api` siguen pendientes (Feature #18), y por eso los paths del gateway web siguen siendo marcadores documentados.
 - **Chromium único.** Es una decisión de alcance explícita (`deploy-planning.md` §Parte 4); la cobertura multi-navegador queda fuera de la demo.
 - **Sin umbrales de cobertura.** Los gates exigen que los tests pasen, no un porcentaje.
-- **`tests/**` de la raíz no está cubierto por `turbo run lint`.** Ningún workspace incluye ese directorio, así que ESLint hay que correrlo explícitamente sobre esos archivos. Vale un seguimiento si se agregan más meta-tests de raíz.
+- **`tests/**` de la raíz ya está cubierto por lint y typecheck.** `pnpm run lint:tests` (ESLint sobre `tests/`) y `pnpm run typecheck:tests` (`tsconfig.tests.json`) analizan los archivos de test de la raíz, con `tests/fixtures/boundaries/**` excluido de ambos porque esos fixtures son inválidos por diseño. `pnpm run verify` corre las dos coberturas, así que un error introducido en un test de raíz rompe el gate de CI en lugar de pasar porque nada lo miraba — ya no depende de un comando manual.
 
 ## 6. Resultado visible en la demo
 
@@ -94,7 +94,7 @@ Criterios citados verbatim de `gh issue view 15`, `47`, `48` y `49`.
 2. **Los meta-tests son aserciones de texto, no un parser.** Cubren la regresión realista (que alguien saque `--frozen-lockfile`, agregue un segundo navegador o meta un reloj en el doble). No son una defensa adversarial contra ofuscación deliberada; eso requeriría una verificación a nivel de AST.
 3. **El E2E corre contra `next dev`, no contra un build de producción.** El gate valida comportamiento y el límite del doble local, no el bundle productivo. El build de preview de Vercel es una verificación aparte.
 4. **Chromium único y sin umbrales de cobertura**, por decisión de alcance (sección 5).
-5. **`tests/**` de la raíz queda fuera de `turbo run lint`** (sección 5).
+5. **Exclusión deliberada de `tests/fixtures/boundaries/**`.** Esos fixtures importan exactamente lo que las reglas que verifican prohíben y resuelven sólo dentro de un `node_modules` falso, así que quedan fuera de `lint:tests` y `typecheck:tests`; la garantía de que siguen bajo `tests/fixtures/boundaries/` la asevera `tests/boundaries.test.ts`. Los archivos de test de la raíz sí están cubiertos (sección 5).
 
 ## 10. Estado de entrega
 

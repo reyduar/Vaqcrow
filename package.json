@@ -9,7 +9,9 @@
   "scripts": {
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "lint:tests": "eslint tests/",
     "typecheck": "turbo run typecheck",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test": "turbo run test",
     "test:db": "supabase test db --local supabase/tests",
     "test:e2e": "turbo run test:e2e",
@@ -17,7 +19,7 @@
     "test:e2e:live": "pnpm --filter @vaqcrow/web run test:e2e:live",
     "boundaries": "depcruise apps/*/src packages/*/src --config .dependency-cruiser.cjs",
     "test:boundaries": "vitest run",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run lint:tests && pnpm run typecheck:tests && pnpm run test && pnpm run build && pnpm run boundaries && pnpm run test:boundaries",
     "install:verify": "pnpm install --frozen-lockfile",
     "workspaces:list": "pnpm -r list --depth -1",
     "env:docker:up": "./scripts/local-env.sh up",

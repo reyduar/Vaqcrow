@@ -23,8 +23,9 @@ import { describe, expect, it } from "vitest";
  * real difference.
  *
  * `tests/**` runs under `pnpm run test:boundaries` (root `vitest.config.ts`) and
- * sits outside `turbo run lint`/`typecheck`, so this file gets no static
- * analysis — keep it explicit.
+ * is covered from the root by `pnpm run lint:tests` and `pnpm run typecheck:tests`
+ * (`tsconfig.tests.json`), outside the workspace-only `turbo run lint`/`typecheck`
+ * — keep it explicit.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));

@@ -207,10 +207,15 @@ describe("script and task wiring", () => {
   interface TurboConfig {
     readonly tasks: Readonly<Record<string, { readonly dependsOn?: readonly string[]; readonly cache?: boolean }>>;
   }
+  interface RootTestsTsconfig {
+    readonly include?: readonly string[];
+    readonly exclude?: readonly string[];
+  }
 
   const root = readRepoJson<PackageManifest>("package.json");
   const web = readRepoJson<PackageManifest>("apps/web/package.json");
   const turbo = readRepoJson<TurboConfig>("turbo.json");
+  const testsTsconfig = readRepoJson<RootTestsTsconfig>("tsconfig.tests.json");
 
   it("exposes the documented E2E commands at the root and in the web workspace", () => {
     expect(root.scripts?.["test:e2e"]).toBe("turbo run test:e2e");
@@ -226,6 +231,18 @@ describe("script and task wiring", () => {
     expect(verify).not.toContain("test:e2e");
     expect(verify).not.toContain("test:integration");
     expect(root.scripts?.["test"]).toBe("turbo run test");
+  });
+
+  it("covers the root tests directory with lint and typecheck, enforced by verify", () => {
+    const verify = root.scripts?.["verify"] ?? "";
+
+    expect(root.scripts?.["lint:tests"]).toBe("eslint tests/");
+    expect(root.scripts?.["typecheck:tests"]).toBe("tsc -p tsconfig.tests.json --noEmit");
+    expect(verify).toContain("pnpm run lint:tests");
+    expect(verify).toContain("pnpm run typecheck:tests");
+    expect(testsTsconfig.include).toContain("tests/**/*.ts");
+    expect(testsTsconfig.exclude).toContain("tests/fixtures/boundaries/**");
+    expect(readRepoFile("eslint.config.mjs")).toContain("tests/fixtures/boundaries/**");
   });
 
   it("builds the web workspace dependencies before starting the E2E server", () => {

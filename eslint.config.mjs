@@ -18,6 +18,16 @@ export const nextWebConfig = [...nextCoreWebVitals, ...nextTypescript].map((entr
 
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/.turbo/**", "**/coverage/**"] },
+  {
+    // The boundary fixtures are invalid by design: each one imports exactly what
+    // the rule it verifies forbids, and the provider stubs only resolve inside
+    // their fake `node_modules`. Linting them would judge the fixture's intent
+    // rather than a defect, so a future rule change would break the gate for no
+    // real reason. `tests/boundaries.test.ts` asserts these paths stay under
+    // `tests/fixtures/boundaries/`, outside every real `apps/*/src` and
+    // `packages/*/src` include.
+    ignores: ["tests/fixtures/boundaries/**"]
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

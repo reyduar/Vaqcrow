@@ -26,9 +26,10 @@ import { describe, expect, it } from "vitest";
  * the wallet adapter's own documentation says it never asks for a seed. A text
  * scan would flag both and prove nothing; an AST scan sees only code.
  *
- * Note: `tests/**` is executed by `pnpm run test:boundaries` but sits outside
- * `turbo run lint` and `turbo run typecheck` (there is no root tsconfig), so
- * this file gets no static analysis. Keep it explicit.
+ * Note: `tests/**` is executed by `pnpm run test:boundaries` and covered from
+ * the root by `pnpm run lint:tests` and `pnpm run typecheck:tests`
+ * (`tsconfig.tests.json`), outside the workspace-only `turbo run lint` and
+ * `turbo run typecheck`. Keep it explicit.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
