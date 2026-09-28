@@ -123,29 +123,6 @@ Slice 2 — funding review:
 
 Route: delegated direct (writer trigger: 2+ non-trivial files per slice).
 
-## Acceptance criteria (from issue #323)
-
-- [ ] The `(demo)` layout renders `DemoNavbar` (brand, `DEMO`, `TESTNET`, primary nav from the demo steps,
-  current step `aria-current="page"`), keeps the theme switcher reachable via the actions slot, and
-  renders `SiteFooter` with the canonical "No apto para producción" disclosure.
-- [ ] `AccountMenu` shows the simulated session context ("Sesión de demostración") and the role, from
-  props; no auth claims.
-- [ ] Step heading, `DemoProgress` and `DemoStepNav` keep working; on small screens the nav collapses
-  while `TESTNET` and the current step stay visible.
-- [ ] In `funding`, "Aportar" opens `TransactionReviewModal` with the real intent (amount + asset,
-  network, vault contract, function `contribute`, source account, custody); "Firmar en Freighter"
-  triggers the existing `contribute`.
-- [ ] The modal reflects the signing states, stays open while signing, and never shows a signature as
-  confirmed; confirmation stays with the existing post-submit status UI.
-- [ ] Wrong network, missing Freighter and rejection map onto the modal's props with existing canonical
-  copy.
-- [ ] Wiring only: no new visual components; changes stay in `app/(demo)/layout.tsx`, `DemoShell` and
-  `campaign-workspace.tsx` (+ tests).
-- [ ] Trust copy only from `application/trust/`; `prohibited-terms` and disclosure/consistency guards pass
-  on all six routes.
-- [ ] Existing route/component tests updated, not deleted; Playwright E2E passes.
-- [ ] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass.
-
 ## Progress
 
 ### Slice 1 — shell adoption (commit `b7ed356`)
@@ -211,5 +188,35 @@ Deviations recorded:
 - **The reverted-contribution test reads the background "Aportar" with `{ hidden: true }`**, because
   HeroUI's modal aria-hides the page behind it; the accessible "Aportar" is still covered by the
   three-chain-states test.
+
+Review assessment (slice 2): `gentle-ai review assess --base-ref 3fc5d46 --committed-only` →
+`risk: medium`, `changed_lines: 273`, `review_due: false`, `review_due_reason: "under_budget"`. Per the
+ODD rule the commit stays pending in the slice until a later commit reaches the ~400-line budget; no
+review was started for this slice, and the last reviewed boundary remains `3fc5d46`.
+
+## Acceptance criteria (from issue #323)
+
+- [x] The `(demo)` layout renders `DemoNavbar` (brand, `DEMO`, `TESTNET`, primary nav from the demo steps,
+  current step `aria-current="page"`), keeps the theme switcher reachable via the actions slot, and
+  renders `SiteFooter` with the canonical "No apto para producción" disclosure.
+- [x] `AccountMenu` shows the simulated session context ("Sesión de demostración") and the role, from
+  props; no auth claims.
+- [x] Step heading, `DemoProgress` and `DemoStepNav` keep working; the nav collapses on small screens
+  (container query) while `TESTNET` (navbar badge) and the current step (the shell `<h1>`) stay visible.
+- [x] In `funding`, "Aportar" opens `TransactionReviewModal` with the real intent (amount + asset,
+  network, vault contract, function `contribute`, source account, custody); "Firmar en Freighter"
+  triggers the existing `contribute`.
+- [x] The modal reflects the signing states, stays open while signing, and never shows a signature as
+  confirmed; confirmation stays with the existing post-submit status UI (the campaign `<dl>`).
+- [x] Wrong network, missing Freighter and rejection map onto the modal's props with existing canonical
+  copy (`microcopy.wrongNetwork`, `microcopy.preSignCheck`, the canonical error messages).
+- [x] Wiring only: no new visual components; changes stay in `app/(demo)/layout.tsx`, `DemoShell` and
+  `campaign-workspace.tsx` (+ tests).
+- [x] Trust copy only from `application/trust/`; `prohibited-terms` and disclosure/consistency guards pass
+  on all six routes (full `pnpm run test`: 98 files / 685 tests).
+- [x] Existing route/component tests updated, not deleted; the Playwright E2E passes (`guided-journey`
+  4 passed, `campaign-vault` 9 passed).
+- [x] `lint`, `typecheck`, `test`, `build`, `build-storybook`, `boundaries`, `test:boundaries` pass.
+
 
 
