@@ -56,6 +56,32 @@ describe("salesPeriodSchema", () => {
   });
 });
 
+describe("salesPeriodSchema provenance (issue #83)", () => {
+  it("parses a period carrying per-datum provenance and round-trips it", () => {
+    const withProvenance = { ...validPeriod, provenance: "Declaración mensual sintética" };
+    expect(parseSalesPeriod(withProvenance)).toEqual(withProvenance);
+  });
+
+  it("still parses a period without provenance (the field is optional and additive)", () => {
+    const parsed = parseSalesPeriod(validPeriod);
+    expect(parsed).toEqual(validPeriod);
+    expect(parsed.provenance).toBeUndefined();
+  });
+
+  it("keeps rejecting unknown extra keys alongside a provenance", () => {
+    const result = salesPeriodSchema.safeParse({
+      ...validPeriod,
+      provenance: "Declaración mensual sintética",
+      extra: true
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty provenance", () => {
+    expect(salesPeriodSchema.safeParse({ ...validPeriod, provenance: "" }).success).toBe(false);
+  });
+});
+
 describe("smeRequestSchema", () => {
   it("parses a valid request", () => {
     expect(parseSmeRequest(validRequest)).toEqual(validRequest);
