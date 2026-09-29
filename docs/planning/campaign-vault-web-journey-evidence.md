@@ -156,6 +156,8 @@ El detalle de esa suite —9 pruebas nuevas sobre el recorrido de la bóveda, m�
 8. **Identidad, KYC/KYB, ventas y conversión ARS/activo son simulados**, y así está declarado en pantalla. Los activos son de Testnet y no tienen valor económico.
 9. **Una bóveda por solicitud.** La campaña queda ligada 1:1 a la solicitud que la originó.
 
+> **Nota (post-#28/#29):** el límite 7 quedó superado. La Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) y las Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93) ya entregaron el contenido de `/distribution` y `/evidence`; ver la nota de `cloud-environment-configuration-evidence.md` §3.5. Los demás límites siguen vigentes salvo los ya marcados en el cuerpo del documento.
+
 ## 6. Mapeo de criterios de aceptación
 
 Criterios textuales de la Feature [#237](https://github.com/reyduar/Vaqcrow/issues/237).

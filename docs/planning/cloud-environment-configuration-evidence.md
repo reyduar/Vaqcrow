@@ -63,6 +63,8 @@ Este documento cierra la parte verificable de ambos. La arquitectura de la soluc
 | 5 | `/distribution` | No | Feature #28 en 0/3; rinde `<h1>…</h1>` + "Step content coming soon". |
 | 6 | `/evidence` | No | Feature #29 en 0/3; rinde `<h1>…</h1>` + "Step content coming soon". |
 
+> **Nota (post-#28/#29):** las filas 5 y 6 describen el estado medido el 2026-09-28, cuando `/distribution` y `/evidence` sólo renderizaban `StepPlaceholder`. La Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) entregó el contenido de `/distribution` (PRs [#345](https://github.com/reyduar/Vaqcrow/pull/345)–[#347](https://github.com/reyduar/Vaqcrow/pull/347)) y las Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93) el de `/evidence` (PRs [#349](https://github.com/reyduar/Vaqcrow/pull/349) y [#350](https://github.com/reyduar/Vaqcrow/pull/350)); `StepPlaceholder` ya no existe en la shell. La tabla se conserva como registro del estado medido entonces.
+
 ## 4. Qué quedó probado
 
 ### 4.1 Repositorio — local, re-ejecutado en el árbol
@@ -130,6 +132,8 @@ La segunda respuesta es la de Fastify para una ruta **no registrada**; la primer
 4. **`NEXT_PUBLIC_API_BASE_URL` no tiene target `preview` — por decisión, no por pendiente.** Los previews de Vercel no llevan backend **a propósito**; el fundamento verificado está en §5.2.
 5. **SSO en previews y dominio propio: decisiones registradas** el 2026-09-28 (§5.3). Dejan de ser un pendiente.
 6. **Id de campaña malformado**: devuelve `503` en vez de `400`, y la línea de log sale con `correlationId: undefined`.
+
+> **Nota (post-#28/#29):** el límite 3 quedó superado. `/distribution` y `/evidence` ya no muestran "Step content coming soon": el contenido llegó con la Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) y con las Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93). Ver la nota de §3.5. Los límites 1, 2, 4, 5 y 6 siguen vigentes tal como están escritos.
 
 ### 5.1 Decisión registrada — almacenamiento y rotación del secreto de plataforma
 

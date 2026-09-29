@@ -1204,24 +1204,24 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-92
 
 - **Título original:** `Task: Implement evidence dashboard`
-- **GitHub y estado:** [issue #92](https://github.com/reyduar/Vaqcrow/issues/92) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #92](https://github.com/reyduar/Vaqcrow/issues/92) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#29](#^issue-29), que requiere [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28); sin bloqueos nativos propios.
 - **Objetivo:** implementar el dashboard dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#93](#^issue-93).
 
-**Rama propuesta.** `Vaqcrow#92_Task_Implement_evidence_dashboard` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#92_Task_Implement_evidence_dashboard`, entregada por el PR [#349](https://github.com/reyduar/Vaqcrow/pull/349).
 
 ### #93 — Probar el dashboard de evidencia
 
 ^issue-93
 
 - **Título original:** `Task: Test evidence dashboard`
-- **GitHub y estado:** [issue #93](https://github.com/reyduar/Vaqcrow/issues/93) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #93](https://github.com/reyduar/Vaqcrow/issues/93) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#29](#^issue-29), que requiere [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28); bloqueada nativamente por [#92](#^issue-92).
 - **Objetivo:** demostrar el dashboard con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#94](#^issue-94).
 
-**Rama propuesta.** `Vaqcrow#93_Task_Test_evidence_dashboard` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#93_Task_Test_evidence_dashboard`, entregada por el PR [#350](https://github.com/reyduar/Vaqcrow/pull/350).
 
 ### #94 — Documentar evidencia del dashboard
 

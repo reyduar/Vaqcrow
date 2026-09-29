@@ -209,10 +209,14 @@ Después de firmar, el total de la campaña se actualiza y tu aporte queda regis
 > [!todo] Todavía es un placeholder
 > Esta pantalla muestra un aviso de contenido pendiente. La distribución de retornos es la Feature #28 y aún no está implementada.
 
+> **Nota (post-#28):** este aviso quedó superado. La Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) entregó la distribución de retornos en `/distribution` (PRs [#345](https://github.com/reyduar/Vaqcrow/pull/345)–[#347](https://github.com/reyduar/Vaqcrow/pull/347)), y la página además escribe `?distribution=<id>` en la URL. El aviso se conserva como registro del estado previo.
+
 ### Paso 6 — Evidencia (`/evidence`)
 
 > [!todo] Todavía es un placeholder
 > Igual que el paso anterior: muestra un aviso de contenido pendiente. Corresponde a la Feature #29.
+
+> **Nota (post-#29):** este aviso también quedó superado. Las Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93) entregaron el dashboard de evidencia en `/evidence` (PRs [#349](https://github.com/reyduar/Vaqcrow/pull/349) y [#350](https://github.com/reyduar/Vaqcrow/pull/350)).
 
 ## 10. Los tres estados de la campaña
 
@@ -257,6 +261,8 @@ Los dejamos por escrito para que nadie los confunda con una falla, ni con una pr
 - **El reembolso requiere enviar una transacción.** Es sin permisos, pero no se dispara solo.
 - **La meta la impone el contrato, no la interfaz.** La interfaz sólo deja de ofrecer lo que el contrato ya rechazaría.
 - **Una bóveda por solicitud.** La campaña queda ligada a la solicitud que la originó.
+
+> **Nota (post-#28/#29):** el punto sobre los pasos 5 y 6 quedó superado: `/distribution` (Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28)) y `/evidence` (Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93)) ya tienen contenido. Los demás límites de esta sección siguen vigentes.
 
 ## 14. Qué registrar como evidencia
 
