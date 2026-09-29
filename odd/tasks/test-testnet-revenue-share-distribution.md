@@ -108,6 +108,32 @@ Revert `packages/contracts/src/revenue-share-distribution.ts` and its test to th
 `apps/api/src/infrastructure/http/revenue-share-distribution-sequence.test.ts` plus the added confirmation
 cases. No runtime behaviour beyond the three contract corrections is involved.
 
+## Review evidence
+
+- RDD is enabled globally. `gentle-ai review assess --base-ref bd06df6 --committed-only` reported `medium`
+  risk, `review_due: true`, `slice_budget_reached` (1108 changed lines).
+- The preflight returned a `gentle-ai.review-integration.consent/v3` envelope (6 files, 1108 lines); it was
+  relayed losslessly and the maintainer granted consent.
+- `review.start` created lineage `review-3698a531f6bf010e` with one consolidated lens,
+  `review-reliability`. The provider-bound reviewer produced an **approved** result.
+- One non-blocking `WARNING` is recorded as later work: `R3-read-model-strictness` — the snapshot now
+  rejects a recipient equal to the source, but a row written under the laxer #89 terms schema could fail
+  snapshot parsing on read. In practice `prepare` always refused self-payment and the envelope verification
+  binds the recipients, so no such row can be produced by the demo flow; a defensive read-path
+  reconciliation remains a follow-up rather than a blocker.
+- Authority was burned with the exact `review.acknowledge-approved` invocation (`authority: "burned"`).
+- The reviewer Task returned `opencode_task_output_empty` once before succeeding; the same bound slot was
+  relaunched after a fresh STATUS reoffered it.
+
+## Delivery evidence
+
+- Work units: `65f3a00 fix(contracts): enforce distribution source and recipient rules`,
+  `19bfc0f test(stellar): prove distribution sequence and confirmation boundaries`.
+- PR: drafted against `main` from
+  `Vaqcrow#90_Task_Test_Testnet_revenue_share_distribution`.
+- Engram mirror: this document is mirrored under `odd/test-testnet-revenue-share-distribution/tasks`.
+
 ## Current next step
 
-T90-06 — commit the work unit, assess it with RDD and mirror this document to Engram.
+Task #91 (Feature #28 evidence) closes Feature #28 and should fold in the `R3-read-model-strictness`
+follow-up.
