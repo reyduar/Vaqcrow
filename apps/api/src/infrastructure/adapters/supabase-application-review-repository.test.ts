@@ -636,6 +636,13 @@ describe("SupabaseApplicationReviewRepository", () => {
 
   describe("readManualReviewContext", () => {
     const RECORDED_AT = "2026-09-28T12:05:00.000Z";
+    const PERIOD = {
+      period: "2026-01",
+      amountArs: 1_200_000,
+      status: "reported" as const,
+      evidenceRef: "sales:2026-01",
+      simuladoLabel: "SIMULADO" as const
+    };
 
     function storedHandoffRow(
       overrides: Readonly<Record<string, unknown>> = {}
@@ -751,6 +758,51 @@ describe("SupabaseApplicationReviewRepository", () => {
 
       expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     });
+
+    it("reads the application's current state after a crash (handoff durable, transition pending)", async () => {
+      // The handoff is inserted first and the transition second, so a crash between
+      // them leaves a durable handoff on an application that still awaits its
+      // assessment. The read reports the state the application actually holds.
+      const { client } = createFakeSupabaseClient([
+        { data: storedHandoffRow(), error: null },
+        { data: applicationRow("awaiting_assessment"), error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      if (!result.ok) throw new Error("expected the manual-review context to be read");
+      expect(result.value.applicationState).toBe("awaiting_assessment");
+    });
+
+    /**
+     * Documented boundary (Task #72): the migration's CHECK constraints validate the
+     * evidence bundle and the provenance only at the top level — the bundle is an
+     * object, `periods` a non-empty array and `findings` an array; provenance is any
+     * object. The read re-validates the stored row through the strict contract parser,
+     * so a row the DB would admit but the parser rejects fails closed to `unavailable`,
+     * never a widened record. This records the current asymmetry honestly; tightening
+     * the DB constraints is a separate decision (see the Task #72 follow-up).
+     */
+    it.each([
+      ["a period carrying an undeclared field", { evidence_bundle: { periods: [{ ...PERIOD, raw: "leak" }], findings: [] } }],
+      ["a provenance object that is not the declared shape", { provider_provenance: { model: "simulated-underwriter" } }]
+    ])(
+      "fails closed to unavailable for a stored row the DB CHECK admits but the strict parser rejects (%s)",
+      async (_name, override) => {
+        const { client } = createFakeSupabaseClient([
+          { data: storedHandoffRow(override), error: null },
+          { data: applicationRow("human_review"), error: null }
+        ]);
+
+        const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+          APPLICATION_ID
+        );
+
+        expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      }
+    );
   });
 
   describe("error mapping and sanitization", () => {

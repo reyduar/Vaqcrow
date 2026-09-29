@@ -7,16 +7,20 @@ import type { ManualReviewGateway } from "@/application/ports/manual-review-gate
 /**
  * The persisted manual-review context for one application, if any.
  *
- * `present` is set only from a contract-validated backend answer. `absent`
- * covers both "the backend says there is no handoff" (a truthful `404`) and
- * "no backend is configured / the request failed": in neither case does the
- * screen invent context, and the unrelated-flow copy it falls back to is
- * labelled `SIMULADO` rather than presented as a persisted record.
+ * `present` is set only from a contract-validated backend answer. `absent` is
+ * the backend's truthful "there is no handoff" (a `404`): the screen then falls
+ * back to its unrelated-flow copy, labelled `SIMULADO`. `unavailable` means the
+ * context could not be requested — a backend outage, a network failure or a
+ * response that drifted out of contract — and is deliberately distinct from
+ * `absent`, so an outage is never presented as "there is no handoff" and the
+ * screen never shows the unrelated simulated recommendation as if it were the
+ * persisted record.
  */
 export type ManualReviewState =
   | { readonly status: "loading" }
   | { readonly status: "present"; readonly context: ApplicationManualReviewContext }
-  | { readonly status: "absent" };
+  | { readonly status: "absent" }
+  | { readonly status: "unavailable" };
 
 export function useManualReviewContext(
   gateway: ManualReviewGateway | null,
@@ -38,7 +42,9 @@ export function useManualReviewContext(
         setState(context ? { status: "present", context } : { status: "absent" });
       })
       .catch(() => {
-        if (active) setState({ status: "absent" });
+        // The request itself failed: this is not "no handoff", and treating it as
+        // such would hide a durable context behind a simulated recommendation.
+        if (active) setState({ status: "unavailable" });
       });
 
     return () => {
