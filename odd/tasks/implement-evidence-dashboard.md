@@ -74,7 +74,9 @@ Out:
 - [x] T92-06 — `pnpm run verify` exit 0, readback, Engram mirror, work-unit commits recorded.
 
 Two follow-up commits carry corrections that the work itself surfaced: `07b0905` (deterministic tiebreaker in
-the new read) and `b10ed2b` (the recap no longer labels a live hash as a prior-run hash).
+the new read) and `b10ed2b` (the recap no longer labels a live hash as a prior-run hash). The approved final
+review raised two more advisories, resolved as separate later work: `c8e6e6a` (only the API's own `not_found`
+counts as an absent decision) and `24982d8` (the distribution page's URL write is now asserted).
 
 ## Route declaration
 
@@ -152,6 +154,11 @@ Testnet, Horizon or an LLM provider.
   asserted absent, as `/funding` already did); the last placeholder route in the shell is gone, so
   `step-placeholder.tsx` and its unit test were deleted and the stale comment in `step-trust-disclosures.tsx`
   corrected. No `docs/**` file was touched.
+- The two advisory fixes (`c8e6e6a`, `24982d8`) — focused run: **2 files / 19 tests passed**, web typecheck
+  clean. Final closure gate `pnpm run verify` after them: **exit 0**, with `@vaqcrow/web` at **105 files /
+  780 tests**, `@vaqcrow/api` **47 files / 955 tests**, `@vaqcrow/contracts` **13 files / 487 tests**,
+  `@vaqcrow/domain` **2 files / 120 tests**, `@vaqcrow/ai` **5 files / 107 tests** and `test:boundaries`
+  **9 files / 93 tests**.
 
 ## Delivery evidence
 
@@ -160,14 +167,17 @@ Testnet, Horizon or an LLM provider.
   `feat(web): read latest decision and project evidence timeline`; `d0dfa6e`
   `feat(web): carry the distribution id in the url`; `172e6b3`
   `feat(web): render the decision and transaction evidence timeline`; `b10ed2b`
-  `fix(web): stop labelling a live hash as a prior-run hash`.
+  `fix(web): stop labelling a live hash as a prior-run hash`; `1d17cd2`
+  `docs(odd): record Task #92 evidence dashboard delivery`; `c8e6e6a`
+  `fix(web): treat only the api's not_found as an absent decision`; `24982d8`
+  `test(web): prove the distribution page writes the id into the url`.
 - Delivery strategy: `exception-ok`, one PR with a maintainer-approved `size:exception` (owner decision,
   2026-09-29). Push and PR creation have not been performed and remain the owner's decision.
 - Engram mirror: this document, under `odd/implement-evidence-dashboard/tasks`.
 
 ## RDD and review evidence
 
-RDD is enabled globally (`gentle-ai review mode status` → on, decided by global). Two candidate boundaries
+RDD is enabled globally (`gentle-ai review mode status` → on, decided by global). Three candidate boundaries
 were reached, and the owner decided each one:
 
 1. **Reviewed and approved — lineage `review-00a604e9800bbec6`**, medium risk, 10 files / 470 lines, one lens
@@ -184,9 +194,17 @@ were reached, and the owner decided each one:
 2. **Declined by the owner — candidate `sha256:2ba6b9ec…`**, medium risk, 13 files / 776 lines, the
    deterministic-tiebreaker fix plus the whole web projection. The consent envelope was relayed losslessly;
    the owner chose "Skip this time" and the exact decline invocation ran (`action: "declined"`,
-   `consent: "declined_this_candidate"`). No review record exists for that candidate, and the later web
-   commits (`d0dfa6e`, `172e6b3`, `b10ed2b`) are likewise unreviewed. The verification of record for all of
-   it is the writers' foreground runs plus the parent's closure gate and spot check, not a review.
+   `consent: "declined_this_candidate"`). No review record exists for that candidate.
+3. **Reviewed and approved — lineage `review-d1e22ef1e476c0e0`**, medium risk, 27 files / 1723 lines, one lens
+   (`review-reliability`) — the whole range from the first reviewed boundary to the delivery log, i.e. the
+   refused candidate's content plus everything after it. The owner granted consent; the review returned
+   **approved** with two advisory, non-blocking findings and no correction, and the exact acknowledgement
+   burned the authority (`action: "acknowledged"`, `authority: "burned"`). Both advisories were then resolved
+   as the separate later work the capture instructs: `c8e6e6a` narrows the absent-decision classification from
+   "any 404" to the API's own `not_found` code (a misrouted base URL answering 404 is a failure to read, not
+   proof that no decision exists), and `24982d8` asserts the distribution page's own URL write, which the
+   workspace-level test had left uncovered. Those two fixes are themselves unreviewed and are covered by the
+   final `pnpm run verify` exit 0 plus the focused runs recorded above.
 
 ## Decision recorded during the work
 
