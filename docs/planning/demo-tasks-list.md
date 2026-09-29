@@ -845,12 +845,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-27
 
 - **Título original:** `Feature: Calculate versioned revenue share deterministically`
-- **GitHub y estado:** [issue #27](https://github.com/reyduar/Vaqcrow/issues/27) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #27](https://github.com/reyduar/Vaqcrow/issues/27) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#12](#^issue-12) y [#26](#^issue-26).
 - **Objetivo:** calcular obligaciones con unidades mínimas, reglas versionadas y redondeo explícito, sin usar el LLM.
 - **Orden:** tiene prioridad `Critical` y desbloquea [#28](#^issue-28).
 
-**Rama propuesta.** `Vaqcrow#27_Feat_Calculate_versioned_revenue_share_deterministically` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#27_Feat_Calculate_versioned_revenue_share_deterministically`; la Feature se entregó mediante sus Tasks, con PR [#341](https://github.com/reyduar/Vaqcrow/pull/341), [#342](https://github.com/reyduar/Vaqcrow/pull/342) y [#343](https://github.com/reyduar/Vaqcrow/pull/343).
 
 ### #86 — Implementar el cálculo determinístico de revenue share
 
@@ -881,12 +881,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-88
 
 - **Título original:** `Task: Document evidence for deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #88](https://github.com/reyduar/Vaqcrow/issues/88) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #88](https://github.com/reyduar/Vaqcrow/issues/88) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); bloqueada nativamente por [#87](#^issue-87).
 - **Objetivo:** documentar evidencia reproducible de finalización del cálculo.
 - **Orden:** cierra [#27](#^issue-27) y habilita [#28](#^issue-28).
 
-**Rama propuesta.** `Vaqcrow#88_Task_Document_evidence_for_deterministic_revenue_share_calculation` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#88_Task_Document_evidence_for_deterministic_revenue_share_calculation`, entregada por el PR [#343](https://github.com/reyduar/Vaqcrow/pull/343).
 
 ### ~~#18 — Implementar la solicitud de PyME y la revisión de evidencia~~
 
