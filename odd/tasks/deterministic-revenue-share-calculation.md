@@ -142,6 +142,32 @@ Remove `packages/domain/src/revenue-share.ts` and `packages/domain/src/revenue-s
 the `revenue-share.js` re-export block in `packages/domain/src/index.ts`. No other workspace, package,
 route, migration or contract is touched. This log is the corresponding task record.
 
+## Delivery evidence
+
+- Work-unit commit: `845af3e feat(domain): calculate deterministic revenue share` (4 files, 1005
+  insertions).
+- Delivery PR: [#341](https://github.com/reyduar/Vaqcrow/pull/341), `feat(domain): calculate deterministic
+  revenue share`, targets `main` from `Vaqcrow#86_Task_Implement_deterministic_revenue_share_calculation`,
+  `Closes #86`.
+- `size:exception` was granted by the maintainer before the commit; the PR records it.
+- Engram mirror: this document is mirrored under `odd/deterministic-revenue-share-calculation/tasks`.
+
+## RDD and review evidence
+
+- RDD is enabled globally. `gentle-ai review assess --cwd <repo> --agent opencode --base-ref fba18c1
+  --committed-only --json` reported `review_due: true`, `review_due_reason: slice_budget_reached`.
+- The returned preflight `review.status` produced a `gentle-ai.review-integration.consent/v3` envelope
+  (risk `medium`, 4 files, 1005 lines). It was relayed losslessly; the maintainer granted consent.
+- `review.start` created lineage `review-301332eb3959e3a4` with one consolidated lens,
+  `review-reliability`. The provider-bound reviewer task returned an approved result.
+- Outcome: **approved**. Three non-blocking advisories (all `informational`) are follow-ups for Task #87:
+  `R3-allocator-unchecked-obligation` (a negative `obligationMinorUnits` is not validated),
+  `R3-negative-sales-unvalidated` (negative `salesMinorUnits` surfaces as `invalid_contributor`), and
+  `R3-unfrozen-exported-arrays` (the exported policy/status arrays are mutable).
+- Authority was burned with the exact `review.acknowledge-approved` invocation; the envelope reported
+  `authority: "burned"`. The reviewed commit `845af3e` is unchanged.
+
 ## Current next step
 
-T86-06 — record the work-unit commit and its RDD assessment, then mirror this document to Engram.
+Task #86 is delivered. Next: open Task #87 (deterministic tests), where the three advisories above become
+concrete test cases (negative obligation, negative sales, frozen arrays).
