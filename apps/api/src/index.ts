@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
-import { parseRevenueShareDistributionId } from "@vaqcrow/contracts";
+import { generateCorrelationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
+import { DEFAULT_CONFIRMATION_POLICY } from "./application/use-cases/confirm-funding-intents.js";
+import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
+import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
+import { DEFAULT_CONFIRMATION_INTERVAL_MS } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-client.js";
 
 // Fail fast and clearly: a missing or out-of-scope value stops the process here
@@ -87,11 +91,84 @@ const app = buildApp({
   cors: config.cors
 });
 
+/**
+ * The revenue-share distribution confirmation loop (S2d).
+ *
+ * The funding-intent confirmation scheduler is not started from this composition
+ * root today — `ConfirmationScheduler` is exercised by tests only — so there was
+ * no existing start-up call to mirror. It is also typed to the funding-intent use
+ * case and cannot drive the distribution one without a generic scheduler, and
+ * that extraction sits outside this slice's file budget. What is left is this
+ * loop, which follows that scheduler's documented shape: a recursive
+ * `setTimeout` so a slow Horizon call cannot let ticks overlap, an `unref`ed
+ * timer so the HTTP server alone keeps the process alive, and no in-process
+ * state so a restart resumes from the persisted `next_attempt_at`. The policy and
+ * interval are the existing confirmation constants, not new ones.
+ */
+const distributionTransaction = new StellarTransaction(config.stellar);
+
+let distributionConfirmationTimer: ReturnType<typeof setTimeout> | undefined;
+let distributionConfirmationInFlight: Promise<void> | undefined;
+let distributionConfirmationStopped = true;
+
+async function runDistributionConfirmation(): Promise<void> {
+  try {
+    await confirmRevenueShareDistributions(
+      { repository: revenueShareDistributionRepository, transaction: distributionTransaction },
+      {
+        now: new Date().toISOString(),
+        // One id per tick: every write a tick causes belongs to that execution.
+        correlationId: generateCorrelationId(),
+        policy: DEFAULT_CONFIRMATION_POLICY
+      }
+    );
+  } catch (error) {
+    // The loop survives, but the failure is not silent: a tick that cannot run
+    // at all is usually the database or Horizon being briefly unreachable —
+    // precisely when the loop must keep going, and precisely when an operator
+    // needs to know it is happening.
+    app.log.error({ err: error }, "revenue-share distribution confirmation tick failed");
+  }
+}
+
+function scheduleDistributionConfirmation(): void {
+  if (distributionConfirmationStopped) {
+    return;
+  }
+
+  distributionConfirmationTimer = setTimeout(() => {
+    distributionConfirmationInFlight = runDistributionConfirmation().finally(() => {
+      distributionConfirmationInFlight = undefined;
+      // Re-armed once the tick completes, which is what makes overlap impossible.
+      scheduleDistributionConfirmation();
+    });
+  }, DEFAULT_CONFIRMATION_INTERVAL_MS);
+
+  distributionConfirmationTimer.unref?.();
+}
+
+async function stopDistributionConfirmation(): Promise<void> {
+  distributionConfirmationStopped = true;
+
+  if (distributionConfirmationTimer !== undefined) {
+    clearTimeout(distributionConfirmationTimer);
+    distributionConfirmationTimer = undefined;
+  }
+
+  // Wait for the tick in flight so a clean restart cannot leave a write running
+  // against a closing process.
+  await distributionConfirmationInFlight;
+}
+
 await app.listen({ port: config.port, host: "0.0.0.0" });
+
+distributionConfirmationStopped = false;
+scheduleDistributionConfirmation();
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
     void (async () => {
+      await stopDistributionConfirmation();
       await app.close();
       process.exit(0);
     })();
