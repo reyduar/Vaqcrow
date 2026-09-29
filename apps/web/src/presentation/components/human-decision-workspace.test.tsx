@@ -114,7 +114,8 @@ describe("HumanDecisionWorkspace", () => {
     const gateway: HumanDecisionGateway = {
       record: vi.fn().mockImplementation((command) =>
         Promise.resolve({ applied: true, decision: recordOf(command.decisionId) })
-      )
+      ),
+      readLatest: vi.fn()
     };
     render(<HumanDecisionWorkspace gateway={gateway} applicationId={APPLICATION_ID} />);
 
@@ -129,7 +130,8 @@ describe("HumanDecisionWorkspace", () => {
 
   it("does not claim success when the backend reports a state conflict", async () => {
     const gateway: HumanDecisionGateway = {
-      record: vi.fn().mockRejectedValue(new HttpClientError("http", 409, undefined, "state_conflict"))
+      record: vi.fn().mockRejectedValue(new HttpClientError("http", 409, undefined, "state_conflict")),
+      readLatest: vi.fn()
     };
     render(<HumanDecisionWorkspace gateway={gateway} applicationId={APPLICATION_ID} />);
 
@@ -145,7 +147,7 @@ describe("HumanDecisionWorkspace", () => {
       .fn()
       .mockRejectedValueOnce(new HttpClientError("network"))
       .mockImplementationOnce((command) => Promise.resolve({ applied: false, decision: recordOf(command.decisionId) }));
-    render(<HumanDecisionWorkspace gateway={{ record }} applicationId={APPLICATION_ID} />);
+    render(<HumanDecisionWorkspace gateway={{ record, readLatest: vi.fn() }} applicationId={APPLICATION_ID} />);
 
     fillAndSubmit();
     expect(await screen.findByRole("alert")).toHaveTextContent(/no se pudo confirmar/i);

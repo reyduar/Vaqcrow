@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { HttpClientError } from "@/application/ports/http-client-port";
 import type { HttpClientPort } from "@/application/ports/http-client-port";
 import { HttpHumanDecisionGateway } from "./http-human-decision-gateway";
 
@@ -25,6 +26,12 @@ const record = {
 
 function http(body: unknown, status = 201) {
   const send = vi.fn().mockResolvedValue({ status, body });
+  return { port: { send } as unknown as HttpClientPort, send };
+}
+
+/** The real `HttpClientPort` rejects on a non-2xx, so a failing read is modelled as a rejection. */
+function httpRejects(error: unknown) {
+  const send = vi.fn().mockRejectedValue(error);
   return { port: { send } as unknown as HttpClientPort, send };
 }
 
@@ -56,5 +63,48 @@ describe("HttpHumanDecisionGateway", () => {
   ])("throws on a malformed response: %s", async (_name, body) => {
     const { port } = http(body);
     await expect(new HttpHumanDecisionGateway(port).record(command)).rejects.toThrow();
+  });
+});
+
+describe("HttpHumanDecisionGateway.readLatest", () => {
+  it("reads the decision from the path and returns the contract-validated record", async () => {
+    const { port, send } = http({ decision: record }, 200);
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).resolves.toEqual(record);
+
+    expect(send).toHaveBeenCalledWith({
+      method: "GET",
+      path: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+  });
+
+  it("resolves null for a truthful 404 instead of throwing", async () => {
+    const { port } = httpRejects(new HttpClientError("http", 404, undefined, "not_found"));
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).resolves.toBeNull();
+  });
+
+  it.each([
+    ["an unrelated code", new HttpClientError("http", 404, undefined, "application_not_found")],
+    ["no code at all", new HttpClientError("http", 404)]
+  ])("throws on a 404 that is %s: a failure to read is not an absence", async (_name, error) => {
+    const { port } = httpRejects(error);
+
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).rejects.toBe(error);
+  });
+
+  it.each([
+    ["missing decision", { other: 1 }],
+    ["extra keys", { decision: record, extra: 1 }],
+    ["broken record", { decision: { ...record, decidedAt: "yesterday" } }]
+  ])("throws on a drifted 200 body: %s", async (_name, body) => {
+    const { port } = http(body, 200);
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).rejects.toThrow();
+  });
+
+  it.each([
+    ["service unavailable", new HttpClientError("http", 503, undefined, "unavailable")],
+    ["network failure", new HttpClientError("network")]
+  ])("throws on a %s and never fabricates a record", async (_name, error) => {
+    const { port } = httpRejects(error);
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).rejects.toBe(error);
   });
 });

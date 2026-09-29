@@ -28,6 +28,7 @@ import type {
 
 const TABLE = "application_review";
 const ASSESSMENT_FAILURE_HANDOFF_TABLE = "assessment_failure_handoff";
+const HUMAN_DECISION_TABLE = "human_decision";
 
 // Postgres error codes this adapter maps explicitly; every other code (including the
 // RLS-denial 42501) falls through to the generic "unavailable" outcome.
@@ -81,6 +82,22 @@ interface AssessmentFailureHandoffReadRow {
   readonly evidence_bundle?: unknown;
   readonly provider_provenance?: unknown;
   readonly recorded_at?: unknown;
+}
+
+/**
+ * A plain `human_decision` table row. It is not `HumanDecisionRpcRow`: the RPC's
+ * table-valued result carries a leading `result_kind` marker, whereas a table row
+ * has no such column, so a table row must never be fed into the RPC mapper.
+ */
+interface HumanDecisionReadRow {
+  readonly decision_id?: unknown;
+  readonly application_id?: unknown;
+  readonly outcome?: unknown;
+  readonly actor?: unknown;
+  readonly reason?: unknown;
+  readonly approved_limit_ars?: unknown;
+  readonly decided_at?: unknown;
+  readonly correlation_id?: unknown;
 }
 
 export class SupabaseApplicationReviewRepository implements ApplicationReviewRepositoryPort {
@@ -271,6 +288,55 @@ export class SupabaseApplicationReviewRepository implements ApplicationReviewRep
             ? {}
             : { providerProvenance: row.provider_provenance }),
           recordedAt: row.recorded_at
+        })
+      };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async readLatestHumanDecision(
+    applicationId: ApplicationId
+  ): Promise<ApplicationReviewRepositoryResult<HumanDecisionRecord>> {
+    try {
+      const { data, error } = await this.client
+        .from(HUMAN_DECISION_TABLE)
+        .select()
+        .eq("application_id", applicationId)
+        .order("decided_at", { ascending: false })
+        // `decided_at` defaults to `now()` and could tie; a single sort column would
+        // then leave which row is "latest" unspecified (R3-latest-decision-ordering).
+        // `decision_id` is arbitrary but stable, so a tie still resolves to one row.
+        .order("decision_id", { ascending: true })
+        .limit(1);
+
+      if (error) {
+        // A read has no correlation in hand; log the lookup subject instead.
+        return { ok: false, error: this.toRepositoryError(error, undefined, applicationId) };
+      }
+
+      const rows = data as readonly unknown[];
+      if (rows.length === 0) {
+        // No decision row means the application has no recorded decision yet.
+        // Report that truthfully rather than fabricating empty-but-successful content.
+        return { ok: false, error: { code: "not_found" } };
+      }
+
+      const row = rows[0] as HumanDecisionReadRow;
+
+      // Re-validate every stored column through the shared parser: a malformed
+      // row is an `unavailable` outcome, never a record that silently widened.
+      return {
+        ok: true,
+        value: parseHumanDecisionRecord({
+          decisionId: row.decision_id,
+          applicationId: row.application_id,
+          outcome: row.outcome,
+          actor: row.actor,
+          reason: row.reason,
+          approvedLimitArs: this.normalizeBigint(row.approved_limit_ars),
+          decidedAt: row.decided_at,
+          correlationId: row.correlation_id
         })
       };
     } catch {

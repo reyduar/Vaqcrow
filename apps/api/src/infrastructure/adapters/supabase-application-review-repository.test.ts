@@ -69,6 +69,8 @@ interface RecordedCalls {
   readonly update: unknown[];
   readonly eq: Array<readonly [column: string, value: unknown]>;
   readonly rpc: Array<readonly [functionName: string, params: unknown]>;
+  readonly order: Array<readonly [column: string, options: { readonly ascending?: boolean }]>;
+  readonly limit: number[];
 }
 
 /**
@@ -85,7 +87,7 @@ interface RecordedCalls {
  */
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { from: [], insert: [], update: [], eq: [], rpc: [] };
+  const calls: RecordedCalls = { from: [], insert: [], update: [], eq: [], rpc: [], order: [], limit: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -111,6 +113,14 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
       select: () => self,
       eq: (column: string, value: unknown) => {
         calls.eq.push([column, value]);
+        return self;
+      },
+      order: (column: string, options: { readonly ascending?: boolean }) => {
+        calls.order.push([column, options]);
+        return self;
+      },
+      limit: (count: number) => {
+        calls.limit.push(count);
         return self;
       },
       single: () => nextResult(),
@@ -803,6 +813,108 @@ describe("SupabaseApplicationReviewRepository", () => {
         expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
       }
     );
+  });
+
+  describe("readLatestHumanDecision", () => {
+    function storedDecisionRow(overrides: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
+      return {
+        decision_id: DECISION.decisionId,
+        application_id: DECISION.applicationId,
+        outcome: DECISION.outcome,
+        actor: DECISION.actor,
+        reason: DECISION.reason,
+        approved_limit_ars: String(DECISION.approvedLimitArs),
+        decided_at: DECIDED_AT,
+        correlation_id: CORRELATION_ID,
+        ...overrides
+      };
+    }
+
+    it("reads the latest decision from the human_decision table, newest decided_at first", async () => {
+      const { client, calls } = createFakeSupabaseClient([{ data: [storedDecisionRow()], error: null }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          ...DECISION,
+          decidedAt: DECIDED_AT,
+          correlationId: CORRELATION_ID
+        }
+      });
+      // The read is a plain table query: no RPC, and the newest row is selected by
+      // ordering on decided_at descending and taking one row. The second sort column
+      // is the stable tiebreaker, so equal `decided_at` values still resolve to one row.
+      expect(calls.from).toEqual(["human_decision"]);
+      expect(calls.eq).toEqual([["application_id", APPLICATION_ID]]);
+      expect(calls.order).toEqual([
+        ["decided_at", { ascending: false }],
+        ["decision_id", { ascending: true }]
+      ]);
+      expect(calls.limit).toEqual([1]);
+      expect(calls.rpc).toEqual([]);
+    });
+
+    it("reports not_found truthfully when the application has no recorded decision", async () => {
+      const { client } = createFakeSupabaseClient([{ data: [], error: null }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+
+    it("re-validates the stored row: a malformed outcome is unavailable, never a widened record", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [storedDecisionRow({ outcome: "raw vendor message" })], error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+
+    it("fails closed on an unsafe bigint approved limit", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [storedDecisionRow({ approved_limit_ars: "9007199254740992" })], error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+
+    it("sanitizes a PostgREST error without leaking message, details, or hint", async () => {
+      const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("42501") }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      if (result.ok) throw new Error("expected a sanitized repository error");
+      expect(result.error).not.toHaveProperty("message");
+      expect(result.error).not.toHaveProperty("details");
+      expect(result.error).not.toHaveProperty("hint");
+    });
+
+    it("maps a transport-level rejection to unavailable", async () => {
+      const { client } = createFakeSupabaseClient([{ reject: new Error("fetch failed") }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readLatestHumanDecision(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
   });
 
   describe("error mapping and sanitization", () => {

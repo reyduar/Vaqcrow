@@ -1,4 +1,4 @@
-import { parseCorrelationId, parseHumanDecisionCommand } from "@vaqcrow/contracts";
+import { parseApplicationId, parseCorrelationId, parseHumanDecisionCommand } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { recordHumanDecision } from "../../../application/use-cases/record-human-decision.js";
 import type { ApplicationReviewRepositoryPort } from "../../../application/ports/application-review-repository-port.js";
@@ -62,6 +62,40 @@ export function registerHumanDecisionRoute(
         case "idempotency_conflict":
           return reply.code(409).send({ code: "idempotency_conflict" });
         case "unavailable":
+          return reply.code(503).send({ code: "unavailable" });
+      }
+    }
+  );
+
+  /**
+   * The read surface of the latest recorded decision (Feature #29, Task #92).
+   *
+   * The endpoint is application-scoped and read-only: it returns exactly the most
+   * recently recorded human decision for an application, or a truthful `not_found`
+   * when none has been recorded yet — a declared absence, never an empty success.
+   */
+  app.get<{ Params: { applicationId: string } }>(
+    "/application-reviews/:applicationId/decisions",
+    async (request, reply) => {
+      let applicationId;
+      try {
+        applicationId = parseApplicationId(request.params.applicationId);
+      } catch {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      const result = await repository.readLatestHumanDecision(applicationId);
+
+      if (result.ok) {
+        return reply.code(200).send({ decision: result.value });
+      }
+
+      switch (result.error.code) {
+        case "not_found":
+          return reply.code(404).send({ code: "not_found" });
+        // A read only emits `not_found` or `unavailable`; anything else would be
+        // an unexpected repository outcome and is reported as unavailable.
+        default:
           return reply.code(503).send({ code: "unavailable" });
       }
     }

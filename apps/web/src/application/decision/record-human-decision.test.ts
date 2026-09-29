@@ -26,7 +26,7 @@ const request = {
 describe("recordHumanDecision", () => {
   it("sends the full contract command and returns the recorded decision", async () => {
     const record = vi.fn().mockResolvedValue({ applied: true, decision: RECORD });
-    const gateway: HumanDecisionGateway = { record };
+    const gateway: HumanDecisionGateway = { record, readLatest: vi.fn() };
 
     const result = await recordHumanDecision(gateway, request);
 
@@ -37,7 +37,7 @@ describe("recordHumanDecision", () => {
   it("refuses to call the backend when the command breaks the contract invariant", async () => {
     const record = vi.fn();
     const result = await recordHumanDecision(
-      { record },
+      { record, readLatest: vi.fn() },
       { ...request, input: { outcome: "approved", actor: "op", reason: "ok", approvedLimitArs: null } }
     );
 
@@ -47,7 +47,7 @@ describe("recordHumanDecision", () => {
 
   it("maps a gateway failure to a sanitized error result", async () => {
     const record = vi.fn().mockRejectedValue(new HttpClientError("http", 409, undefined, "state_conflict"));
-    const result = await recordHumanDecision({ record }, request);
+    const result = await recordHumanDecision({ record, readLatest: vi.fn() }, request);
     expect(result).toMatchObject({ ok: false, error: { kind: "state_conflict" } });
   });
 });

@@ -8,9 +8,9 @@ import { CanonicalDisclosure } from "./canonical-disclosure";
  * for the given `step` and renders every required canonical `TrustBanner`
  * (via `CanonicalDisclosure`) plus every required contextual microcopy note.
  *
- * Composed BESIDE `StepPlaceholder` in each `(demo)/*\/page.tsx`, never
- * nested inside it — `StepPlaceholder` stays byte-identical and is slated
- * for deletion when #18/#19 add real content (design Decision B).
+ * Composed first, BESIDE each `(demo)/*\/page.tsx`'s own content, never
+ * nested inside it. The former `StepPlaceholder` was deleted once every route
+ * had real content (Feature #28 and #29).
  */
 export interface StepTrustDisclosuresProps {
   readonly step: DemoStepSlug;

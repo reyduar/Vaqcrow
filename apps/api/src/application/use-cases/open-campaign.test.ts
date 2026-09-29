@@ -47,7 +47,8 @@ function applicationReviews(
     transition: vi.fn(),
     recordHumanDecision: vi.fn(),
     recordAssessmentFailureHandoff: vi.fn(),
-    readManualReviewContext: vi.fn()
+    readManualReviewContext: vi.fn(),
+    readLatestHumanDecision: vi.fn()
   };
 }
 

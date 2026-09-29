@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CampaignVaultError } from "@/application/campaign/campaign-vault-errors";
 import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
+import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
 import type { WalletPort } from "@/application/ports/wallet-port";
@@ -63,13 +64,6 @@ function reviewSigningState(
     return { signingStatus: "signature-rejected", signingErrorMessage: reviewError.message };
   }
   return { signingStatus: "verification-rejected", signingErrorMessage: reviewError.message };
-}
-
-/** Whole XLM plus up to 7 decimal digits, trailing zeros trimmed. Display only; it never crosses the wire. */
-function formatStroopsAsXlm(stroops: bigint): string {
-  const whole = stroops / 10_000_000n;
-  const fraction = (stroops % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
-  return fraction.length > 0 ? `${whole}.${fraction}` : whole.toString();
 }
 
 /** A `type="date"` value carries no time or offset; the contract requires both (`z.iso.datetime({ offset: true })`), so midnight UTC is declared explicitly. */

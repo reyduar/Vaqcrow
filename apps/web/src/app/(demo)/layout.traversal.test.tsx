@@ -15,8 +15,12 @@ import EvidencePage from "./evidence/page";
 // `vi.mock` factories hoist above local declarations, so the harness is
 // imported lazily inside each factory (design D1/D2) rather than referenced
 // from the top-level import above (which is only usable after hoisting).
+// `useRouter`/`useSearchParams` are stubbed because the funding, distribution
+// and evidence pages are client components that read their ids from the URL.
 vi.mock("next/navigation", async () => ({
-  usePathname: (await import("@/test/route-harness")).useHarnessPathname
+  usePathname: (await import("@/test/route-harness")).useHarnessPathname,
+  useRouter: () => ({ replace: () => undefined }),
+  useSearchParams: () => new URLSearchParams()
 }));
 vi.mock("next/link", async () => ({
   default: (await import("@/test/route-harness")).HarnessLink
