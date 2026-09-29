@@ -14,6 +14,8 @@ import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
+import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
+import type { RevenueShareDistributionRouteDependencies } from "./routes/revenue-share-distribution.route.js";
 import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
 
@@ -28,6 +30,7 @@ function assertRandomUUIDAvailable(): void {
 export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
   readonly fundingIntent?: FundingIntentRouteDependencies;
+  readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
   readonly assessment?: AssessmentRouteDependencies;
   readonly applicationAssessment?: ApplicationAssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
@@ -62,6 +65,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);
+  }
+  if (dependencies.revenueShareDistribution) {
+    registerRevenueShareDistributionRoute(app, dependencies.revenueShareDistribution);
   }
   if (dependencies.assessment) {
     registerAssessmentRoute(app, dependencies.assessment);
