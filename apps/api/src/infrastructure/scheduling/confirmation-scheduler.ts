@@ -3,12 +3,13 @@ import type { CorrelationId } from "@vaqcrow/contracts";
 import { confirmFundingIntents } from "../../application/use-cases/confirm-funding-intents.js";
 import type {
   ConfirmFundingIntentsDeps,
-  ConfirmFundingIntentsResult,
-  ConfirmationPolicy
+  ConfirmFundingIntentsResult
 } from "../../application/use-cases/confirm-funding-intents.js";
+import { DEFAULT_CONFIRMATION_INTERVAL_MS } from "./confirmation-policy.js";
+import type { ConfirmationPolicy } from "./confirmation-policy.js";
 
 /**
- * Drives the confirmation use case on a timer inside the API process.
+ * Drives a confirmation use case on a timer inside the API process.
  *
  * **Why there is no `apps/worker`.** `DEMO.md` line 150 makes a separate worker
  * conditional — "se agrega únicamente si las confirmaciones o jobs acotados no
@@ -27,9 +28,26 @@ import type {
  * network is already struggling. Here the next timer is armed only once a tick
  * completes, which makes overlap impossible by construction rather than by a
  * guard that has to be remembered.
+ *
+ * **Why it is provider-agnostic.** The funding-intent and revenue-share
+ * distribution loops advance records waiting on the same network on the same
+ * schedule, so they share one scheduler rather than one loop each. The loop is
+ * injected as a single one-step function ({@link ConfirmationRun}); the class
+ * itself owns only the timer, the correlation id and the policy wiring.
  */
 
-export interface ConfirmationSchedulerOptions {
+/**
+ * Runs exactly one confirmation step: the same shape both use cases expose, so
+ * either can be driven by {@link ConfirmationScheduler} without the scheduler
+ * knowing which one it is.
+ */
+export type ConfirmationRun<Result> = (input: {
+  readonly now: string;
+  readonly correlationId: CorrelationId;
+  readonly policy: ConfirmationPolicy;
+}) => Promise<Result>;
+
+export interface ConfirmationSchedulerOptions<Result = ConfirmFundingIntentsResult> {
   /**
    * How long to wait between the end of one tick and the start of the next.
    * Defaults to {@link DEFAULT_CONFIRMATION_INTERVAL_MS}.
@@ -45,7 +63,7 @@ export interface ConfirmationSchedulerOptions {
    * that logs on its own would decide the log's shape, and the caller is the one
    * that knows what the demo's timeline needs.
    */
-  readonly onStep?: (result: ConfirmFundingIntentsResult) => void;
+  readonly onStep?: (result: Result) => void;
   /**
    * Called when a tick could not run at all — an unreachable database, most
    * likely.
@@ -57,29 +75,32 @@ export interface ConfirmationSchedulerOptions {
   readonly onError?: (error: unknown) => void;
 }
 
-/**
- * How often the loop wakes.
- *
- * Testnet closes a ledger roughly every five seconds, so waking on that cadence
- * means a confirmation is noticed about as soon as it can exist — and the loop
- * itself costs nothing when there is nothing to confirm, because an empty tick is
- * one indexed query.
- */
-export const DEFAULT_CONFIRMATION_INTERVAL_MS = 5_000;
-
-export class ConfirmationScheduler {
+export class ConfirmationScheduler<Result = ConfirmFundingIntentsResult> {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private inFlight: Promise<void> | undefined;
   private stopped = true;
 
+  private readonly runConfirmation: ConfirmationRun<Result>;
   private readonly now: () => string;
   private readonly generateCorrelationId: () => CorrelationId;
   private readonly intervalMs: number;
 
+  /**
+   * The first argument is either an explicit one-step runner, or — the original
+   * shape — the funding-intent deps, in which case the scheduler drives
+   * `confirmFundingIntents` itself. Accepting both keeps every existing caller
+   * working while letting a second loop supply its own runner here.
+   */
   constructor(
-    private readonly deps: ConfirmFundingIntentsDeps,
-    private readonly options: ConfirmationSchedulerOptions
+    depsOrRun: ConfirmFundingIntentsDeps | ConfirmationRun<Result>,
+    private readonly options: ConfirmationSchedulerOptions<Result>
   ) {
+    this.runConfirmation = (
+      typeof depsOrRun === "function"
+        ? depsOrRun
+        : (input: Parameters<ConfirmationRun<Result>>[0]) => confirmFundingIntents(depsOrRun, input)
+    ) as ConfirmationRun<Result>;
+
     this.now = options.now ?? (() => new Date().toISOString());
     this.generateCorrelationId = options.generateCorrelationId ?? createCorrelationId;
     this.intervalMs = options.intervalMs ?? DEFAULT_CONFIRMATION_INTERVAL_MS;
@@ -119,8 +140,8 @@ export class ConfirmationScheduler {
    * Exposed because a single step is genuinely useful outside the schedule — an
    * operational nudge, or a test that wants one deterministic step.
    */
-  async runOnce(): Promise<ConfirmFundingIntentsResult> {
-    return confirmFundingIntents(this.deps, {
+  async runOnce(): Promise<Result> {
+    return this.runConfirmation({
       now: this.now(),
       // One id per execution: every write a tick causes belongs to that tick.
       correlationId: this.generateCorrelationId(),

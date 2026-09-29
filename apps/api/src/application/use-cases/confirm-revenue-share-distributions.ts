@@ -1,11 +1,12 @@
 import type { CorrelationId } from "@vaqcrow/contracts";
+import { backoffMs } from "../../infrastructure/scheduling/confirmation-policy.js";
+import type { ConfirmationPolicy } from "../../infrastructure/scheduling/confirmation-policy.js";
 import type {
   RevenueShareDistributionConfirmation,
   RevenueShareDistributionRecord,
   RevenueShareDistributionRepositoryPort
 } from "../ports/revenue-share-distribution-repository-port.js";
 import type { StellarTransactionPort } from "../ports/stellar-transaction-port.js";
-import type { ConfirmationPolicy } from "./confirm-funding-intents.js";
 
 /**
  * Advances every revenue-share distribution still awaiting an outcome by exactly
@@ -231,20 +232,4 @@ async function defer(
     distributionId: distribution.distributionId,
     result: written.ok ? result : "unavailable"
   };
-}
-
-/**
- * Doubles from the first retry and stops at the ceiling.
- *
- * The exponent is clamped before the multiplication so a long-lived distribution
- * cannot overflow into `Infinity` — which `Math.min` would then happily accept as
- * the delay, producing an `Invalid Date` rather than a schedule. This mirrors the
- * identical helper in `confirm-funding-intents.ts`; the two use cases do not
- * import from each other, so the policy travels as a type and the arithmetic is
- * repeated rather than shared.
- */
-function backoffMs(attempts: number, policy: ConfirmationPolicy): number {
-  const doublings = Math.min(Math.max(attempts - 1, 0), 30);
-
-  return Math.min(policy.initialBackoffMs * 2 ** doublings, policy.maxBackoffMs);
 }

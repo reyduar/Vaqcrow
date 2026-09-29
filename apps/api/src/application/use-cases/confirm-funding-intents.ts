@@ -1,10 +1,18 @@
 import type { CorrelationId } from "@vaqcrow/contracts";
+import { backoffMs } from "../../infrastructure/scheduling/confirmation-policy.js";
+import type { ConfirmationPolicy } from "../../infrastructure/scheduling/confirmation-policy.js";
 import type {
   FundingIntentConfirmation,
   FundingIntentRecord,
   FundingIntentRepositoryPort
 } from "../ports/funding-intent-repository-port.js";
 import type { StellarTransactionPort } from "../ports/stellar-transaction-port.js";
+
+// The policy and its backoff live in `confirmation-policy.ts` so both confirmation
+// loops share one definition. They stay re-exported here because the scheduler
+// tests and the HTTP sequence test name them from this module.
+export { DEFAULT_CONFIRMATION_POLICY } from "../../infrastructure/scheduling/confirmation-policy.js";
+export type { ConfirmationPolicy } from "../../infrastructure/scheduling/confirmation-policy.js";
 
 /**
  * Advances every funding intent still awaiting an outcome by exactly one step.
@@ -42,25 +50,6 @@ import type { StellarTransactionPort } from "../ports/stellar-transaction-port.j
  * (D2), and inventing a fourth state to record our own impatience would describe
  * Vaqcrow rather than the transaction.
  */
-
-export interface ConfirmationPolicy {
-  /** The most intents one step may touch. */
-  readonly batchSize: number;
-  /** The delay before the first retry, in milliseconds. */
-  readonly initialBackoffMs: number;
-  /** The ceiling the delay doubles towards, so load stops growing. */
-  readonly maxBackoffMs: number;
-}
-
-/**
- * Testnet closes a ledger roughly every five seconds, so the first retry is
- * spaced to give a submission a chance to land before asking again.
- */
-export const DEFAULT_CONFIRMATION_POLICY: ConfirmationPolicy = {
-  batchSize: 20,
-  initialBackoffMs: 5_000,
-  maxBackoffMs: 60_000
-};
 
 export interface ConfirmFundingIntentsDeps {
   /**
@@ -237,17 +226,4 @@ async function defer(
   });
 
   return { intentId: intent.intentId, result: written.ok ? result : "unavailable" };
-}
-
-/**
- * Doubles from the first retry and stops at the ceiling.
- *
- * The exponent is clamped before the multiplication so a long-lived intent cannot
- * overflow into `Infinity` — which `Math.min` would then happily accept as the
- * delay, producing an `Invalid Date` rather than a schedule.
- */
-function backoffMs(attempts: number, policy: ConfirmationPolicy): number {
-  const doublings = Math.min(Math.max(attempts - 1, 0), 30);
-
-  return Math.min(policy.initialBackoffMs * 2 ** doublings, policy.maxBackoffMs);
 }
