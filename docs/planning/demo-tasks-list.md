@@ -1055,24 +1055,24 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-89
 
 - **Título original:** `Task: Implement Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #89](https://github.com/reyduar/Vaqcrow/issues/89) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #89](https://github.com/reyduar/Vaqcrow/issues/89) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); sin bloqueos nativos propios.
 - **Objetivo:** implementar la distribución en Testnet dentro de la arquitectura delimitada.
 - **Orden:** inicia el Feature y desbloquea [#90](#^issue-90).
 
-**Rama propuesta.** `Vaqcrow#89_Task_Implement_Testnet_revenue_share_distribution` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#89_Task_Implement_Testnet_revenue_share_distribution`, entregada por el PR [#345](https://github.com/reyduar/Vaqcrow/pull/345).
 
 ### #90 — Probar la distribución de revenue share en Testnet
 
 ^issue-90
 
 - **Título original:** `Task: Test Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #90](https://github.com/reyduar/Vaqcrow/issues/90) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #90](https://github.com/reyduar/Vaqcrow/issues/90) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); bloqueada nativamente por [#89](#^issue-89).
 - **Objetivo:** demostrar la distribución con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#91](#^issue-91).
 
-**Rama propuesta.** `Vaqcrow#90_Task_Test_Testnet_revenue_share_distribution` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#90_Task_Test_Testnet_revenue_share_distribution`, entregada por el PR [#346](https://github.com/reyduar/Vaqcrow/pull/346).
 
 ### #91 — Documentar evidencia de la distribución de revenue share en Testnet
 
