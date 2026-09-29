@@ -54,11 +54,26 @@ revenue-share engine; real investor-account provisioning.
 
 ## Stable checklist (slices)
 
-- [ ] S1 — Distribution contracts (`packages/contracts/src/revenue-share-distribution.ts`, id) + tests + barrel.
-- [ ] S2 — Backend core: XDR port + N-payment adapter; prepare/submit/get use cases; repository port +
-      Supabase adapter; migration; HTTP route; wiring; tests.
-- [ ] S3 — Web: gateway + `distribution` workspace/page reusing `FreighterWallet` and the review modal; tests.
+- [x] S1 — Distribution contracts (`packages/contracts/src/revenue-share-distribution.ts`, id) + tests + barrel.
+- [x] S2 — Backend core: XDR port + N-payment adapter; prepare/submit/get use cases; repository port +
+      Supabase adapter; migration; HTTP route; wiring; confirmation; tests.
+- [x] S3 — Web: gateway + `distribution` workspace/page reusing `FreighterWallet` and the review modal; tests.
 - [ ] S4 — Focused checks + `pnpm run verify`; RDD for each work unit; docs and Engram mirror.
+
+## Implementation evidence
+
+| Slice | Commit | What landed | Tests |
+|---|---|---|---|
+| S1 | `624722c` | `revenue-share-distribution{,-id}.ts` + barrel; `contributorId` removed from `terms` so the terms stay exactly the envelope-committed facts | 131 |
+| S2a | `14e897e` | `revenue-share-distribution-xdr-port.ts` + `stellar-revenue-share-distribution-xdr.ts`: N ordered native payments, envelope-bound verify (passphrase, fee-bump refusal, per-index recipient match, source signature) | 33 |
+| S2b | `e03732a` | repository port + Supabase adapter + `20260929170119_create_revenue_share_distribution.sql` (immutable recipients, conditional transitions, scoped grants) | 48 |
+| S2c | `33c94a4` | prepare/submit/get use cases + route (`/revenue-share-distributions`) + `build-app`/`index` wiring | 48 |
+| S2d | `8c1f260` | `confirm-revenue-share-distributions.ts` + scheduler wiring (`submitted → confirmed/failed`, bounded backoff) | 26 |
+| S2e | `2b75f55` | dedup: one shared `confirmation-policy.ts` + one generalized `ConfirmationScheduler`; the inline loop and the mirrored backoff are gone | — |
+| S3 | pending | web gateway + SIMULADO recipient fixture + `distribution` workspace/page | 29 |
+
+Verified claims without an API or contract change to the revenue-share engine: the distribution consumes
+the engine's allocations only as `(accountId, amountStroops)` supplied by the caller (D1).
 
 ## Constraints
 
@@ -71,16 +86,17 @@ revenue-share engine; real investor-account provisioning.
 
 ## Forecast
 
-Roughly 3 slices, each around or above the 400-line review budget; total well above it. The delivery
-strategy is decided with the maintainer before the first commit.
+Roughly 3 slices, each around or above the 400-line review budget; total well above it. The maintainer
+chose **one PR with `size:exception`** (see §Delivery), so the slices ship as ordered work-unit commits on
+this branch rather than chained PRs.
 
 ## Route declaration
 
-- S1/S2/S3 — delegated direct: one bounded writer per slice (multi-file, past the writer trigger), with the
-  mapper handoff and the decisions above attached; skills resolved by registry name (Stellar dApp/data
-  for S2–S3).
+- S1–S3 — delegated direct: one bounded writer per slice, with the mapper handoff and the decisions above
+  attached; the S3 copy was corrected to the project's Spanish UI language after the first pass.
+- S2e was an explicit dedup slice so the two confirmation loops share one scheduler and one backoff.
 - Checks, RDD and commits — parent.
 
 ## Current next step
 
-Confirm the delivery strategy with the maintainer, then start S1 (contracts).
+S4 — run `pnpm run verify`, assess and review the delivered range, then open the single PR.
