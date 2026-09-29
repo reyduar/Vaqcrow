@@ -857,24 +857,24 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-86
 
 - **Título original:** `Task: Implement deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #86](https://github.com/reyduar/Vaqcrow/issues/86) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #86](https://github.com/reyduar/Vaqcrow/issues/86) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); sin bloqueos nativos propios.
 - **Objetivo:** implementar el cálculo determinístico dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#87](#^issue-87).
 
-**Rama propuesta.** `Vaqcrow#86_Task_Implement_deterministic_revenue_share_calculation` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#86_Task_Implement_deterministic_revenue_share_calculation`, entregada por el PR [#341](https://github.com/reyduar/Vaqcrow/pull/341).
 
 ### #87 — Probar el cálculo determinístico de revenue share
 
 ^issue-87
 
 - **Título original:** `Task: Test deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #87](https://github.com/reyduar/Vaqcrow/issues/87) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #87](https://github.com/reyduar/Vaqcrow/issues/87) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); bloqueada nativamente por [#86](#^issue-86).
 - **Objetivo:** demostrar el cálculo con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#88](#^issue-88).
 
-**Rama propuesta.** `Vaqcrow#87_Task_Test_deterministic_revenue_share_calculation` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#87_Task_Test_deterministic_revenue_share_calculation`, entregada por el PR [#342](https://github.com/reyduar/Vaqcrow/pull/342).
 
 ### #88 — Documentar evidencia del cálculo determinístico de revenue share
 
