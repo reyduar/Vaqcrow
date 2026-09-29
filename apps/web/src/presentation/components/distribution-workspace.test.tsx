@@ -194,4 +194,38 @@ describe("DistributionWorkspace", () => {
     expect(await screen.findByText(/Fallida/)).toBeInTheDocument();
     expect(screen.getByText(/no alcanza a cubrir el monto/i)).toBeInTheDocument();
   });
+
+  it("names the distribution id to the page as soon as the prepare answer carries it", async () => {
+    const onDistributionIdentified = vi.fn();
+    render(
+      <DistributionWorkspace
+        gateway={createGateway()}
+        wallet={createWallet()}
+        applicationId={null}
+        onDistributionIdentified={onDistributionIdentified}
+      />
+    );
+    await connect();
+    await prepare();
+
+    expect(onDistributionIdentified).toHaveBeenCalledWith(DISTRIBUTION_ID);
+  });
+
+  it("re-declares the distribution id when the submit answer names it", async () => {
+    const onDistributionIdentified = vi.fn();
+    render(
+      <DistributionWorkspace
+        gateway={createGateway()}
+        wallet={createWallet()}
+        applicationId={null}
+        onDistributionIdentified={onDistributionIdentified}
+      />
+    );
+    await connect();
+    await prepare();
+    acknowledgeAndSign();
+
+    await screen.findByText(/Enviada · pendiente de confirmación/i);
+    expect(onDistributionIdentified).toHaveBeenLastCalledWith(DISTRIBUTION_ID);
+  });
 });

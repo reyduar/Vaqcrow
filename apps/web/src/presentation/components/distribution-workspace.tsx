@@ -151,6 +151,14 @@ export interface DistributionWorkspaceProps {
   readonly wallet?: WalletPort;
   /** Traceability link only (`D4`); defaults to the demo's single fixed application. */
   readonly applicationId?: string | null;
+  /**
+   * The id the page read from `?distribution=`. It is only rendered as the
+   * current reference; nothing is read back from it here (resuming a
+   * stateless prepared distribution is deliberately out of this unit's scope).
+   */
+  readonly distributionId?: string | null;
+  /** Called with the id the prepare/submit answer named, so the page can move it into the URL (`D3`). */
+  readonly onDistributionIdentified?: (distributionId: string) => void;
 }
 
 /**
@@ -167,7 +175,9 @@ export interface DistributionWorkspaceProps {
 export function DistributionWorkspace({
   gateway = defaultGateway,
   wallet = defaultWallet,
-  applicationId = DEMO_APPLICATION_ID
+  applicationId = DEMO_APPLICATION_ID,
+  distributionId = null,
+  onDistributionIdentified
 }: DistributionWorkspaceProps) {
   const inFlightRef = useRef(false);
   const connectingRef = useRef(false);
@@ -230,6 +240,9 @@ export function DistributionWorkspace({
         setSnapshot(undefined);
         setApplied(undefined);
         setIsReviewOpen(true);
+        // The prepared answer is the first thing that names the distribution; the
+        // page uses this to put the id in the URL so the hash survives navigation.
+        onDistributionIdentified?.(result.value.distributionId);
       } else {
         setFailure(failureOfKind(result.error.kind));
       }
@@ -239,7 +252,7 @@ export function DistributionWorkspace({
       inFlightRef.current = false;
       setIsPreparing(false);
     }
-  }, [gateway, publicKey, applicationId]);
+  }, [gateway, publicKey, applicationId, onDistributionIdentified]);
 
   const sign = useCallback(async () => {
     if (!prepared) return;
@@ -276,6 +289,9 @@ export function DistributionWorkspace({
         setApplied(result.value.applied);
         setIsReviewOpen(false);
         setReviewAttempted(false);
+        // The submit answer carries the same id the prepare did; re-declaring it
+        // keeps the URL correct even if the prepared answer was never seen.
+        onDistributionIdentified?.(result.value.distribution.distributionId);
       } else {
         setFailure(failureOfKind(result.error.kind));
       }
@@ -285,7 +301,7 @@ export function DistributionWorkspace({
       inFlightRef.current = false;
       setIsSubmitting(false);
     }
-  }, [gateway, wallet, prepared]);
+  }, [gateway, wallet, prepared, onDistributionIdentified]);
 
   const refreshStatus = useCallback(async () => {
     if (!gateway || !snapshot) return;
@@ -327,6 +343,15 @@ export function DistributionWorkspace({
         El servicio arma la transacción de distribución y declara en qué red debe firmarse. Revise
         la transacción y fírmela en su wallet; Vaqcrow nunca recibe sus claves ni mueve los fondos.
       </p>
+
+      {/* The id the page read from `?distribution=`, shown so a reload keeps the
+          reference visible; nothing is read back from it in this unit. */}
+      {distributionId ? (
+        <p className="text-sm">
+          Referencia de la distribución:{" "}
+          <span className="font-mono text-xs break-all">{distributionId}</span>
+        </p>
+      ) : null}
 
       <p aria-live="polite" className="text-sm">
         {publicKey ? `Wallet conectada: ${publicKey}` : "Wallet no conectada"}
