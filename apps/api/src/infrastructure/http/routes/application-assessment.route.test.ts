@@ -299,6 +299,109 @@ describe("POST /application-reviews/:applicationId/assessments", () => {
     expect(response.json().correlationId).not.toBe(HANDOFF_ID);
   });
 
+  it.each([
+    [
+      "timeout",
+      createSimulatedAssessmentProvider({ output: VALID_OUTPUT, failWith: "timeout", now: () => FIXED_NOW })
+    ],
+    [
+      "provider_unavailable",
+      createSimulatedAssessmentProvider({
+        output: VALID_OUTPUT,
+        failWith: "provider_unavailable",
+        now: () => FIXED_NOW
+      })
+    ],
+    [
+      "invalid_output",
+      createSimulatedAssessmentProvider({
+        output: { ...VALID_OUTPUT, confidence: 72 },
+        now: () => FIXED_NOW
+      })
+    ],
+    [
+      "unknown_evidence_reference",
+      createSimulatedAssessmentProvider({
+        output: { ...VALID_OUTPUT, reasons: [{ claim: "Inventada", evidenceRefs: ["sales:2025-12"] }] },
+        now: () => FIXED_NOW
+      })
+    ]
+  ])("routes a %s failure to 201 manual review with only the sanitized routing keys", async (code, provider) => {
+    const { repository } = portReturning({});
+    app = appWith(repository, provider);
+
+    const response = await app.inject({
+      method: "POST",
+      url: URL,
+      payload: { evidence: EVIDENCE, handoffId: HANDOFF_ID }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body).toMatchObject({
+      outcome: "manual_review",
+      manualReviewRequired: true,
+      inputsPreserved: true,
+      failureCode: code,
+      handoff: "persisted",
+      applied: true
+    });
+    expect(body).not.toHaveProperty("assessment");
+    expect(body).not.toHaveProperty("recommendation");
+    expect(Object.keys(body).sort()).toEqual([
+      "applicationState",
+      "applied",
+      "correlationId",
+      "failureCode",
+      "handoff",
+      "inputsPreserved",
+      "manualReviewRequired",
+      "outcome"
+    ]);
+  });
+
+  it("returns 201 when a replayed handoff completes the pending transition (crash recovery)", async () => {
+    const { repository } = portReturning({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: false } },
+      transition: { ok: true, value: { applied: true, snapshot: HUMAN_REVIEW } }
+    });
+    app = appWith(repository);
+
+    const response = await app.inject({
+      method: "POST",
+      url: URL,
+      payload: { evidence: EVIDENCE, handoffId: HANDOFF_ID }
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      outcome: "manual_review",
+      handoff: "replayed",
+      inputsPreserved: true,
+      applied: true
+    });
+  });
+
+  it("is deterministic: the same request yields the same sanitized body across runs", async () => {
+    const once = async () => {
+      const { repository } = portReturning({});
+      const runApp = appWith(repository);
+      const response = await runApp.inject({
+        method: "POST",
+        url: URL,
+        payload: { evidence: EVIDENCE, handoffId: HANDOFF_ID }
+      });
+      await runApp.close();
+      // The transport id is generated per request by design; everything the
+      // response actually reports is otherwise stable.
+      const body = response.json() as Record<string, unknown>;
+      delete body["correlationId"];
+      return body;
+    };
+
+    expect(await once()).toEqual(await once());
+  });
+
   it("is not registered when no application assessment is supplied", async () => {
     app = buildApp();
 

@@ -464,4 +464,83 @@ describe("routeAssessmentFailureToManualReview", () => {
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     expect(fake.recordAssessmentFailureHandoff).not.toHaveBeenCalled();
   });
+
+  it("completes a pending transition on a replayed handoff (crash recovery) as applied", async () => {
+    // The durable handoff survived but the transition did not: a same-key retry
+    // replays the handoff and finishes the transition. `applied` follows the
+    // transition, so this attempt still counts as the one that routed it.
+    const fake = dependencies({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: false } },
+      transition: { ok: true, value: { applied: true, snapshot: HUMAN_REVIEW } }
+    });
+
+    const result = await routeAssessmentFailureToManualReview(fake.dependencies, input);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        outcome: "manual_review",
+        manualReviewRequired: true,
+        inputsPreserved: true,
+        applicationState: "human_review",
+        failureCode: "timeout",
+        handoff: "replayed",
+        correlationId: CORRELATION_ID,
+        applied: true
+      }
+    });
+  });
+
+  it("labels the failure with exactly the routing keys: no assessment, recommendation, decision or approval", async () => {
+    const fake = dependencies({ handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } });
+
+    const result = await routeAssessmentFailureToManualReview(fake.dependencies, input);
+
+    if (!result.ok) throw new Error("expected a manual-review routing outcome");
+    expect(Object.keys(result.value).sort()).toEqual([
+      "applicationState",
+      "applied",
+      "correlationId",
+      "failureCode",
+      "handoff",
+      "inputsPreserved",
+      "manualReviewRequired",
+      "outcome"
+    ]);
+  });
+
+  it("is deterministic and reaches no network: the same input yields the same result across runs", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    try {
+      const runFailure = async () => {
+        const fake = dependencies({ handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } });
+        const result = await routeAssessmentFailureToManualReview(fake.dependencies, input);
+        return { result, command: fake.recordAssessmentFailureHandoff.mock.calls[0]?.[0] };
+      };
+      const runSuccess = async () => {
+        const fake = dependencies(
+          { handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } },
+          providerWith(VALID_OUTPUT)
+        );
+        return routeAssessmentFailureToManualReview(fake.dependencies, input);
+      };
+
+      const [failureA, failureB] = await Promise.all([runFailure(), runFailure()]);
+      const [successA, successB] = await Promise.all([runSuccess(), runSuccess()]);
+
+      expect(failureA.result).toEqual(failureB.result);
+      expect(failureA.command).toEqual(failureB.command);
+      expect(successA).toEqual(successB);
+      // The metadata timestamp is the injected fixed clock, never wall time, so the
+      // advisory result is stable across runs.
+      expect(successA).toMatchObject({
+        ok: true,
+        value: { metadata: { generatedAt: FIXED_NOW, source: "simulated" } }
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
 });
