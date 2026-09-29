@@ -80,6 +80,21 @@ export type {
   SmeRequest
 } from "./sme-evidence.js";
 
+export {
+  assessmentEvidenceBundleSchema,
+  assessmentFailureCodeSchema,
+  assessmentFailureHandoffCommandSchema,
+  assessmentProviderProvenanceSchema,
+  parseAssessmentFailureHandoffCommand
+} from "./assessment-failure-handoff.js";
+export type {
+  AssessmentFailureCode,
+  AssessmentFailureHandoffCommand,
+  AssessmentFailureHandoffRecord,
+  AssessmentHandoffEvidenceBundle,
+  AssessmentProviderProvenance
+} from "./assessment-failure-handoff.js";
+
 export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
 
