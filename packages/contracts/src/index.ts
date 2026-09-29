@@ -37,6 +37,12 @@ export { fundingIntentIdSchema, parseFundingIntentId } from "./funding-intent-id
 export type { FundingIntentId } from "./funding-intent-id.js";
 
 export {
+  parseRevenueShareDistributionId,
+  revenueShareDistributionIdSchema
+} from "./revenue-share-distribution-id.js";
+export type { RevenueShareDistributionId } from "./revenue-share-distribution-id.js";
+
+export {
   fundingIntentSnapshotSchema,
   fundingIntentStateSchema,
   fundingIntentTermsSchema,
@@ -60,6 +66,32 @@ export type {
   PreparedFundingIntent,
   SubmitFundingIntentCommand
 } from "./funding-intent.js";
+
+export {
+  distributionRecipientSchema,
+  parseDistributionRecipient,
+  parsePrepareRevenueShareDistributionCommand,
+  parsePreparedRevenueShareDistribution,
+  parseRevenueShareDistributionSnapshot,
+  parseRevenueShareDistributionState,
+  parseRevenueShareDistributionTerms,
+  parseSubmitRevenueShareDistributionCommand,
+  prepareRevenueShareDistributionCommandSchema,
+  preparedRevenueShareDistributionSchema,
+  revenueShareDistributionSnapshotSchema,
+  revenueShareDistributionStateSchema,
+  revenueShareDistributionTermsSchema,
+  submitRevenueShareDistributionCommandSchema
+} from "./revenue-share-distribution.js";
+export type {
+  DistributionRecipient,
+  PrepareRevenueShareDistributionCommand,
+  PreparedRevenueShareDistribution,
+  RevenueShareDistributionSnapshot,
+  RevenueShareDistributionState,
+  RevenueShareDistributionTerms,
+  SubmitRevenueShareDistributionCommand
+} from "./revenue-share-distribution.js";
 
 export {
   evidenceReferenceSchema,
