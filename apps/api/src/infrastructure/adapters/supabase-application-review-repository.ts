@@ -1,11 +1,13 @@
 import {
   applicationReviewStateSchema,
+  parseApplicationManualReviewContext,
   parseApplicationReviewSnapshot,
   parseAssessmentFailureHandoffCommand,
   parseHumanDecisionRecord
 } from "@vaqcrow/contracts";
 import type {
   ApplicationId,
+  ApplicationManualReviewContext,
   ApplicationReviewSnapshot,
   ApplicationReviewState,
   AssessmentFailureHandoffCommand,
@@ -25,6 +27,7 @@ import type {
 } from "../../application/ports/application-review-repository-port.js";
 
 const TABLE = "application_review";
+const ASSESSMENT_FAILURE_HANDOFF_TABLE = "assessment_failure_handoff";
 
 // Postgres error codes this adapter maps explicitly; every other code (including the
 // RLS-denial 42501) falls through to the generic "unavailable" outcome.
@@ -69,6 +72,15 @@ interface AssessmentFailureHandoffRpcRow {
   readonly provider_provenance?: unknown;
   readonly recorded_at?: unknown;
   readonly actual_state?: unknown;
+}
+
+/** The columns the read path selects; the sanitized record has no provider diagnostics. */
+interface AssessmentFailureHandoffReadRow {
+  readonly application_id?: unknown;
+  readonly failure_code?: unknown;
+  readonly evidence_bundle?: unknown;
+  readonly provider_provenance?: unknown;
+  readonly recorded_at?: unknown;
 }
 
 export class SupabaseApplicationReviewRepository implements ApplicationReviewRepositoryPort {
@@ -213,6 +225,54 @@ export class SupabaseApplicationReviewRepository implements ApplicationReviewRep
       }
 
       return this.mapAssessmentFailureHandoffRpcRow(data[0]);
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async readManualReviewContext(
+    applicationId: ApplicationId
+  ): Promise<ApplicationReviewRepositoryResult<ApplicationManualReviewContext>> {
+    try {
+      const { data, error } = await this.client
+        .from(ASSESSMENT_FAILURE_HANDOFF_TABLE)
+        .select()
+        .eq("application_id", applicationId)
+        .maybeSingle();
+
+      if (error) {
+        // A read has no correlation in hand; log the lookup subject instead.
+        return { ok: false, error: this.toRepositoryError(error, undefined, applicationId) };
+      }
+
+      if (!data) {
+        // No handoff row means no persisted manual-review context. Report that
+        // truthfully rather than fabricating empty-but-successful content.
+        return { ok: false, error: { code: "not_found" } };
+      }
+
+      const current = await this.findById(applicationId);
+      if (!current.ok) {
+        return current;
+      }
+
+      const row = data as AssessmentFailureHandoffReadRow;
+
+      // Re-validate every stored column through the shared parser: a malformed
+      // row is an `unavailable` outcome, never a record that silently widened.
+      return {
+        ok: true,
+        value: parseApplicationManualReviewContext({
+          applicationId: row.application_id,
+          applicationState: current.value.state,
+          failureCode: row.failure_code,
+          evidence: row.evidence_bundle,
+          ...(row.provider_provenance === null || row.provider_provenance === undefined
+            ? {}
+            : { providerProvenance: row.provider_provenance }),
+          recordedAt: row.recorded_at
+        })
+      };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
     }

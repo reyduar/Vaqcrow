@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
 import type { ApplicationAssessmentRouteDependencies } from "./routes/application-assessment.route.js";
+import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
@@ -57,6 +58,7 @@ export function buildApp(dependencies: {
   registerHealthRoute(app);
   if (dependencies.applicationReviewRepository) {
     registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
+    registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);

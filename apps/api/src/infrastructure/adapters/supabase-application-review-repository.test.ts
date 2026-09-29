@@ -64,6 +64,7 @@ function fakeError(code: string): FakePostgrestError {
 
 /** Arguments captured from calls the adapter makes on the fake query builder. */
 interface RecordedCalls {
+  readonly from: string[];
   readonly insert: unknown[];
   readonly update: unknown[];
   readonly eq: Array<readonly [column: string, value: unknown]>;
@@ -84,7 +85,7 @@ interface RecordedCalls {
  */
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { insert: [], update: [], eq: [], rpc: [] };
+  const calls: RecordedCalls = { from: [], insert: [], update: [], eq: [], rpc: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -122,7 +123,10 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
 
   return {
     client: {
-      from: () => builder(),
+      from: (table: string) => {
+        calls.from.push(table);
+        return builder();
+      },
       rpc: (functionName: string, params: unknown) => {
         calls.rpc.push([functionName, params]);
         return nextResult();
@@ -627,6 +631,125 @@ describe("SupabaseApplicationReviewRepository", () => {
       );
 
       expect(result).toEqual({ ok: false, error: { code: "state_conflict", actualState: "approved" } });
+    });
+  });
+
+  describe("readManualReviewContext", () => {
+    const RECORDED_AT = "2026-09-28T12:05:00.000Z";
+
+    function storedHandoffRow(
+      overrides: Readonly<Record<string, unknown>> = {}
+    ): Record<string, unknown> {
+      return {
+        application_id: FAILURE_HANDOFF.applicationId,
+        correlation_id: FAILURE_HANDOFF.correlationId,
+        failure_code: FAILURE_HANDOFF.failureCode,
+        evidence_bundle: FAILURE_HANDOFF.evidence,
+        provider_provenance: FAILURE_HANDOFF.providerProvenance,
+        recorded_at: RECORDED_AT,
+        ...overrides
+      };
+    }
+
+    function applicationRow(state: string): Record<string, unknown> {
+      return {
+        application_id: APPLICATION_ID,
+        state,
+        last_correlation_id: CORRELATION_ID,
+        created_at: "2026-09-18T00:00:00.000Z",
+        updated_at: "2026-09-28T12:05:00.000Z"
+      };
+    }
+
+    it("reads the persisted sanitized handoff plus the application state, from the handoff table", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        { data: storedHandoffRow(), error: null },
+        { data: applicationRow("human_review"), error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          applicationId: APPLICATION_ID,
+          applicationState: "human_review",
+          failureCode: "invalid_output",
+          evidence: FAILURE_HANDOFF.evidence,
+          providerProvenance: FAILURE_HANDOFF.providerProvenance,
+          recordedAt: RECORDED_AT
+        }
+      });
+      // The handoff read targets the handoff table; the state comes from the review row.
+      expect(calls.from).toEqual(["assessment_failure_handoff", "application_review"]);
+      expect(calls.eq).toEqual([
+        ["application_id", APPLICATION_ID],
+        ["application_id", APPLICATION_ID]
+      ]);
+    });
+
+    it("omits provenance when the stored row declares none", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: storedHandoffRow({ provider_provenance: null }), error: null },
+        { data: applicationRow("human_review"), error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      if (!result.ok) throw new Error("expected the manual-review context to be read");
+      expect(result.value).not.toHaveProperty("providerProvenance");
+      expect(result.value.providerProvenance).toBeUndefined();
+    });
+
+    it("reports not_found truthfully when no handoff exists, without fabricating empty content", async () => {
+      const { client } = createFakeSupabaseClient([{ data: null, error: null }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+
+    it("re-validates the stored row: a malformed failure code is unavailable, never a widened record", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: storedHandoffRow({ failure_code: "raw vendor message" }), error: null },
+        { data: applicationRow("human_review"), error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+
+    it("sanitizes a PostgREST error on the handoff read without provider diagnostics", async () => {
+      const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("42501") }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      if (result.ok) throw new Error("expected a sanitized repository error");
+      expect(result.error).not.toHaveProperty("message");
+      expect(result.error).not.toHaveProperty("details");
+      expect(result.error).not.toHaveProperty("hint");
+    });
+
+    it("maps a transport-level rejection to unavailable", async () => {
+      const { client } = createFakeSupabaseClient([{ reject: new Error("fetch failed") }]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).readManualReviewContext(
+        APPLICATION_ID
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     });
   });
 

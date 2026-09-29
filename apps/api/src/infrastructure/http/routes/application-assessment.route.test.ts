@@ -84,7 +84,8 @@ function portReturning(overrides: {
         .mockResolvedValue(overrides.findById ?? { ok: true, value: HUMAN_REVIEW }),
       transition,
       recordHumanDecision: vi.fn(),
-      recordAssessmentFailureHandoff
+      recordAssessmentFailureHandoff,
+      readManualReviewContext: vi.fn()
     },
     recordAssessmentFailureHandoff
   };

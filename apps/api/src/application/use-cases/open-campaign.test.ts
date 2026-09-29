@@ -46,7 +46,8 @@ function applicationReviews(
     findById: vi.fn().mockResolvedValue(find),
     transition: vi.fn(),
     recordHumanDecision: vi.fn(),
-    recordAssessmentFailureHandoff: vi.fn()
+    recordAssessmentFailureHandoff: vi.fn(),
+    readManualReviewContext: vi.fn()
   };
 }
 
