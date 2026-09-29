@@ -90,4 +90,15 @@ export interface ApplicationReviewRepositoryPort {
   readManualReviewContext(
     applicationId: ApplicationId
   ): Promise<ApplicationReviewRepositoryResult<ApplicationManualReviewContext>>;
+
+  /**
+   * Reads the application's most recently recorded human decision, ordered by
+   * `decided_at` descending. `not_found` means the application has no recorded
+   * decision yet and is reported truthfully rather than as empty content. Only
+   * the sanitized record fields cross this boundary; raw provider output or
+   * errors never do.
+   */
+  readLatestHumanDecision(
+    applicationId: ApplicationId
+  ): Promise<ApplicationReviewRepositoryResult<HumanDecisionRecord>>;
 }

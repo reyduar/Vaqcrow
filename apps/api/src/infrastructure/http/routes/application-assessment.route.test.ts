@@ -85,7 +85,8 @@ function portReturning(overrides: {
       transition,
       recordHumanDecision: vi.fn(),
       recordAssessmentFailureHandoff,
-      readManualReviewContext: vi.fn()
+      readManualReviewContext: vi.fn(),
+      readLatestHumanDecision: vi.fn()
     },
     recordAssessmentFailureHandoff
   };

@@ -4,6 +4,7 @@ import {
   parseHumanDecisionCommand,
   parseHumanDecisionRecord
 } from "@vaqcrow/contracts";
+import type { HumanDecisionRecord } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -46,9 +47,35 @@ function repositoryReturning(
       transition: vi.fn(),
       recordHumanDecision,
       recordAssessmentFailureHandoff: vi.fn(),
-      readManualReviewContext: vi.fn()
+      readManualReviewContext: vi.fn(),
+      readLatestHumanDecision: vi.fn()
     },
     recordHumanDecision
+  };
+}
+
+function repositoryReading(
+  result: ApplicationReviewRepositoryResult<HumanDecisionRecord>
+): {
+  repository: ApplicationReviewRepositoryPort;
+  readLatestHumanDecision: ReturnType<
+    typeof vi.fn<ApplicationReviewRepositoryPort["readLatestHumanDecision"]>
+  >;
+} {
+  const readLatestHumanDecision = vi
+    .fn<ApplicationReviewRepositoryPort["readLatestHumanDecision"]>()
+    .mockResolvedValue(result);
+  return {
+    repository: {
+      create: vi.fn(),
+      findById: vi.fn(),
+      transition: vi.fn(),
+      recordHumanDecision: vi.fn(),
+      recordAssessmentFailureHandoff: vi.fn(),
+      readManualReviewContext: vi.fn(),
+      readLatestHumanDecision
+    },
+    readLatestHumanDecision
   };
 }
 
@@ -135,5 +162,85 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
 
     expect(generatedCorrelationId).not.toBe(CALLER_CORRELATION_ID);
     expect(response.headers["x-correlation-id"]).toBe(generatedCorrelationId);
+  });
+});
+
+describe("GET /application-reviews/:applicationId/decisions", () => {
+  let app: FastifyInstance | undefined;
+
+  afterEach(async () => {
+    await app?.close();
+    app = undefined;
+  });
+
+  it("returns the application's latest recorded decision", async () => {
+    const fake = repositoryReading({ ok: true, value: decision });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ decision });
+    expect(fake.readLatestHumanDecision).toHaveBeenCalledOnce();
+    expect(fake.readLatestHumanDecision).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+
+  it("reports not_found truthfully when no decision is recorded", async () => {
+    const fake = repositoryReading({ ok: false, error: { code: "not_found" } });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("rejects a malformed application id with 400 before calling the repository", async () => {
+    const fake = repositoryReading({ ok: true, value: decision });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/application-reviews/not-an-id/decisions"
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(fake.readLatestHumanDecision).not.toHaveBeenCalled();
+  });
+
+  it("maps unavailable to a sanitized 503", async () => {
+    const fake = repositoryReading({ ok: false, error: { code: "unavailable" } });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("maps an unexpected state_conflict to 503 unavailable rather than a write-path status", async () => {
+    const fake = repositoryReading({
+      ok: false,
+      error: { code: "state_conflict", actualState: "approved" }
+    });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });

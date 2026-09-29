@@ -61,7 +61,8 @@ function repositoryDouble(read: ReadResult): {
       transition: vi.fn(),
       recordHumanDecision: vi.fn(),
       recordAssessmentFailureHandoff: vi.fn(),
-      readManualReviewContext
+      readManualReviewContext,
+      readLatestHumanDecision: vi.fn()
     },
     readManualReviewContext
   };
