@@ -119,7 +119,13 @@ Horizon, LLM or credential was needed.
 
 ## RDD and review evidence
 
-Pending the assessment of this unit's range.
+RDD is enabled globally. The range from `db3de55` assessed **`passive`** — `reasons: [non_executable_only]`,
+**6 changed paths / 317 changed lines** — with **`review_due: false`**, reason `passive`. This unit is
+documentation only, so no reviewer, consent envelope, refuter, correction or validator was involved and no
+receipt was created: that is the contract's own outcome for a passive candidate, not a skipped gate. The
+proportional check is the structural readback recorded above — the parent read the document back, verified
+the cited paths, and corrected the one imprecise criterion verdict — plus the re-run of the checks the
+document cites.
 
 ## Rollback boundary
 
