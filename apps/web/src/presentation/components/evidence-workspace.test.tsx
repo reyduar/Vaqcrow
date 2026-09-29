@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import { HttpClientError } from "@/application/ports/http-client-port";
@@ -239,5 +239,76 @@ describe("EvidenceWorkspace", () => {
     );
 
     expect(screen.getByText("Cargando la evidencia…")).toBeInTheDocument();
+  });
+
+  it("renders the synthetic case, an unavailable decision and two absent movements without a configured backend", async () => {
+    // No base URL means every env-configured gateway is null; the workspace must
+    // still produce a total answer rather than an empty or endless loading one.
+    render(
+      <EvidenceWorkspace
+        humanDecisionGateway={null}
+        campaignGateway={null}
+        distributionGateway={null}
+      />
+    );
+
+    const synthetic = (await screen.findByText("Caso simulado")).closest("li");
+    expect(synthetic).toHaveAttribute("data-state", "observed");
+    expect(within(synthetic as HTMLElement).getByText("SIMULADO")).toBeInTheDocument();
+
+    // The decision read was attempted against no backend: that is "cannot read",
+    // and the fallback must never present it as the absence of a decision.
+    const decisionEntry = screen.getByText("Decisión humana").closest("li");
+    expect(decisionEntry).toHaveAttribute("data-state", "unavailable");
+    expect(within(decisionEntry as HTMLElement).getByText("No disponible")).toBeInTheDocument();
+    expect(within(decisionEntry as HTMLElement).queryByText("Ausente")).not.toBeInTheDocument();
+
+    // A missing id means the movement was not run in this session — an absence,
+    // not a source that could not be read.
+    for (const title of ["Bóveda de campaña", "Distribución de ingresos"]) {
+      const movement = screen.getByText(title).closest("li");
+      expect(movement).toHaveAttribute("data-state", "absent");
+      expect(within(movement as HTMLElement).getByText("Ausente")).toBeInTheDocument();
+    }
+
+    expect(screen.queryByText("Cargando la evidencia…")).not.toBeInTheDocument();
+    // Nothing was read, so nothing may claim the movement succeeded.
+    expect(screen.queryByText(/Confirmada en el ledger/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Aprobada")).not.toBeInTheDocument();
+  });
+
+  it("reports both movements as unavailable, never as not run, when the backend is unconfigured but both ids are present", async () => {
+    // An id proves the step ran, so an unconfigured backend must surface as
+    // "cannot read" — reporting it as absent would deny a run that happened.
+    render(
+      <EvidenceWorkspace
+        campaignId={CAMPAIGN_ID}
+        distributionId={DISTRIBUTION_ID}
+        humanDecisionGateway={null}
+        campaignGateway={null}
+        distributionGateway={null}
+      />
+    );
+
+    await screen.findByText("Caso simulado");
+
+    expect(screen.getAllByText("No disponible")).toHaveLength(3);
+    expect(screen.queryByText("Ausente")).not.toBeInTheDocument();
+  });
+
+  it("keeps the null-gateway path total: it renders without throwing and has no gateway to call", async () => {
+    // With `null` gateways there is no callable object at all, so the only
+    // remaining failure mode is a throw; the fallback must stay total.
+    expect(() =>
+      render(
+        <EvidenceWorkspace
+          humanDecisionGateway={null}
+          campaignGateway={null}
+          distributionGateway={null}
+        />
+      )
+    ).not.toThrow();
+
+    expect(await screen.findByText("Caso simulado")).toBeInTheDocument();
   });
 });
