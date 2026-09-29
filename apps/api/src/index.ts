@@ -47,6 +47,11 @@ const app = buildApp({
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
+  applicationAssessment: {
+    repository: applicationReviewRepository,
+    provider: assessmentProvider,
+    timeoutMs: config.llm.timeoutMs
+  },
   campaign,
   salesFeed: { provider: salesDataProvider },
   cors: config.cors
