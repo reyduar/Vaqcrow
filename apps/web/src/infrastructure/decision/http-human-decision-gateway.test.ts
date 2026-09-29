@@ -83,6 +83,15 @@ describe("HttpHumanDecisionGateway.readLatest", () => {
   });
 
   it.each([
+    ["an unrelated code", new HttpClientError("http", 404, undefined, "application_not_found")],
+    ["no code at all", new HttpClientError("http", 404)]
+  ])("throws on a 404 that is %s: a failure to read is not an absence", async (_name, error) => {
+    const { port } = httpRejects(error);
+
+    await expect(new HttpHumanDecisionGateway(port).readLatest(APPLICATION_ID)).rejects.toBe(error);
+  });
+
+  it.each([
     ["missing decision", { other: 1 }],
     ["extra keys", { decision: record, extra: 1 }],
     ["broken record", { decision: { ...record, decidedAt: "yesterday" } }]

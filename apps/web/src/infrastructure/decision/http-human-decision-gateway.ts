@@ -58,10 +58,17 @@ export class HttpHumanDecisionGateway implements HumanDecisionGateway {
       });
       body = response.body;
     } catch (error) {
-      // A `404 not_found` is the API's truthful "no decision recorded yet";
-      // it resolves to `null`. Every other failure — including a malformed
-      // body — is rethrown so a broken backend is never mistaken for absence.
-      if (error instanceof HttpClientError && error.kind === "http" && error.status === 404) {
+      // Only the API's own `not_found` answer is a truthful "no decision recorded
+      // yet", and it resolves to `null`. A 404 that is not that answer — a
+      // misrouted or misconfigured base URL, a different service — is a failure to
+      // read, not proof that no decision exists, and is rethrown as such
+      // (R3-latest-decision-absence-classification). So is a malformed body.
+      if (
+        error instanceof HttpClientError &&
+        error.kind === "http" &&
+        error.status === 404 &&
+        error.errorCode === "not_found"
+      ) {
         return null;
       }
       throw error;
