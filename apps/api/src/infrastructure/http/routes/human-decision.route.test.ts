@@ -25,6 +25,7 @@ const body = {
 } as const;
 const command = parseHumanDecisionCommand({ applicationId: APPLICATION_ID, ...body });
 const storedCorrelationId = parseCorrelationId("33333333-3333-4333-8333-333333333333");
+const RECORDED_AT = "2026-09-19T12:00:00.000Z";
 const decision = parseHumanDecisionRecord({
   ...command,
   decidedAt: "2026-09-19T12:00:00.000Z",
@@ -75,6 +76,41 @@ function repositoryReading(
       readManualReviewContext: vi.fn(),
       readLatestHumanDecision
     },
+    readLatestHumanDecision
+  };
+}
+
+/**
+ * A stateful repository double: `recordHumanDecision` stores the record and
+ * `readLatestHumanDecision` returns the newest for that application. It is typed
+ * as the port itself (no cast), so the round-trip exercises the real POST and
+ * GET routes against one shared store rather than two hand-written answers.
+ */
+function statefulRepository(): ApplicationReviewRepositoryPort {
+  let stored: HumanDecisionRecord | undefined;
+
+  const recordHumanDecision = vi
+    .fn<ApplicationReviewRepositoryPort["recordHumanDecision"]>()
+    .mockImplementation(async (input) => {
+      stored = { ...input.command, decidedAt: RECORDED_AT, correlationId: input.correlationId };
+      return { ok: true, value: { record: stored, applied: true } };
+    });
+
+  const readLatestHumanDecision = vi
+    .fn<ApplicationReviewRepositoryPort["readLatestHumanDecision"]>()
+    .mockImplementation(async () =>
+      stored === undefined
+        ? { ok: false, error: { code: "not_found" } }
+        : { ok: true, value: stored }
+    );
+
+  return {
+    create: vi.fn(),
+    findById: vi.fn(),
+    transition: vi.fn(),
+    recordHumanDecision,
+    recordAssessmentFailureHandoff: vi.fn(),
+    readManualReviewContext: vi.fn(),
     readLatestHumanDecision
   };
 }
@@ -242,5 +278,124 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("serializes an envelope of exactly the decision key", async () => {
+    const fake = repositoryReading({ ok: true, value: decision });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    // The web's parser is strict about the envelope: a stray key is silently
+    // dropped there, so the API side pins the wire shape it actually sends.
+    expect(Object.keys(response.json())).toEqual(["decision"]);
+  });
+
+  it("re-parses through the shared contract with every field the web consumes", async () => {
+    const fake = repositoryReading({ ok: true, value: decision });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+    const reparsed = parseHumanDecisionRecord(response.json().decision);
+
+    expect(reparsed).toEqual(decision);
+    // Every field present and none added: a dropped or coerced field would let
+    // the web render a decision the API never recorded.
+    expect(reparsed).toEqual({
+      decisionId: decision.decisionId,
+      applicationId: APPLICATION_ID,
+      outcome: "approved",
+      actor: body.actor,
+      reason: body.reason,
+      approvedLimitArs: body.approvedLimitArs,
+      decidedAt: decision.decidedAt,
+      correlationId: storedCorrelationId
+    });
+  });
+
+  it("keeps a null approved limit null on the wire", async () => {
+    const changesRequested = parseHumanDecisionRecord({
+      decisionId: "44444444-4444-4444-8444-444444444444",
+      applicationId: APPLICATION_ID,
+      outcome: "changes_requested",
+      actor: body.actor,
+      reason: body.reason,
+      approvedLimitArs: null,
+      decidedAt: RECORDED_AT,
+      correlationId: storedCorrelationId
+    });
+    const fake = repositoryReading({ ok: true, value: changesRequested });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+    const reparsed = parseHumanDecisionRecord(response.json().decision);
+
+    // The web omits the limit only because it is null; a coerced value would
+    // silently invent an approval the reviewer never made.
+    expect(response.json().decision.approvedLimitArs).toBeNull();
+    expect(reparsed.approvedLimitArs).toBeNull();
+  });
+
+  it("round-trips a decision through the real POST and GET routes", async () => {
+    app = buildApp({ applicationReviewRepository: statefulRepository() });
+
+    const write = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: body
+    });
+    expect(write.statusCode).toBe(201);
+
+    const read = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    expect(read.statusCode).toBe(200);
+    expect(parseHumanDecisionRecord(read.json().decision)).toEqual(
+      parseHumanDecisionRecord(write.json().decision)
+    );
+  });
+
+  it("keeps an application with no recorded decision a truthful not_found, never an empty success", async () => {
+    app = buildApp({ applicationReviewRepository: statefulRepository() });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+
+    // An unknown application must not read as a successful but empty result.
+    expect(response.statusCode).toBe(404);
+    expect(Object.keys(response.json())).toEqual(["code"]);
+    expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("sanitizes an unavailable read to a 503 that leaks no message, details or hint", async () => {
+    const fake = repositoryReading({ ok: false, error: { code: "unavailable" } });
+    app = buildApp({ applicationReviewRepository: fake.repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`
+    });
+    const responseBody = response.json();
+
+    expect(response.statusCode).toBe(503);
+    expect(Object.keys(responseBody)).toEqual(["code"]);
+    // Only the sanitized code crosses the wire; the repository's raw error text
+    // must never reach the caller.
+    expect(responseBody).not.toHaveProperty("message");
+    expect(responseBody).not.toHaveProperty("details");
+    expect(responseBody).not.toHaveProperty("hint");
   });
 });
