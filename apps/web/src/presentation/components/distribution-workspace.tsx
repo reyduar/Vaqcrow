@@ -6,6 +6,7 @@ import {
   SIMULADO_DISTRIBUTION_LABEL
 } from "@/application/distribution/demo-distribution-recipients";
 import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
+import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import type {
   RevenueShareDistributionErrorKind,
@@ -106,13 +107,6 @@ const WALLET_KIND: Readonly<Record<WalletError["kind"], DistributionFailureKind>
 function toFailure(caught: unknown): DistributionFailure {
   if (caught instanceof WalletError) return failureOfKind(WALLET_KIND[caught.kind]);
   return failureOfKind("unknown");
-}
-
-/** Whole XLM plus up to 7 decimal digits, trailing zeros trimmed. Display only; it never crosses the wire. */
-function formatStroopsAsXlm(stroops: bigint): string {
-  const whole = stroops / 10_000_000n;
-  const fraction = (stroops % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
-  return fraction.length > 0 ? `${whole}.${fraction}` : whole.toString();
 }
 
 /**

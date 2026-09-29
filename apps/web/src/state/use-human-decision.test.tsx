@@ -28,7 +28,7 @@ describe("useHumanDecision", () => {
   it("records a decision and exposes the server record", async () => {
     const record = vi.fn().mockResolvedValue({ applied: true, decision: recordFor(ID_1) });
     const generate = ids(ID_1);
-    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+    const { result } = renderHook(() => useHumanDecision({ record, readLatest: vi.fn() }, APPLICATION_ID, generate));
 
     await act(() => result.current.submit(input));
 
@@ -43,7 +43,7 @@ describe("useHumanDecision", () => {
       .mockRejectedValueOnce(new HttpClientError("network"))
       .mockResolvedValueOnce({ applied: false, decision: recordFor(ID_1) });
     const generate = ids(ID_1, ID_2);
-    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+    const { result } = renderHook(() => useHumanDecision({ record, readLatest: vi.fn() }, APPLICATION_ID, generate));
 
     await act(() => result.current.submit(input));
     expect(result.current.error?.kind).toBe("network");
@@ -59,7 +59,7 @@ describe("useHumanDecision", () => {
   it("uses a new decision id when the payload changed between attempts", async () => {
     const record = vi.fn().mockRejectedValue(new HttpClientError("http", 503, undefined, "unavailable"));
     const generate = ids(ID_1, ID_2);
-    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+    const { result } = renderHook(() => useHumanDecision({ record, readLatest: vi.fn() }, APPLICATION_ID, generate));
 
     await act(() => result.current.submit(input));
     await act(() => result.current.submit({ ...input, reason: "different reason" }));
@@ -71,7 +71,7 @@ describe("useHumanDecision", () => {
   it("surfaces a state conflict without recording anything", async () => {
     const record = vi.fn().mockRejectedValue(new HttpClientError("http", 409, undefined, "state_conflict"));
     const generate = ids(ID_1);
-    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+    const { result } = renderHook(() => useHumanDecision({ record, readLatest: vi.fn() }, APPLICATION_ID, generate));
 
     await act(() => result.current.submit(input));
 
@@ -85,7 +85,7 @@ describe("useHumanDecision", () => {
       .mockRejectedValueOnce(new HttpClientError("http", 409, undefined, "idempotency_conflict"))
       .mockResolvedValueOnce({ applied: true, decision: recordFor(ID_2) });
     const generate = ids(ID_1, ID_2);
-    const { result } = renderHook(() => useHumanDecision({ record }, APPLICATION_ID, generate));
+    const { result } = renderHook(() => useHumanDecision({ record, readLatest: vi.fn() }, APPLICATION_ID, generate));
 
     await act(() => result.current.submit(input));
     expect(result.current.error?.kind).toBe("idempotency_conflict");
@@ -112,7 +112,7 @@ describe("useHumanDecision", () => {
     const record = vi.fn().mockReturnValue(new Promise((r) => (resolve = r)));
     const generate = ids(ID_1);
     const { result } = renderHook(() =>
-      useHumanDecision({ record } as HumanDecisionGateway, APPLICATION_ID, generate)
+      useHumanDecision({ record, readLatest: vi.fn() } as HumanDecisionGateway, APPLICATION_ID, generate)
     );
 
     let first!: Promise<void>;
