@@ -274,6 +274,25 @@ describe("revenueShareDistributionTermsSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects a recipient equal to the source account", () => {
+    const result = revenueShareDistributionTermsSchema.safeParse({
+      ...validTerms,
+      recipients: [{ ...recipientOne, accountId: SOURCE_ACCOUNT_ID }]
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ["a contract address", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"],
+    ["a non-account string", "not-a-stellar-address"],
+    ["a whitespace-padded key", `  ${SOURCE_ACCOUNT_ID}  `]
+  ])("rejects a source account that is %s", (_description, sourceAccountId) => {
+    expect(revenueShareDistributionTermsSchema.safeParse({ ...validTerms, sourceAccountId }).success).toBe(
+      false
+    );
+  });
+
   it.each([
     ["a memo over 28 bytes", { memo: "m".repeat(29) }],
     ["a JSON number amount", { recipients: [{ ...recipientOne, amountStroops: 10_000_000 }] }],
@@ -339,13 +358,14 @@ describe("prepareRevenueShareDistributionCommandSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("compares the trimmed source account, not the raw input", () => {
-    const result = prepareRevenueShareDistributionCommandSchema.safeParse({
-      ...validPrepareCommand,
-      sourceAccountId: `  ${RECIPIENT_ACCOUNT_ID}  `
-    });
-
-    expect(result.success).toBe(false);
+  it.each([
+    ["a contract address", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"],
+    ["a non-account string", "not-a-stellar-address"],
+    ["a whitespace-padded key", `  ${SOURCE_ACCOUNT_ID}  `]
+  ])("rejects a source account that is %s", (_description, sourceAccountId) => {
+    expect(
+      prepareRevenueShareDistributionCommandSchema.safeParse({ ...validPrepareCommand, sourceAccountId }).success
+    ).toBe(false);
   });
 
   it("rejects a duplicate recipient account", () => {
@@ -451,6 +471,15 @@ describe("submitRevenueShareDistributionCommandSchema", () => {
     expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
   });
 
+  it("rejects terms whose recipient is the source account", () => {
+    const result = submitRevenueShareDistributionCommandSchema.safeParse({
+      ...validSubmitCommand,
+      terms: { ...validTerms, recipients: [{ ...recipientOne, accountId: SOURCE_ACCOUNT_ID }] }
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it.each(["signedXdr", "terms", "applicationId"])("rejects a submit command missing %s", (key) => {
     const input: Record<string, unknown> = { ...validSubmitCommand };
     delete input[key];
@@ -506,6 +535,34 @@ describe("revenueShareDistributionSnapshotSchema", () => {
     });
 
     expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+  });
+
+  it("rejects a duplicate recipient account", () => {
+    const result = revenueShareDistributionSnapshotSchema.safeParse({
+      ...validSnapshot,
+      recipients: [recipientOne, { ...recipientTwo, accountId: RECIPIENT_ACCOUNT_ID }]
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a recipient equal to the source account", () => {
+    const result = revenueShareDistributionSnapshotSchema.safeParse({
+      ...validSnapshot,
+      recipients: [{ ...recipientOne, accountId: SOURCE_ACCOUNT_ID }]
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ["a contract address", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"],
+    ["a non-account string", "not-a-stellar-address"],
+    ["a whitespace-padded key", `  ${SOURCE_ACCOUNT_ID}  `]
+  ])("rejects a source account that is %s", (_description, sourceAccountId) => {
+    expect(revenueShareDistributionSnapshotSchema.safeParse({ ...validSnapshot, sourceAccountId }).success).toBe(
+      false
+    );
   });
 
   it.each(Object.keys(validSnapshot))("rejects a snapshot missing %s", (key) => {
