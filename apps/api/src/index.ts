@@ -1,8 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
+import { parseRevenueShareDistributionId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
+import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
+import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
+import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-client.js";
 
@@ -15,6 +20,30 @@ const config = parseApiConfig(process.env);
 const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
+
+// The revenue-share distribution HTTP surface (S2c). Unlike the funding-intent
+// and campaign groups, which `index.ts` deliberately leaves unwired today, this
+// group is served so the demo can actually call it. `explorerUrl` is
+// `undefined` only on the local standalone network, which has no canonical
+// block explorer (`StellarConfig`); the route builds a transaction link from it,
+// so the group is omitted there rather than handed a base that would produce a
+// broken link.
+const revenueShareDistributionRepository = new SupabaseRevenueShareDistributionRepository(supabase);
+
+const revenueShareDistribution =
+  config.stellar.explorerUrl === undefined
+    ? undefined
+    : {
+        ledger: new StellarLedger(config.stellar),
+        xdr: new StellarRevenueShareDistributionXdr(),
+        repository: revenueShareDistributionRepository,
+        network: {
+          network: config.stellar.network,
+          networkPassphrase: config.stellar.networkPassphrase
+        },
+        explorerBaseUrl: config.stellar.explorerUrl,
+        generateDistributionId: () => parseRevenueShareDistributionId(randomUUID())
+      };
 
 /**
  * The composition root is the one place the credential is unwrapped.
@@ -43,6 +72,7 @@ const salesDataProvider = createSimulatedSalesDataProvider();
 
 const app = buildApp({
   applicationReviewRepository,
+  revenueShareDistribution,
   assessment: {
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
