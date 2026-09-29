@@ -147,6 +147,34 @@ block from `packages/domain/src/revenue-share.test.ts`. The #86 assertions and p
 valid inputs are untouched, so the rollback restores exactly the merged engine. This log is the
 corresponding task record.
 
+## Delivery evidence
+
+- Work-unit commit: `68f4ff5 test(domain): prove deterministic revenue share boundaries` (3 files, 448
+  insertions, 6 deletions).
+- Delivery PR: [#342](https://github.com/reyduar/Vaqcrow/pull/342), `test(domain): prove deterministic
+  revenue share boundaries`, targets `main` from
+  `Vaqcrow#87_Task_Test_deterministic_revenue_share_calculation`, `Closes #87`.
+- The Feature already carries a maintainer-approved `size:exception`; this PR records it (454 changed
+  lines).
+- Engram mirror: this document is mirrored under `odd/test-deterministic-revenue-share-calculation/tasks`.
+
+## RDD and review evidence
+
+- RDD is enabled globally. `gentle-ai review assess --cwd <repo> --agent opencode --base-ref 192b5c1
+  --committed-only --json` reported `risk: medium`, `review_due: true`, `review_due_reason:
+  slice_budget_reached`.
+- The preflight produced a `gentle-ai.review-integration.consent/v3` envelope (risk `medium`, 3 files, 454
+  lines). It was relayed losslessly and the maintainer granted consent.
+- `review.start` created lineage `review-fd544180b8571f7e` with one consolidated lens,
+  `review-reliability`; the provider-bound reviewer returned an approved result.
+- Outcome: **approved**. Two non-blocking `SUGGESTION` items are follow-ups, not blockers:
+  `R3-001` (add a reported amount of exactly `0n` to prove the acceptance boundary the strict `< 0n`
+  comparison keeps admitting) and `R3-002` (the repeated-call determinism assertions add little without a
+  mutation attempt between calls).
+- Authority was burned with the exact `review.acknowledge-approved` invocation; the envelope reported
+  `authority: "burned"`. The reviewed commit `68f4ff5` is unchanged.
+
 ## Current next step
 
-T87-06 — commit the work unit, assess it with RDD and mirror this document to Engram.
+Task #87 is delivered. Next: Task #88 (evidence documentation) closes Feature #27. The two `R3-0xx`
+suggestions are optional test sharpening in a later slice.
