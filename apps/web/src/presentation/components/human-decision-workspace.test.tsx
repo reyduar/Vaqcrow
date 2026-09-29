@@ -92,6 +92,24 @@ describe("HumanDecisionWorkspace", () => {
     expect(screen.queryByText(/no respondió a tiempo/i)).not.toBeInTheDocument();
   });
 
+  it("shows a truthful outage notice instead of the simulated recommendation when the context could not be loaded", async () => {
+    const manualReviewGateway: ManualReviewGateway = {
+      load: vi.fn().mockRejectedValue(new HttpClientError("http", 503, undefined, "unavailable"))
+    };
+
+    render(
+      <HumanDecisionWorkspace
+        gateway={null}
+        manualReviewGateway={manualReviewGateway}
+        applicationId={APPLICATION_ID}
+      />
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no se pudo cargar/i);
+    expect(screen.queryByRole("region", { name: /Recomendación de IA/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/72 % de confianza/)).not.toBeInTheDocument();
+  });
+
   it("records a decision through the gateway and shows the server record instead of the form", async () => {
     const gateway: HumanDecisionGateway = {
       record: vi.fn().mockImplementation((command) =>

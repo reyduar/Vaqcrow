@@ -34,6 +34,10 @@ export interface HumanDecisionWorkspaceProps {
  * persisted context for this application. That context is the truth for the
  * failure flow, so it replaces the disconnected simulated recommendation; the
  * fixture stays for the unrelated flow where no handoff exists.
+ *
+ * A request that failed is neither of those: the persisted context may well
+ * exist but could not be read, so the screen says so instead of presenting the
+ * simulated recommendation as if it were the durable record.
  */
 export function HumanDecisionWorkspace({
   gateway = defaultGateway,
@@ -47,6 +51,14 @@ export function HumanDecisionWorkspace({
     <div lang="es" className="grid gap-6 md:grid-cols-2">
       {manualReview.status === "present" ? (
         <ManualReviewContextPanel context={manualReview.context} />
+      ) : manualReview.status === "unavailable" ? (
+        <section role="alert" aria-label="Revisión manual no disponible" className="flex flex-col gap-2">
+          <h3 className="text-lg font-semibold">Revisión manual no disponible</h3>
+          <p>
+            No se pudo cargar el contexto de revisión manual persistido. Vuelva a intentar; no se
+            muestra la recomendación simulada para esta solicitud.
+          </p>
+        </section>
       ) : (
         <section aria-label="Recomendación de IA (simulada, solo asesora)" className="flex flex-col gap-2">
           <header className="flex flex-wrap items-center gap-2">
