@@ -3,6 +3,9 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
+import type { ApplicationAssessmentRouteDependencies } from "./routes/application-assessment.route.js";
+import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
@@ -26,6 +29,7 @@ export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly assessment?: AssessmentRouteDependencies;
+  readonly applicationAssessment?: ApplicationAssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
@@ -54,12 +58,16 @@ export function buildApp(dependencies: {
   registerHealthRoute(app);
   if (dependencies.applicationReviewRepository) {
     registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
+    registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);
   }
   if (dependencies.assessment) {
     registerAssessmentRoute(app, dependencies.assessment);
+  }
+  if (dependencies.applicationAssessment) {
+    registerApplicationAssessmentRoute(app, dependencies.applicationAssessment);
   }
   if (dependencies.campaign) {
     registerCampaignRoute(app, dependencies.campaign);

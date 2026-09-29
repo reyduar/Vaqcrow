@@ -11,6 +11,9 @@ export type { ApplicationId } from "./application-id.js";
 export { humanDecisionIdSchema, parseHumanDecisionId } from "./human-decision-id.js";
 export type { HumanDecisionId } from "./human-decision-id.js";
 
+export { assessmentHandoffIdSchema, parseAssessmentHandoffId } from "./assessment-handoff-id.js";
+export type { AssessmentHandoffId } from "./assessment-handoff-id.js";
+
 export {
   applicationReviewStateSchema,
   applicationReviewSnapshotSchema,
@@ -94,6 +97,12 @@ export type {
   AssessmentHandoffEvidenceBundle,
   AssessmentProviderProvenance
 } from "./assessment-failure-handoff.js";
+
+export {
+  applicationManualReviewContextSchema,
+  parseApplicationManualReviewContext
+} from "./application-manual-review.js";
+export type { ApplicationManualReviewContext } from "./application-manual-review.js";
 
 export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
