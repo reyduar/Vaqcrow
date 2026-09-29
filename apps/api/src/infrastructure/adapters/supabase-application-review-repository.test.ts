@@ -846,10 +846,14 @@ describe("SupabaseApplicationReviewRepository", () => {
         }
       });
       // The read is a plain table query: no RPC, and the newest row is selected by
-      // ordering on decided_at descending and taking one row.
+      // ordering on decided_at descending and taking one row. The second sort column
+      // is the stable tiebreaker, so equal `decided_at` values still resolve to one row.
       expect(calls.from).toEqual(["human_decision"]);
       expect(calls.eq).toEqual([["application_id", APPLICATION_ID]]);
-      expect(calls.order).toEqual([["decided_at", { ascending: false }]]);
+      expect(calls.order).toEqual([
+        ["decided_at", { ascending: false }],
+        ["decision_id", { ascending: true }]
+      ]);
       expect(calls.limit).toEqual([1]);
       expect(calls.rpc).toEqual([]);
     });

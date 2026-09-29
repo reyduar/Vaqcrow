@@ -304,6 +304,10 @@ export class SupabaseApplicationReviewRepository implements ApplicationReviewRep
         .select()
         .eq("application_id", applicationId)
         .order("decided_at", { ascending: false })
+        // `decided_at` defaults to `now()` and could tie; a single sort column would
+        // then leave which row is "latest" unspecified (R3-latest-decision-ordering).
+        // `decision_id` is arbitrary but stable, so a tie still resolves to one row.
+        .order("decision_id", { ascending: true })
         .limit(1);
 
       if (error) {
