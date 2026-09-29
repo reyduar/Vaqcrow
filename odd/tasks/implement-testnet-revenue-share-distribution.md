@@ -70,7 +70,7 @@ revenue-share engine; real investor-account provisioning.
 | S2c | `33c94a4` | prepare/submit/get use cases + route (`/revenue-share-distributions`) + `build-app`/`index` wiring | 48 |
 | S2d | `8c1f260` | `confirm-revenue-share-distributions.ts` + scheduler wiring (`submitted → confirmed/failed`, bounded backoff) | 26 |
 | S2e | `2b75f55` | dedup: one shared `confirmation-policy.ts` + one generalized `ConfirmationScheduler`; the inline loop and the mirrored backoff are gone | — |
-| S3 | pending | web gateway + SIMULADO recipient fixture + `distribution` workspace/page | 29 |
+| S3 | `1712902` | web gateway + SIMULADO recipient fixture + `distribution` workspace/page | 29 |
 
 Verified claims without an API or contract change to the revenue-share engine: the distribution consumes
 the engine's allocations only as `(accountId, amountStroops)` supplied by the caller (D1).
@@ -97,6 +97,46 @@ this branch rather than chained PRs.
 - S2e was an explicit dedup slice so the two confirmation loops share one scheduler and one backoff.
 - Checks, RDD and commits — parent.
 
+## Verification evidence
+
+- `pnpm run verify` — **exit 0**: lint 5/5, typecheck 8/8, workspace test 8/8, build 5/5,
+  `no dependency violations found (497 modules, 1540 dependencies cruised)`, `test:boundaries` 9 files /
+  93 tests. Per package: contracts 13/475, domain 2/120, ai 5/107, api 46/934, web 103/737.
+- Two real defects were caught and fixed before the gate went green:
+  - a Testnet network-passphrase literal in the new web tests tripped the root guard
+    `tests/web-holds-no-network-passphrase.test.ts`; replaced with the project's
+    `passphrase-from-response` convention (`3bda2fd`);
+  - the first `pnpm run verify` runs showed 5-second timeouts in unrelated web tests under `turbo`
+    parallel load (different tests each run, all passing in isolation); one clean run confirmed green.
+- No Supabase integration suite, Stellar Testnet, Horizon, Freighter or LLM provider was used.
+
+## Review evidence
+
+- The whole-range native review was refused with `lens_context_budget_exceeded` (31 files, 7339 lines):
+  no review authority was created and nothing needed abandoning. The range was split into three
+  candidates by maintainer decision.
+- **Candidate A (contracts, S1)** — reviewed and **approved**, authority burned
+  (lineage `review-3cd9fa5eef796d32`). Three non-blocking findings move to Task #90:
+  - `R3-TERMS-SOURCE-CHECK` — `terms` passes `null` as the source, so `submit` (the authoritative
+    boundary) accepts a recipient list containing the source account while `prepare` refuses it; the
+    inline rationale claiming `terms` carries no source identity is wrong because `sourceAccountId` is a
+    terms field.
+  - `R3-SNAPSHOT-RECIPIENT-UNIQUENESS` — the snapshot spreads the raw recipients shape, so it does not
+    carry the duplicate-recipient refinement that terms/prepared/submit enforce.
+  - `R3-SOURCE-ACCOUNT-FORMAT` — `sourceAccountId` uses the loose trimmed-string shape instead of
+    `stellarAccountIdSchema`.
+- **Candidates B (backend S2a–S2e) and C (web S3) were not reviewed**: each needs its own consent and a
+  reviewer run, and B is large enough that it may need further splitting under the same native budget.
+  The maintainer accepted opening the PR with those two without a native receipt.
+
+## Delivery evidence
+
+- PR: [#345](https://github.com/reyduar/Vaqcrow/pull/345), `Closes #89`, targets `main` from
+  `Vaqcrow#89_Task_Implement_Testnet_revenue_share_distribution`.
+- Maintainer-approved `size:exception` (31 files, ~7300 changed lines).
+- Engram mirror: this document is mirrored under `odd/implement-testnet-revenue-share-distribution/tasks`.
+
 ## Current next step
 
-S4 — run `pnpm run verify`, assess and review the delivered range, then open the single PR.
+Task #90 (Feature #28 tests) is the natural home for the three `R3-` findings above, and should also
+cover the multi-payment verifier and the confirmation backoff boundaries end to end.
