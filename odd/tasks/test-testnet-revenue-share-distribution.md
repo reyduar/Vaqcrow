@@ -65,6 +65,49 @@ Feature evidence (#91).
 - T90-02/T90-03/T90-04 — delegated direct: one bounded writer per slice.
 - T90-05/T90-06 — parent: checks, RDD and the commit.
 
+## Observed TDD evidence
+
+### S1 — contract hardening (`65f3a00`)
+
+- RED: 13 failed / 130 passed. Every new case failed for the right reason: terms accepted a recipient equal
+  to the source, the snapshot accepted duplicate recipients and a self-paying list, and `sourceAccountId`
+  accepted a contract address, a non-account string and a padded key.
+- GREEN: the terms refinement now passes `value.sourceAccountId` (so `submit`, which reuses the terms,
+  refuses self-payment too); the snapshot calls the same recipient check; `sourceAccountId` uses
+  `stellarAccountIdSchema`. 143 tests pass.
+- REFACTOR: narrowed the recipient check's source parameter from `string | null` to `string` once the `null`
+  caller disappeared. No app fixture needed changing — every distribution `sourceAccountId` fixture already
+  used a valid `G…` key.
+
+### S2 — end-to-end sequence and backoff boundaries (`revenue-share-distribution-sequence.test.ts`)
+
+- RED: 6 of 7 new sequence tests failed with `TypeError: Do not know how to serialize a BigInt` — the test
+  typed its submit body as the contract's bigint terms instead of the decimal-string wire shape. Production
+  was correct; the test's wire shape was wrong.
+- GREEN: the sequence now runs prepare → signed submit (202, parent + recipients persisted) → exact replay
+  (200, no duplicate rows) → a mismatched envelope (422, repository left empty) → `runOnce` to `confirmed`,
+  to `failed` with a sanitized reason, and to a truthful `submitted` when the port is unavailable and then
+  resumes on the next due tick.
+- Extended `confirm-revenue-share-distributions.test.ts` with the backoff evolution to its clamp, a record
+  past its time bound earning no further attempt, and a two-tick defer that still confirms late.
+
+## Verification evidence
+
+- `pnpm --filter @vaqcrow/contracts test` — 487 passed (distribution contract 143).
+- `pnpm --filter @vaqcrow/api test` — 944 passed (the sequence suite and the confirmation use case included).
+- `pnpm --filter @vaqcrow/contracts run typecheck` / `run lint`, `pnpm --filter @vaqcrow/api run typecheck` /
+  `run lint` — exit 0.
+- `pnpm run boundaries` — no dependency violations (498 modules, 1561 dependencies).
+- `pnpm run verify` — the ordered full gate (lint, typecheck, tests, build, boundaries, boundary tests).
+- No Supabase integration suite, Stellar Testnet, Horizon, Freighter or LLM provider was used; the only
+  wall-clock reads are inside the real production adapters, with injected clocks driving all scheduling.
+
+## Rollback boundary
+
+Revert `packages/contracts/src/revenue-share-distribution.ts` and its test to the #89 state, and remove
+`apps/api/src/infrastructure/http/revenue-share-distribution-sequence.test.ts` plus the added confirmation
+cases. No runtime behaviour beyond the three contract corrections is involved.
+
 ## Current next step
 
-T90-01 — confirm the merged base, then launch the bounded writer for the contract corrections.
+T90-06 — commit the work unit, assess it with RDD and mirror this document to Engram.
