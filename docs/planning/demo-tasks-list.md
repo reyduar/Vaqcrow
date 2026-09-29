@@ -2,15 +2,17 @@
 
 Este documento convierte el backlog canónico de GitHub en una secuencia humana de ejecución verificable. Incluye en su inventario los 109 ítems de tipo Issue de `reyduar/Vaqcrow` presentes en el Project canónico `Vaqcrow-TFM` #4: 8 Epics, 24 Features, 75 Tasks y 2 ítems sin etiqueta de tipo ([#134](https://github.com/reyduar/Vaqcrow/issues/134) y [#189](https://github.com/reyduar/Vaqcrow/issues/189)). El estado base del inventario se verificó el 18 de septiembre de 2026. Con la entrega local de la evaluación/aprobación humana (#19, #62, #63 y #64), de la configuración de pruebas y gates de CI (#15, #47, #48 y #49), de la configuración tipada y límites de secretos (#14, #44, #45 y #46) y de la integración de Stellar y Freighter (#23, #74, #75 y #76) y de la intención de fondeo (#24, #77, #78 y #79), del esquema y guardrails de IA (#20, #65, #66 y #67) y del adaptador LLM reemplazable (#21, #68, #69 y #70), el estado queda en 42 `Backlog`, 3 `Ready` y 64 `Done`. Esos conteos provienen de una consulta verificada al Project #4 el 22 de septiembre de 2026, tomada sobre los 109 ítems de este inventario: el tablero tiene 117 y los 8 issues posteriores al inventario quedan fuera: [#135](https://github.com/reyduar/Vaqcrow/issues/135) y [#145](https://github.com/reyduar/Vaqcrow/issues/145), ambos `Done`; [#196](https://github.com/reyduar/Vaqcrow/issues/196), abierto el 20/09/2026 y en `Backlog`; y la cadena del camino de IA, abierta y cerrada el 22/09/2026 — [#223](https://github.com/reyduar/Vaqcrow/issues/223), [#226](https://github.com/reyduar/Vaqcrow/issues/226), [#228](https://github.com/reyduar/Vaqcrow/issues/228), [#230](https://github.com/reyduar/Vaqcrow/issues/230) y [#232](https://github.com/reyduar/Vaqcrow/issues/232), las cinco en `Done`, mientras que [#59](https://github.com/reyduar/Vaqcrow/issues/59), [#60](https://github.com/reyduar/Vaqcrow/issues/60) y [#61](https://github.com/reyduar/Vaqcrow/issues/61), los tres cerrados, nunca estuvieron en el tablero. El ítem [#134](https://github.com/reyduar/Vaqcrow/issues/134) cuenta como `Done` porque así lo registran su issue (cerrado el 17/09/2026) y el Project #4; sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main`, así que este documento no declara entregada la capa de Auth.js.
 
-**Incorporado después del inventario (2026-09-22).** El 2026-09-22 se agregaron **21 unidades nuevas** —1 Epic, 5 Features y 15 Tasks— para **custodiar el fondeo en un contrato de Stellar**. **No forman parte del inventario de 109 ítems**, y su Epic no lleva rama. Al 2026-09-25 las 21 unidades ya estaban en el Project #4 (21/21 presentes entre #235 y #260, verificado contra el tablero). Reemplazan el camino de fondeo de [#24](https://github.com/reyduar/Vaqcrow/issues/24), que sigue cerrado y no se reescribe. Detalle, decisiones y avisos en [Custodia del fondeo por contrato de campaña](#^custodia-por-contrato).
+**Estado reconciliado con GitHub el 2026-09-29.** Los conteos de arriba (42 `Backlog`, 3 `Ready`, 64 `Done`) son históricos, del 22/09/2026, y ya no describen el estado actual. Al 2026-09-29 los issues abiertos son solo los Epics [#9](#^issue-9) y [#10](#^issue-10), las Features [#30](#^issue-30)–[#34](#^issue-34) y las Tasks [#95](#^issue-95)–[#109](#^issue-109); todo lo demás del inventario y de la custodia por contrato está cerrado. El Project #4 es consistente con esos estados (los issues cerrados están en `Done`; los Epics [#6](#^issue-6) y [#8](#^issue-8) se cerraron manualmente el 29/09/2026 al tener el 100% de sus sub-issues cerradas; [#32](#^issue-32) y [#101](#^issue-101) están en `Ready` y el resto de lo abierto en `Backlog`). Ya no quedan issues cerrados sin tachar en este documento.
+
+**Incorporado después del inventario (2026-09-22).** El 2026-09-22 se agregaron **21 unidades nuevas** —1 Epic, 5 Features y 15 Tasks— para **custodiar el fondeo en un contrato de Stellar**. **No forman parte del inventario de 109 ítems**, y su Epic no lleva rama. Al 2026-09-25 las 21 unidades ya estaban en el Project #4 (21/21 presentes entre #235 y #260, verificado contra el tablero) y al 2026-09-29 las 21 están cerradas y en `Done`. Reemplazan el camino de fondeo de [#24](https://github.com/reyduar/Vaqcrow/issues/24), que sigue cerrado y no se reescribe. Detalle, decisiones y avisos en [Custodia del fondeo por contrato de campaña](#^custodia-por-contrato).
 
 ## Comenzar aquí
 
-> **Unidades actualmente `Ready`: [#22 — Derivar los fallos de IA a revisión manual](#^issue-22) y [#26 — Implementar el feed mensual de ventas](#^issue-26).**
+> **Estado al 2026-09-29: la siguiente unidad es la Feature [#30 — Integrar el recorrido vertical completo de la demo](#^issue-30) (Ola 6, `Critical`).** Sus cuatro bloqueadores nativos —[#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28)— están cerrados (verificado con `gh`), por lo que ya no está bloqueada; sigue en `Backlog` en el Project #4. En el tablero solo [#32](#^issue-32) y su Task [#101](#^issue-101) figuran `Ready`. Quedan abiertas [#30](#^issue-30)–[#34](#^issue-34) con sus Tasks [#95](#^issue-95)–[#109](#^issue-109), más los Epics [#9](#^issue-9) y [#10](#^issue-10).
 >
-> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y la Feature [#14](#^issue-14) con sus Tasks [#44](#^issue-44), [#45](#^issue-45) y [#46](#^issue-46), respaldadas por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183), [#184](https://github.com/reyduar/Vaqcrow/pull/184) y [#187](https://github.com/reyduar/Vaqcrow/pull/187) y por la [evidencia de configuración tipada y límites de secretos](./typed-configuration-and-secret-boundaries-evidence.md); y la Feature [#23](#^issue-23) con sus Tasks [#74](#^issue-74), [#75](#^issue-75) y [#76](#^issue-76), respaldadas por los PRs [#191](https://github.com/reyduar/Vaqcrow/pull/191), [#192](https://github.com/reyduar/Vaqcrow/pull/192), [#193](https://github.com/reyduar/Vaqcrow/pull/193) y [#194](https://github.com/reyduar/Vaqcrow/pull/194) y por la [evidencia de integración de Stellar y Freighter](./stellar-and-freighter-integration-evidence.md); y la Feature [#24](#^issue-24) con sus Tasks [#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79), respaldadas por los PRs [#199](https://github.com/reyduar/Vaqcrow/pull/199), [#200](https://github.com/reyduar/Vaqcrow/pull/200), [#201](https://github.com/reyduar/Vaqcrow/pull/201), [#202](https://github.com/reyduar/Vaqcrow/pull/202) y [#203](https://github.com/reyduar/Vaqcrow/pull/203) y por la [evidencia de intención de fondeo](./funding-intent-submission-and-xdr-verification-evidence.md); y la Feature [#20](#^issue-20) con sus Tasks [#65](#^issue-65), [#66](#^issue-66) y [#67](#^issue-67), respaldadas por los PRs [#214](https://github.com/reyduar/Vaqcrow/pull/214), [#216](https://github.com/reyduar/Vaqcrow/pull/216) y [#217](https://github.com/reyduar/Vaqcrow/pull/217), integradas a `main` por el tracker [#215](https://github.com/reyduar/Vaqcrow/pull/215), y por la [evidencia de esquema y guardrails de IA](./ai-assessment-schema-and-guardrails-evidence.md); y la Feature [#21](#^issue-21) con sus Tasks [#68](#^issue-68), [#69](#^issue-69) y [#70](#^issue-70), respaldadas por los PRs [#219](https://github.com/reyduar/Vaqcrow/pull/219), [#221](https://github.com/reyduar/Vaqcrow/pull/221) y [#222](https://github.com/reyduar/Vaqcrow/pull/222), integradas a `main` por el tracker [#220](https://github.com/reyduar/Vaqcrow/pull/220), y por la [evidencia del adaptador LLM reemplazable](./replaceable-llm-adapter-evidence.md); y la Feature [#240](#^issue-240) con sus Tasks [#258](#^issue-258), [#259](#^issue-259) y [#260](#^issue-260), respaldadas por el [PR #294](https://github.com/reyduar/Vaqcrow/pull/294) y por la [evidencia de avisos de confianza y custodia por contrato](./trust-disclosures-and-contract-custody-evidence.md).**
+> **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y la Feature [#14](#^issue-14) con sus Tasks [#44](#^issue-44), [#45](#^issue-45) y [#46](#^issue-46), respaldadas por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183), [#184](https://github.com/reyduar/Vaqcrow/pull/184) y [#187](https://github.com/reyduar/Vaqcrow/pull/187) y por la [evidencia de configuración tipada y límites de secretos](./typed-configuration-and-secret-boundaries-evidence.md); y la Feature [#23](#^issue-23) con sus Tasks [#74](#^issue-74), [#75](#^issue-75) y [#76](#^issue-76), respaldadas por los PRs [#191](https://github.com/reyduar/Vaqcrow/pull/191), [#192](https://github.com/reyduar/Vaqcrow/pull/192), [#193](https://github.com/reyduar/Vaqcrow/pull/193) y [#194](https://github.com/reyduar/Vaqcrow/pull/194) y por la [evidencia de integración de Stellar y Freighter](./stellar-and-freighter-integration-evidence.md); y la Feature [#24](#^issue-24) con sus Tasks [#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79), respaldadas por los PRs [#199](https://github.com/reyduar/Vaqcrow/pull/199), [#200](https://github.com/reyduar/Vaqcrow/pull/200), [#201](https://github.com/reyduar/Vaqcrow/pull/201), [#202](https://github.com/reyduar/Vaqcrow/pull/202) y [#203](https://github.com/reyduar/Vaqcrow/pull/203) y por la [evidencia de intención de fondeo](./funding-intent-submission-and-xdr-verification-evidence.md); y la Feature [#20](#^issue-20) con sus Tasks [#65](#^issue-65), [#66](#^issue-66) y [#67](#^issue-67), respaldadas por los PRs [#214](https://github.com/reyduar/Vaqcrow/pull/214), [#216](https://github.com/reyduar/Vaqcrow/pull/216) y [#217](https://github.com/reyduar/Vaqcrow/pull/217), integradas a `main` por el tracker [#215](https://github.com/reyduar/Vaqcrow/pull/215), y por la [evidencia de esquema y guardrails de IA](./ai-assessment-schema-and-guardrails-evidence.md); y la Feature [#21](#^issue-21) con sus Tasks [#68](#^issue-68), [#69](#^issue-69) y [#70](#^issue-70), respaldadas por los PRs [#219](https://github.com/reyduar/Vaqcrow/pull/219), [#221](https://github.com/reyduar/Vaqcrow/pull/221) y [#222](https://github.com/reyduar/Vaqcrow/pull/222), integradas a `main` por el tracker [#220](https://github.com/reyduar/Vaqcrow/pull/220), y por la [evidencia del adaptador LLM reemplazable](./replaceable-llm-adapter-evidence.md); y la Feature [#240](#^issue-240) con sus Tasks [#258](#^issue-258), [#259](#^issue-259) y [#260](#^issue-260), respaldadas por el [PR #294](https://github.com/reyduar/Vaqcrow/pull/294) y por la [evidencia de avisos de confianza y custodia por contrato](./trust-disclosures-and-contract-custody-evidence.md); y, desde entonces, la Feature [#238](#^issue-238) (toolchain de contratos; PRs [#262](https://github.com/reyduar/Vaqcrow/pull/262) y [#263](https://github.com/reyduar/Vaqcrow/pull/263); [evidencia](./soroban-toolchain-and-reproducible-deployment-evidence.md)), la Feature [#236](#^issue-236) (contrato de bóveda; PRs [#264](https://github.com/reyduar/Vaqcrow/pull/264), [#265](https://github.com/reyduar/Vaqcrow/pull/265) y [#266](https://github.com/reyduar/Vaqcrow/pull/266); [evidencia](./campaign-vault-contract-evidence.md)), la Feature [#239](#^issue-239) (persistencia de campaña; PRs [#267](https://github.com/reyduar/Vaqcrow/pull/267)–[#270](https://github.com/reyduar/Vaqcrow/pull/270), [#276](https://github.com/reyduar/Vaqcrow/pull/276) y [#277](https://github.com/reyduar/Vaqcrow/pull/277); [evidencia](./campaign-persistence-and-reconciliation-evidence.md)), la Feature [#237](#^issue-237) (recorrido de la bóveda en la web; PRs [#278](https://github.com/reyduar/Vaqcrow/pull/278)–[#285](https://github.com/reyduar/Vaqcrow/pull/285) y [#293](https://github.com/reyduar/Vaqcrow/pull/293); [evidencia](./campaign-vault-web-journey-evidence.md)), la Feature [#26](#^issue-26) (feed mensual de ventas; PRs [#332](https://github.com/reyduar/Vaqcrow/pull/332)–[#334](https://github.com/reyduar/Vaqcrow/pull/334); [evidencia](./monthly-sales-feed-evidence.md)), la Feature [#22](#^issue-22) (derivación de fallos de IA; PRs [#335](https://github.com/reyduar/Vaqcrow/pull/335)–[#340](https://github.com/reyduar/Vaqcrow/pull/340); [evidencia](./ai-failure-routing-evidence.md)), la Feature [#27](#^issue-27) (revenue share determinístico; PRs [#341](https://github.com/reyduar/Vaqcrow/pull/341)–[#343](https://github.com/reyduar/Vaqcrow/pull/343); [evidencia](./revenue-share-calculation-evidence.md)), la Feature [#28](#^issue-28) (distribución en Testnet; PRs [#345](https://github.com/reyduar/Vaqcrow/pull/345)–[#347](https://github.com/reyduar/Vaqcrow/pull/347); [evidencia](./testnet-revenue-share-distribution-evidence.md)) y la Feature [#29](#^issue-29) (dashboard de evidencia; PRs [#349](https://github.com/reyduar/Vaqcrow/pull/349)–[#351](https://github.com/reyduar/Vaqcrow/pull/351); [evidencia](./evidence-dashboard-evidence.md)). Los PRs de sincronización de la hoja de ruta [#344](https://github.com/reyduar/Vaqcrow/pull/344) y [#348](https://github.com/reyduar/Vaqcrow/pull/348) solo tocan documentación.**
 >
-> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) quedó desbloqueado al completarse [#23](#^issue-23), ya en `Done`, y **se completó después**: sus tres Tasks ([#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79)) se entregaron mediante cinco PRs ([#199](https://github.com/reyduar/Vaqcrow/pull/199)–[#203](https://github.com/reyduar/Vaqcrow/pull/203)), y la Feature se cerró manualmente el 21/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), con su documento de evidencia en `docs/planning/`. [#30](#^issue-30) sigue bloqueado únicamente por [#28](#^issue-28) — [#16](#^issue-16), [#20](#^issue-20) y [#24](#^issue-24) ya están completas — aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) se entregó mediante una cadena de dos PRs encadenados ([#183](https://github.com/reyduar/Vaqcrow/pull/183) y [#184](https://github.com/reyduar/Vaqcrow/pull/184)); [#45](#^issue-45) y [#46](#^issue-46) lo siguieron ([#187](https://github.com/reyduar/Vaqcrow/pull/187) y [#188](https://github.com/reyduar/Vaqcrow/pull/188)), cerrando la Feature [#14](#^issue-14) el 20/09/2026 con su documento de evidencia en `docs/planning/`; [#15](#^issue-15) quedó completa —sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49) están en `Done`— y se cerró manualmente el 20/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), lo que habilita [#20](#^issue-20) y [#32](#^issue-32).
+> [#55](#^issue-55) quedó en `Done` (PR [#146](https://github.com/reyduar/Vaqcrow/pull/146) mergeada, tras un ciclo verify→fix→re-verify que corrigió un conteo de tests invertido en la prosa del §4.1), documentando la evidencia completa de avisos de confianza y fixtures sintéticos. Eso cerró [#17](#^issue-17) por completo (sus tres Tasks — [#53](#^issue-53), [#54](#^issue-54) y [#55](#^issue-55) — ya están en `Done`), cerrado manualmente el 18/09/2026 (GitHub no cierra Features automáticamente al completarse sus sub-issues, igual que ocurrió con [#16](#^issue-16)). Al verificar el bloqueo de [#18](#^issue-18) se encontró que [#11](#^issue-11) y [#12](#^issue-12) también tenían el 100% de sus sub-issues cerradas sin que la Feature padre estuviera cerrada; ambas se cerraron manualmente el 18/09/2026, mismo patrón — lo que desbloqueó a [#13](#^issue-13), cuyas tres Tasks ([#41](#^issue-41), [#42](#^issue-42), [#43](#^issue-43)) se completaron y mergearon (PRs [#148](https://github.com/reyduar/Vaqcrow/pull/148)–[#153](https://github.com/reyduar/Vaqcrow/pull/153)); [#13](#^issue-13) se cerró manualmente el 18/09/2026, mismo patrón otra vez. [#18](#^issue-18) y [#26](#^issue-26) quedaron completamente desbloqueados; [#18](#^issue-18) se completó después (ver abajo). [#24](#^issue-24) quedó desbloqueado al completarse [#23](#^issue-23), ya en `Done`, y **se completó después**: sus tres Tasks ([#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79)) se entregaron mediante cinco PRs ([#199](https://github.com/reyduar/Vaqcrow/pull/199)–[#203](https://github.com/reyduar/Vaqcrow/pull/203)), y la Feature se cerró manualmente el 21/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), con su documento de evidencia en `docs/planning/`. [#30](#^issue-30) estuvo bloqueado hasta el cierre de [#28](#^issue-28) (29/09/2026); con [#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28) completas ya está desbloqueado, aún en `Backlog`. [#56](#^issue-56), [#57](#^issue-57) y [#58](#^issue-58) quedaron en `Done` (PRs [#154](https://github.com/reyduar/Vaqcrow/pull/154)–[#159](https://github.com/reyduar/Vaqcrow/pull/159), [#161](https://github.com/reyduar/Vaqcrow/pull/161) y [#162](https://github.com/reyduar/Vaqcrow/pull/162) mergeadas), lo que completó [#18](#^issue-18), cerrado manualmente el 18/09/2026 (mismo patrón: GitHub no cierra Features automáticamente). Eso dejó a [#19](#^issue-19) desbloqueada; su implementación y sus Tasks (#62–#64) ya están entregadas en `main`. [#44](#^issue-44) se entregó mediante una cadena de dos PRs encadenados ([#183](https://github.com/reyduar/Vaqcrow/pull/183) y [#184](https://github.com/reyduar/Vaqcrow/pull/184)); [#45](#^issue-45) y [#46](#^issue-46) lo siguieron ([#187](https://github.com/reyduar/Vaqcrow/pull/187) y [#188](https://github.com/reyduar/Vaqcrow/pull/188)), cerrando la Feature [#14](#^issue-14) el 20/09/2026 con su documento de evidencia en `docs/planning/`; [#15](#^issue-15) quedó completa —sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49) están en `Done`— y se cerró manualmente el 20/09/2026 (mismo patrón: GitHub no cierra Features automáticamente), lo que habilita [#20](#^issue-20) y [#32](#^issue-32).
 
 > **Gate compartido antes de dependencias.** Antes de instalar o configurar cualquier dependencia nombrada, buscar skills disponibles —rutas inyectadas, luego registro o fallback— e inspeccionar los servidores MCP conectados. Usar el soporte aplicable y registrar la skill/MCP utilizada o `none` antes de modificar manifest o lockfile. El descubrimiento no autoriza dependencias, configuración MCP ni crecimiento de alcance adicionales.
 
@@ -38,12 +40,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Epic | Features contenidos |
 |---|---|
-| [#3 Fundamentos de la demo y monorepo (duplicado sin descomposición)](#^issue-3) | Ninguno; duplica el alcance de #4 |
-| [#4 Fundamentos de la demo y monorepo](#^issue-4) | #11–#15 |
-| [#5 Estructura de la demo y experiencia de confianza](#^issue-5) | #16–#19 |
-| [#6 Evaluación explicable con IA](#^issue-6) | #20–#22 |
-| [#7 Fondeo y confirmación en Stellar](#^issue-7) | #23–#25 |
-| [#8 Cálculo y distribución de revenue share](#^issue-8) | #26–#28 |
+| [~~#3 Fundamentos de la demo y monorepo (duplicado sin descomposición)~~](#^issue-3) | Ninguno; duplica el alcance de #4 |
+| [~~#4 Fundamentos de la demo y monorepo~~](#^issue-4) | #11–#15 |
+| [~~#5 Estructura de la demo y experiencia de confianza~~](#^issue-5) | #16–#19 |
+| [~~#6 Evaluación explicable con IA~~](#^issue-6) | #20–#22 |
+| [~~#7 Fondeo y confirmación en Stellar~~](#^issue-7) | #23–#25 |
+| [~~#8 Cálculo y distribución de revenue share~~](#^issue-8) | #26–#28 |
 | [#9 Integración, resiliencia y evidencia](#^issue-9) | #29–#31 |
 | [#10 Entrega y presentación de la demo](#^issue-10) | #32–#34 |
 
@@ -63,15 +65,15 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 3 | [~~#24 Construir y enviar intención de fondeo~~](#^issue-24) | [~~#77 Implementar~~](#^issue-77) → [~~#78 Probar~~](#^issue-78) → [~~#79 Documentar~~](#^issue-79) |
 | 3 | [~~#17 Implementar avisos y fixtures~~](#^issue-17) | [~~#53 Implementar~~](#^issue-53) → [~~#54 Probar~~](#^issue-54) → [~~#55 Documentar~~](#^issue-55) |
 | 3 | [~~#21 Implementar adaptador LLM~~](#^issue-21) | [~~#68 Implementar~~](#^issue-68) → [~~#69 Probar~~](#^issue-69) → [~~#70 Documentar~~](#^issue-70) |
-| 3 | [#26 Implementar feed mensual](#^issue-26) | [#83 Implementar](#^issue-83) → [#84 Probar](#^issue-84) → [#85 Documentar](#^issue-85) |
-| 4 | [#27 Calcular revenue share](#^issue-27) | [#86 Implementar](#^issue-86) → [#87 Probar](#^issue-87) → [#88 Documentar](#^issue-88) |
+| 3 | [~~#26 Implementar feed mensual~~](#^issue-26) | [~~#83 Implementar~~](#^issue-83) → [~~#84 Probar~~](#^issue-84) → [~~#85 Documentar~~](#^issue-85) |
+| 4 | [~~#27 Calcular revenue share~~](#^issue-27) | [~~#86 Implementar~~](#^issue-86) → [~~#87 Probar~~](#^issue-87) → [~~#88 Documentar~~](#^issue-88) |
 | 4 | [~~#18 Implementar solicitud y revisión~~](#^issue-18) | [~~#56 Implementar~~](#^issue-56) → [~~#57 Probar~~](#^issue-57) → [~~#58 Documentar~~](#^issue-58) |
-| 4 | [#22 Derivar fallos de IA](#^issue-22) | [#71 Implementar](#^issue-71) → [#72 Probar](#^issue-72) → [#73 Documentar](#^issue-73) |
+| 4 | [~~#22 Derivar fallos de IA~~](#^issue-22) | [~~#71 Implementar~~](#^issue-71) → [~~#72 Probar~~](#^issue-72) → [~~#73 Documentar~~](#^issue-73) |
 | 4 | [~~#25 Confirmar transacciones~~](#^issue-25) | [~~#80 Implementar~~](#^issue-80) → [~~#81 Probar~~](#^issue-81) → [~~#82 Documentar~~](#^issue-82) |
-| 5 | [#28 Distribuir revenue share](#^issue-28) | [#89 Implementar](#^issue-89) → [#90 Probar](#^issue-90) → [#91 Documentar](#^issue-91) |
+| 5 | [~~#28 Distribuir revenue share~~](#^issue-28) | [~~#89 Implementar~~](#^issue-89) → [~~#90 Probar~~](#^issue-90) → [~~#91 Documentar~~](#^issue-91) |
 | 5 | [~~#19 Implementar aprobación humana~~](#^issue-19) | [~~#62 Implementar~~](#^issue-62) → [~~#63 Probar~~](#^issue-63) → [~~#64 Documentar~~](#^issue-64) |
 | 6 | [#30 Integrar el recorrido vertical](#^issue-30) | [#95 Implementar](#^issue-95) → [#96 Probar](#^issue-96) → [#97 Documentar](#^issue-97) |
-| 6 | [#29 Exponer dashboard de evidencia](#^issue-29) | [#92 Implementar](#^issue-92) → [#93 Probar](#^issue-93) → [#94 Documentar](#^issue-94) |
+| 6 | [~~#29 Exponer dashboard de evidencia~~](#^issue-29) | [~~#92 Implementar~~](#^issue-92) → [~~#93 Probar~~](#^issue-93) → [~~#94 Documentar~~](#^issue-94) |
 | 7 | [#31 Agregar resiliencia y telemetría](#^issue-31) | [#98 Implementar](#^issue-98) → [#99 Probar](#^issue-99) → [#100 Documentar](#^issue-100) |
 | 7 | [#32 Preparar entornos de despliegue](#^issue-32) | [#101 Implementar](#^issue-101) → [#102 Probar](#^issue-102) → [#103 Documentar](#^issue-103) |
 | 8 | [#33 Ensayar y empaquetar evidencia](#^issue-33) | [#104 Implementar](#^issue-104) → [#105 Probar](#^issue-105) → [#106 Documentar](#^issue-106) |
@@ -81,78 +83,78 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 | Issue | Alcance | Ubicación en la hoja de ruta |
 |---|---|---|
-| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Done` (issue cerrado el 17/09/2026), pero fuera de las olas y del camino crítico acotado: sus criterios de aceptación siguen sin marcar y no hay evidencia de implementación versionada en `main` hasta una promoción explícita de alcance. |
-| [#189 — Enforzar lint y typecheck sobre el directorio `tests/` de la raíz](https://github.com/reyduar/Vaqcrow/issues/189) | Cerrar el hueco de gate por el que `tests/**` se ejecuta en cada pull request pero nunca se lintea ni se typechequea. No viene de `DEMO.md`. | Presente en Project #4 con workflow `Backlog`, fuera de las olas y del camino crítico; hallado al cerrar [#14](#^issue-14) y registrado como limitación aceptada en la evidencia de [#15](#^issue-15) hasta que se resuelva. |
-| [#196 — Resolver las políticas RLS de `application_review` y `human_decision`](https://github.com/reyduar/Vaqcrow/issues/196) | Resolver por decisión explícita las dos tablas que hoy tienen RLS habilitada y **cero políticas**, o registrar que `service_role` es la única vía de acceso del alcance acotado. No viene de `DEMO.md`. | **Posterior al inventario**, abierto el 20/09/2026 y en `Backlog`, fuera de las olas y del camino crítico; hallado al auditar [#13](#^issue-13) y descrito en el §5 de este documento. Bloqueado por una decisión de identidad, no por código: sin identidad autenticada no hay sujeto contra el cual escribir una política. |
+| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Done` (issue cerrado el 17/09/2026), pero fuera de las olas y del camino crítico acotado: sus criterios de aceptación siguen sin marcar y no hay implementación de Auth.js en `main` (verificado el 2026-09-29: ninguna referencia a `next-auth`, `authjs` ni `@auth/*` en `apps/`, `packages/` ni `package.json`), hasta una promoción explícita de alcance. |
+| [~~#189 — Enforzar lint y typecheck sobre el directorio `tests/` de la raíz~~](https://github.com/reyduar/Vaqcrow/issues/189) | Cerrar el hueco de gate por el que `tests/**` se ejecuta en cada pull request pero nunca se lintea ni se typechequea. No viene de `DEMO.md`. | Presente en Project #4 con workflow `Done`; cerrado el 28/09/2026 como `COMPLETED` por el PR [#330](https://github.com/reyduar/Vaqcrow/pull/330). Resolución: un proyecto raíz (`tsconfig.tests.json`) con `lint:tests` y `typecheck:tests` cubre `tests/**` (excluyendo los fixtures inválidos a propósito) y `pnpm run verify` ejecuta ambos. Estaba fuera de las olas; hallado al cerrar [#14](#^issue-14) y registrado como limitación aceptada en la evidencia de [#15](#^issue-15). |
+| [~~#196 — Resolver las políticas RLS de `application_review` y `human_decision`~~](https://github.com/reyduar/Vaqcrow/issues/196) | Resolver por decisión explícita las dos tablas que hoy tienen RLS habilitada y **cero políticas**, o registrar que `service_role` es la única vía de acceso del alcance acotado. No viene de `DEMO.md`. | **Posterior al inventario**, abierto el 20/09/2026; hoy en `Done`, cerrado el 28/09/2026 como `COMPLETED` por el PR [#331](https://github.com/reyduar/Vaqcrow/pull/331). Resolución: se eligió la opción 2 —las políticas RLS que expresan identidad→fila se **difieren** hasta que exista un modelo de identidad, y `service_role` sigue siendo la única vía de acceso—, registrada en `docs/architecture/identity-and-rls-boundaries.md`. Fuera de las olas y del camino crítico; hallado al auditar [#13](#^issue-13). |
 
 ## Contenedores de planificación
 
-### #3 — Fundamentos de la demo y monorepo (duplicado sin descomposición)
+### ~~#3 — Fundamentos de la demo y monorepo (duplicado sin descomposición)~~
 
 ^issue-3
 
 - **Título original:** `Epic: Demo foundation and monorepo`
-- **GitHub y estado:** [issue #3](https://github.com/reyduar/Vaqcrow/issues/3) · Tipo `Epic` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #3](https://github.com/reyduar/Vaqcrow/issues/3) · Tipo `Epic` · Área `infra` · Prioridad `Critical` · Workflow `Done` (cerrado el 21/09/2026).
 - **Jerarquía y bloqueos:** sin padre, sin Features hijas y sin bloqueos nativos.
 - **Objetivo:** establecer workspace, dominio, persistencia, configuración, seguridad, pruebas y CI para la demo.
 - **Orden:** repite el título, el objetivo y el alcance de [#4](#^issue-4), pero no contiene su descomposición. Se incluye en el inventario porque permanece como Issue en el Project #4, aunque no constituye una unidad ejecutable.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic no tiene trabajo hijo y duplica el contenedor canónico [#4](#^issue-4).
 
-### #4 — Fundamentos de la demo y monorepo
+### ~~#4 — Fundamentos de la demo y monorepo~~
 
 ^issue-4
 
 - **Título original:** `Epic: Demo foundation and monorepo`
-- **GitHub y estado:** [issue #4](https://github.com/reyduar/Vaqcrow/issues/4) · Tipo `Epic` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #4](https://github.com/reyduar/Vaqcrow/issues/4) · Tipo `Epic` · Área `infra` · Prioridad `Critical` · Workflow `Done` (cerrado el 21/09/2026).
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#11](#^issue-11), [#12](#^issue-12), [#13](#^issue-13), [#14](#^issue-14) y [#15](#^issue-15).
 - **Objetivo:** establecer workspace, dominio, persistencia, configuración, seguridad, pruebas y CI para la demo.
 - **Orden:** agrupa la base técnica; no constituye una unidad ejecutable.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #5 — Estructura de la demo y experiencia de confianza
+### ~~#5 — Estructura de la demo y experiencia de confianza~~
 
 ^issue-5
 
 - **Título original:** `Epic: Demo shell and trust experience`
-- **GitHub y estado:** [issue #5](https://github.com/reyduar/Vaqcrow/issues/5) · Tipo `Epic` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #5](https://github.com/reyduar/Vaqcrow/issues/5) · Tipo `Epic` · Área `demo` · Prioridad `Critical` · Workflow `Done` (cerrado el 21/09/2026).
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#16](#^issue-16), [#17](#^issue-17), [#18](#^issue-18) y [#19](#^issue-19).
 - **Objetivo:** entregar la demo navegable de seis pasos con avisos sobre datos sintéticos y control humano.
 - **Orden:** agrupa la experiencia y sus garantías; no constituye una unidad ejecutable.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #6 — Evaluación explicable con IA
+### ~~#6 — Evaluación explicable con IA~~
 
 ^issue-6
 
 - **Título original:** `Epic: Explainable AI assessment`
-- **GitHub y estado:** [issue #6](https://github.com/reyduar/Vaqcrow/issues/6) · Tipo `Epic` · Área `ai` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #6](https://github.com/reyduar/Vaqcrow/issues/6) · Tipo `Epic` · Área `ai` · Prioridad `Critical` · Workflow `Done` (cerrado manualmente el 29/09/2026: sub-issues 100% cerradas; GitHub no cierra Epics automáticamente).
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#20](#^issue-20), [#21](#^issue-21) y [#22](#^issue-22).
 - **Objetivo:** implementar una evaluación estructurada real con evidencia, guardrails y fallback manual.
 - **Orden:** agrupa la capacidad de IA; no constituye una unidad ejecutable.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #7 — Fondeo y confirmación en Stellar
+### ~~#7 — Fondeo y confirmación en Stellar~~
 
 ^issue-7
 
 - **Título original:** `Epic: Stellar funding and confirmation`
-- **GitHub y estado:** [issue #7](https://github.com/reyduar/Vaqcrow/issues/7) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #7](https://github.com/reyduar/Vaqcrow/issues/7) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 21/09/2026).
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#23](#^issue-23), [#24](#^issue-24) y [#25](#^issue-25).
 - **Objetivo:** implementar fondeo no custodial con Freighter, verificación de XDR, envío a Testnet y confirmación de Horizon.
 - **Orden:** agrupa el camino de fondeo; no constituye una unidad ejecutable.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #8 — Cálculo y distribución de revenue share
+### ~~#8 — Cálculo y distribución de revenue share~~
 
 ^issue-8
 
 - **Título original:** `Epic: Revenue-share calculation and distribution`
-- **GitHub y estado:** [issue #8](https://github.com/reyduar/Vaqcrow/issues/8) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #8](https://github.com/reyduar/Vaqcrow/issues/8) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado manualmente el 29/09/2026: sub-issues 100% cerradas; GitHub no cierra Epics automáticamente).
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#26](#^issue-26), [#27](#^issue-27) y [#28](#^issue-28).
 - **Objetivo:** implementar ventas sintéticas, cálculo determinístico y distribución en Testnet.
 - **Orden:** agrupa el camino de revenue share; no constituye una unidad ejecutable.
@@ -790,98 +792,98 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#70_Task_Document_evidence_for_replaceable_LLM_adapter`, entregada por el PR [#222](https://github.com/reyduar/Vaqcrow/pull/222).
 
-### #26 — Implementar el feed mensual de ventas
+### ~~#26 — Implementar el feed mensual de ventas~~
 
 ^issue-26
 
 - **Título original:** `Feature: Implement monthly sales feed`
-- **GitHub y estado:** [issue #26](https://github.com/reyduar/Vaqcrow/issues/26) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Ready`.
+- **GitHub y estado:** [issue #26](https://github.com/reyduar/Vaqcrow/issues/26) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Done` (cerrado el 28/09/2026).
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#13](#^issue-13), ya completo — sin bloqueos propios pendientes.
 - **Objetivo:** cargar el siguiente período sintético de ventas con procedencia, anomalía conocida y rotulado simulado explícito.
 - **Orden:** se ejecuta después de los Features `Critical` listos y desbloquea [#27](#^issue-27).
 
-**Rama propuesta.** `Vaqcrow#26_Feat_Implement_monthly_sales_feed` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#26_Feat_Implement_monthly_sales_feed`; la Feature se entregó mediante las ramas de sus Tasks, con PR [#332](https://github.com/reyduar/Vaqcrow/pull/332), [#333](https://github.com/reyduar/Vaqcrow/pull/333) y [#334](https://github.com/reyduar/Vaqcrow/pull/334). Evidencia de cierre en [`monthly-sales-feed-evidence.md`](./monthly-sales-feed-evidence.md).
 
-### #83 — Implementar el feed mensual de ventas
+### ~~#83 — Implementar el feed mensual de ventas~~
 
 ^issue-83
 
 - **Título original:** `Task: Implement monthly sales feed`
-- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #83](https://github.com/reyduar/Vaqcrow/issues/83) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done` (cerrado el 28/09/2026).
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); sin bloqueos nativos propios.
 - **Objetivo:** implementar el feed mensual dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#84](#^issue-84).
 
 **Rama e implementación.** `Vaqcrow#83_Task_Implement_monthly_sales_feed`, entregada por el PR [#332](https://github.com/reyduar/Vaqcrow/pull/332).
 
-### #84 — Probar el feed mensual de ventas
+### ~~#84 — Probar el feed mensual de ventas~~
 
 ^issue-84
 
 - **Título original:** `Task: Test monthly sales feed`
-- **GitHub y estado:** [issue #84](https://github.com/reyduar/Vaqcrow/issues/84) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #84](https://github.com/reyduar/Vaqcrow/issues/84) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done` (cerrado el 28/09/2026).
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); bloqueada nativamente por [#83](#^issue-83).
 - **Objetivo:** demostrar el feed con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#85](#^issue-85).
 
 **Rama e implementación.** `Vaqcrow#84_Task_Test_monthly_sales_feed`, entregada por el PR [#333](https://github.com/reyduar/Vaqcrow/pull/333).
 
-### #85 — Documentar evidencia del feed mensual de ventas
+### ~~#85 — Documentar evidencia del feed mensual de ventas~~
 
 ^issue-85
 
 - **Título original:** `Task: Document evidence for monthly sales feed`
-- **GitHub y estado:** [issue #85](https://github.com/reyduar/Vaqcrow/issues/85) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #85](https://github.com/reyduar/Vaqcrow/issues/85) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Done` (cerrado el 28/09/2026).
 - **Jerarquía y bloqueos:** padre [#26](#^issue-26), que requiere [#13](#^issue-13); bloqueada nativamente por [#84](#^issue-84).
 - **Objetivo:** documentar evidencia reproducible de finalización del feed.
 - **Orden:** cierra [#26](#^issue-26) y habilita [#27](#^issue-27).
 
-**Rama propuesta.** `Vaqcrow#85_Task_Document_evidence_for_monthly_sales_feed` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#85_Task_Document_evidence_for_monthly_sales_feed`, entregada por el PR [#334](https://github.com/reyduar/Vaqcrow/pull/334).
 
 ## Ola 4 — Cálculo, revisión y confirmaciones
 
-### #27 — Calcular revenue share versionado de forma determinística
+### ~~#27 — Calcular revenue share versionado de forma determinística~~
 
 ^issue-27
 
 - **Título original:** `Feature: Calculate versioned revenue share deterministically`
-- **GitHub y estado:** [issue #27](https://github.com/reyduar/Vaqcrow/issues/27) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #27](https://github.com/reyduar/Vaqcrow/issues/27) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#12](#^issue-12) y [#26](#^issue-26).
 - **Objetivo:** calcular obligaciones con unidades mínimas, reglas versionadas y redondeo explícito, sin usar el LLM.
 - **Orden:** tiene prioridad `Critical` y desbloquea [#28](#^issue-28).
 
 **Rama e implementación.** `Vaqcrow#27_Feat_Calculate_versioned_revenue_share_deterministically`; la Feature se entregó mediante sus Tasks, con PR [#341](https://github.com/reyduar/Vaqcrow/pull/341), [#342](https://github.com/reyduar/Vaqcrow/pull/342) y [#343](https://github.com/reyduar/Vaqcrow/pull/343).
 
-### #86 — Implementar el cálculo determinístico de revenue share
+### ~~#86 — Implementar el cálculo determinístico de revenue share~~
 
 ^issue-86
 
 - **Título original:** `Task: Implement deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #86](https://github.com/reyduar/Vaqcrow/issues/86) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #86](https://github.com/reyduar/Vaqcrow/issues/86) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); sin bloqueos nativos propios.
 - **Objetivo:** implementar el cálculo determinístico dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#87](#^issue-87).
 
 **Rama e implementación.** `Vaqcrow#86_Task_Implement_deterministic_revenue_share_calculation`, entregada por el PR [#341](https://github.com/reyduar/Vaqcrow/pull/341).
 
-### #87 — Probar el cálculo determinístico de revenue share
+### ~~#87 — Probar el cálculo determinístico de revenue share~~
 
 ^issue-87
 
 - **Título original:** `Task: Test deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #87](https://github.com/reyduar/Vaqcrow/issues/87) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #87](https://github.com/reyduar/Vaqcrow/issues/87) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); bloqueada nativamente por [#86](#^issue-86).
 - **Objetivo:** demostrar el cálculo con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#88](#^issue-88).
 
 **Rama e implementación.** `Vaqcrow#87_Task_Test_deterministic_revenue_share_calculation`, entregada por el PR [#342](https://github.com/reyduar/Vaqcrow/pull/342).
 
-### #88 — Documentar evidencia del cálculo determinístico de revenue share
+### ~~#88 — Documentar evidencia del cálculo determinístico de revenue share~~
 
 ^issue-88
 
 - **Título original:** `Task: Document evidence for deterministic revenue-share calculation`
-- **GitHub y estado:** [issue #88](https://github.com/reyduar/Vaqcrow/issues/88) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #88](https://github.com/reyduar/Vaqcrow/issues/88) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#27](#^issue-27), que requiere [#12](#^issue-12) y [#26](#^issue-26); bloqueada nativamente por [#87](#^issue-87).
 - **Objetivo:** documentar evidencia reproducible de finalización del cálculo.
 - **Orden:** cierra [#27](#^issue-27) y habilita [#28](#^issue-28).
@@ -938,53 +940,53 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama e implementación.** `Vaqcrow#58_Task_Document_evidence_for_SME_request_and_evidence_review`, mergeada vía [PR #162](https://github.com/reyduar/Vaqcrow/pull/162). Evidencia completa en [`sme-request-and-evidence-review-evidence.md`](./sme-request-and-evidence-review-evidence.md).
 
-### #22 — Derivar los fallos de IA a revisión manual
+### ~~#22 — Derivar los fallos de IA a revisión manual~~
 
 ^issue-22
 
 - **Título original:** `Feature: Route AI failure to manual review`
-- **GitHub y estado:** [issue #22](https://github.com/reyduar/Vaqcrow/issues/22) · Tipo `Feature` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #22](https://github.com/reyduar/Vaqcrow/issues/22) · Tipo `Feature` · Área `ai` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#6](#^issue-6); bloqueada nativamente por [#21](#^issue-21).
 - **Objetivo:** tratar timeout, salida inválida y caída del proveedor con revisión manual y estados de respaldo veraces.
 - **Orden:** desbloquea [#29](#^issue-29).
 
-**Rama propuesta.** `Vaqcrow#22_Feat_Route_AI_failure_to_manual_review` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#22_Feat_Route_AI_failure_to_manual_review`; la Feature se entregó mediante las ramas de sus Tasks, con PR [#335](https://github.com/reyduar/Vaqcrow/pull/335), [#336](https://github.com/reyduar/Vaqcrow/pull/336), [#337](https://github.com/reyduar/Vaqcrow/pull/337), [#338](https://github.com/reyduar/Vaqcrow/pull/338), [#339](https://github.com/reyduar/Vaqcrow/pull/339) y [#340](https://github.com/reyduar/Vaqcrow/pull/340). Evidencia de cierre en [`ai-failure-routing-evidence.md`](./ai-failure-routing-evidence.md).
 
-### #71 — Implementar la derivación de fallos de IA a revisión manual
+### ~~#71 — Implementar la derivación de fallos de IA a revisión manual~~
 
 ^issue-71
 
 - **Título original:** `Task: Implement AI failure routing to manual review`
-- **GitHub y estado:** [issue #71](https://github.com/reyduar/Vaqcrow/issues/71) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #71](https://github.com/reyduar/Vaqcrow/issues/71) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#22](#^issue-22), que requiere [#21](#^issue-21); sin bloqueos nativos propios.
 - **Objetivo:** implementar la derivación a revisión manual dentro del límite de la demo.
 - **Orden:** inicia el Feature y desbloquea [#72](#^issue-72).
 
-**Rama e implementación.** `Vaqcrow#71_Task_Implement_AI_failure_routing_to_manual_review`, entregada por los PRs [#335](https://github.com/reyduar/Vaqcrow/pull/335) y [#338](https://github.com/reyduar/Vaqcrow/pull/338).
+**Rama e implementación.** `Vaqcrow#71_Task_Implement_AI_failure_routing_to_manual_review`, entregada por la cadena de PRs apilados [#335](https://github.com/reyduar/Vaqcrow/pull/335), [#336](https://github.com/reyduar/Vaqcrow/pull/336), [#337](https://github.com/reyduar/Vaqcrow/pull/337) y [#338](https://github.com/reyduar/Vaqcrow/pull/338) (los tres primeros apilados; el último, contra `main`).
 
-### #72 — Probar la derivación de fallos de IA a revisión manual
+### ~~#72 — Probar la derivación de fallos de IA a revisión manual~~
 
 ^issue-72
 
 - **Título original:** `Task: Test AI failure routing to manual review`
-- **GitHub y estado:** [issue #72](https://github.com/reyduar/Vaqcrow/issues/72) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #72](https://github.com/reyduar/Vaqcrow/issues/72) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#22](#^issue-22), que requiere [#21](#^issue-21); bloqueada nativamente por [#71](#^issue-71).
 - **Objetivo:** demostrar la derivación con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#73](#^issue-73).
 
 **Rama e implementación.** `Vaqcrow#72_Task_Test_AI_failure_routing_to_manual_review`, entregada por el PR [#339](https://github.com/reyduar/Vaqcrow/pull/339).
 
-### #73 — Documentar evidencia de la derivación de fallos de IA
+### ~~#73 — Documentar evidencia de la derivación de fallos de IA~~
 
 ^issue-73
 
 - **Título original:** `Task: Document evidence for AI failure routing to manual review`
-- **GitHub y estado:** [issue #73](https://github.com/reyduar/Vaqcrow/issues/73) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #73](https://github.com/reyduar/Vaqcrow/issues/73) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#22](#^issue-22), que requiere [#21](#^issue-21); bloqueada nativamente por [#72](#^issue-72).
 - **Objetivo:** documentar evidencia reproducible de finalización del fallback manual.
 - **Orden:** cierra [#22](#^issue-22) y habilita [#29](#^issue-29).
 
-**Rama propuesta.** `Vaqcrow#73_Task_Document_evidence_for_AI_failure_routing_to_manual_review` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#73_Task_Document_evidence_for_AI_failure_routing_to_manual_review`, entregada por el PR [#340](https://github.com/reyduar/Vaqcrow/pull/340). Evidencia en [`ai-failure-routing-evidence.md`](./ai-failure-routing-evidence.md).
 
 ### ~~#25 — Confirmar transacciones Stellar de forma asíncrona~~
 
@@ -1038,48 +1040,48 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 ## Ola 5 — Distribución y decisión humana
 
-### #28 — Firmar y distribuir revenue share en Testnet
+### ~~#28 — Firmar y distribuir revenue share en Testnet~~
 
 ^issue-28
 
 - **Título original:** `Feature: Sign and distribute revenue share on Testnet`
-- **GitHub y estado:** [issue #28](https://github.com/reyduar/Vaqcrow/issues/28) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #28](https://github.com/reyduar/Vaqcrow/issues/28) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27).
 - **Objetivo:** construir, verificar, enviar y confirmar de forma asíncrona la transacción no custodial de distribución.
 - **Orden:** desbloquea [#29](#^issue-29) y [#30](#^issue-30), por lo que precede a [#19](#^issue-19) dentro de la prioridad `Critical`.
 
 **Rama e implementación.** `Vaqcrow#28_Feat_Sign_and_distribute_revenue_share_on_Testnet`; la Feature se entregó mediante sus Tasks, con PR [#345](https://github.com/reyduar/Vaqcrow/pull/345), [#346](https://github.com/reyduar/Vaqcrow/pull/346) y [#347](https://github.com/reyduar/Vaqcrow/pull/347).
 
-### #89 — Implementar la distribución de revenue share en Testnet
+### ~~#89 — Implementar la distribución de revenue share en Testnet~~
 
 ^issue-89
 
 - **Título original:** `Task: Implement Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #89](https://github.com/reyduar/Vaqcrow/issues/89) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #89](https://github.com/reyduar/Vaqcrow/issues/89) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); sin bloqueos nativos propios.
 - **Objetivo:** implementar la distribución en Testnet dentro de la arquitectura delimitada.
 - **Orden:** inicia el Feature y desbloquea [#90](#^issue-90).
 
 **Rama e implementación.** `Vaqcrow#89_Task_Implement_Testnet_revenue_share_distribution`, entregada por el PR [#345](https://github.com/reyduar/Vaqcrow/pull/345).
 
-### #90 — Probar la distribución de revenue share en Testnet
+### ~~#90 — Probar la distribución de revenue share en Testnet~~
 
 ^issue-90
 
 - **Título original:** `Task: Test Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #90](https://github.com/reyduar/Vaqcrow/issues/90) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #90](https://github.com/reyduar/Vaqcrow/issues/90) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); bloqueada nativamente por [#89](#^issue-89).
 - **Objetivo:** demostrar la distribución con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#91](#^issue-91).
 
 **Rama e implementación.** `Vaqcrow#90_Task_Test_Testnet_revenue_share_distribution`, entregada por el PR [#346](https://github.com/reyduar/Vaqcrow/pull/346).
 
-### #91 — Documentar evidencia de la distribución de revenue share en Testnet
+### ~~#91 — Documentar evidencia de la distribución de revenue share en Testnet~~
 
 ^issue-91
 
 - **Título original:** `Task: Document evidence for Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #91](https://github.com/reyduar/Vaqcrow/issues/91) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
+- **GitHub y estado:** [issue #91](https://github.com/reyduar/Vaqcrow/issues/91) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); bloqueada nativamente por [#90](#^issue-90).
 - **Objetivo:** documentar evidencia reproducible de finalización de la distribución.
 - **Orden:** cierra [#28](#^issue-28) y habilita [#29](#^issue-29) y [#30](#^issue-30).
@@ -1144,7 +1146,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Feature: Integrate the complete vertical demo journey`
 - **GitHub y estado:** [issue #30](https://github.com/reyduar/Vaqcrow/issues/30) · Tipo `Feature` · Área `demo` · Prioridad `Critical` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#9](#^issue-9); bloqueada nativamente por [#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28) — de las cuatro, solo [#28](#^issue-28) sigue pendiente.
+- **Jerarquía y bloqueos:** padre [#9](#^issue-9); bloqueada nativamente por [#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28) — las cuatro están cerradas (verificado con `gh` el 2026-09-29), así que está desbloqueada; sigue en `Backlog` en el Project #4.
 - **Objetivo:** conectar el único recorrido sintético desde solicitud, IA y aprobación hasta fondeo, confirmación y distribución.
 - **Orden:** tiene prioridad `Critical` y desbloquea [#31](#^issue-31) y [#32](#^issue-32).
 
@@ -1187,53 +1189,53 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#97_Task_Document_evidence_for_complete_vertical_demo_journey` es una unidad de documentación revisable.
 
-### #29 — Exponer el dashboard de evidencia de decisiones y transacciones
+### ~~#29 — Exponer el dashboard de evidencia de decisiones y transacciones~~
 
 ^issue-29
 
 - **Título original:** `Feature: Expose decision and transaction evidence dashboard`
-- **GitHub y estado:** [issue #29](https://github.com/reyduar/Vaqcrow/issues/29) · Tipo `Feature` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #29](https://github.com/reyduar/Vaqcrow/issues/29) · Tipo `Feature` · Área `demo` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#9](#^issue-9); bloqueada nativamente por [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28).
 - **Objetivo:** presentar en una línea temporal decisiones, evidencia, estados, montos, hashes, enlaces del explorador y avisos de simulación.
 - **Orden:** está lista en esta ola, pero sigue al Feature `Critical` [#30](#^issue-30); no tiene dependientes nativos directos.
 
-**Rama propuesta.** `Vaqcrow#29_Feat_Expose_decision_and_transaction_evidence_dashboard` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#29_Feat_Expose_decision_and_transaction_evidence_dashboard`; la Feature se entregó mediante las ramas de sus Tasks, con PR [#349](https://github.com/reyduar/Vaqcrow/pull/349), [#350](https://github.com/reyduar/Vaqcrow/pull/350) y [#351](https://github.com/reyduar/Vaqcrow/pull/351). Evidencia de cierre en [`evidence-dashboard-evidence.md`](./evidence-dashboard-evidence.md).
 
-### #92 — Implementar el dashboard de evidencia
+### ~~#92 — Implementar el dashboard de evidencia~~
 
 ^issue-92
 
 - **Título original:** `Task: Implement evidence dashboard`
-- **GitHub y estado:** [issue #92](https://github.com/reyduar/Vaqcrow/issues/92) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #92](https://github.com/reyduar/Vaqcrow/issues/92) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#29](#^issue-29), que requiere [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28); sin bloqueos nativos propios.
 - **Objetivo:** implementar el dashboard dentro de la arquitectura delimitada de la demo.
 - **Orden:** inicia el Feature y desbloquea [#93](#^issue-93).
 
 **Rama e implementación.** `Vaqcrow#92_Task_Implement_evidence_dashboard`, entregada por el PR [#349](https://github.com/reyduar/Vaqcrow/pull/349).
 
-### #93 — Probar el dashboard de evidencia
+### ~~#93 — Probar el dashboard de evidencia~~
 
 ^issue-93
 
 - **Título original:** `Task: Test evidence dashboard`
-- **GitHub y estado:** [issue #93](https://github.com/reyduar/Vaqcrow/issues/93) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done`.
+- **GitHub y estado:** [issue #93](https://github.com/reyduar/Vaqcrow/issues/93) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#29](#^issue-29), que requiere [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28); bloqueada nativamente por [#92](#^issue-92).
 - **Objetivo:** demostrar el dashboard con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#94](#^issue-94).
 
 **Rama e implementación.** `Vaqcrow#93_Task_Test_evidence_dashboard`, entregada por el PR [#350](https://github.com/reyduar/Vaqcrow/pull/350).
 
-### #94 — Documentar evidencia del dashboard
+### ~~#94 — Documentar evidencia del dashboard~~
 
 ^issue-94
 
 - **Título original:** `Task: Document evidence for evidence dashboard`
-- **GitHub y estado:** [issue #94](https://github.com/reyduar/Vaqcrow/issues/94) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #94](https://github.com/reyduar/Vaqcrow/issues/94) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Done` (cerrado el 29/09/2026).
 - **Jerarquía y bloqueos:** padre [#29](#^issue-29), que requiere [#19](#^issue-19), [#22](#^issue-22) y [#28](#^issue-28); bloqueada nativamente por [#93](#^issue-93).
 - **Objetivo:** documentar evidencia reproducible de finalización del dashboard.
 - **Orden:** cierra [#29](#^issue-29); no desbloquea dependientes nativos directos.
 
-**Rama propuesta.** `Vaqcrow#94_Task_Document_evidence_for_evidence_dashboard` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#94_Task_Document_evidence_for_evidence_dashboard`, entregada por el PR [#351](https://github.com/reyduar/Vaqcrow/pull/351) (mergeado a `main` el 29/09/2026). Evidencia en [`evidence-dashboard-evidence.md`](./evidence-dashboard-evidence.md).
 
 ## Ola 7 — Resiliencia y despliegue
 
@@ -1290,7 +1292,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-32
 
 - **Título original:** `Feature: Prepare independent deployment environments`
-- **GitHub y estado:** [issue #32](https://github.com/reyduar/Vaqcrow/issues/32) · Tipo `Feature` · Área `infra` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #32](https://github.com/reyduar/Vaqcrow/issues/32) · Tipo `Feature` · Área `infra` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#10](#^issue-10); bloqueada nativamente por [#15](#^issue-15) y [#30](#^issue-30).
 - **Objetivo:** definir CI reproducible, entornos preview/demo, límites de secretos y artefactos independientes para web y API.
 - **Orden:** sigue a [#31](#^issue-31) por desempate numérico y desbloquea [#33](#^issue-33).
@@ -1302,7 +1304,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-101
 
 - **Título original:** `Task: Implement independent deployment environments`
-- **GitHub y estado:** [issue #101](https://github.com/reyduar/Vaqcrow/issues/101) · Tipo `Task` · Área `infra` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #101](https://github.com/reyduar/Vaqcrow/issues/101) · Tipo `Task` · Área `infra` · Prioridad `High` · Workflow `Ready`.
 - **Jerarquía y bloqueos:** padre [#32](#^issue-32), que requiere [#15](#^issue-15) y [#30](#^issue-30); sin bloqueos nativos propios.
 - **Objetivo:** implementar los entornos independientes dentro de la arquitectura delimitada.
 - **Orden:** inicia el Feature y desbloquea [#102](#^issue-102).
@@ -1435,12 +1437,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 ## Trabajo transversal fuera del camino crítico de la demo
 
-### #134 — Establecer límites de autenticación y sesión con Auth.js
+### ~~#134 — Establecer límites de autenticación y sesión con Auth.js~~
 
 ^issue-134
 
 - **Título original:** `[Backlog] Task: Establish Auth.js authentication and session boundaries`
-- **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Done` verificado en el Project canónico `Vaqcrow-TFM` #4 (issue cerrado el 17/09/2026, con sus criterios de aceptación aún sin marcar y sin evidencia de implementación versionada en `main`).
+- **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Done` verificado en el Project canónico `Vaqcrow-TFM` #4 (issue cerrado el 17/09/2026 como `COMPLETED`, con sus criterios de aceptación aún sin marcar; reverificado el 2026-09-29: **sin implementación de Auth.js en `main`** —ninguna referencia a `next-auth`, `authjs` ni `@auth/*` en `apps/`, `packages/` ni `package.json`—, por lo que este documento no declara entregada esa capa).
 - **Jerarquía y bloqueos:** sin padre; el cuerpo declara dependencia de [#14](#^issue-14). No se fabrica una relación jerárquica ni una ola.
 - **Objetivo:** establecer [Auth.js v5 / NextAuth](https://authjs.dev/) en el límite server-side de Next.js para autenticación y sesión; el backend conserva autorización, permisos, comandos y decisiones de dominio, y un adaptador server-only conserva registros de autenticación.
 - **Límite de alcance:** deja sin efecto la dirección opcional de Supabase Auth como autoridad de identidad/sesión para este alcance futuro. Supabase puede seguir como PostgreSQL/Storage, sin autoridad paralela. La demo actual conserva identidad sintética y #134 permanece fuera de su camino crítico salvo cambio de alcance explícito.
@@ -1449,12 +1451,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 **Rama propuesta.** `Vaqcrow#134_Task_Establish_Auth_js_authentication_and_session_boundaries` sería una unidad transversal revisable solo cuando se promueva explícitamente su ejecución.
 
-### #189 — Enforzar lint y typecheck sobre el directorio `tests/` de la raíz
+### ~~#189 — Enforzar lint y typecheck sobre el directorio `tests/` de la raíz~~
 
 ^issue-189
 
 - **Título original:** `Technical/Foundation: Cover the root tests directory with lint and typecheck`
-- **GitHub y estado:** [issue #189](https://github.com/reyduar/Vaqcrow/issues/189) · Tipo `Technical/Foundation` · Área `Infrastructure` · Prioridad `Medium` · Workflow `Backlog` verificado en el Project canónico `Vaqcrow-TFM` #4. Es uno de los 2 ítems del inventario sin etiqueta de tipo: solo lleva `area:infra`.
+- **GitHub y estado:** [issue #189](https://github.com/reyduar/Vaqcrow/issues/189) · Tipo `Technical/Foundation` · Área `Infrastructure` · Prioridad `Medium` · Workflow `Done` verificado en el Project canónico `Vaqcrow-TFM` #4 (cerrado el 28/09/2026 como `COMPLETED`). Es uno de los 2 ítems del inventario sin etiqueta de tipo: solo lleva `area:infra`.
 - **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos. No se fabrica una relación jerárquica ni una ola.
 - **Objetivo:** hacer que `tests/**` quede sujeto al mismo análisis estático que cada workspace, para que un error de lint o de tipos no pueda esconderse en los archivos que verifican los propios gates del repositorio.
 - **Origen:** no viene de `DEMO.md`. Se halló al cerrar [#14](#^issue-14) y ya estaba registrado como limitación aceptada en el §5 de la [evidencia de la Feature #15](./deterministic-testing-and-ci-gates-evidence.md); este issue lo rastrea en lugar de seguir cargándolo como límite silencioso.
@@ -1462,13 +1464,13 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **Estado medido al crearlo:** no hay `tsconfig.json` raíz (solo `tsconfig.base.json`, que es un target de `extends` sin `include`); `turbo run lint` y `turbo run typecheck` solo recorren workspaces; hay 26 archivos `.ts` bajo `tests/`; y `npx eslint tests/` sí lintea 23 archivos con 0 errores y 0 warnings, así que el hueco es latente y no oculta defectos actuales.
 - **Orden:** está inventariado porque pertenece al Project #4, pero no altera las olas ni bloquea el recorrido de dos semanas.
 
-**Rama propuesta.** `Vaqcrow#189_Task_Cover_the_root_tests_directory_with_lint_and_typecheck` sería una unidad transversal revisable cuando se promueva explícitamente su ejecución.
+**Rama e implementación.** `Vaqcrow#189_Task_Cover_the_root_tests_directory_with_lint_and_typecheck`, entregada por el PR [#330](https://github.com/reyduar/Vaqcrow/pull/330) (cierra #189).
 
 ## Custodia del fondeo por contrato de campaña — incorporado el 2026-09-22
 
 ^custodia-por-contrato
 
-Estas 21 unidades **no forman parte del inventario de 109 ítems** verificado el 18/09/2026: se crearon después de una decisión de alcance tomada el **2026-09-22**, y ninguna está todavía en el Project canónico `Vaqcrow-TFM` #4.
+Estas 21 unidades **no forman parte del inventario de 109 ítems** verificado el 18/09/2026: se crearon después de una decisión de alcance tomada el **2026-09-22**, y las 21 están hoy en el Project canónico `Vaqcrow-TFM` #4, todas en `Done` y con sus issues cerrados (entre el 23/09/2026 y el 26/09/2026). El Epic [#235](#^issue-235) cerró el 26/09/2026 sin PR propio; sus cinco Features se entregaron mediante los PRs indicados en cada entrada.
 
 **Qué cambia.** El fondeo deja de ser un pago clásico directo y pasa a estar **custodiado por un contrato de Stellar**, con una bóveda por campaña. El camino clásico (`@stellar/stellar-sdk`, Horizon y firma con Freighter) se mantiene para la **distribución de revenue share** y para toda firma de la persona usuaria. La decisión reemplaza la que el 2026-09-14 declaraba los contratos inteligentes como trabajo puramente opcional, y **promueve el contrato de stretch goal recortable a camino obligatorio**: en el plan de catorce días reemplaza los días 6 a 8, y sale de la línea de corte para entrar en la lista de lo que nunca se recorta.
 
@@ -1478,219 +1480,219 @@ Estas 21 unidades **no forman parte del inventario de 109 ítems** verificado el
 
 **Nombres de rama.** Se aplica la convención vigente: `Vaqcrow#<número>_Feat_<título original>` y `Vaqcrow#<número>_Task_<título original>`, con el título original en inglés. El Epic no lleva rama.
 
-### #235 — Custodiar el fondeo de la campaña en un contrato de Stellar
+### ~~#235 — Custodiar el fondeo de la campaña en un contrato de Stellar~~
 
 ^issue-235
 
 - **Título original:** `Epic: Custody campaign funds on a Stellar contract`
-- **GitHub y estado:** [issue #235](https://github.com/reyduar/Vaqcrow/issues/235) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`, aún fuera del Project #4.
+- **GitHub y estado:** [issue #235](https://github.com/reyduar/Vaqcrow/issues/235) · Tipo `Epic` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 26/09/2026).
 - **Jerarquía y bloqueos:** sin padre; cinco Features hijas. Bloquea de hecho todo el camino de fondeo de la demo.
 - **Objetivo:** custodiar el fondeo de la campaña en un contrato para que la condición de objetivo la imponga el ledger: pago atómico a la PyME al alcanzar el objetivo y reembolsos permissionless al vencer la fecha sin alcanzarlo.
 - **Orden:** no altera las olas 1 a 9 del inventario, pero **reemplaza los días 6 a 8 del plan de catorce días**.
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #238 — Aprovisionar el toolchain de contratos y el despliegue reproducible
+### ~~#238 — Aprovisionar el toolchain de contratos y el despliegue reproducible~~
 
 ^issue-238
 
 - **Título original:** `Feature: Provision the Soroban toolchain and reproducible deployment`
-- **GitHub y estado:** [issue #238](https://github.com/reyduar/Vaqcrow/issues/238) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #238](https://github.com/reyduar/Vaqcrow/issues/238) · Tipo `Feature` · Área `infra` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#235](#^issue-235); sin bloqueos nativos propios. **Bloquea a todas las demás Features de [#235](#^issue-235).**
 - **Objetivo:** instalar y verificar el toolchain del contrato y hacer reproducible su build y despliegue en local y en CI.
 - **Estado medido al crearlo:** `rustup`, `rustc`, `cargo` y `stellar` **no están instalados** y el target `wasm32v1-none` no existe; Docker 29.1.3, Homebrew 7.0.6, Node `v26.8.1` y pnpm `11.27.0` sí están.
 - **Orden:** es el primer trabajo del camino nuevo; nada más de [#235](#^issue-235) puede empezar sin él.
 
-**Rama propuesta.** `Vaqcrow#238_Feat_Provision_the_Soroban_toolchain_and_reproducible_deployment` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#238_Feat_Provision_the_Soroban_toolchain_and_reproducible_deployment`; la Feature se entregó mediante sus Tasks, con PR [#262](https://github.com/reyduar/Vaqcrow/pull/262) y [#263](https://github.com/reyduar/Vaqcrow/pull/263). Evidencia de cierre en [`soroban-toolchain-and-reproducible-deployment-evidence.md`](./soroban-toolchain-and-reproducible-deployment-evidence.md).
 
-### #242 — Instalar y verificar el toolchain de contratos
+### ~~#242 — Instalar y verificar el toolchain de contratos~~
 
 ^issue-242
 
 - **Título original:** `Task: Install and verify the Soroban toolchain`
-- **GitHub y estado:** [issue #242](https://github.com/reyduar/Vaqcrow/issues/242) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #242](https://github.com/reyduar/Vaqcrow/issues/242) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#238](#^issue-238); sin bloqueos nativos propios.
 - **Objetivo:** instalar Rust, el target `wasm32v1-none` y Stellar CLI, y registrar las versiones exactas como evidencia.
 - **Requisitos técnicos confirmados:** Rust por `rustup`; CLI por Homebrew —`brew install stellar-cli`, en `homebrew-core` como `stable 28.0.0`—; Quickstart **no se instala**, es una imagen Docker que se descarga sola. `cargo install --locked stellar-cli` queda como alternativa, porque compila desde fuente.
 - **Orden:** inicia el Feature y desbloquea [#243](#^issue-243).
 
-**Rama propuesta.** `Vaqcrow#242_Task_Install_and_verify_the_Soroban_toolchain` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#242_Task_Install_and_verify_the_Soroban_toolchain`: instalación de entorno **sin artefacto versionado ni PR**; la verificación vive en un comentario del propio issue, según la [`soroban-toolchain-and-reproducible-deployment-evidence.md`](./soroban-toolchain-and-reproducible-deployment-evidence.md).
 
-### #243 — Levantar la red local y el despliegue reproducible
+### ~~#243 — Levantar la red local y el despliegue reproducible~~
 
 ^issue-243
 
 - **Título original:** `Task: Set up the local network and reproducible deployment`
-- **GitHub y estado:** [issue #243](https://github.com/reyduar/Vaqcrow/issues/243) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #243](https://github.com/reyduar/Vaqcrow/issues/243) · Tipo `Task` · Área `infra` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#238](#^issue-238); bloqueada nativamente por [#242](#^issue-242).
 - **Objetivo:** levantar la red local, registrar el script de build y despliegue reproducible, y cablear el job de CI.
 - **Requisitos técnicos confirmados:** `stellar container start local` y `stellar network add local`; la Action `stellar/quickstart@main` para CI; `stellar/quickstart:testing` en modo local para emular los límites de Testnet. La red local **no reemplaza a Testnet para la evidencia**, porque no es pública.
 - **Orden:** valida la instalación y desbloquea [#241](#^issue-241).
 
-**Rama propuesta.** `Vaqcrow#243_Task_Set_up_the_local_network_and_reproducible_deployment` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#243_Task_Set_up_the_local_network_and_reproducible_deployment`, entregada por el PR [#262](https://github.com/reyduar/Vaqcrow/pull/262) (cierra #243).
 
-### #241 — Documentar evidencia del toolchain y el despliegue reproducible
+### ~~#241 — Documentar evidencia del toolchain y el despliegue reproducible~~
 
 ^issue-241
 
 - **Título original:** `Task: Document evidence for the Soroban toolchain and reproducible deployment`
-- **GitHub y estado:** [issue #241](https://github.com/reyduar/Vaqcrow/issues/241) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #241](https://github.com/reyduar/Vaqcrow/issues/241) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#238](#^issue-238); bloqueada nativamente por [#243](#^issue-243).
 - **Objetivo:** documentar evidencia reproducible del toolchain y del build, despliegue e invocación, en red local y en Testnet.
 - **Orden:** cierra [#238](#^issue-238) y habilita [#236](#^issue-236).
 
-**Rama propuesta.** `Vaqcrow#241_Task_Document_evidence_for_the_Soroban_toolchain_and_reproducible_deployment` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#241_Task_Document_evidence_for_the_Soroban_toolchain_and_reproducible_deployment`, entregada por el PR [#263](https://github.com/reyduar/Vaqcrow/pull/263) (cierra #241). Evidencia en [`soroban-toolchain-and-reproducible-deployment-evidence.md`](./soroban-toolchain-and-reproducible-deployment-evidence.md).
 
-### #236 — Implementar el contrato de bóveda de campaña
+### ~~#236 — Implementar el contrato de bóveda de campaña~~
 
 ^issue-236
 
 - **Título original:** `Feature: Implement the campaign vault contract`
-- **GitHub y estado:** [issue #236](https://github.com/reyduar/Vaqcrow/issues/236) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #236](https://github.com/reyduar/Vaqcrow/issues/236) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#238](#^issue-238). **Supersede el camino de fondeo de [#24](#^issue-24).**
 - **Objetivo:** implementar la fábrica y la bóveda de campaña: custodia de los aportes, pago atómico al alcanzar el objetivo, retiro voluntario antes del objetivo y reembolsos permissionless con barrido acotado.
 - **Diseño ya cerrado:** una instancia de contrato **por campaña**, creada por la fábrica al aprobar; el estado del objetivo se evalúa **dentro** de `contribute`, para que el ordenamiento del ledger lo haga determinístico.
 - **Orden:** es el núcleo del camino nuevo y desbloquea [#239](#^issue-239) y [#237](#^issue-237).
 
-**Rama propuesta.** `Vaqcrow#236_Feat_Implement_the_campaign_vault_contract` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#236_Feat_Implement_the_campaign_vault_contract`; la Feature se entregó mediante sus Tasks, con PR [#264](https://github.com/reyduar/Vaqcrow/pull/264), [#265](https://github.com/reyduar/Vaqcrow/pull/265) y [#266](https://github.com/reyduar/Vaqcrow/pull/266). Evidencia de cierre en [`campaign-vault-contract-evidence.md`](./campaign-vault-contract-evidence.md).
 
-### #244 — Implementar la fábrica y la bóveda de campaña
+### ~~#244 — Implementar la fábrica y la bóveda de campaña~~
 
 ^issue-244
 
 - **Título original:** `Task: Implement the factory and the campaign vault`
-- **GitHub y estado:** [issue #244](https://github.com/reyduar/Vaqcrow/issues/244) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #244](https://github.com/reyduar/Vaqcrow/issues/244) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#236](#^issue-236); requiere [#238](#^issue-238).
 - **Objetivo:** escribir en Rust la fábrica y la bóveda con la máquina de estados y la superficie acordadas.
 - **Requisitos técnicos confirmados:** Rust `#![no_std]`, target `wasm32v1-none`, `soroban-sdk` major 28; `__constructor` en vez de `initialize`; lote del barrido acotado; el TTL es dato, no mecanismo de seguridad.
 - **Orden:** inicia el Feature y desbloquea [#246](#^issue-246).
 
-**Rama propuesta.** `Vaqcrow#244_Task_Implement_the_factory_and_the_campaign_vault` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#244_Task_Implement_the_factory_and_the_campaign_vault`, entregada por el PR [#264](https://github.com/reyduar/Vaqcrow/pull/264).
 
-### #246 — Probar la fábrica y la bóveda de campaña
+### ~~#246 — Probar la fábrica y la bóveda de campaña~~
 
 ^issue-246
 
 - **Título original:** `Task: Test the factory and the campaign vault`
-- **GitHub y estado:** [issue #246](https://github.com/reyduar/Vaqcrow/issues/246) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #246](https://github.com/reyduar/Vaqcrow/issues/246) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#236](#^issue-236); bloqueada nativamente por [#244](#^issue-244).
 - **Objetivo:** cubrir los caminos del dinero y los casos negativos de forma determinística y sin red.
 - **Orden:** valida la implementación y desbloquea [#245](#^issue-245).
 
-**Rama propuesta.** `Vaqcrow#246_Task_Test_the_factory_and_the_campaign_vault` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#246_Task_Test_the_factory_and_the_campaign_vault`, entregada por el PR [#265](https://github.com/reyduar/Vaqcrow/pull/265) (cierra #246).
 
-### #245 — Documentar evidencia del contrato de bóveda
+### ~~#245 — Documentar evidencia del contrato de bóveda~~
 
 ^issue-245
 
 - **Título original:** `Task: Document evidence for the campaign vault contract`
-- **GitHub y estado:** [issue #245](https://github.com/reyduar/Vaqcrow/issues/245) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #245](https://github.com/reyduar/Vaqcrow/issues/245) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#236](#^issue-236); bloqueada nativamente por [#246](#^issue-246).
 - **Objetivo:** documentar evidencia reproducible de la custodia, el pago atómico y los reembolsos, con la dirección de Testnet verificable en el explorador.
 - **Orden:** cierra [#236](#^issue-236).
 
-**Rama propuesta.** `Vaqcrow#245_Task_Document_evidence_for_the_campaign_vault_contract` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#245_Task_Document_evidence_for_the_campaign_vault_contract`, entregada por el PR [#266](https://github.com/reyduar/Vaqcrow/pull/266) (cierra #245). Evidencia en [`campaign-vault-contract-evidence.md`](./campaign-vault-contract-evidence.md).
 
-### #239 — Superseder el camino de XDR de intención de fondeo y reconciliar la persistencia
+### ~~#239 — Superseder el camino de XDR de intención de fondeo y reconciliar la persistencia~~
 
 ^issue-239
 
 - **Título original:** `Feature: Supersede the funding-intent XDR path and reconcile persistence`
-- **GitHub y estado:** [issue #239](https://github.com/reyduar/Vaqcrow/issues/239) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #239](https://github.com/reyduar/Vaqcrow/issues/239) · Tipo `Feature` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 24/09/2026).
 - **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#236](#^issue-236).
 - **Objetivo:** reconciliar la persistencia con la custodia on-chain: retirar `funding_intent` como camino por el que entra el dinero, agregar el modelo de campaña y aportes, y definir la cadena como fuente de verdad del dinero con el almacén como espejo.
 - **Nota de alcance:** invierte la arquitectura actual, donde la API es la única escritora. [#24](#^issue-24) y el [Epic #7](#^issue-7) siguen cerrados y no se reescriben.
 - **Orden:** desbloquea [#237](#^issue-237).
 
-**Rama propuesta.** `Vaqcrow#239_Feat_Supersede_the_funding-intent_XDR_path_and_reconcile_persistence` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#239_Feat_Supersede_the_funding-intent_XDR_path_and_reconcile_persistence`; la Feature se entregó mediante sus Tasks, con PR [#267](https://github.com/reyduar/Vaqcrow/pull/267), [#268](https://github.com/reyduar/Vaqcrow/pull/268), [#269](https://github.com/reyduar/Vaqcrow/pull/269), [#270](https://github.com/reyduar/Vaqcrow/pull/270), [#276](https://github.com/reyduar/Vaqcrow/pull/276) y [#277](https://github.com/reyduar/Vaqcrow/pull/277). Evidencia de cierre en [`campaign-persistence-and-reconciliation-evidence.md`](./campaign-persistence-and-reconciliation-evidence.md).
 
-### #250 — Implementar la persistencia de campaña y retirar el camino de intención de fondeo
+### ~~#250 — Implementar la persistencia de campaña y retirar el camino de intención de fondeo~~
 
 ^issue-250
 
 - **Título original:** `Task: Implement the campaign persistence and retire the funding-intent path`
-- **GitHub y estado:** [issue #250](https://github.com/reyduar/Vaqcrow/issues/250) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #250](https://github.com/reyduar/Vaqcrow/issues/250) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 23/09/2026).
 - **Jerarquía y bloqueos:** padre [#239](#^issue-239); requiere [#236](#^issue-236).
 - **Objetivo:** implementar el modelo de campaña y aportes, la reconciliación contra la cadena y el retiro o reconversión de `funding_intent` con migración reversible.
 - **Requisitos técnicos confirmados:** el patrón de persistencia del repo —una migración que crea, habilita RLS y fija grants atómicamente, sin grants por defecto transitorios—, transiciones condicionales y errores sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#256](#^issue-256).
 
-**Rama propuesta.** `Vaqcrow#250_Task_Implement_the_campaign_persistence_and_retire_the_funding-intent_path` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#250_Task_Implement_the_campaign_persistence_and_retire_the_funding-intent_path`, entregada por la cadena de PRs apilados [#267](https://github.com/reyduar/Vaqcrow/pull/267), [#268](https://github.com/reyduar/Vaqcrow/pull/268) y [#269](https://github.com/reyduar/Vaqcrow/pull/269) (el último cierra #250).
 
-### #256 — Probar la persistencia de campaña y la reconciliación
+### ~~#256 — Probar la persistencia de campaña y la reconciliación~~
 
 ^issue-256
 
 - **Título original:** `Task: Test the campaign persistence and reconciliation`
-- **GitHub y estado:** [issue #256](https://github.com/reyduar/Vaqcrow/issues/256) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #256](https://github.com/reyduar/Vaqcrow/issues/256) · Tipo `Task` · Área `backend` · Prioridad `Critical` · Workflow `Done` (cerrado el 24/09/2026).
 - **Jerarquía y bloqueos:** padre [#239](#^issue-239); bloqueada nativamente por [#250](#^issue-250).
 - **Objetivo:** cubrir la persistencia y la reconciliación contra la cadena, incluida la idempotencia de la migración y el comportamiento de RLS y grants.
 - **Restricción vigente:** ninguna prueba del gate puede depender de Testnet ni de un proyecto Supabase vivo; la suite de integración con credenciales queda separada.
 - **Orden:** valida la implementación y desbloquea [#257](#^issue-257).
 
-**Rama propuesta.** `Vaqcrow#256_Task_Test_the_campaign_persistence_and_reconciliation` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#256_Task_Test_the_campaign_persistence_and_reconciliation`, entregada por el PR [#270](https://github.com/reyduar/Vaqcrow/pull/270) (cierra #256).
 
-### #257 — Documentar evidencia de la persistencia y la reconciliación
+### ~~#257 — Documentar evidencia de la persistencia y la reconciliación~~
 
 ^issue-257
 
 - **Título original:** `Task: Document evidence for the campaign persistence and reconciliation`
-- **GitHub y estado:** [issue #257](https://github.com/reyduar/Vaqcrow/issues/257) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #257](https://github.com/reyduar/Vaqcrow/issues/257) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Done` (cerrado el 24/09/2026).
 - **Jerarquía y bloqueos:** padre [#239](#^issue-239); bloqueada nativamente por [#256](#^issue-256).
 - **Objetivo:** documentar la persistencia, el retiro del camino de intención de fondeo y la reconciliación, con la supersesión de [#24](#^issue-24) declarada explícitamente.
 - **Orden:** cierra [#239](#^issue-239).
 
-**Rama propuesta.** `Vaqcrow#257_Task_Document_evidence_for_the_campaign_persistence_and_reconciliation` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#257_Task_Document_evidence_for_the_campaign_persistence_and_reconciliation`, entregada por el PR [#276](https://github.com/reyduar/Vaqcrow/pull/276) (cierra #257), con el complemento [#277](https://github.com/reyduar/Vaqcrow/pull/277). Evidencia en [`campaign-persistence-and-reconciliation-evidence.md`](./campaign-persistence-and-reconciliation-evidence.md).
 
-### #237 — Integrar la bóveda de campaña en el recorrido web
+### ~~#237 — Integrar la bóveda de campaña en el recorrido web~~
 
 ^issue-237
 
 - **Título original:** `Feature: Integrate the campaign vault into the web journey`
-- **GitHub y estado:** [issue #237](https://github.com/reyduar/Vaqcrow/issues/237) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #237](https://github.com/reyduar/Vaqcrow/issues/237) · Tipo `Feature` · Área `frontend` · Prioridad `Critical` · Workflow `Done` (cerrado el 25/09/2026).
 - **Jerarquía y bloqueos:** padre [#235](#^issue-235); requiere [#236](#^issue-236) y [#239](#^issue-239).
 - **Objetivo:** llevar la bóveda por el recorrido web: abrirla al aprobar, permitir el aporte firmando la invocación con Freighter y mostrar el estado leído de la cadena.
 - **Cambio de forma:** hoy el frontend firma un XDR de pago clásico; ahora firma una invocación de contrato. Freighter sigue firmando y Vaqcrow sigue sin ver seeds.
 - **Orden:** cierra el camino crítico de la demo.
 
-**Rama propuesta.** `Vaqcrow#237_Feat_Integrate_the_campaign_vault_into_the_web_journey` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#237_Feat_Integrate_the_campaign_vault_into_the_web_journey`; la Feature se entregó mediante sus Tasks, con PR [#278](https://github.com/reyduar/Vaqcrow/pull/278), [#279](https://github.com/reyduar/Vaqcrow/pull/279), [#280](https://github.com/reyduar/Vaqcrow/pull/280), [#281](https://github.com/reyduar/Vaqcrow/pull/281), [#282](https://github.com/reyduar/Vaqcrow/pull/282), [#283](https://github.com/reyduar/Vaqcrow/pull/283), [#284](https://github.com/reyduar/Vaqcrow/pull/284), [#285](https://github.com/reyduar/Vaqcrow/pull/285) y [#293](https://github.com/reyduar/Vaqcrow/pull/293). Evidencia de cierre en [`campaign-vault-web-journey-evidence.md`](./campaign-vault-web-journey-evidence.md).
 
-### #247 — Implementar el recorrido de la bóveda en la web
+### ~~#247 — Implementar el recorrido de la bóveda en la web~~
 
 ^issue-247
 
 - **Título original:** `Task: Implement the campaign vault journey in the web`
-- **GitHub y estado:** [issue #247](https://github.com/reyduar/Vaqcrow/issues/247) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #247](https://github.com/reyduar/Vaqcrow/issues/247) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Done` (cerrado el 24/09/2026).
 - **Jerarquía y bloqueos:** padre [#237](#^issue-237); requiere [#236](#^issue-236) y [#239](#^issue-239).
 - **Objetivo:** acreditar la cuenta de la PyME y abrir la bóveda al aprobar, aportar firmando la invocación, leer el estado de la cadena y ofrecer el reembolso.
 - **Requisitos técnicos confirmados:** `apps/web` sigue usando solo `@stellar/freighter-api` —sin `@stellar/stellar-sdk` ni `packages/domain`— y respeta las fronteras de `dependency-cruiser`. La cuenta de la PyME se verifica **al abrir la campaña**, no al liquidar.
 - **Orden:** inicia el Feature y desbloquea [#248](#^issue-248).
 
-**Rama propuesta.** `Vaqcrow#247_Task_Implement_the_campaign_vault_journey_in_the_web` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#247_Task_Implement_the_campaign_vault_journey_in_the_web`, entregada por la cadena stacked-to-main de siete PRs [#278](https://github.com/reyduar/Vaqcrow/pull/278), [#279](https://github.com/reyduar/Vaqcrow/pull/279), [#280](https://github.com/reyduar/Vaqcrow/pull/280), [#281](https://github.com/reyduar/Vaqcrow/pull/281), [#282](https://github.com/reyduar/Vaqcrow/pull/282), [#283](https://github.com/reyduar/Vaqcrow/pull/283) y [#284](https://github.com/reyduar/Vaqcrow/pull/284).
 
-### #248 — Probar el recorrido de la bóveda en la web
+### ~~#248 — Probar el recorrido de la bóveda en la web~~
 
 ^issue-248
 
 - **Título original:** `Task: Test the campaign vault journey in the web`
-- **GitHub y estado:** [issue #248](https://github.com/reyduar/Vaqcrow/issues/248) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #248](https://github.com/reyduar/Vaqcrow/issues/248) · Tipo `Task` · Área `frontend` · Prioridad `Critical` · Workflow `Done` (cerrado el 24/09/2026).
 - **Jerarquía y bloqueos:** padre [#237](#^issue-237); bloqueada nativamente por [#247](#^issue-247).
 - **Objetivo:** cubrir los tres estados con pruebas de componente y un recorrido de navegador determinístico, sin alcanzar Testnet.
 - **Orden:** valida la implementación y desbloquea [#249](#^issue-249).
 
-**Rama propuesta.** `Vaqcrow#248_Task_Test_the_campaign_vault_journey_in_the_web` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#248_Task_Test_the_campaign_vault_journey_in_the_web`, entregada por el PR [#285](https://github.com/reyduar/Vaqcrow/pull/285) (cierra #248).
 
-### #249 — Documentar evidencia del recorrido de la bóveda en la web
+### ~~#249 — Documentar evidencia del recorrido de la bóveda en la web~~
 
 ^issue-249
 
 - **Título original:** `Task: Document evidence for the campaign vault journey in the web`
-- **GitHub y estado:** [issue #249](https://github.com/reyduar/Vaqcrow/issues/249) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #249](https://github.com/reyduar/Vaqcrow/issues/249) · Tipo `Task` · Área `docs` · Prioridad `High` · Workflow `Done` (cerrado el 25/09/2026).
 - **Jerarquía y bloqueos:** padre [#237](#^issue-237); bloqueada nativamente por [#248](#^issue-248).
 - **Objetivo:** documentar el recorrido con los hashes de Testnet y los límites honestos de la interfaz.
 - **Orden:** cierra [#237](#^issue-237).
 
-**Rama propuesta.** `Vaqcrow#249_Task_Document_evidence_for_the_campaign_vault_journey_in_the_web` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#249_Task_Document_evidence_for_the_campaign_vault_journey_in_the_web`, entregada por el PR [#293](https://github.com/reyduar/Vaqcrow/pull/293) (cierra #249 y #287). Evidencia en [`campaign-vault-web-journey-evidence.md`](./campaign-vault-web-journey-evidence.md).
 
 ### ~~#240 — Reconciliar los avisos de confianza con la custodia por contrato~~
 
