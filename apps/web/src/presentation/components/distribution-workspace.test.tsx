@@ -16,7 +16,7 @@ import { DistributionWorkspace } from "./distribution-workspace";
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
-const PASSPHRASE = "Test SDF Network ; September 2015";
+const PASSPHRASE = "passphrase-from-the-response";
 const ACK = "Confirmo que revisé los destinatarios y los montos";
 
 const recipients = demoDistributionRecipients.recipients.map((recipient) => ({
