@@ -955,24 +955,24 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-71
 
 - **Título original:** `Task: Implement AI failure routing to manual review`
-- **GitHub y estado:** [issue #71](https://github.com/reyduar/Vaqcrow/issues/71) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #71](https://github.com/reyduar/Vaqcrow/issues/71) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#22](#^issue-22), que requiere [#21](#^issue-21); sin bloqueos nativos propios.
 - **Objetivo:** implementar la derivación a revisión manual dentro del límite de la demo.
 - **Orden:** inicia el Feature y desbloquea [#72](#^issue-72).
 
-**Rama propuesta.** `Vaqcrow#71_Task_Implement_AI_failure_routing_to_manual_review` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#71_Task_Implement_AI_failure_routing_to_manual_review`, entregada por los PRs [#335](https://github.com/reyduar/Vaqcrow/pull/335) y [#338](https://github.com/reyduar/Vaqcrow/pull/338).
 
 ### #72 — Probar la derivación de fallos de IA a revisión manual
 
 ^issue-72
 
 - **Título original:** `Task: Test AI failure routing to manual review`
-- **GitHub y estado:** [issue #72](https://github.com/reyduar/Vaqcrow/issues/72) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #72](https://github.com/reyduar/Vaqcrow/issues/72) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#22](#^issue-22), que requiere [#21](#^issue-21); bloqueada nativamente por [#71](#^issue-71).
 - **Objetivo:** demostrar la derivación con pruebas determinísticas.
 - **Orden:** valida la implementación y desbloquea [#73](#^issue-73).
 
-**Rama propuesta.** `Vaqcrow#72_Task_Test_AI_failure_routing_to_manual_review` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#72_Task_Test_AI_failure_routing_to_manual_review`, entregada por el PR [#339](https://github.com/reyduar/Vaqcrow/pull/339).
 
 ### #73 — Documentar evidencia de la derivación de fallos de IA
 
