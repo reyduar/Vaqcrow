@@ -30,7 +30,8 @@ function repositoryReturning(
     create: vi.fn(),
     findById: vi.fn(),
     transition: vi.fn(),
-    recordHumanDecision: vi.fn().mockResolvedValue(result)
+    recordHumanDecision: vi.fn().mockResolvedValue(result),
+    recordAssessmentFailureHandoff: vi.fn()
   };
 }
 

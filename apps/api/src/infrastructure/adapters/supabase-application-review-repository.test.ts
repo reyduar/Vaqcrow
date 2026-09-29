@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import {
   parseApplicationId,
+  parseAssessmentFailureHandoffCommand,
   parseCorrelationId,
   parseHumanDecisionCommand
 } from "@vaqcrow/contracts";
@@ -19,6 +20,29 @@ const DECISION = parseHumanDecisionCommand({
   approvedLimitArs: 5_000_000
 });
 const DECIDED_AT = "2026-09-19T18:30:00.000Z";
+const FAILURE_HANDOFF = parseAssessmentFailureHandoffCommand({
+  applicationId: APPLICATION_ID,
+  correlationId: CORRELATION_ID,
+  failureCode: "invalid_output",
+  evidence: {
+    periods: [
+      {
+        period: "2026-01",
+        amountArs: 1_200_000,
+        status: "reported",
+        evidenceRef: "sales:2026-01",
+        simuladoLabel: "SIMULADO"
+      }
+    ],
+    findings: []
+  },
+  providerProvenance: {
+    model: "simulated-underwriter",
+    promptVersion: "prompt-v1",
+    generatedAt: "2026-09-28T12:00:00.000Z",
+    source: "simulated"
+  }
+});
 
 interface FakePostgrestError {
   readonly code: string;
@@ -491,6 +515,118 @@ describe("SupabaseApplicationReviewRepository", () => {
       });
 
       expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+  });
+
+  describe("recordAssessmentFailureHandoff", () => {
+    it("calls the atomic RPC with only the sanitized durable handoff fields", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        {
+          data: [
+            {
+              result_kind: "applied",
+              application_id: FAILURE_HANDOFF.applicationId,
+              correlation_id: FAILURE_HANDOFF.correlationId,
+              failure_code: FAILURE_HANDOFF.failureCode,
+              evidence_bundle: FAILURE_HANDOFF.evidence,
+              provider_provenance: FAILURE_HANDOFF.providerProvenance,
+              actual_state: null
+            }
+          ],
+          error: null
+        }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).recordAssessmentFailureHandoff(
+        FAILURE_HANDOFF
+      );
+
+      expect(calls.rpc).toEqual([
+        [
+          "record_assessment_failure_handoff",
+          {
+            p_application_id: FAILURE_HANDOFF.applicationId,
+            p_correlation_id: FAILURE_HANDOFF.correlationId,
+            p_failure_code: FAILURE_HANDOFF.failureCode,
+            p_evidence_bundle: FAILURE_HANDOFF.evidence,
+            p_provider_provenance: FAILURE_HANDOFF.providerProvenance
+          }
+        ]
+      ]);
+      expect(result).toEqual({ ok: true, value: { record: FAILURE_HANDOFF, applied: true } });
+    });
+
+    it("returns a sanitized correlation conflict without provider diagnostics", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: [
+            {
+              result_kind: "correlation_conflict",
+              actual_state: null
+            }
+          ],
+          error: null
+        }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).recordAssessmentFailureHandoff(
+        FAILURE_HANDOFF
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "correlation_conflict" } });
+      if (result.ok) throw new Error("expected a sanitized repository error");
+      expect(result.error).not.toHaveProperty("message");
+      expect(result.error).not.toHaveProperty("details");
+      expect(result.error).not.toHaveProperty("hint");
+    });
+
+    it("returns the stored canonical record for a same-correlation replay", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: [
+            {
+              result_kind: "replayed",
+              application_id: FAILURE_HANDOFF.applicationId,
+              correlation_id: FAILURE_HANDOFF.correlationId,
+              failure_code: FAILURE_HANDOFF.failureCode,
+              evidence_bundle: FAILURE_HANDOFF.evidence,
+              provider_provenance: FAILURE_HANDOFF.providerProvenance,
+              actual_state: null
+            }
+          ],
+          error: null
+        }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).recordAssessmentFailureHandoff(
+        FAILURE_HANDOFF
+      );
+
+      expect(result).toEqual({ ok: true, value: { record: FAILURE_HANDOFF, applied: false } });
+    });
+
+    it("maps an unknown application to not_found without provider diagnostics", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [{ result_kind: "not_found", actual_state: null }], error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).recordAssessmentFailureHandoff(
+        FAILURE_HANDOFF
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+
+    it("maps an incompatible application state to a sanitized state_conflict", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [{ result_kind: "state_conflict", actual_state: "approved" }], error: null }
+      ]);
+
+      const result = await new SupabaseApplicationReviewRepository(client).recordAssessmentFailureHandoff(
+        FAILURE_HANDOFF
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "state_conflict", actualState: "approved" } });
     });
   });
 

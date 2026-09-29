@@ -1,12 +1,15 @@
 import {
   applicationReviewStateSchema,
   parseApplicationReviewSnapshot,
+  parseAssessmentFailureHandoffCommand,
   parseHumanDecisionRecord
 } from "@vaqcrow/contracts";
 import type {
   ApplicationId,
   ApplicationReviewSnapshot,
   ApplicationReviewState,
+  AssessmentFailureHandoffCommand,
+  AssessmentFailureHandoffRecord,
   CorrelationId,
   HumanDecisionCommand,
   HumanDecisionRecord
@@ -17,6 +20,7 @@ import type {
   ApplicationReviewRepositoryPort,
   ApplicationReviewRepositoryResult,
   ApplicationReviewTransitionOutcome,
+  AssessmentFailureHandoffRepositoryOutcome,
   HumanDecisionRepositoryOutcome
 } from "../../application/ports/application-review-repository-port.js";
 
@@ -27,6 +31,7 @@ const TABLE = "application_review";
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 const POSTGRES_CHECK_VIOLATION = "23514";
 const RECORD_HUMAN_DECISION_FUNCTION = "record_human_decision";
+const RECORD_ASSESSMENT_FAILURE_HANDOFF_FUNCTION = "record_assessment_failure_handoff";
 
 type HumanDecisionResultKind =
   | "applied"
@@ -45,6 +50,24 @@ interface HumanDecisionRpcRow {
   readonly approved_limit_ars?: unknown;
   readonly decided_at?: unknown;
   readonly correlation_id?: unknown;
+  readonly actual_state?: unknown;
+}
+
+type AssessmentFailureHandoffResultKind =
+  | "applied"
+  | "replayed"
+  | "not_found"
+  | "state_conflict"
+  | "correlation_conflict";
+
+interface AssessmentFailureHandoffRpcRow {
+  readonly result_kind: AssessmentFailureHandoffResultKind;
+  readonly application_id?: unknown;
+  readonly correlation_id?: unknown;
+  readonly failure_code?: unknown;
+  readonly evidence_bundle?: unknown;
+  readonly provider_provenance?: unknown;
+  readonly recorded_at?: unknown;
   readonly actual_state?: unknown;
 }
 
@@ -165,6 +188,36 @@ export class SupabaseApplicationReviewRepository implements ApplicationReviewRep
     }
   }
 
+  async recordAssessmentFailureHandoff(
+    command: AssessmentFailureHandoffCommand
+  ): Promise<ApplicationReviewRepositoryResult<AssessmentFailureHandoffRepositoryOutcome>> {
+    try {
+      const { data, error } = await this.client.rpc(RECORD_ASSESSMENT_FAILURE_HANDOFF_FUNCTION, {
+        p_application_id: command.applicationId,
+        p_correlation_id: command.correlationId,
+        p_failure_code: command.failureCode,
+        p_evidence_bundle: command.evidence,
+        // Explicit null so an absent provenance is a declared absence, not an omitted argument.
+        p_provider_provenance: command.providerProvenance ?? null
+      });
+
+      if (error) {
+        return {
+          ok: false,
+          error: this.toRepositoryError(error, command.correlationId, command.applicationId)
+        };
+      }
+
+      if (!Array.isArray(data) || data.length !== 1) {
+        return { ok: false, error: { code: "unavailable" } };
+      }
+
+      return this.mapAssessmentFailureHandoffRpcRow(data[0]);
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   /**
    * Zero rows matched the conditional UPDATE. Disambiguate with one follow-up SELECT
    * (design's "Zero-row disambiguation" decision): the row may not exist, may already
@@ -233,6 +286,55 @@ export class SupabaseApplicationReviewRepository implements ApplicationReviewRep
       approvedLimitArs: this.normalizeBigint(row.approved_limit_ars),
       decidedAt: row.decided_at,
       correlationId: row.correlation_id
+    });
+  }
+
+  private mapAssessmentFailureHandoffRpcRow(
+    value: unknown
+  ): ApplicationReviewRepositoryResult<AssessmentFailureHandoffRepositoryOutcome> {
+    if (typeof value !== "object" || value === null || !("result_kind" in value)) {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+
+    const row = value as AssessmentFailureHandoffRpcRow;
+    switch (row.result_kind) {
+      case "applied":
+        return { ok: true, value: { record: this.toAssessmentFailureHandoffRecord(row), applied: true } };
+      case "replayed":
+        return { ok: true, value: { record: this.toAssessmentFailureHandoffRecord(row), applied: false } };
+      case "not_found":
+        return { ok: false, error: { code: "not_found" } };
+      case "state_conflict":
+        return {
+          ok: false,
+          error: {
+            code: "state_conflict",
+            actualState: applicationReviewStateSchema.parse(row.actual_state)
+          }
+        };
+      case "correlation_conflict":
+        return { ok: false, error: { code: "correlation_conflict" } };
+      default:
+        return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * Rebuilds the sanitized record from the one row the RPC returned. The parser
+   * re-validates every stored column, so a malformed row is an `unavailable`
+   * outcome rather than a record that silently widened.
+   */
+  private toAssessmentFailureHandoffRecord(
+    row: AssessmentFailureHandoffRpcRow
+  ): AssessmentFailureHandoffRecord {
+    return parseAssessmentFailureHandoffCommand({
+      applicationId: row.application_id,
+      correlationId: row.correlation_id,
+      failureCode: row.failure_code,
+      evidence: row.evidence_bundle,
+      ...(row.provider_provenance === null || row.provider_provenance === undefined
+        ? {}
+        : { providerProvenance: row.provider_provenance })
     });
   }
 

@@ -44,7 +44,8 @@ function repositoryReturning(
       create: vi.fn(),
       findById: vi.fn(),
       transition: vi.fn(),
-      recordHumanDecision
+      recordHumanDecision,
+      recordAssessmentFailureHandoff: vi.fn()
     },
     recordHumanDecision
   };
