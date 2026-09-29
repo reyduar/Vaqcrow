@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseCorrelationId } from "@vaqcrow/contracts";
-import type { RevenueShareDistributionRecord } from "../ports/revenue-share-distribution-repository-port.js";
+import type { CorrelationId } from "@vaqcrow/contracts";
+import type {
+  RevenueShareDistributionRecord
+} from "../ports/revenue-share-distribution-repository-port.js";
 import type {
   StellarSubmissionOutcome,
   StellarTransactionOutcome,
@@ -95,6 +98,79 @@ function run(deps: ReturnType<typeof depsFor>, policy: ConfirmationPolicy = POLI
     correlationId: CORRELATION_ID,
     policy
   });
+}
+
+/**
+ * A repository double that actually keeps the schedule, so a sequence of ticks
+ * can be driven rather than a single step poked.
+ *
+ * `findPending` only returns the row once it is due, which is the decision the
+ * real partial index makes, so the loop cannot advance faster than the backoff
+ * allows — the property the single-step `depsFor` double cannot observe because
+ * it answers every call regardless of the schedule.
+ */
+function statefulDeps(input: {
+  readonly find: () => StellarTransactionResult<StellarTransactionOutcome>;
+  readonly submit?: StellarTransactionResult<StellarSubmissionOutcome>;
+} = { find: () => ({ ok: true, value: { status: "pending" } }) }) {
+  const state = { attempts: 0, nextAttemptAt: NOW, terminal: false };
+  const clock = { now: NOW };
+
+  const repository = {
+    findPending: vi.fn(async () => {
+      if (state.terminal || Date.parse(state.nextAttemptAt) > Date.parse(clock.now)) {
+        return { ok: true as const, value: [] as RevenueShareDistributionRecord[] };
+      }
+
+      return {
+        ok: true as const,
+        value: [
+          record({ confirmationAttempts: state.attempts, nextAttemptAt: state.nextAttemptAt })
+        ]
+      };
+    }),
+    recordAttempt: vi.fn(
+      async (call: {
+        distributionId: string;
+        attempts: number;
+        nextAttemptAt: string;
+        correlationId: CorrelationId;
+      }) => {
+        state.attempts = call.attempts;
+        state.nextAttemptAt = call.nextAttemptAt;
+
+        return {
+          ok: true as const,
+          value: {
+            record: record({
+              confirmationAttempts: call.attempts,
+              nextAttemptAt: call.nextAttemptAt
+            }),
+            applied: true
+          }
+        };
+      }
+    ),
+    recordConfirmation: vi.fn(
+      async () => {
+        state.terminal = true;
+
+        return {
+          ok: true as const,
+          value: { record: record({ state: "confirmed" }), applied: true }
+        };
+      }
+    )
+  };
+
+  const transaction = {
+    submit: vi.fn(
+      async () => input.submit ?? { ok: true as const, value: { status: "accepted" as const } }
+    ),
+    findTransaction: vi.fn(async () => input.find())
+  };
+
+  return { repository, transaction, clock, state };
 }
 
 describe("confirmRevenueShareDistributions", () => {
@@ -452,5 +528,104 @@ describe("confirmRevenueShareDistributions", () => {
     expect(transaction.submit).toHaveBeenCalledTimes(1);
     expect(transaction.findTransaction).toHaveBeenCalledTimes(1);
     expect(repository.recordConfirmation).toHaveBeenCalledTimes(1);
+  });
+
+  it("widens the retry interval across successive attempts and stops growing at the ceiling", async () => {
+    const driven = statefulDeps();
+
+    const delays: number[] = [];
+
+    for (let tick = 0; tick < 6; tick += 1) {
+      const now = driven.clock.now;
+
+      await confirmRevenueShareDistributions(
+        { repository: driven.repository, transaction: driven.transaction },
+        { now, correlationId: CORRELATION_ID, policy: POLICY }
+      );
+
+      delays.push(Date.parse(driven.state.nextAttemptAt) - Date.parse(now));
+      // The next run happens only once the recorded schedule says it is due.
+      driven.clock.now = driven.state.nextAttemptAt;
+    }
+
+    // 1s, 2s, 4s, then flat at the 8s ceiling: the load stops growing with the
+    // attempt count, which is the half of "bounded" the policy promises.
+    expect(delays).toEqual([1_000, 2_000, 4_000, 8_000, 8_000, 8_000]);
+    expect(driven.state.attempts).toBe(6);
+    // Each tick still re-offered the envelope; core dedupes it and that is what
+    // keeps the transaction alive in its queue.
+    expect(driven.transaction.submit).toHaveBeenCalledTimes(6);
+    expect(driven.repository.recordConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("does not re-submit a record that has passed its bound, even at the backoff clamp", async () => {
+    const deps = depsFor({
+      pending: [record({ confirmationAttempts: 31, expiresAt: ALREADY_EXPIRED })]
+    });
+
+    await run(deps);
+
+    // The envelope's own maxTime is the real cap: after it Stellar can never
+    // include the transaction, so there is nothing to ask — and a long attempt
+    // history does not change that, nor earn another scheduled attempt.
+    expect(deps.submit).not.toHaveBeenCalled();
+    expect(deps.findTransaction).not.toHaveBeenCalled();
+    expect(deps.recordAttempt).not.toHaveBeenCalled();
+    expect(deps.recordConfirmation).toHaveBeenCalledWith({
+      distributionId: DISTRIBUTION_ID,
+      confirmation: { outcome: "failed", reason: "expired" },
+      correlationId: CORRELATION_ID
+    });
+  });
+
+  it("confirms on a later tick after an inconclusive first one", async () => {
+    let lookups = 0;
+    const driven = statefulDeps({
+      find: () =>
+        lookups++ === 0
+          ? { ok: true, value: { status: "pending" } }
+          : {
+              ok: true,
+              value: {
+                status: "confirmed",
+                ledgerSequence: LEDGER_SEQUENCE,
+                confirmedAt: LEDGER_CLOSED_AT
+              }
+            }
+    });
+
+    const first = await confirmRevenueShareDistributions(
+      { repository: driven.repository, transaction: driven.transaction },
+      { now: driven.clock.now, correlationId: CORRELATION_ID, policy: POLICY }
+    );
+
+    expect(first).toEqual({
+      ok: true,
+      value: [{ distributionId: DISTRIBUTION_ID, result: "deferred" }]
+    });
+    expect(driven.state.attempts).toBe(1);
+
+    // The second run happens only because the first one persisted a schedule.
+    driven.clock.now = driven.state.nextAttemptAt;
+
+    const second = await confirmRevenueShareDistributions(
+      { repository: driven.repository, transaction: driven.transaction },
+      { now: driven.clock.now, correlationId: CORRELATION_ID, policy: POLICY }
+    );
+
+    expect(second).toEqual({
+      ok: true,
+      value: [{ distributionId: DISTRIBUTION_ID, result: "confirmed" }]
+    });
+    expect(driven.repository.recordAttempt).toHaveBeenCalledTimes(1);
+    expect(driven.repository.recordConfirmation).toHaveBeenCalledWith({
+      distributionId: DISTRIBUTION_ID,
+      confirmation: {
+        outcome: "confirmed",
+        ledgerSequence: LEDGER_SEQUENCE,
+        confirmedAt: LEDGER_CLOSED_AT
+      },
+      correlationId: CORRELATION_ID
+    });
   });
 });

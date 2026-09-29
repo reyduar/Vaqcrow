@@ -76,9 +76,6 @@ const memoShape = z
   })
   .nullable();
 
-/** An account identifier: a public key, never key material. */
-const accountIdShape = z.string().trim().min(1);
-
 /**
  * A uint64 rendered as a decimal string. JavaScript cannot represent a uint64
  * exactly as a number, so the sequence travels as text and is bounded here
@@ -132,22 +129,22 @@ export function parseRevenueShareDistributionState(input: unknown): RevenueShare
 
 /**
  * Adds an issue per offending recipient index. A recipient must be a distinct
- * destination, and when `sourceAccountId` is known it must not be the source
- * either: paying yourself moves no money to anyone and would only produce a
- * signed transaction that changes nothing.
+ * destination and must not be the source account either: paying yourself moves
+ * no money to anyone and would only produce a signed transaction that changes
+ * nothing.
  *
- * The terms carry no source identity, so they pass `null` and only enforce
- * uniqueness; the prepare command knows the source and enforces both.
+ * The terms, the prepare command and the snapshot each carry the source
+ * account and call this with it, so all three enforce both rules.
  */
 function checkDistributionRecipients(
   recipients: readonly DistributionRecipient[],
-  sourceAccountId: string | null,
+  sourceAccountId: string,
   context: z.RefinementCtx
 ): void {
   const seen = new Set<string>();
 
   recipients.forEach((recipient, index) => {
-    if (sourceAccountId !== null && recipient.accountId === sourceAccountId) {
+    if (recipient.accountId === sourceAccountId) {
       context.addIssue({
         code: "custom",
         path: ["recipients", index, "accountId"],
@@ -178,7 +175,7 @@ const revenueShareDistributionTermsShape = {
    * opaque cryptographic input, not display text.
    */
   networkPassphrase: z.string().min(1),
-  sourceAccountId: accountIdShape,
+  sourceAccountId: stellarAccountIdSchema,
   sourceSequence: uint64StringShape,
   memo: memoShape,
   expiresAt: z.iso.datetime({ offset: true }),
@@ -196,7 +193,7 @@ const revenueShareDistributionTermsShape = {
 export const revenueShareDistributionTermsSchema = z
   .strictObject(revenueShareDistributionTermsShape)
   .superRefine((value, context) => {
-    checkDistributionRecipients(value.recipients, null, context);
+    checkDistributionRecipients(value.recipients, value.sourceAccountId, context);
   });
 
 export type RevenueShareDistributionTerms = z.infer<typeof revenueShareDistributionTermsSchema>;
@@ -212,7 +209,7 @@ export function parseRevenueShareDistributionTerms(input: unknown): RevenueShare
  */
 export const prepareRevenueShareDistributionCommandSchema = z
   .strictObject({
-    sourceAccountId: accountIdShape,
+    sourceAccountId: stellarAccountIdSchema,
     recipients: z.array(distributionRecipientSchema).min(1),
     memo: memoShape,
     applicationId: applicationIdSchema.nullable()
@@ -307,6 +304,11 @@ export const revenueShareDistributionSnapshotSchema = z
     updatedAt: z.iso.datetime({ offset: true })
   })
   .superRefine((value, context) => {
+    // The snapshot mirrors the write model: the terms' own recipient rules —
+    // distinct destinations, never the source — apply here too, so a persisted
+    // read cannot report an allocation the write model would refuse.
+    checkDistributionRecipients(value.recipients, value.sourceAccountId, context);
+
     // The equivalence form, mirroring the table's CHECK in the migration: a
     // failed distribution must say why, and no other state may carry a reason
     // for a state it is not in. Leaving this to the reader would let a
