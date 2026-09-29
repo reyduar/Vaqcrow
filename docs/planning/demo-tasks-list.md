@@ -1043,12 +1043,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-28
 
 - **Título original:** `Feature: Sign and distribute revenue share on Testnet`
-- **GitHub y estado:** [issue #28](https://github.com/reyduar/Vaqcrow/issues/28) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #28](https://github.com/reyduar/Vaqcrow/issues/28) · Tipo `Feature` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#8](#^issue-8); bloqueada nativamente por [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27).
 - **Objetivo:** construir, verificar, enviar y confirmar de forma asíncrona la transacción no custodial de distribución.
 - **Orden:** desbloquea [#29](#^issue-29) y [#30](#^issue-30), por lo que precede a [#19](#^issue-19) dentro de la prioridad `Critical`.
 
-**Rama propuesta.** `Vaqcrow#28_Feat_Sign_and_distribute_revenue_share_on_Testnet` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#28_Feat_Sign_and_distribute_revenue_share_on_Testnet`; la Feature se entregó mediante sus Tasks, con PR [#345](https://github.com/reyduar/Vaqcrow/pull/345), [#346](https://github.com/reyduar/Vaqcrow/pull/346) y [#347](https://github.com/reyduar/Vaqcrow/pull/347).
 
 ### #89 — Implementar la distribución de revenue share en Testnet
 
@@ -1079,12 +1079,12 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 ^issue-91
 
 - **Título original:** `Task: Document evidence for Testnet revenue-share distribution`
-- **GitHub y estado:** [issue #91](https://github.com/reyduar/Vaqcrow/issues/91) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #91](https://github.com/reyduar/Vaqcrow/issues/91) · Tipo `Task` · Área `stellar` · Prioridad `Critical` · Workflow `Done`.
 - **Jerarquía y bloqueos:** padre [#28](#^issue-28), que requiere [#23](#^issue-23), [#25](#^issue-25) y [#27](#^issue-27); bloqueada nativamente por [#90](#^issue-90).
 - **Objetivo:** documentar evidencia reproducible de finalización de la distribución.
 - **Orden:** cierra [#28](#^issue-28) y habilita [#29](#^issue-29) y [#30](#^issue-30).
 
-**Rama propuesta.** `Vaqcrow#91_Task_Document_evidence_for_Testnet_revenue_share_distribution` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#91_Task_Document_Evidence_for_Testnet_revenue_share_distribution`, entregada por el PR [#347](https://github.com/reyduar/Vaqcrow/pull/347).
 
 ### ~~#19 — Implementar la evaluación y aprobación humanas~~
 
