@@ -82,9 +82,11 @@ describe("EvidenceTimeline", () => {
     expect(screen.getByText("RS-2026-01 · SIMULADO")).toBeInTheDocument();
     expect(screen.getByText("Total distribuido")).toBeInTheDocument();
 
-    // The two step notes that belong beside a hash travel with the timeline.
+    // The hash note that belongs beside any hash travels with the timeline. The
+    // prior-run-hash note does not: a hash read back from the API cannot say whether
+    // it came from this run, so the recap must not label the live hash as an old one.
     expect(screen.getByText(microcopy.hashTechnicalOnly)).toBeInTheDocument();
-    expect(screen.getByText(microcopy.priorRunHash)).toBeInTheDocument();
+    expect(screen.queryByText(microcopy.priorRunHash)).not.toBeInTheDocument();
   });
 
   it("shows absent and unavailable as their own distinct visible words, never colour alone", () => {

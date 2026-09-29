@@ -19,6 +19,11 @@ import { HashDisplay } from "./hash-display";
  * failed movement is rendered with the wording the projection gave it and can
  * never read as confirmed. Hashes go through `HashDisplay` with the
  * caller-supplied `explorerUrl`; this component never builds one (`D1`).
+ *
+ * The recap deliberately does not carry `microcopy.priorRunHash`: a hash read
+ * back from the API cannot tell whether it came from this run or from a rehearsal,
+ * so the timeline must not assert either. That disclosure stays where it belongs,
+ * as the step's own note.
  */
 export interface EvidenceTimelineProps {
   readonly entries: readonly EvidenceEntry[];
@@ -30,11 +35,6 @@ const STATE_LABEL: Readonly<Record<EvidenceEntryState, string>> = {
   absent: "Ausente",
   unavailable: "No disponible"
 };
-
-/** The transaction record is the one shown in a recap rather than in its own run view. */
-function showsPriorRunLabel(entry: EvidenceEntry): boolean {
-  return entry.badges.some((badge) => badge.variant === "transaction");
-}
 
 export function EvidenceTimeline({ entries, className }: EvidenceTimelineProps) {
   return (
@@ -85,9 +85,6 @@ export function EvidenceTimeline({ entries, className }: EvidenceTimelineProps) 
                     {...(hash.explorerUrl === undefined ? {} : { explorerUrl: hash.explorerUrl })}
                   />
                 ))}
-                {showsPriorRunLabel(entry) ? (
-                  <p className="text-xs text-muted">{microcopy.priorRunHash}</p>
-                ) : null}
                 <p className="text-xs text-muted">{microcopy.hashTechnicalOnly}</p>
               </div>
             ) : null}
