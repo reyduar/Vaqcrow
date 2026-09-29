@@ -18,6 +18,10 @@ T2: delegated direct writer. Trigger: preparation reading of ~45 roadmap entries
 - "Comenzar aquí" rewritten: next unit is Feature #30 (all four blockers #16, #20, #24, #28 closed). "Entregadas en main" extended with #238, #236, #239, #237, #26, #22, #27, #28, #29.
 - Header: dated reconciliation note instead of recomputed counts; custody intro corrected (all 21 units are on the board and closed).
 
+## Commits and review
+- `10c77c4` docs(planning): reconcile roadmap status with GitHub as of 2026-09-29.
+- RDD: native review of that commit (base `563ff38`) closed at START as `low` risk (`non_executable_only`, 0 lenses); lineage `review-b365893ee8afca9a` approved and acknowledged, authority burned.
+
 ## Could not verify / caveats
 - Task #242 has no PR (environment install; evidence lives in an issue comment per the evidence doc).
 - Epic #235 closed 2026-09-26 with no closing PR.
