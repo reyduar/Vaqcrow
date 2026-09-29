@@ -10,11 +10,11 @@
 /** Canonical rule version for the demo revenue share, fixed by docs/design/demo-ui.md. */
 export const REVENUE_SHARE_RULE_VERSION = "RS-2026-01";
 
-export const revenueShareRoundingPolicies = ["floor", "half_up"] as const;
+export const revenueShareRoundingPolicies = Object.freeze(["floor", "half_up"] as const);
 
 export type RevenueShareRoundingPolicy = (typeof revenueShareRoundingPolicies)[number];
 
-export const revenueSharePeriodStatuses = ["reported", "missing", "anomalous"] as const;
+export const revenueSharePeriodStatuses = Object.freeze(["reported", "missing", "anomalous"] as const);
 
 export type RevenueSharePeriodStatus = (typeof revenueSharePeriodStatuses)[number];
 
@@ -75,6 +75,7 @@ export type RevenueShareErrorCode =
   | "invalid_rule"
   | "invalid_period"
   | "invalid_contributor"
+  | "invalid_obligation"
   | "no_contributors";
 
 export interface RevenueShareError {
@@ -121,11 +122,12 @@ function validatePeriods(periods: readonly RevenueSharePeriod[]): RevenueShareEr
       return { code: "invalid_period" };
     }
 
-    // A reported period must carry a real bigint amount: a null amount is malformed input,
-    // not an exclusion, so it is rejected instead of silently billed as zero.
+    // A reported period must carry a real, non-negative bigint amount: a null or negative
+    // amount is malformed input, not an exclusion, so it is rejected instead of silently
+    // billed as zero or summed into a negative aggregate.
     if (
       entry.status === "reported" &&
-      (entry.salesMinorUnits === null || typeof entry.salesMinorUnits !== "bigint")
+      (typeof entry.salesMinorUnits !== "bigint" || entry.salesMinorUnits < 0n)
     ) {
       return { code: "invalid_period" };
     }
@@ -289,12 +291,18 @@ function buildAllocations(
 
 /**
  * Applies the single semantic allocation rule shared by the standalone allocator and the
- * composed distribution: a positive obligation needs at least one contributor.
+ * composed distribution: the obligation must be a real, non-negative bigint, and a positive
+ * obligation needs at least one contributor. The obligation is checked first, so a negative
+ * obligation is reported as `invalid_obligation` rather than the misleading `no_contributors`.
  */
 function resolveAllocations(
   obligationMinorUnits: bigint,
   contributors: readonly RevenueShareContributor[]
 ): RevenueShareResult<readonly RevenueShareAllocation[]> {
+  if (typeof obligationMinorUnits !== "bigint" || obligationMinorUnits < 0n) {
+    return { ok: false, error: { code: "invalid_obligation" } };
+  }
+
   if (obligationMinorUnits > 0n && contributors.length === 0) {
     return { ok: false, error: { code: "no_contributors" } };
   }
