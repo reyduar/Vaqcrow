@@ -45,7 +45,8 @@ function repositoryReturning(
       findById: vi.fn(),
       transition: vi.fn(),
       recordHumanDecision,
-      recordAssessmentFailureHandoff: vi.fn()
+      recordAssessmentFailureHandoff: vi.fn(),
+      readManualReviewContext: vi.fn()
     },
     recordHumanDecision
   };

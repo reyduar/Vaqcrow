@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ApplicationManualReviewContext } from "@vaqcrow/contracts";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { HumanDecisionGateway } from "@/application/ports/human-decision-gateway";
+import type { ManualReviewGateway } from "@/application/ports/manual-review-gateway";
 import { HumanDecisionWorkspace } from "./human-decision-workspace";
 
-const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" as ApplicationManualReviewContext["applicationId"];
 const recordOf = (decisionId: string) => ({
   decisionId,
   applicationId: APPLICATION_ID,
@@ -15,6 +17,36 @@ const recordOf = (decisionId: string) => ({
   decidedAt: "2026-09-19T12:00:00.000Z",
   correlationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 });
+
+/** A persisted failure handoff as the backend would return it for this application. */
+const manualReviewGatewayReturning = (
+  context: Awaited<ReturnType<ManualReviewGateway["load"]>>
+): ManualReviewGateway => ({ load: vi.fn().mockResolvedValue(context) });
+
+const PERSISTED_CONTEXT = {
+  applicationId: APPLICATION_ID,
+  applicationState: "human_review" as const,
+  failureCode: "timeout" as const,
+  evidence: {
+    periods: [
+      {
+        period: "2026-01",
+        amountArs: 1_200_000,
+        status: "reported" as const,
+        evidenceRef: "sales:2026-01",
+        simuladoLabel: "SIMULADO" as const
+      }
+    ],
+    findings: []
+  },
+  providerProvenance: {
+    model: "simulated-underwriter",
+    promptVersion: "prompt-v1",
+    generatedAt: "2026-09-28T12:05:00.000Z",
+    source: "simulated" as const
+  },
+  recordedAt: "2026-09-28T12:05:00.000Z"
+};
 
 function fillAndSubmit() {
   fireEvent.click(screen.getByRole("radio", { name: /Rechazar/ }));
@@ -30,6 +62,34 @@ describe("HumanDecisionWorkspace", () => {
     const decision = screen.getByRole("form", { name: /Decisión humana/ });
     expect(recommendation.contains(decision)).toBe(false);
     expect(recommendation).toHaveTextContent("SIMULADO");
+  });
+
+  it("renders the persisted manual-review context and drops the disconnected simulated recommendation for this flow", async () => {
+    render(
+      <HumanDecisionWorkspace
+        gateway={null}
+        manualReviewGateway={manualReviewGatewayReturning(PERSISTED_CONTEXT)}
+        applicationId={APPLICATION_ID}
+      />
+    );
+
+    expect(await screen.findByText(/no respondió a tiempo/i)).toBeInTheDocument();
+    // The persisted context is the truth for this flow; the canned fixture must be gone.
+    expect(screen.queryByRole("region", { name: /Recomendación de IA/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/72 % de confianza/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the simulated recommendation for an unrelated flow with no persisted context", async () => {
+    render(
+      <HumanDecisionWorkspace
+        gateway={null}
+        manualReviewGateway={manualReviewGatewayReturning(null)}
+        applicationId={APPLICATION_ID}
+      />
+    );
+
+    expect(await screen.findByRole("region", { name: /Recomendación de IA/ })).toHaveTextContent("SIMULADO");
+    expect(screen.queryByText(/no respondió a tiempo/i)).not.toBeInTheDocument();
   });
 
   it("records a decision through the gateway and shows the server record instead of the form", async () => {

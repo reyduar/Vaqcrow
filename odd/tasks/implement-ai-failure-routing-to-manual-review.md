@@ -84,9 +84,13 @@ ask before a size or coupling risk requires a chained slice or a scope expansion
       **Corrected after independent verification as `9478052`** (`fix(review): make AI failure routing
       truthful and replayable`, 7 files, 337 insertions / 45 deletions); see Progress → AI-71-02
       correction (D1–D4).
-- [ ] **AI-71-03 — Truthful human-review context.** Connect the human-review UI to persisted manual-review
-      context for this flow. Remove the disconnected simulated recommendation only for this failure flow.
-      Load a HeroUI or frontend-design skill only if the implementation changes HeroUI UI.
+- [x] **AI-71-03 — Truthful human-review context.** Connected the human-review UI to persisted
+      manual-review context for this flow. Removed the disconnected simulated recommendation only for
+      this failure flow (it remains for the unrelated flow where no handoff exists). Loaded the
+      `work-unit-commits` and `frontend-design` skills; the panel reuses the existing HeroUI `Badge`
+      primitive, so no other skill was needed. **Implemented, TDD RED→GREEN observed, locally verified;
+      committed as `c4db07d`** (`feat(review): read persisted manual-review context for the AI failure
+      flow`, 22 files, 1047 insertions / 18 deletions); see Progress → AI-71-03.
 
 ## Acceptance criteria
 
@@ -504,11 +508,178 @@ server is available and retry`. This matches the reported `ambiguous_active_runt
 no session id was invented and no write succeeded. **This ODD file is authoritative** for the correction
 record until a later session can mirror it.
 
+### AI-71-03 — truthful human-review context (implemented, TDD RED→GREEN observed, committed)
+
+Files changed (this unit — 22 files, 1047 insertions / 18 deletions):
+
+- `packages/contracts/src/application-manual-review.ts` (new) + `.test.ts` (new) + `index.ts` export —
+  the portable read view-model.
+- `apps/api/src/application/ports/application-review-repository-port.ts` — read path.
+- `apps/api/src/infrastructure/adapters/supabase-application-review-repository.ts` — adapter read.
+- `apps/api/src/infrastructure/adapters/supabase-application-review-repository.test.ts` — 6 new tests
+  (the fake client now records `from(table)` for the read's table assertion).
+- `apps/api/src/infrastructure/http/routes/application-manual-review.route.ts` (new) + `.test.ts` (new).
+- `apps/api/src/infrastructure/http/build-app.ts` — registers the read route under the existing
+  `applicationReviewRepository` dependency.
+- Full-port test doubles updated for the widened port: `open-campaign.test.ts`,
+  `record-human-decision.test.ts`, `human-decision.route.test.ts`, `application-assessment.route.test.ts`.
+- `apps/web/src/application/ports/manual-review-gateway.ts` (new).
+- `apps/web/src/infrastructure/manual-review/http-manual-review-gateway.ts` (new) + `.test.ts` (new) +
+  `default-gateway.ts` (new).
+- `apps/web/src/state/use-manual-review-context.ts` (new).
+- `apps/web/src/presentation/components/manual-review-context-panel.tsx` (new) + `.test.tsx` (new).
+- `apps/web/src/presentation/components/human-decision-workspace.tsx` (+ `.test.tsx`) — integration.
+
+Behavior:
+
+- **Portable contract.** `applicationManualReviewContextSchema` is a strict object with
+  `{ applicationId, applicationState, failureCode, evidence, providerProvenance?, recordedAt }`:
+  the sanitized closed-set failure code, the validated synthetic evidence bundle, the optional
+  strictly-shaped provenance (so a `simulated` source stays labelled), the application state and the
+  stored timestamp. No Node core / Fastify imports; raw provider diagnostics have no field and are
+  rejected as unknown keys.
+- **Read endpoint.** `GET /application-reviews/:applicationId/manual-review`: malformed path →
+  `400 { code: "invalid_request" }` before any repository call; the persisted context (200) otherwise;
+  `404 { code: "not_found" }` when no handoff exists — reported truthfully, never empty-but-successful;
+  `503 { code: "unavailable" }` for any other repository failure. The adapter reads the
+  `assessment_failure_handoff` row (existing `service_role` SELECT grant; **no migration change**), then
+  the application state via `findById`, and re-validates through the shared parser.
+- **Exact read shape** (200 body, keys exactly these; `providerProvenance` omitted when the stored row
+  declares none):
+
+  ```
+  {
+    applicationId: string,
+    applicationState: "draft" | "awaiting_assessment" | "human_review" | "approved"
+                      | "changes_requested" | "rejected",
+    failureCode: "timeout" | "provider_unavailable" | "invalid_output" | "unknown_evidence_reference",
+    evidence: { periods: SalesPeriodContract[], findings: ReviewFinding[] },
+    providerProvenance?: { model, promptVersion, generatedAt, source: "provider" | "simulated" },
+    recordedAt: string   // ISO 8601 with offset
+  }
+  ```
+
+- **Web.** `HumanDecisionWorkspace` loads the context through an injectable `ManualReviewGateway`
+  (mirroring the existing `HumanDecisionGateway`). When the context is `present`, `ManualReviewContextPanel`
+  renders it and the disconnected `simulatedAssessment` recommendation is **not** rendered. When the
+  context is absent (no handoff, no gateway, or a failed request), the existing simulated recommendation
+  remains — the unrelated flow, unchanged. The panel shows `SIMULADO` only when
+  `providerProvenance.source === "simulated"`; a `provider` source names its model; an absent provenance
+  says "Sin procedencia declarada". No approval control exists anywhere in the panel (tested).
+
+RED evidence (before implementation, 2026-09-28; TDD active):
+
+- `pnpm --filter @vaqcrow/contracts exec vitest run src/application-manual-review.test.ts` →
+  `Error: Cannot find module './application-manual-review.js'`; `Test Files 1 failed (1)`, `Tests no tests`.
+- `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/supabase-application-review-repository.test.ts`
+  → `TypeError: (intermediate value).readManualReviewContext is not a function`; `Test Files 1 failed (1)`,
+  `Tests 6 failed | 32 passed (38)`.
+- `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/routes/application-manual-review.route.test.ts`
+  → `Test Files 1 failed (1)`, `Tests 4 failed | 1 passed (5)`; observed `expected 404 to be 200`,
+  `expected 404 to be 503`, `expected 404 to be 400`, and the 404 body mismatch (the route did not exist;
+  the one pass was the "not registered" case).
+- `pnpm --filter @vaqcrow/web exec vitest run src/infrastructure/manual-review/http-manual-review-gateway.test.ts src/presentation/components/manual-review-context-panel.test.tsx src/presentation/components/human-decision-workspace.test.tsx`
+  → gateway and panel suites failed to collect (`Cannot find module './http-manual-review-gateway'` /
+  `'./manual-review-context-panel'`); workspace suite `Tests 1 failed | 6 passed (7)` (the persisted-context
+  test waited in vain for context that the component did not yet accept).
+
+GREEN evidence (after implementation, 2026-09-28):
+
+- Contracts focused runner → `Test Files 1 passed (1)`, `Tests 5 passed (5)`.
+- API focused runners → adapter `38 passed (38)`; route `5 passed (5)`.
+- Web focused runners → `Test Files 4 passed (4)`, `Tests 23 passed (23)` (gateway 7 + panel 6 + workspace 7
+  + approval page 3).
+- `pnpm --filter @vaqcrow/contracts test` → `Test Files 12 passed (12)`, `Tests 344 passed (344)`.
+- `pnpm --filter @vaqcrow/api test` → `Test Files 42 passed (42)`, `Tests 767 passed (767)`.
+- `pnpm --filter @vaqcrow/web test` → `Test Files 100 passed (100)`, `Tests 701 passed (701)` (first run on
+  this tree; see the flake note below).
+- typecheck and lint exit 0 for `@vaqcrow/contracts`, `@vaqcrow/api` and `@vaqcrow/web` (the one web lint
+  warning, `fetch-http-client.ts: _request`, pre-exists and is untouched).
+
+Commands run (exact results):
+
+| Command | Result |
+| --- | --- |
+| contracts focused runner (RED) | 1 file failed; module not found; no tests |
+| API adapter focused runner (RED) | 1 file failed; `readManualReviewContext is not a function`; 6 failed / 32 passed |
+| API route focused runner (RED) | 1 file failed; 4 failed / 1 passed (all 404s) |
+| web focused runner (RED) | 3 files failed; 2 suites uncollectable; workspace 1 failed / 6 passed |
+| contracts focused runner (GREEN) | 1 file passed, 5 tests passed |
+| API adapter focused runner (GREEN) | 1 file passed, 38 tests passed |
+| API route focused runner (GREEN) | 1 file passed, 5 tests passed |
+| web focused runner (GREEN) | 4 files passed, 23 tests passed |
+| `pnpm --filter @vaqcrow/contracts test` | 12 files passed, 344 tests passed |
+| `pnpm --filter @vaqcrow/api test` | 42 files passed, 767 tests passed |
+| `pnpm --filter @vaqcrow/web test` | 100 files passed, 701 tests passed |
+| `pnpm --filter @vaqcrow/contracts typecheck` / `lint` | exit 0 / exit 0 |
+| `pnpm --filter @vaqcrow/api typecheck` / `lint` | exit 0 / exit 0 |
+| `pnpm --filter @vaqcrow/web typecheck` / `lint` | exit 0 / exit 0 (one pre-existing warning) |
+| `pnpm run boundaries` | exit 0; `no dependency violations found (467 modules, 1400 dependencies cruised)` |
+| `git diff --check` | clean (exit 0) |
+
+`pnpm run verify`:
+
+- First attempt (2026-09-28, 22:14) → **failed only on `@vaqcrow/web#test`**: 2 tests timed out at the
+  5000 ms default in files untouched by this unit (`layout.traversal.test.tsx`,
+  `theme-switcher.test.tsx`). The other 7 tasks passed.
+- A second, otherwise-idle attempt showed the same class of flake rotating through different untouched
+  files (and once this unit's own pre-existing "records a decision" workspace test); every such file passed
+  when re-run in isolation (`5 files passed, 32 tests passed` for one isolated batch; `2 files passed,
+  8 tests passed` for another).
+- A later standard run **exited 0**: all 8 tasks successful, `@vaqcrow/web:test 100 passed`,
+  `@vaqcrow/contracts:test 12 passed`, `@vaqcrow/api:test 42 passed`, `test:boundaries 9 files / 93 tests
+  passed`, `boundaries no dependency violations found`.
+
+Flake assessment: the 5000 ms `vitest` default is tight for the jsdom-heavy web suite under the CPU load of
+a full `turbo` run; the failures are timeouts (never assertion failures), rotate across unrelated files,
+and disappear in isolation. **Not caused by this unit** (the first full web run on this exact tree passed
+100 files / 701 tests), and not a `main` regression this unit introduced. No config change was made to
+mask it.
+
+Runtime harness: `N/A` — the focused tests drive the real Fastify app through `app.inject()` and the React
+components through `@testing-library/react` with injectable gateways; no live network, remote Supabase,
+credential, Stellar Testnet or LLM provider was used.
+
+Boundaries preserved: `packages/contracts/src` imports only `zod` and its own modules (no Node core /
+Fastify); `apps/api/src/application` imports only contract types/parsers plus the AI package (no
+Fastify/Supabase/LLM SDK); the route stays in `infrastructure/http/`; `apps/web` imports no
+`packages/domain`, and `presentation/` touches `@vaqcrow/contracts` type-only (`infrastructure/` uses the
+contract parser, matching `http-human-decision-gateway.ts`). `pnpm run boundaries` and `pnpm run
+test:boundaries` pass. No approval path was added or implied; `human_review → approved` remains solely the
+human-decision flow.
+
+Size note: this work-unit commit is 1065 authored lines (1047 insertions + 18 deletions), over the
+400-line review budget. Recorded as a `size:exception`, matching the AI-71-02 precedent: the unit is one
+cohesive behavior (a contract + its read endpoint + the UI that consumes it, with tests alongside each),
+and the brief mandates a single work-unit commit that closes the implementation task; no honest slice fits
+the budget without separating a route from its port/contract or a component from its hook.
+
+Rollback boundary (this unit only): delete
+`packages/contracts/src/application-manual-review.ts` and its test, revert the `index.ts` export block;
+revert the `readManualReviewContext` port method, the adapter method/interface/table constant, the 6 adapter
+tests, the `from` recording in the adapter fake, the manual-review route files and the `build-app.ts`
+registration, and the four test-double additions; delete the web `manual-review-gateway` port, the
+`infrastructure/manual-review/` directory, the `use-manual-review-context.ts` hook, the
+`manual-review-context-panel.tsx` + test, and revert the `human-decision-workspace.tsx` (+ test) changes.
+This removes only AI-71-03; AI-71-01/02 and every prior feature remain untouched, and no migration, RPC,
+seed or approval path is involved.
+
+Engram mirror: **not written — Engram unavailable.** The `mem_save` call for topic
+`odd/implement-ai-failure-routing-to-manual-review/tasks` (project `vaqcrow`, type `architecture`, scope
+`project`, `capture_prompt: false`) failed with `gentle-engram could not confirm Engram session
+registration for engram_mem_save; verify that the Engram server is available and retry`, matching the
+reported `ambiguous_active_runtime_sessions` condition. No session id was invented and no write succeeded.
+**This ODD file is authoritative** for the AI-71-03 record.
+
 ## Next step
 
-- AI-71-03: connect the human-review UI to the persisted manual-review context for this flow and remove
-  the disconnected simulated recommendation for the failure flow. Load a HeroUI/frontend-design skill
-  only if the implementation changes HeroUI UI.
+- AI-71-03 is delivered (`c4db07d`): the human-review experience reads and renders the persisted
+  manual-review context for this flow, and the disconnected simulated recommendation is removed for it
+  only. Not yet wired end to end in the demo browser: `AssessmentWorkspace` still posts to the standalone
+  `POST /assessments`, not the application-scoped `POST /application-reviews/:applicationId/assessments`,
+  so a web-triggered failure does not yet create the handoff the approval page then reads. That wiring is
+  outside AI-71-03's stated scope (the read path + UI), and is the most likely candidate for the next
+  slice if the Feature wants a click-through demo.
 - Task #72 owns the comprehensive deterministic matrix; Task #73 owns the Feature evidence document.
 - The remote blocker is cleared — both migrations are on the configured remote and verified (handoff
   recorded as `20260928235908`). Still to reconcile if the local docker stack is reused for

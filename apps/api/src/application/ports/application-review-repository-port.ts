@@ -1,5 +1,6 @@
 import type {
   ApplicationId,
+  ApplicationManualReviewContext,
   ApplicationReviewSnapshot,
   ApplicationReviewState,
   AssessmentFailureHandoffCommand,
@@ -77,4 +78,16 @@ export interface ApplicationReviewRepositoryPort {
   recordAssessmentFailureHandoff(
     command: AssessmentFailureHandoffCommand
   ): Promise<ApplicationReviewRepositoryResult<AssessmentFailureHandoffRepositoryOutcome>>;
+
+  /**
+   * Reads the persisted manual-review context for an application whose failed
+   * assessment was routed to human review: the sanitized handoff plus the
+   * application's current state. `not_found` means no handoff exists for that
+   * application and is reported truthfully rather than as empty content. Only
+   * the sanitized record fields cross this boundary; raw provider output or
+   * errors never do.
+   */
+  readManualReviewContext(
+    applicationId: ApplicationId
+  ): Promise<ApplicationReviewRepositoryResult<ApplicationManualReviewContext>>;
 }
