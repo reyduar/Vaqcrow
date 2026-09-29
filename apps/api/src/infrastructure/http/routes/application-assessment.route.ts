@@ -1,6 +1,10 @@
 import { parseAssessmentEvidenceBundle } from "@vaqcrow/ai";
 import type { AssessmentProviderPort } from "@vaqcrow/ai";
-import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
+import {
+  parseApplicationId,
+  parseAssessmentHandoffId,
+  parseCorrelationId
+} from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../../application/ports/application-review-repository-port.js";
 import { routeAssessmentFailureToManualReview } from "../../../application/use-cases/route-assessment-failure-to-manual-review.js";
@@ -13,13 +17,20 @@ import { routeAssessmentFailureToManualReview } from "../../../application/use-c
  * persisted as a sanitized handoff and routed to truthful manual review, while a
  * valid assessment is returned advisory and leaves the application untouched.
  * The route owns exactly what the other routes own — the exact body key set,
- * the status mapping and the correlation identity — plus the application id.
+ * the status mapping and the correlation identity — plus the application id and
+ * the caller-supplied `handoffId`.
+ *
+ * `handoffId` is the caller's idempotency key and the durable replay identity:
+ * it is stored as the handoff's correlation, so retrying the same attempt
+ * replays it and a different key against a durable handoff is an explicit
+ * `correlation_conflict`. `request.id` stays the transport correlation (the
+ * `x-correlation-id` header) and never decides replay.
  *
  * The provider and the timeout arrive from the dependencies; a request can never
  * choose them. The standalone `POST /assessments` contract is not changed.
  */
 
-const BODY_KEYS = new Set(["evidence"]);
+const BODY_KEYS = new Set(["evidence", "handoffId"]);
 
 export interface ApplicationAssessmentRouteDependencies {
   readonly repository: Pick<
@@ -52,9 +63,11 @@ export function registerApplicationAssessmentRoute(
 
       let applicationId;
       let evidence;
+      let handoffId;
       try {
         applicationId = parseApplicationId(request.params.applicationId);
         evidence = parseAssessmentEvidenceBundle(request.body["evidence"]);
+        handoffId = parseAssessmentHandoffId(request.body["handoffId"]);
       } catch {
         return reply.code(400).send({ code: "invalid_request" });
       }
@@ -62,12 +75,14 @@ export function registerApplicationAssessmentRoute(
       const result = await routeAssessmentFailureToManualReview(dependencies, {
         applicationId,
         evidence,
+        handoffId,
+        // Transport trace only: request.id never decides replay.
         correlationId: parseCorrelationId(request.id)
       });
 
       if (result.ok) {
         // 201 when this call performed the routing, 200 when it was already
-        // applied (same-correlation replay, or already in human_review).
+        // applied (same-key replay or crash recovery, or already in human_review).
         return reply
           .code(result.value.outcome === "manual_review" && result.value.applied ? 201 : 200)
           .send(result.value);

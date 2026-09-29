@@ -1,6 +1,6 @@
 import { createSimulatedAssessmentProvider } from "@vaqcrow/ai";
 import type { AssessmentEvidenceBundle, AssessmentProviderPort } from "@vaqcrow/ai";
-import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
+import { parseApplicationId, parseAssessmentHandoffId, parseCorrelationId } from "@vaqcrow/contracts";
 import type {
   ApplicationReviewSnapshot,
   AssessmentFailureHandoffRecord
@@ -27,6 +27,7 @@ import { routeAssessmentFailureToManualReview } from "./route-assessment-failure
 
 const APPLICATION_ID = parseApplicationId("22222222-2222-4222-8222-222222222222");
 const CORRELATION_ID = parseCorrelationId("33333333-3333-4333-8333-333333333333");
+const HANDOFF_ID = parseAssessmentHandoffId("44444444-4444-4444-8444-444444444444");
 const FIXED_NOW = "2026-09-22T12:00:00.000Z";
 
 const JANUARY = {
@@ -128,7 +129,12 @@ function dependencies(
   };
 }
 
-const input = { applicationId: APPLICATION_ID, evidence: EVIDENCE, correlationId: CORRELATION_ID };
+const input = {
+  applicationId: APPLICATION_ID,
+  evidence: EVIDENCE,
+  handoffId: HANDOFF_ID,
+  correlationId: CORRELATION_ID
+};
 
 describe("routeAssessmentFailureToManualReview", () => {
   it("persists the sanitized handoff first, then transitions, and labels manual review", async () => {
@@ -146,13 +152,14 @@ describe("routeAssessmentFailureToManualReview", () => {
         inputsPreserved: true,
         applicationState: "human_review",
         failureCode: "timeout",
+        handoff: "persisted",
         correlationId: CORRELATION_ID,
         applied: true
       }
     });
     expect(fake.recordAssessmentFailureHandoff).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
-      correlationId: CORRELATION_ID,
+      correlationId: HANDOFF_ID,
       failureCode: "timeout",
       evidence: EVIDENCE
     });
@@ -232,7 +239,7 @@ describe("routeAssessmentFailureToManualReview", () => {
     expect(fake.transition).not.toHaveBeenCalled();
   });
 
-  it("reports a same-correlation replay as idempotent success", async () => {
+  it("reports a same-key replay as idempotent success", async () => {
     const fake = dependencies({
       handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: false } },
       transition: { ok: true, value: { applied: false, snapshot: HUMAN_REVIEW } }
@@ -248,6 +255,7 @@ describe("routeAssessmentFailureToManualReview", () => {
         inputsPreserved: true,
         applicationState: "human_review",
         failureCode: "timeout",
+        handoff: "replayed",
         correlationId: CORRELATION_ID,
         applied: false
       }
@@ -285,9 +293,13 @@ describe("routeAssessmentFailureToManualReview", () => {
       value: {
         outcome: "manual_review",
         manualReviewRequired: true,
-        inputsPreserved: true,
+        // No handoff row exists for this attempt (state_conflict proves it), so
+        // nothing was preserved by it; the seed inserts the application directly
+        // in human_review without a handoff.
+        inputsPreserved: false,
         applicationState: "human_review",
         failureCode: "timeout",
+        handoff: "absent",
         correlationId: CORRELATION_ID,
         applied: false
       }
@@ -342,5 +354,114 @@ describe("routeAssessmentFailureToManualReview", () => {
 
     expect(result).toMatchObject({ ok: true, value: { outcome: "manual_review", failureCode: "timeout" } });
     expect(fake.recordAssessmentFailureHandoff.mock.calls[0]?.[0].failureCode).toBe("timeout");
+  });
+
+  it("writes the caller's handoff id as the durable handoff correlation, keeping request.id for trace", async () => {
+    const fake = dependencies({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } }
+    });
+
+    await routeAssessmentFailureToManualReview(fake.dependencies, input);
+
+    expect(fake.recordAssessmentFailureHandoff.mock.calls[0]?.[0].correlationId).toBe(HANDOFF_ID);
+    expect(fake.transition.mock.calls[0]?.[0].correlationId).toBe(CORRELATION_ID);
+  });
+
+  it("reports the stored canonical failure code on a replay, not the live one", async () => {
+    const fake = dependencies(
+      {
+        handoff: {
+          ok: true,
+          value: { record: { ...HANDOFF_RECORD, failureCode: "invalid_output" }, applied: false }
+        },
+        transition: { ok: true, value: { applied: false, snapshot: HUMAN_REVIEW } }
+      },
+      providerWith(VALID_OUTPUT, "provider_unavailable")
+    );
+
+    const result = await routeAssessmentFailureToManualReview(fake.dependencies, input);
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { failureCode: "invalid_output", handoff: "replayed" }
+    });
+    expect(fake.recordAssessmentFailureHandoff.mock.calls[0]?.[0].failureCode).toBe(
+      "provider_unavailable"
+    );
+  });
+
+  it("fails closed to not_found when the state_conflict disambiguation cannot find the application", async () => {
+    const fake = dependencies({
+      handoff: { ok: false, error: { code: "state_conflict", actualState: "human_review" } },
+      findById: { ok: false, error: { code: "not_found" } }
+    });
+
+    await expect(routeAssessmentFailureToManualReview(fake.dependencies, input)).resolves.toEqual({
+      ok: false,
+      error: { code: "not_found" }
+    });
+  });
+
+  it("fails closed to unavailable when the state_conflict disambiguation errors for any other reason", async () => {
+    const fake = dependencies({
+      handoff: { ok: false, error: { code: "state_conflict", actualState: "human_review" } },
+      findById: { ok: false, error: { code: "unavailable" } }
+    });
+
+    await expect(routeAssessmentFailureToManualReview(fake.dependencies, input)).resolves.toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+  });
+
+  it.each(["already_exists", "idempotency_conflict", "invalid_state"] as const)(
+    "fails closed to unavailable for an unresolvable handoff error (%s)",
+    async (code) => {
+      const fake = dependencies({ handoff: { ok: false, error: { code } } });
+
+      await expect(routeAssessmentFailureToManualReview(fake.dependencies, input)).resolves.toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+      expect(fake.findById).not.toHaveBeenCalled();
+    }
+  );
+
+  it("reports a transition that cannot find the application as not_found", async () => {
+    const fake = dependencies({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } },
+      transition: { ok: false, error: { code: "not_found" } }
+    });
+
+    await expect(routeAssessmentFailureToManualReview(fake.dependencies, input)).resolves.toEqual({
+      ok: false,
+      error: { code: "not_found" }
+    });
+  });
+
+  it("fails closed to unavailable for a transition state_conflict without an actual state", async () => {
+    const fake = dependencies({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } },
+      transition: { ok: false, error: { code: "state_conflict" } }
+    });
+
+    await expect(routeAssessmentFailureToManualReview(fake.dependencies, input)).resolves.toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+  });
+
+  it("fails closed to unavailable when the sanitized handoff command cannot be built", async () => {
+    const fake = dependencies({
+      handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } }
+    });
+
+    const result = await routeAssessmentFailureToManualReview(fake.dependencies, {
+      ...input,
+      evidence: { periods: [], findings: [] }
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(fake.recordAssessmentFailureHandoff).not.toHaveBeenCalled();
   });
 });

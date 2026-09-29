@@ -5,11 +5,12 @@ import type {
   AssessmentMetadata,
   AssessmentProviderPort
 } from "@vaqcrow/ai";
-import { parseAssessmentFailureHandoffCommand } from "@vaqcrow/contracts";
+import { parseAssessmentFailureHandoffCommand, parseCorrelationId } from "@vaqcrow/contracts";
 import type {
   ApplicationId,
   ApplicationReviewState,
   AssessmentFailureCode,
+  AssessmentHandoffId,
   CorrelationId
 } from "@vaqcrow/contracts";
 import type {
@@ -46,17 +47,30 @@ export type RouteAssessmentFailureError =
 
 /**
  * The label the operator reads when a failure was handed to a person. It says
- * manual review is required and that the submitted inputs were preserved; it
- * carries no model recommendation and no decision.
+ * manual review is required; it carries no model recommendation and no decision.
+ *
+ * `inputsPreserved` is true only when a handoff is durable for this attempt —
+ * this call wrote it, or a same-key retry replayed it. The already-in-manual-
+ * review case with no handoff reports false: nothing was preserved by it.
  */
 export interface ManualReviewRouting {
   readonly outcome: "manual_review";
   readonly manualReviewRequired: true;
-  readonly inputsPreserved: true;
+  readonly inputsPreserved: boolean;
   readonly applicationState: "human_review";
   readonly failureCode: AssessmentFailureCode;
+  /**
+   * The durable handoff state for this attempt, the explicit discriminator
+   * between "routed now" and "already in manual review, inputs not preserved by
+   * this attempt":
+   * - `persisted`: this call wrote the handoff.
+   * - `replayed`: a same-key retry found the durable handoff (crash recovery).
+   * - `absent`: the application was already in `human_review` and no handoff
+   *   exists for it, so this attempt preserved nothing.
+   */
+  readonly handoff: "persisted" | "replayed" | "absent";
   readonly correlationId: CorrelationId;
-  // true = this call performed the routing; false = it was already applied.
+  // true = this call performed the transition; false = it was already applied.
   readonly applied: boolean;
 }
 
@@ -90,6 +104,13 @@ export interface RouteAssessmentFailureDependencies {
 export interface RouteAssessmentFailureInput {
   readonly applicationId: ApplicationId;
   readonly evidence: AssessmentEvidenceBundle;
+  /**
+   * Caller-supplied idempotency key: the durable identity this attempt's handoff
+   * replays on. It is stored as the handoff's correlation because that is the
+   * column the atomic RPC decides replay from.
+   */
+  readonly handoffId: AssessmentHandoffId;
+  /** Transport correlation for traceability (the request id). It never decides replay. */
   readonly correlationId: CorrelationId;
 }
 
@@ -123,7 +144,10 @@ export async function routeAssessmentFailureToManualReview(
     // failure here is a boundary defect, not caller input.
     command = parseAssessmentFailureHandoffCommand({
       applicationId: input.applicationId,
-      correlationId: input.correlationId,
+      // The handoff's stored correlation is the caller's idempotency key: the RPC
+      // replays on that column, so the key — not the transport request id — is
+      // written there. Both are the same uuid contract, re-branded here.
+      correlationId: parseCorrelationId(input.handoffId),
       failureCode,
       evidence: input.evidence
     });
@@ -155,7 +179,10 @@ export async function routeAssessmentFailureToManualReview(
       manualReviewRequired: true,
       inputsPreserved: true,
       applicationState: "human_review",
-      failureCode,
+      // On a replay the stored record is canonical: report the failure code the
+      // original attempt persisted, not the live one from this call.
+      failureCode: handoff.value.applied ? failureCode : handoff.value.record.failureCode,
+      handoff: handoff.value.applied ? "persisted" : "replayed",
       correlationId: input.correlationId,
       // The transition is the state-changing step, so it decides `applied`.
       applied: transition.value.applied
@@ -165,14 +192,21 @@ export async function routeAssessmentFailureToManualReview(
 
 /**
  * The handoff is only admissible while the application awaits its assessment.
- * An application already in `human_review` is a replay, not an error — the only
- * transition into `human_review` is this flow, which always writes the handoff
- * first, so the case's inputs are already preserved. Any other state is a
- * genuine conflict reported with the state the application actually holds.
+ *
+ * The atomic RPC decides in this order: an existing handoff row is `replayed`
+ * (same correlation) or `correlation_conflict` (different correlation); only
+ * when no row exists does it read the application state and return
+ * `state_conflict`. So a `state_conflict` here proves **no handoff row exists**
+ * for this application: an application already in `human_review` has no durable
+ * handoff, its inputs were NOT preserved by this attempt, and the result says so
+ * (`inputsPreserved: false`, `handoff: "absent"`). This state is reachable —
+ * `supabase/seed/demo-application.sql` inserts the demo application directly in
+ * `human_review`, and no other production path creates that state.
  *
  * The state is read with `findById` rather than by widening the transition
  * rules: `human_review` is resolved as idempotent success while every other
- * source state stays an explicit conflict.
+ * source state stays an explicit conflict reported with the state the
+ * application actually holds.
  */
 async function resolveHandoffError(
   repository: RouteAssessmentFailureDependencies["repository"],
@@ -209,9 +243,12 @@ async function resolveHandoffError(
       value: {
         outcome: "manual_review",
         manualReviewRequired: true,
-        inputsPreserved: true,
+        // No handoff row exists for this attempt (see above), so nothing was
+        // preserved by it; the live failure code is the only one available.
+        inputsPreserved: false,
         applicationState: "human_review",
         failureCode,
+        handoff: "absent",
         correlationId: input.correlationId,
         applied: false
       }

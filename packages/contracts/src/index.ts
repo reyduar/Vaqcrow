@@ -11,6 +11,9 @@ export type { ApplicationId } from "./application-id.js";
 export { humanDecisionIdSchema, parseHumanDecisionId } from "./human-decision-id.js";
 export type { HumanDecisionId } from "./human-decision-id.js";
 
+export { assessmentHandoffIdSchema, parseAssessmentHandoffId } from "./assessment-handoff-id.js";
+export type { AssessmentHandoffId } from "./assessment-handoff-id.js";
+
 export {
   applicationReviewStateSchema,
   applicationReviewSnapshotSchema,
