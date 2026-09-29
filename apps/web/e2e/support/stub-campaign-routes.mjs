@@ -55,6 +55,21 @@ const CONTRACT_OPENED = `C${"N".repeat(55)}`;
 const CONTRACT_FUNDING = `C${"K".repeat(55)}`;
 const CONTRACT_REFUNDING = `C${"M".repeat(55)}`;
 
+/**
+ * The Testnet explorer base the real API is configured with
+ * (`STELLAR_TESTNET_EXPLORER_URL` in
+ * `apps/api/src/application/config/stellar-config.ts`) and the way it derives a
+ * contract link from it (`explorerUrlFor` in
+ * `apps/api/src/infrastructure/http/routes/campaign.route.ts`). Duplicated
+ * literally because this double must not import from `apps/api`; kept as a
+ * single derivation so no call site invents its own link.
+ */
+export const CAMPAIGN_EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
+
+export function campaignExplorerUrl(contractAddress) {
+  return `${CAMPAIGN_EXPLORER_BASE_URL}/contract/${contractAddress}`;
+}
+
 const XLM = 10_000_000n;
 
 /** The funding fixture's goal: small enough that one generous contribution crosses it, large enough that a modest one does not. */
@@ -228,7 +243,15 @@ export async function tryHandleCampaignRequest(request, response, method, pathna
 
     const investor = url.searchParams.get("investor") ?? undefined;
     const investorContributionStroops = investor === undefined ? undefined : (record.contributions.get(investor) ?? 0n);
-    sendJson(response, 200, { campaign: toCampaignWire(record, investorContributionStroops) });
+    // The real API attaches the explorer link to every reconciled snapshot it
+    // reads back (`explorerUrlFor`); its opened-campaign POST deliberately omits
+    // it, which `toCampaignWire` alone still mirrors.
+    sendJson(response, 200, {
+      campaign: {
+        ...toCampaignWire(record, investorContributionStroops),
+        explorerUrl: campaignExplorerUrl(record.contractAddress)
+      }
+    });
     return true;
   }
 

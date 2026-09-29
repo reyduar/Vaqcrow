@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/local-only";
+import { campaignExplorerUrl } from "./support/stub-campaign-routes.mjs";
 import { DEMO_APPLICATION_ID, STUB_API_BASE_URL } from "./support/targets";
 
 /**
@@ -40,10 +41,14 @@ const TIMELINE_NAME = "Evidencia de la ejecución";
  * `support/stub-campaign-routes.mjs` (`FUNDING_CAMPAIGN_ID`, `CONTRACT_FUNDING`)
  * on purpose: `e2e/` must not import from `src/`, and the stub stays the single
  * source of truth for what each id names — the same convention
- * `campaign-vault.spec.ts` documents for its account ids.
+ * `campaign-vault.spec.ts` documents for its account ids. The explorer link is
+ * NOT duplicated: it is derived through the stub's own `campaignExplorerUrl`, so
+ * the expected `href` is exactly what the wire carries rather than a string the
+ * spec made up.
  */
 const FUNDING_CAMPAIGN_ID = "40000000-0000-4000-8000-000000000000";
 const FUNDING_CONTRACT = `C${"K".repeat(55)}`;
+const FUNDING_EXPLORER_URL = campaignExplorerUrl(FUNDING_CONTRACT);
 
 test.beforeEach(async ({ request }) => {
   // Keep each test independent of any request a previous test submitted.
@@ -106,11 +111,14 @@ test.describe("with the campaign id in the URL", () => {
     // `HashDisplay`, which keeps the full value in the element's `title`.
     await expect(vault.getByTitle(FUNDING_CONTRACT)).toBeVisible();
 
-    // The stub's campaign wire carries no `explorerUrl`, and `D1` forbids the web
-    // from building one: the hash must render with no explorer link rather than a
-    // fabricated one. (The positive "explorer link the API supplied" assertion is
-    // therefore not drivable against this stub — see the task report.)
-    await expect(vault.getByRole("link", { name: /Ver en el explorador/ })).toHaveCount(0);
+    // The API supplies the Testnet explorer link (`D1`: the web never builds one)
+    // and `HashDisplay` renders it as a new-tab link; the stub emits the same
+    // link the API derives for this contract.
+    const explorerLink = vault.getByRole("link", { name: /Ver en el explorador/ });
+    await expect(explorerLink).toBeVisible();
+    await expect(explorerLink).toHaveAttribute("href", FUNDING_EXPLORER_URL);
+    await expect(explorerLink).toHaveAttribute("target", "_blank");
+    await expect(explorerLink).toHaveAttribute("rel", "noreferrer noopener");
 
     // The decision stays absent (the stub's unmatched GET answers `not_found`) and
     // the distribution stays absent (no `?distribution=` in the URL): neither may
@@ -122,6 +130,8 @@ test.describe("with the campaign id in the URL", () => {
     const distribution = entryFor(page, "Distribución de ingresos");
     await expect(distribution).toContainText("Estado: Ausente");
     await expect(distribution).not.toContainText("No disponible");
+    // An unread source has no hash, so it must render no link at all.
+    await expect(distribution.getByRole("link")).toHaveCount(0);
     await expect(timeline.getByText("Confirmada en el ledger")).toHaveCount(0);
   });
 });
