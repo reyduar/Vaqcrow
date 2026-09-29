@@ -53,6 +53,9 @@ Out of scope:
     `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/supabase-application-review-repository.test.ts`.
   - AI-71-02 (RED observed 2026-09-28, GREEN after implementation):
     `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/route-assessment-failure-to-manual-review.test.ts src/infrastructure/http/routes/application-assessment.route.test.ts`.
+  - AI-71-02 correction (RED observed 2026-09-28, GREEN after implementation):
+    the same focused API runner plus
+    `pnpm --filter @vaqcrow/contracts exec vitest run src/assessment-handoff-id.test.ts`.
 
 ## Delivery strategy
 
@@ -78,6 +81,9 @@ ask before a size or coupling risk requires a chained slice or a scope expansion
       composition root. Truthful replay/conflict/not-found semantics, correlation identity preserved, no
       approval path. **Implemented, TDD RED→GREEN observed, locally verified; committed as `8f0f196`**
       (`feat(review): route failed AI assessments to truthful manual review`, 6 files, 936 insertions).
+      **Corrected after independent verification as `9478052`** (`fix(review): make AI failure routing
+      truthful and replayable`, 7 files, 337 insertions / 45 deletions); see Progress → AI-71-02
+      correction (D1–D4).
 - [ ] **AI-71-03 — Truthful human-review context.** Connect the human-review UI to persisted manual-review
       context for this flow. Remove the disconnected simulated recommendation only for this failure flow.
       Load a HeroUI or frontend-design skill only if the implementation changes HeroUI UI.
@@ -363,6 +369,140 @@ Commit: `8f0f196 feat(review): route failed AI assessments to truthful manual re
 insertions; the four new source/test files plus the two wiring edits. This ODD-log update is a separate
 `docs(odd)` commit, matching the AI-71-01 precedent (`568f5d7`); the work unit remains exactly one
 behavior commit. Not pushed; no PR opened.
+
+### AI-71-02 correction (2026-09-28) — independent-verification defects D1–D4
+
+Independent verification of `8f0f196` found four defects in
+`apps/api/src/application/use-cases/route-assessment-failure-to-manual-review.ts` and
+`apps/api/src/infrastructure/http/routes/application-assessment.route.ts`. Corrected in one bounded work
+unit: `9478052 fix(review): make AI failure routing truthful and replayable` (7 files, 337 insertions /
+45 deletions). No migration, RPC, seed, AI package, approval path or `POST /assessments` contract was
+touched.
+
+Defects and resolutions:
+
+- **D1 (critical) — the payload lied about preserving inputs.** `resolveHandoffError` returned
+  `inputsPreserved: true` for the `state_conflict` + `findById == human_review` case, justified by the
+  false claim that this flow is the only transition into `human_review`. The atomic RPC returns
+  `state_conflict` only when **no handoff row exists** (an existing row is `replayed` or
+  `correlation_conflict`), so nothing was preserved for that attempt; `supabase/seed/demo-application.sql`
+  inserts the demo application directly in `human_review` and no other production path creates that state.
+  Fixed: that case now returns `inputsPreserved: false` and an explicit discriminator `handoff: "absent"`;
+  the stale comment was rewritten.
+- **D2 (warning) — idempotency was unreachable and a mid-flow crash was unrecoverable.** The route derived
+  the handoff correlation from `request.id`, and `build-app.ts` sets `requestIdHeader: false` with
+  `genReqId`, so every request got a fresh id: a client retry after success hit `correlation_conflict`
+  (409) instead of replaying, and a crash after the handoff insert but before `transition` left a durable
+  handoff with every later request 409ing forever. Fixed: the body is now exactly `{ evidence, handoffId }`;
+  `handoffId` is validated through the contracts layer (`parseAssessmentHandoffId`, a new uuidv4 brand
+  mirroring `human-decision-id.ts`) and stored as the handoff correlation, so a same-key retry replays and
+  a different key stays `correlation_conflict`. `request.id` remains the transport correlation
+  (`x-correlation-id` header and response `correlationId`) and never decides replay. A same-key retry after
+  a crash replays the handoff and completes the pending transition (crash recovery restored).
+- **D3 (suggestion) — replay reported a recomputed code.** On a replay the adapter returns the stored
+  canonical record but the use case emitted the live `runAssessment` code. Fixed: on the replay path
+  (`handoff.applied === false`) the response reports `handoff.value.record.failureCode`; the applied path
+  keeps the live code (identical to the stored one the RPC echoes).
+- **D4 (suggestion) — untested error branches.** Added focused tests for `resolveHandoffError` when
+  `findById` returns `not_found` and when it errors otherwise, the fallback to `unavailable` for
+  `already_exists | idempotency_conflict | invalid_state`, `transitionError` for `not_found` and for
+  `state_conflict` without `actualState`, and the use case's own parse-failure path. The two existing tests
+  that asserted `inputsPreserved: true` for the already-`human_review` case were revised to assert the
+  corrected truth (`false` + `handoff: "absent"`).
+
+Chosen truthful response shape (smallest that distinguishes the three real outcomes):
+
+```
+{
+  outcome: "manual_review",
+  manualReviewRequired: true,
+  inputsPreserved: boolean,          // true only with a durable handoff for this attempt
+  applicationState: "human_review",
+  failureCode: AssessmentFailureCode, // stored canonical code on a replay
+  handoff: "persisted" | "replayed" | "absent",
+  correlationId: CorrelationId,       // transport trace (request.id)
+  applied: boolean                    // this call performed the transition
+}
+```
+
+- routed now → `handoff: "persisted"`, `inputsPreserved: true`, `applied: true`, `201`.
+- same-key retry / crash recovery → `handoff: "replayed"`, `inputsPreserved: true`; `applied` follows the
+  transition (`200` replay, `201` when this call completed the pending transition).
+- already `human_review` with no handoff → `handoff: "absent"`, `inputsPreserved: false`, `applied: false`,
+  `200`. The response still says manual review is required, but no longer claims the inputs were preserved.
+
+RED evidence (2026-09-28, before implementation; TDD active):
+
+- RED #1 — tests written, no implementation:
+  - `pnpm --filter @vaqcrow/contracts exec vitest run src/assessment-handoff-id.test.ts` →
+    `TypeError: (0 , parseAssessmentHandoffId) is not a function`; `Test Files 1 failed (1)`,
+    `Tests 2 failed | 4 passed (6)`.
+  - `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/route-assessment-failure-to-manual-review.test.ts src/infrastructure/http/routes/application-assessment.route.test.ts`
+    → use-case suite failed to collect (`TypeError: (0 , parseAssessmentHandoffId) is not a function`,
+    `Tests no tests`); route suite `Test Files 2 failed (2)`, `Tests 10 failed | 7 passed (17)` (every
+    expected status observed as `400` because the body key set still admitted only `evidence`).
+- RED #2 — contract added and `@vaqcrow/contracts` rebuilt, behavior not yet implemented:
+  - contracts focused runner → `Test Files 1 passed (1)`, `Tests 6 passed (6)`.
+  - API focused runner → `Test Files 2 failed (2)`, `Tests 15 failed | 27 passed (42)`: the result object
+    had 7 keys instead of 8 (missing `handoff`), the handoff correlation was `request.id`'s correlation
+    instead of `handoffId`, the replay still reported the live failure code, and the route rejected the
+    `handoffId` body with `400`.
+
+GREEN evidence (2026-09-28, after implementation):
+
+- `pnpm --filter @vaqcrow/contracts exec vitest run src/assessment-handoff-id.test.ts` → 1 file, 6 tests
+  passed.
+- API focused runner → `Test Files 2 passed (2)`, `Tests 42 passed (42)` (25 use-case + 17 route; baseline
+  was 29, +13).
+- `pnpm --filter @vaqcrow/api test` → `Test Files 41 passed (41)`, `Tests 756 passed (756)` (baseline 743,
+  +13).
+- `pnpm --filter @vaqcrow/api typecheck` → exit 0; `pnpm --filter @vaqcrow/api lint` → exit 0.
+- `pnpm --filter @vaqcrow/contracts typecheck` → exit 0; `pnpm --filter @vaqcrow/contracts lint` → exit 0.
+- `pnpm run boundaries` → exit 0, `no dependency violations found (453 modules, 1354 dependencies cruised)`.
+- `git diff --check` → exit 0 (clean).
+
+Commands run (exact results):
+
+| Command | Result |
+| --- | --- |
+| contracts focused runner (RED #1) | 1 file failed; `parseAssessmentHandoffId is not a function`; 2 failed / 4 passed (6) |
+| API focused runner (RED #1) | 2 files failed; use-case suite failed to collect; route 10 failed / 7 passed (17) |
+| contracts focused runner (RED #2) | 1 file passed, 6 tests passed |
+| API focused runner (RED #2) | 2 files failed, 15 failed / 27 passed (42) |
+| contracts focused runner (GREEN) | 1 file passed, 6 tests passed |
+| API focused runner (GREEN) | 2 files passed, 42 tests passed |
+| `pnpm --filter @vaqcrow/api test` | 41 files passed, 756 tests passed |
+| `pnpm --filter @vaqcrow/api typecheck` | exit 0 |
+| `pnpm --filter @vaqcrow/api lint` | exit 0 |
+| `pnpm --filter @vaqcrow/contracts typecheck` | exit 0 |
+| `pnpm --filter @vaqcrow/contracts lint` | exit 0 |
+| `pnpm run boundaries` | exit 0; no dependency violations (453 modules, 1354 dependencies cruised) |
+| `git diff --check` | exit 0, clean |
+
+Boundaries preserved: `apps/api/src/application` stays Fastify/Supabase/LLM-SDK-free (it imports only
+`@vaqcrow/ai` and `@vaqcrow/contracts` types plus the contracts parser), the route stays in
+`infrastructure/http/`, `packages/contracts` imports no `apps/*`, and the standalone `POST /assessments`
+contract is unchanged. No approval path was added; `human_review → approved` remains solely the
+human-decision flow.
+
+Runtime harness: `N/A` — the focused route tests drive the real Fastify app through `app.inject()` with the
+AI package's deterministic simulated provider (no network, no credential), which is the runtime boundary
+for this unit.
+
+Rollback boundary (this correction only): revert `9478052` — delete
+`packages/contracts/src/assessment-handoff-id.ts` and its test, revert the `index.ts` export block, and
+revert the two use-case files and two route files. This removes only the correction; the original AI-71-02
+commit `8f0f196` and every prior feature remain untouched, and no migration, RPC, seed or approval path is
+involved.
+
+Engram mirror: **not written — Engram unavailable.** `mem_current_project` resolved the project as
+`vaqcrow` (`project_source: git_remote`), but two `mem_save` attempts for topic
+`odd/implement-ai-failure-routing-to-manual-review/tasks` (type `architecture`, scope `project`,
+`capture_prompt: false`) both failed with
+`gentle-engram could not confirm Engram session registration for engram_mem_save; verify that the Engram
+server is available and retry`. This matches the reported `ambiguous_active_runtime_sessions` condition;
+no session id was invented and no write succeeded. **This ODD file is authoritative** for the correction
+record until a later session can mirror it.
 
 ## Next step
 
