@@ -47,9 +47,12 @@ Out of scope:
 - State changes must be conditional and replay-safe. Repeating the same failure handoff is a replay;
   incompatible correlation or state is a conflict, not another transition.
 - No remote services, credentials, production claims, PII, or simulated data presented as real.
-- TDD status: **active**. Focused runners (RED observed 2026-09-28, GREEN after implementation):
-  `pnpm --filter @vaqcrow/contracts exec vitest run src/assessment-failure-handoff.test.ts` and
-  `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/supabase-application-review-repository.test.ts`.
+- TDD status: **active**. Focused runners:
+  - AI-71-01 (RED observed 2026-09-28, GREEN after implementation):
+    `pnpm --filter @vaqcrow/contracts exec vitest run src/assessment-failure-handoff.test.ts` and
+    `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/supabase-application-review-repository.test.ts`.
+  - AI-71-02 (RED observed 2026-09-28, GREEN after implementation):
+    `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/route-assessment-failure-to-manual-review.test.ts src/infrastructure/http/routes/application-assessment.route.test.ts`.
 
 ## Delivery strategy
 
@@ -63,12 +66,18 @@ ask before a size or coupling risk requires a chained slice or a scope expansion
       `supabase-postgres-best-practices` and `work-unit-commits` skills. Implemented the sanitized
       attempt/failure record, the atomic migration and the repository-port/adapter boundary, and proved
       raw provider errors/output cannot persist or cross it. **Implemented, locally verified, and applied
-      to the configured remote project under explicit operator authorization (2026-09-28); the change is
-      still left uncommitted** — the remote landing removed the previous blocker, but no commit/PR was
-      created (see Progress → Remote application).
-- [ ] **AI-71-02 — Application-scoped fallback route.** Add the use-case/API route that conditionally
-      moves an application from `awaiting_assessment` to `human_review` after a sanitized failure. Return
-      truthful replay/conflict semantics, preserve correlation identity, and provide no approval path.
+      to the configured remote project under explicit operator authorization (2026-09-28).** Committed on
+      this branch as `3fad6a0` (contract) → `d1281ee` (repository/port) → `fcebf1f` (migration + pgTAP) →
+      `568f5d7` (this iteration log). The earlier "still left uncommitted" notes in Progress describe the
+      pre-commit state and are superseded (see Progress → Commit reconciliation).
+- [x] **AI-71-02 — Application-scoped fallback route.** Added
+      `apps/api/src/application/use-cases/route-assessment-failure-to-manual-review.ts` (persist-then-
+      transition orchestration over the existing `runAssessment`) and
+      `apps/api/src/infrastructure/http/routes/application-assessment.route.ts`
+      (`POST /application-reviews/:applicationId/assessments`), wired through `build-app.ts` and the
+      composition root. Truthful replay/conflict/not-found semantics, correlation identity preserved, no
+      approval path. **Implemented, TDD RED→GREEN observed, locally verified; committed as `8f0f196`**
+      (`feat(review): route failed AI assessments to truthful manual review`, 6 files, 936 insertions).
 - [ ] **AI-71-03 — Truthful human-review context.** Connect the human-review UI to persisted manual-review
       context for this flow. Remove the disconnected simulated recommendation only for this failure flow.
       Load a HeroUI or frontend-design skill only if the implementation changes HeroUI UI.
@@ -110,7 +119,7 @@ ask before a size or coupling risk requires a chained slice or a scope expansion
   expressing the intended behavior, then extended them with the missing closed-set, optional-provenance,
   replay, `not_found` and `state_conflict` cases **before** writing any implementation.
 
-### AI-71-01 — durable sanitized failure handoff (implemented, locally verified, uncommitted)
+### AI-71-01 — durable sanitized failure handoff (implemented, locally verified, committed)
 
 Deliverables:
 
@@ -228,8 +237,17 @@ because it was applied locally before this remote-first rename. `env:docker:up` 
 so the local bootstrap is unaffected; a fresh local stack records `20260928235908`, while the existing
 local DB would need a local reconcile before another `migration up --local`.
 
-Remaining state of AI-71-01: applied and verified on the configured remote; still **uncommitted** (no
-commit, no PR, ODD task not checked off). AI-71-02 and AI-71-03 remain open.
+Remaining state of AI-71-01: applied and verified on the configured remote; **committed** on this branch
+(`3fad6a0` contract, `d1281ee` repository/port, `fcebf1f` migration + pgTAP, `568f5d7` iteration log).
+AI-71-02 and AI-71-03 remain open.
+
+Commit reconciliation (2026-09-28, recorded while working AI-71-02): every "still uncommitted" / "no
+commit or PR was created" statement in the AI-71-01 narrative above describes the tree **before** the
+four commits landed. The commits exist at HEAD and each maps 1:1 to the AI-71-01 deliverable: `3fad6a0`
+(contract + contract test + index export), `d1281ee` (port method + adapter method + three test doubles +
+adapter tests), `fcebf1f` (migration + pgTAP file), `568f5d7` (this log). Verified with
+`git show --stat` on each. No history was rewritten; this note supersedes those statements. No PR was
+opened (as instructed).
 
 Rollback boundary:
 
@@ -242,14 +260,116 @@ Rollback boundary:
   path is touched.
 
 Not run (deliberately): `pnpm run verify` (instructed to defer) and the comprehensive deterministic matrix,
-which Task #72 owns. No commit or PR was created.
+which Task #72 owns. (The "no commit or PR was created" statements above are superseded by the commit
+reconciliation note.)
+
+### AI-71-02 — application-scoped fallback routing (implemented, TDD RED→GREEN observed)
+
+Files changed (this unit):
+
+- `apps/api/src/application/use-cases/route-assessment-failure-to-manual-review.ts` (new) — the use case.
+- `apps/api/src/application/use-cases/route-assessment-failure-to-manual-review.test.ts` (new) — 15 tests.
+- `apps/api/src/infrastructure/http/routes/application-assessment.route.ts` (new) — the HTTP route.
+- `apps/api/src/infrastructure/http/routes/application-assessment.route.test.ts` (new) — 14 tests.
+- `apps/api/src/infrastructure/http/build-app.ts` — registers the route behind the optional
+  `applicationAssessment` dependency.
+- `apps/api/src/index.ts` — composition-root wiring (repository + provider + `config.llm.timeoutMs`).
+
+Behavior:
+
+- Endpoint `POST /application-reviews/:applicationId/assessments`: body is exactly `{ evidence }`; the
+  application id comes from the path; the correlation id comes from `parseCorrelationId(request.id)`; the
+  provider and the timeout always come from the dependencies and can never be chosen by a request. The
+  standalone `POST /assessments` contract is unchanged.
+- The use case calls the AI package's existing `runAssessment(provider, { evidence, timeoutMs })`. The AI
+  package is not reimplemented or modified; `@vaqcrow/ai` is provider-independent workspace code, so
+  `application/` still imports no Fastify/Supabase/Stellar/provider SDK.
+- On any closed-set failure (`timeout | provider_unavailable | invalid_output |
+  unknown_evidence_reference`) it persists the sanitized command through
+  `recordAssessmentFailureHandoff` FIRST — `{ applicationId, correlationId, failureCode, evidence }`, no
+  `providerProvenance` because a failed attempt produced none — and THEN runs
+  `transition({ from: "awaiting_assessment", to: "human_review" })`. The failure path never returns an
+  assessment, a recommendation or an approval.
+- Labeled result: `{ outcome: "manual_review", manualReviewRequired: true, inputsPreserved: true,
+  applicationState: "human_review", failureCode, correlationId, applied }`; `201` when this call routed,
+  `200` when it was already applied.
+- Replay/conflict: same correlation id → handoff `replayed` + transition no-op → `200` idempotent success;
+  competing correlation → `409 correlation_conflict`; unknown application → `404 not_found`; application
+  already `human_review` → handoff `state_conflict` confirmed with `findById` → `200` idempotent success,
+  not an error; any other incompatible state → `409 state_conflict` with the actual state; repository
+  unavailable → `503 unavailable`. Malformed path/body/evidence → `400 invalid_request`, before any
+  repository call.
+- Success path (deliberately minimal, see "Deferred"): a valid advisory assessment is returned untouched
+  (`{ outcome: "assessment_available", routed: false, assessment, metadata }`, `200`) and NOTHING
+  transitions.
+
+RED evidence (before implementation, 2026-09-28):
+
+- `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/route-assessment-failure-to-manual-review.test.ts src/infrastructure/http/routes/application-assessment.route.test.ts` →
+  - use-case suite: `Error: Cannot find module './route-assessment-failure-to-manual-review.js' imported
+    from '…/route-assessment-failure-to-manual-review.test.ts'` → suite failed to collect.
+  - route suite: `Test Files 2 failed (2)`, `Tests 13 failed | 1 passed (14)`. Every test observed `404`
+    (`expected 404 to be 201`, `expected 404 to be 200`, `expected 404 to be 400`, `expected 404 to be
+    409`, `expected 404 to be 503`) because the route was not registered; the sole pass was the
+    "not registered when no application assessment is supplied" case.
+
+GREEN evidence (after implementation, 2026-09-28):
+
+- Same focused command → `Test Files 2 passed (2)`, `Tests 29 passed (29)` (15 use-case + 14 route).
+- `pnpm --filter @vaqcrow/api test` → `Test Files 41 passed (41)`, `Tests 743 passed (743)`. (AI-71-01
+  baseline recorded above was 39 files / 714 tests: +2 files / +29 tests.)
+- `pnpm --filter @vaqcrow/api typecheck` (`tsc -p tsconfig.json --noEmit`) → exit 0.
+- `pnpm --filter @vaqcrow/api lint` (`eslint .`) → exit 0.
+- `pnpm run boundaries` → `✔ no dependency violations found (451 modules, 1348 dependencies cruised)`.
+- `git diff --check` → clean (exit 0).
+
+Commands run (exact results):
+
+| Command | Result |
+| --- | --- |
+| `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/route-assessment-failure-to-manual-review.test.ts src/infrastructure/http/routes/application-assessment.route.test.ts` (RED) | 2 files failed; use-case module not found; route 13 failed / 1 passed |
+| same command (GREEN) | 2 files passed, 29 tests passed |
+| `pnpm --filter @vaqcrow/api test` | 41 files passed, 743 tests passed |
+| `pnpm --filter @vaqcrow/api typecheck` | exit 0 |
+| `pnpm --filter @vaqcrow/api lint` | exit 0 |
+| `pnpm run boundaries` | no dependency violations found (451 modules, 1348 dependencies cruised) |
+| `git diff --check` | clean |
+
+Runtime harness: `N/A` — the focused route tests drive the real Fastify app through
+`app.inject()` with the AI package's deterministic simulated provider (no network, no credential), which
+is the runtime boundary for this unit. No live service, remote Supabase, credential or Stellar Testnet
+was used.
+
+Deferred — the success path (deliberate, documented boundary, not an oversight): the full treatment of a
+successful advisory assessment (persisting it, surfacing its provenance, the UI) belongs to a later
+Feature. This unit only guarantees the invariant the Feature depends on — a valid assessment is returned
+advisory and never moves the application to `human_review` — and adds no `approved` path anywhere. Human
+approval remains the only route to `approved`.
+
+Out of scope for this unit: frontend work (`AI-71-03`), Task #72's deterministic matrix, and Task #73's
+evidence document.
+
+Rollback boundary (this unit only): delete the two new use-case files and the two new route files, then
+revert the `applicationAssessment` dependency + registration block in `build-app.ts` and the
+`applicationAssessment` wiring in `index.ts`. No existing route, persistence path or application code was
+modified, so rollback leaves AI-71-01 and every prior feature untouched.
+
+Workload note: this work-unit commit is ~936 authored lines (925 new + 11 modified), over the 400-line
+review budget. Recorded as a `size:exception`: the unit is one cohesive behavior (use case + its route +
+their TDD tests), and the brief mandates a single work-unit commit with tests alongside the behavior, so
+no honest split fits the budget without separating a use case from its own tests.
+
+Commit: `8f0f196 feat(review): route failed AI assessments to truthful manual review` — 6 files, 936
+insertions; the four new source/test files plus the two wiring edits. This ODD-log update is a separate
+`docs(odd)` commit, matching the AI-71-01 precedent (`568f5d7`); the work unit remains exactly one
+behavior commit. Not pushed; no PR opened.
 
 ## Next step
 
-- AI-71-02: application-scoped routing from `awaiting_assessment` to `human_review`, using the persisted
-  handoff and its correlation identity; return truthful replay/conflict semantics and provide no approval
-  path.
-- Before any commit/PR for #71: the remote blocker is cleared — both migrations are on the configured
-  remote and verified (handoff recorded as `20260928235908`). Still to do: commit the change, and
-  reconcile the local docker migration history (still at `20260928120000`) if the local stack is reused
-  for `migration up --local`.
+- AI-71-03: connect the human-review UI to the persisted manual-review context for this flow and remove
+  the disconnected simulated recommendation for the failure flow. Load a HeroUI/frontend-design skill
+  only if the implementation changes HeroUI UI.
+- Task #72 owns the comprehensive deterministic matrix; Task #73 owns the Feature evidence document.
+- The remote blocker is cleared — both migrations are on the configured remote and verified (handoff
+  recorded as `20260928235908`). Still to reconcile if the local docker stack is reused for
+  `migration up --local`: the local migration history still records the handoff at `20260928120000`.
