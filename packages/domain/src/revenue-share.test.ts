@@ -455,3 +455,285 @@ describe("type-level surface", () => {
     expectTypeOf(allocateRevenueShare).returns.toMatchTypeOf<RevenueShareResult<unknown>>();
   });
 });
+
+describe("boundary and validation matrix (#87)", () => {
+  const demoPeriods = [period("2026-08", DEMO_SALES_MINOR_UNITS, "reported")];
+
+  describe("negative or malformed obligation (R3-allocator-unchecked-obligation)", () => {
+    it("rejects a negative obligation with contributors instead of returning an unbalanced success", () => {
+      expectError(
+        allocateRevenueShare({
+          obligationMinorUnits: -1n,
+          contributors: [contributor("a", 1n), contributor("b", 1n)]
+        }),
+        "invalid_obligation"
+      );
+    });
+
+    it("rejects a negative obligation with no contributors as invalid_obligation, not no_contributors", () => {
+      expectError(
+        allocateRevenueShare({ obligationMinorUnits: -1n, contributors: [] }),
+        "invalid_obligation"
+      );
+    });
+
+    it("rejects a non-bigint obligation cast at runtime", () => {
+      expectError(
+        allocateRevenueShare({
+          obligationMinorUnits: 100 as unknown as bigint,
+          contributors: [contributor("a", 1n)]
+        }),
+        "invalid_obligation"
+      );
+    });
+  });
+
+  describe("negative or malformed reported sales (R3-negative-sales-unvalidated)", () => {
+    const negativeReportedSales = [period("2026-08", -1n, "reported")];
+    const nonBigintReportedSales = [period("2026-08", 100 as unknown as bigint, "reported")];
+
+    it("rejects a negative reported sales amount as invalid_period", () => {
+      expectError(
+        calculateRevenueShareObligation({
+          rule: demoRevenueShareRule,
+          periods: negativeReportedSales
+        }),
+        "invalid_period"
+      );
+    });
+
+    it("reports invalid_period, not the misleading invalid_contributor, through the distribution entry point", () => {
+      expectError(
+        calculateRevenueShareDistribution({
+          rule: demoRevenueShareRule,
+          periods: negativeReportedSales,
+          contributors: [contributor("a", 1n)]
+        }),
+        "invalid_period"
+      );
+    });
+
+    it("rejects a non-bigint reported sales amount cast at runtime", () => {
+      expectError(
+        calculateRevenueShareObligation({
+          rule: demoRevenueShareRule,
+          periods: nonBigintReportedSales
+        }),
+        "invalid_period"
+      );
+    });
+  });
+
+  describe("frozen exported vocabulary (R3-unfrozen-exported-arrays)", () => {
+    it("exposes the rounding policies and period statuses as runtime-frozen arrays", () => {
+      expect(Object.isFrozen(revenueShareRoundingPolicies)).toBe(true);
+      expect(Object.isFrozen(revenueSharePeriodStatuses)).toBe(true);
+    });
+  });
+
+  describe("balanced-total invariant and determinism across a fixed matrix", () => {
+    const allocationMatrix: ReadonlyArray<{
+      readonly label: string;
+      readonly obligationMinorUnits: bigint;
+      readonly contributors: readonly RevenueShareContributor[];
+    }> = [
+      {
+        label: "equal contributions",
+        obligationMinorUnits: 100n,
+        contributors: [contributor("a", 1n), contributor("b", 1n), contributor("c", 1n)]
+      },
+      {
+        label: "uneven contributions",
+        obligationMinorUnits: 1_000_000n,
+        contributors: [
+          contributor("a", 7n),
+          contributor("b", 11n),
+          contributor("c", 13n),
+          contributor("d", 3n)
+        ]
+      },
+      {
+        label: "single contributor",
+        obligationMinorUnits: 168_561n,
+        contributors: [contributor("solo", 5n)]
+      },
+      {
+        label: "obligation smaller than contributor count",
+        obligationMinorUnits: 2n,
+        contributors: [
+          contributor("a", 1n),
+          contributor("b", 1n),
+          contributor("c", 1n),
+          contributor("d", 1n),
+          contributor("e", 1n)
+        ]
+      },
+      {
+        label: "obligation one unit below contributor count",
+        obligationMinorUnits: 1n,
+        contributors: [contributor("a", 1n), contributor("b", 1n)]
+      }
+    ];
+
+    it.each(allocationMatrix)(
+      "balances the total and preserves contributor count: $label",
+      ({ obligationMinorUnits, contributors }) => {
+        const allocations = expectOk(allocateRevenueShare({ obligationMinorUnits, contributors }));
+        const total = allocations.reduce((sum, entry) => sum + entry.allocationMinorUnits, 0n);
+
+        expect(allocations).toHaveLength(contributors.length);
+        expect(total).toBe(obligationMinorUnits);
+      }
+    );
+
+    it.each(allocationMatrix)(
+      "is deterministic: $label yields deep-equal results on repeat calls",
+      ({ obligationMinorUnits, contributors }) => {
+        const first = allocateRevenueShare({ obligationMinorUnits, contributors });
+        const second = allocateRevenueShare({ obligationMinorUnits, contributors });
+
+        expect(first).toEqual(second);
+      }
+    );
+  });
+
+  it("breaks a largest-remainder tie toward the earlier contributor index", () => {
+    // 1 × 1 = 1 / 2 = 0 remainder 1 for both contributors: equal remainders must not reorder.
+    const allocations = expectOk(
+      allocateRevenueShare({
+        obligationMinorUnits: 1n,
+        contributors: [contributor("first", 1n), contributor("second", 1n)]
+      })
+    );
+
+    expect(allocations).toEqual([
+      { contributorId: "first", contributionMinorUnits: 1n, allocationMinorUnits: 1n },
+      { contributorId: "second", contributionMinorUnits: 1n, allocationMinorUnits: 0n }
+    ]);
+  });
+
+  it("lets period status win over a non-null amount for exclusion", () => {
+    const obligation = expectOk(
+      calculateRevenueShareObligation({
+        rule: demoRevenueShareRule,
+        periods: [period("2026-01", 999n, "missing"), period("2026-02", 999n, "anomalous")]
+      })
+    );
+
+    expect(obligation.eligiblePeriods).toEqual([]);
+    expect(obligation.eligibleSalesMinorUnits).toBe(0n);
+    expect(obligation.obligationMinorUnits).toBe(0n);
+    expect(obligation.excludedPeriods).toEqual([
+      { period: "2026-01", status: "missing", reason: "missing_data" },
+      { period: "2026-02", status: "anomalous", reason: "requires_review" }
+    ]);
+  });
+
+  it("keeps bigint precision beyond Number.MAX_SAFE_INTEGER using the floor definition", () => {
+    const salesMinorUnits = 9_007_199_254_740_993n; // 2^53 + 1, not exactly representable as a number
+
+    const obligation = expectOk(
+      calculateRevenueShareObligation({
+        rule: demoRevenueShareRule,
+        periods: [period("2026-08", salesMinorUnits, "reported")]
+      })
+    );
+
+    const numerator = salesMinorUnits * 450n;
+    const computed = obligation.obligationMinorUnits;
+
+    // Floor definition: computed is the largest integer n with n × 10000 <= sales × 450.
+    expect(computed * 10_000n <= numerator).toBe(true);
+    expect(computed * 10_000n + 10_000n > numerator).toBe(true);
+    // Pinned literal verified independently of the engine.
+    expect(computed).toBe(405_323_966_463_344n);
+  });
+
+  it("resolves the exact .5 remainder boundary as floor 0 and half_up 1", () => {
+    const periods = [period("2026-01", 1n, "reported")];
+
+    const floored = expectOk(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ rateBps: 5000, rounding: "floor" }),
+        periods
+      })
+    );
+    const halfUp = expectOk(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ rateBps: 5000, rounding: "half_up" }),
+        periods
+      })
+    );
+
+    expect(floored.obligationMinorUnits).toBe(0n);
+    expect(halfUp.obligationMinorUnits).toBe(1n);
+  });
+
+  it("rejects an unknown runtime period status as invalid_period", () => {
+    expectError(
+      calculateRevenueShareObligation({
+        rule: demoRevenueShareRule,
+        periods: [
+          {
+            period: "2026-08",
+            salesMinorUnits: 100n,
+            status: "estimated" as unknown as RevenueSharePeriod["status"]
+          }
+        ]
+      }),
+      "invalid_period"
+    );
+  });
+
+  it("rejects NaN and Infinity rates as invalid_rule", () => {
+    expectError(
+      calculateRevenueShareObligation({ rule: ruleWith({ rateBps: Number.NaN }), periods: demoPeriods }),
+      "invalid_rule"
+    );
+    expectError(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ rateBps: Number.POSITIVE_INFINITY }),
+        periods: demoPeriods
+      }),
+      "invalid_rule"
+    );
+  });
+
+  it("rejects contributor ids that collide after trimming surrounding whitespace", () => {
+    expectError(
+      allocateRevenueShare({
+        obligationMinorUnits: 10n,
+        contributors: [contributor("a", 1n), contributor(" a", 2n)]
+      }),
+      "invalid_contributor"
+    );
+  });
+
+  it("treats an empty period list as a zero obligation with no error", () => {
+    const obligation = expectOk(
+      calculateRevenueShareObligation({ rule: demoRevenueShareRule, periods: [] })
+    );
+
+    expect(obligation.eligiblePeriods).toEqual([]);
+    expect(obligation.excludedPeriods).toEqual([]);
+    expect(obligation.eligibleSalesMinorUnits).toBe(0n);
+    expect(obligation.obligationMinorUnits).toBe(0n);
+  });
+
+  it("distributes a zero obligation as all-zero allocations with a zero total", () => {
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: [],
+        contributors: [contributor("a", 2n), contributor("b", 3n)]
+      })
+    );
+
+    expect(distribution.obligation.obligationMinorUnits).toBe(0n);
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 2n, allocationMinorUnits: 0n },
+      { contributorId: "b", contributionMinorUnits: 3n, allocationMinorUnits: 0n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(0n);
+  });
+});
