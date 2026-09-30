@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   demoDistributionRecipients,
@@ -11,7 +12,21 @@ import type {
   PreparedRevenueShareDistribution,
   RevenueShareDistributionSnapshot
 } from "@vaqcrow/contracts";
+import { JourneyStoreProvider, useJourneyStore } from "@/state/journey-store-provider";
 import { DistributionWorkspace } from "./distribution-workspace";
+
+const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const CAMPAIGN_ID = "40000000-0000-4000-8000-000000000000";
+
+/** The journey as funding leaves it: an application and its campaign. */
+const render = (ui: ReactElement) =>
+  rtlRender(
+    <JourneyStoreProvider initial={{ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID }}>{ui}</JourneyStoreProvider>
+  );
+
+function RecordedDistribution() {
+  return <p data-testid="recorded-distribution">{useJourneyStore((state) => state.distributionId) ?? "none"}</p>;
+}
 
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -85,7 +100,7 @@ function acknowledgeAndSign() {
 
 describe("DistributionWorkspace", () => {
   it("labels every synthetic recipient and the demo rule version as SIMULADO", () => {
-    render(<DistributionWorkspace gateway={createGateway()} wallet={createWallet()} applicationId={null} />);
+    render(<DistributionWorkspace gateway={createGateway()} wallet={createWallet()} />);
 
     expect(screen.getAllByText(SIMULADO_DISTRIBUTION_LABEL).length).toBeGreaterThanOrEqual(
       demoDistributionRecipients.recipients.length
@@ -98,7 +113,7 @@ describe("DistributionWorkspace", () => {
 
   it("refuses to prepare without a connected wallet and never calls the gateway", async () => {
     const gateway = createGateway();
-    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} applicationId={null} />);
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
 
     fireEvent.click(screen.getByRole("button", { name: /Preparar distribución/i }));
 
@@ -106,10 +121,10 @@ describe("DistributionWorkspace", () => {
     expect(gateway.prepare).not.toHaveBeenCalled();
   });
 
-  it("prepares with the connected account as source, and signs nothing until the review is acknowledged", async () => {
+  it("prepares for the journey application with the connected account as source, and signs nothing until the review is acknowledged", async () => {
     const gateway = createGateway();
     const wallet = createWallet();
-    render(<DistributionWorkspace gateway={gateway} wallet={wallet} applicationId={null} />);
+    render(<DistributionWorkspace gateway={gateway} wallet={wallet} />);
     await connect();
     await prepare();
 
@@ -117,7 +132,7 @@ describe("DistributionWorkspace", () => {
       sourceAccountId: SOURCE,
       recipients,
       memo: null,
-      applicationId: null
+      applicationId: APPLICATION_ID
     });
     expect(wallet.signTransaction).not.toHaveBeenCalled();
     expect(within(screen.getByRole("dialog")).getByText(demoDistributionRecipients.ruleVersion)).toBeInTheDocument();
@@ -136,7 +151,7 @@ describe("DistributionWorkspace", () => {
       .mockResolvedValueOnce("SIGNED-XDR");
     const gateway = createGateway();
     render(
-      <DistributionWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} applicationId={null} />
+      <DistributionWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} />
     );
     await connect();
     await prepare();
@@ -153,7 +168,7 @@ describe("DistributionWorkspace", () => {
   });
 
   it("shows the submitted state after a successful submit, never confirmed", async () => {
-    render(<DistributionWorkspace gateway={createGateway()} wallet={createWallet()} applicationId={null} />);
+    render(<DistributionWorkspace gateway={createGateway()} wallet={createWallet()} />);
     await connect();
     await prepare();
     acknowledgeAndSign();
@@ -165,7 +180,7 @@ describe("DistributionWorkspace", () => {
   it("transitions to confirmed when the status poll reports it", async () => {
     const confirmed = { ...snapshot, state: "confirmed" } as unknown as RevenueShareDistributionSnapshot;
     const gateway = createGateway({ getStatus: vi.fn().mockResolvedValue({ ok: true, value: confirmed }) });
-    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} applicationId={null} />);
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await prepare();
     acknowledgeAndSign();
@@ -183,7 +198,7 @@ describe("DistributionWorkspace", () => {
       failureReason: "insufficient_balance"
     } as unknown as RevenueShareDistributionSnapshot;
     const gateway = createGateway({ getStatus: vi.fn().mockResolvedValue({ ok: true, value: failed }) });
-    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} applicationId={null} />);
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await prepare();
     acknowledgeAndSign();
@@ -195,37 +210,59 @@ describe("DistributionWorkspace", () => {
     expect(screen.getByText(/no alcanza a cubrir el monto/i)).toBeInTheDocument();
   });
 
-  it("names the distribution id to the page as soon as the prepare answer carries it", async () => {
-    const onDistributionIdentified = vi.fn();
+  it("records the distribution id in the journey as soon as the prepare answer carries it", async () => {
     render(
-      <DistributionWorkspace
-        gateway={createGateway()}
-        wallet={createWallet()}
-        applicationId={null}
-        onDistributionIdentified={onDistributionIdentified}
-      />
+      <>
+        <DistributionWorkspace gateway={createGateway()} wallet={createWallet()} />
+        <RecordedDistribution />
+      </>
     );
     await connect();
     await prepare();
 
-    expect(onDistributionIdentified).toHaveBeenCalledWith(DISTRIBUTION_ID);
+    expect(screen.getByTestId("recorded-distribution")).toHaveTextContent(DISTRIBUTION_ID);
   });
 
-  it("re-declares the distribution id when the submit answer names it", async () => {
-    const onDistributionIdentified = vi.fn();
-    render(
-      <DistributionWorkspace
-        gateway={createGateway()}
-        wallet={createWallet()}
-        applicationId={null}
-        onDistributionIdentified={onDistributionIdentified}
-      />
+  it("shows the journey's distribution id as the current reference", () => {
+    rtlRender(
+      <JourneyStoreProvider
+        initial={{ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, distributionId: DISTRIBUTION_ID }}
+      >
+        <DistributionWorkspace gateway={createGateway()} wallet={createWallet()} />
+      </JourneyStoreProvider>
+    );
+
+    expect(screen.getByText(DISTRIBUTION_ID)).toBeInTheDocument();
+  });
+
+  it("asks for the request first, and prepares nothing, when the journey has no application", () => {
+    const gateway = createGateway();
+    rtlRender(
+      <JourneyStoreProvider>
+        <DistributionWorkspace gateway={gateway} wallet={createWallet()} />
+      </JourneyStoreProvider>
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/primero hay que enviar la solicitud/i);
+    expect(screen.getByRole("link", { name: "Ir a la solicitud" })).toHaveAttribute("href", "/request");
+    expect(screen.queryByRole("button", { name: /Conectar wallet/i })).not.toBeInTheDocument();
+    expect(gateway.prepare).not.toHaveBeenCalled();
+  });
+
+  it("still prepares and submits without a campaign, but records no distribution the journey cannot hold", async () => {
+    const gateway = createGateway();
+    rtlRender(
+      <JourneyStoreProvider initial={{ applicationId: APPLICATION_ID }}>
+        <DistributionWorkspace gateway={gateway} wallet={createWallet()} />
+        <RecordedDistribution />
+      </JourneyStoreProvider>
     );
     await connect();
     await prepare();
     acknowledgeAndSign();
 
     await screen.findByText(/Enviada · pendiente de confirmación/i);
-    expect(onDistributionIdentified).toHaveBeenLastCalledWith(DISTRIBUTION_ID);
+    expect(gateway.submit).toHaveBeenCalled();
+    expect(screen.getByTestId("recorded-distribution")).toHaveTextContent("none");
   });
 });

@@ -8,7 +8,6 @@ import type { AssessmentGateway } from "@/application/ports/assessment-gateway";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { HumanDecisionGateway } from "@/application/ports/human-decision-gateway";
 import type { ManualReviewGateway } from "@/application/ports/manual-review-gateway";
-import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import { HumanDecisionWorkspace } from "./human-decision-workspace";
 
@@ -118,15 +117,24 @@ describe("HumanDecisionWorkspace", () => {
     expect(assessmentGateway.load).toHaveBeenCalledWith(APPLICATION_ID);
   });
 
-  // ASSUMPTION (T4 removes it): with no journey application the screen keeps
-  // targeting the seeded demo application, exactly as it did before T3b.
-  it("falls back to the demo application only when the journey has none", async () => {
+  it("asks for the request first, and reads and records nothing, when the journey has no application", () => {
     const assessmentGateway = assessmentGatewayReturning(PERSISTED_VIEW);
-    render(<HumanDecisionWorkspace gateway={null} assessmentGateway={assessmentGateway} />);
+    const manualReviewGateway = manualReviewGatewayReturning(null);
+    const gateway: HumanDecisionGateway = { record: vi.fn(), readLatest: vi.fn() };
+    render(
+      <HumanDecisionWorkspace
+        gateway={gateway}
+        manualReviewGateway={manualReviewGateway}
+        assessmentGateway={assessmentGateway}
+      />
+    );
 
-    await screen.findByRole("region", { name: "Evaluación de IA" });
-
-    expect(assessmentGateway.load).toHaveBeenCalledWith(DEMO_APPLICATION_ID);
+    expect(screen.getByRole("status")).toHaveTextContent(/primero hay que enviar la solicitud/i);
+    expect(screen.getByRole("link", { name: "Ir a la solicitud" })).toHaveAttribute("href", "/request");
+    expect(screen.queryByRole("form", { name: /Decisión humana/ })).not.toBeInTheDocument();
+    expect(assessmentGateway.load).not.toHaveBeenCalled();
+    expect(manualReviewGateway.load).not.toHaveBeenCalled();
+    expect(gateway.record).not.toHaveBeenCalled();
   });
 
   it("says no assessment was recorded, and never shows a canned recommendation, when there is none", async () => {

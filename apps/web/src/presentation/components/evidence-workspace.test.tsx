@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { render as rtlRender, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import { HttpClientError } from "@/application/ports/http-client-port";
@@ -10,6 +11,7 @@ import type {
   HumanDecisionRecord,
   RevenueShareDistributionSnapshot
 } from "@vaqcrow/contracts";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import { EvidenceWorkspace } from "./evidence-workspace";
 
 const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -19,6 +21,20 @@ const SME = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
 const CONTRACT = "CDEMOCONTRACTV27EJOTY5CHMRW3AFKPUZ6DINSX4BGLQV27EJOTY5CH";
 
 const actor = "Ana Revisora";
+
+/** The journey once the request was submitted, before any movement ran. */
+const render = (ui: ReactElement) =>
+  rtlRender(<JourneyStoreProvider initial={{ applicationId: APPLICATION_ID }}>{ui}</JourneyStoreProvider>);
+
+/** The journey after funding and distribution ran: what a shared evidence link hydrates. */
+const renderRun = (ui: ReactElement) =>
+  rtlRender(
+    <JourneyStoreProvider
+      initial={{ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, distributionId: DISTRIBUTION_ID }}
+    >
+      {ui}
+    </JourneyStoreProvider>
+  );
 const failureCopy = failureReasonCopy("insufficient_balance");
 
 function decision(overrides: Record<string, unknown> = {}): HumanDecisionRecord {
@@ -109,10 +125,8 @@ function createDistributionGateway(
 
 describe("EvidenceWorkspace", () => {
   it("renders complete evidence: the recorded decision, the vault and the confirmed distribution", async () => {
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={createHumanDecisionGateway()}
         campaignGateway={createCampaignGateway()}
         distributionGateway={createDistributionGateway()}
@@ -126,10 +140,8 @@ describe("EvidenceWorkspace", () => {
   });
 
   it("keeps a pending distribution pending, never confirmed", async () => {
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={createHumanDecisionGateway()}
         campaignGateway={createCampaignGateway()}
         distributionGateway={createDistributionGateway({
@@ -146,10 +158,8 @@ describe("EvidenceWorkspace", () => {
   });
 
   it("renders a failed distribution with its own failure reason and no success wording", async () => {
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={createHumanDecisionGateway()}
         campaignGateway={createCampaignGateway()}
         distributionGateway={createDistributionGateway({
@@ -172,8 +182,6 @@ describe("EvidenceWorkspace", () => {
 
     render(
       <EvidenceWorkspace
-        campaignId={null}
-        distributionId={null}
         humanDecisionGateway={createHumanDecisionGateway()}
         campaignGateway={campaignGateway}
         distributionGateway={distributionGateway}
@@ -188,10 +196,8 @@ describe("EvidenceWorkspace", () => {
   });
 
   it("treats the distribution read's not_found as an absence, not as an empty success", async () => {
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={createHumanDecisionGateway()}
         campaignGateway={createCampaignGateway()}
         distributionGateway={createDistributionGateway({
@@ -206,10 +212,8 @@ describe("EvidenceWorkspace", () => {
   });
 
   it("renders a rejected read as unavailable and never as observed", async () => {
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={createHumanDecisionGateway({
           readLatest: vi.fn().mockRejectedValue(new HttpClientError("http", 503))
         })}
@@ -225,6 +229,43 @@ describe("EvidenceWorkspace", () => {
     expect(await screen.findAllByText("No disponible")).toHaveLength(3);
     expect(screen.queryByText(actor)).not.toBeInTheDocument();
     expect(screen.queryByText("Fondeo abierto")).not.toBeInTheDocument();
+  });
+
+  it("reads the decision of the journey application, not a fixed demo one", async () => {
+    const humanDecisionGateway = createHumanDecisionGateway();
+
+    render(
+      <EvidenceWorkspace
+        humanDecisionGateway={humanDecisionGateway}
+        campaignGateway={createCampaignGateway()}
+        distributionGateway={createDistributionGateway()}
+      />
+    );
+
+    await screen.findByText(actor);
+    expect(humanDecisionGateway.readLatest).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+
+  it("asks for the request first, and reads nothing, when the journey has no application", () => {
+    const humanDecisionGateway = createHumanDecisionGateway();
+    const campaignGateway = createCampaignGateway();
+    const distributionGateway = createDistributionGateway();
+
+    rtlRender(
+      <JourneyStoreProvider>
+        <EvidenceWorkspace
+          humanDecisionGateway={humanDecisionGateway}
+          campaignGateway={campaignGateway}
+          distributionGateway={distributionGateway}
+        />
+      </JourneyStoreProvider>
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/primero hay que enviar la solicitud/i);
+    expect(screen.getByRole("link", { name: "Ir a la solicitud" })).toHaveAttribute("href", "/request");
+    expect(humanDecisionGateway.readLatest).not.toHaveBeenCalled();
+    expect(campaignGateway.getCampaign).not.toHaveBeenCalled();
+    expect(distributionGateway.getStatus).not.toHaveBeenCalled();
   });
 
   it("shows a loading state while the sources are being read", () => {
@@ -280,10 +321,8 @@ describe("EvidenceWorkspace", () => {
   it("reports both movements as unavailable, never as not run, when the backend is unconfigured but both ids are present", async () => {
     // An id proves the step ran, so an unconfigured backend must surface as
     // "cannot read" — reporting it as absent would deny a run that happened.
-    render(
+    renderRun(
       <EvidenceWorkspace
-        campaignId={CAMPAIGN_ID}
-        distributionId={DISTRIBUTION_ID}
         humanDecisionGateway={null}
         campaignGateway={null}
         distributionGateway={null}

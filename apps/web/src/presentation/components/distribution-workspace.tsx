@@ -5,7 +5,6 @@ import {
   demoDistributionRecipients,
   SIMULADO_DISTRIBUTION_LABEL
 } from "@/application/distribution/demo-distribution-recipients";
-import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import type {
@@ -18,12 +17,14 @@ import { microcopy } from "@/application/trust/disclosures";
 import { HttpRevenueShareDistributionGateway } from "@/infrastructure/distribution/http-revenue-share-distribution-gateway";
 import { AxiosHttpClient } from "@/infrastructure/http/axios-http-client";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
+import { useJourneyStore } from "@/state/journey-store-provider";
 import type {
   PreparedRevenueShareDistribution,
   RevenueShareDistributionSnapshot
 } from "@vaqcrow/contracts";
 import { Badge } from "./badge";
 import { Button } from "./button";
+import { StartWithRequestNotice } from "./start-with-request-notice";
 import { SyntheticValue } from "./synthetic-value";
 import {
   TransactionReviewModal,
@@ -149,20 +150,12 @@ export interface DistributionWorkspaceProps {
   readonly gateway?: RevenueShareDistributionGateway | null;
   /** Injectable so the component can be exercised with a deterministic wallet double. */
   readonly wallet?: WalletPort;
-  /** Traceability link only (`D4`); defaults to the demo's single fixed application. */
-  readonly applicationId?: string | null;
-  /**
-   * The id the page read from `?distribution=`. It is only rendered as the
-   * current reference; nothing is read back from it here (resuming a
-   * stateless prepared distribution is deliberately out of this unit's scope).
-   */
-  readonly distributionId?: string | null;
-  /** Called with the id the prepare/submit answer named, so the page can move it into the URL (`D3`). */
-  readonly onDistributionIdentified?: (distributionId: string) => void;
 }
 
 /**
- * Distribution step container. The connected account is the source; the
+ * Distribution step container. It acts on the journey's application (without
+ * one it asks for the request first) and records the distribution it prepares
+ * in the journey. The connected account is the source; the
  * recipients are the frozen synthetic demo fixture. The service builds the
  * transaction, the person reviews the recipients and amounts and signs it in
  * Freighter, and the service verifies and submits it.
@@ -174,11 +167,21 @@ export interface DistributionWorkspaceProps {
  */
 export function DistributionWorkspace({
   gateway = defaultGateway,
-  wallet = defaultWallet,
-  applicationId = DEMO_APPLICATION_ID,
-  distributionId = null,
-  onDistributionIdentified
+  wallet = defaultWallet
 }: DistributionWorkspaceProps) {
+  const applicationId = useJourneyStore((state) => state.applicationId);
+  const campaignId = useJourneyStore((state) => state.campaignId);
+  const distributionId = useJourneyStore((state) => state.distributionId);
+  const recordDistribution = useJourneyStore((state) => state.recordDistribution);
+  // The journey holds a distribution only under a campaign. Preparing and
+  // submitting do not need one (the API takes the application), so without a
+  // campaign the distribution simply is not recorded, instead of throwing.
+  const onDistributionIdentified = useCallback(
+    (id: string) => {
+      if (campaignId !== null) recordDistribution(id);
+    },
+    [campaignId, recordDistribution]
+  );
   const inFlightRef = useRef(false);
   const connectingRef = useRef(false);
   const [publicKey, setPublicKey] = useState<string | undefined>();
@@ -242,7 +245,7 @@ export function DistributionWorkspace({
         setIsReviewOpen(true);
         // The prepared answer is the first thing that names the distribution; the
         // page uses this to put the id in the URL so the hash survives navigation.
-        onDistributionIdentified?.(result.value.distributionId);
+        onDistributionIdentified(result.value.distributionId);
       } else {
         setFailure(failureOfKind(result.error.kind));
       }
@@ -291,7 +294,7 @@ export function DistributionWorkspace({
         setReviewAttempted(false);
         // The submit answer carries the same id the prepare did; re-declaring it
         // keeps the URL correct even if the prepared answer was never seen.
-        onDistributionIdentified?.(result.value.distribution.distributionId);
+        onDistributionIdentified(result.value.distribution.distributionId);
       } else {
         setFailure(failureOfKind(result.error.kind));
       }
@@ -331,6 +334,8 @@ export function DistributionWorkspace({
       : reviewError.kind === "wallet_rejected"
         ? { signingStatus: "signature-rejected", signingErrorMessage: reviewError.message }
         : { signingStatus: "verification-rejected", signingErrorMessage: reviewError.message };
+
+  if (applicationId === null) return <StartWithRequestNotice action="preparar la distribución" />;
 
   return (
     <section aria-label="Distribución de ingresos" lang="es" className="flex max-w-xl flex-col gap-4">
