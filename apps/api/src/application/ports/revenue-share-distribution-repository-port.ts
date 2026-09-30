@@ -42,6 +42,7 @@ export type { RevenueShareDistributionState };
 export type RevenueShareDistributionRepositoryErrorCode =
   | "not_found"
   | "idempotency_conflict"
+  | "already_distributed"
   | "unavailable";
 
 export interface RevenueShareDistributionRepositoryError {
@@ -85,6 +86,19 @@ export interface RevenueShareDistributionSubmission {
   readonly transactionHash: string;
   /** Traceability link to the application under review, when there is one. */
   readonly applicationId?: string;
+  /**
+   * The settled campaign the recipients and amounts were derived from. Set when
+   * the server derived the distribution (T5a); immutable after insert, enforced
+   * by the column-scoped grant. Absent for a distribution recorded before the
+   * link existed.
+   */
+  readonly campaignId?: string;
+  /**
+   * The `YYYY-MM` period the distribution settles. With `campaignId` it is
+   * unique among non-failed distributions, enforced by a partial unique index, so
+   * the same revenue cannot be distributed twice. Immutable after insert.
+   */
+  readonly period?: string;
   /**
    * One native payment per destination, in the order the envelope encodes them.
    * Each entry is exactly `(accountId, amountStroops)`; a traceability label the
@@ -230,6 +244,16 @@ export interface RevenueShareDistributionRepositoryPort {
    * up by the next process from the same table. `now` is an argument rather than
    * a call to the clock so the caller's notion of time is the only one in play.
    */
+  /**
+   * The non-failed (submitted or confirmed) distribution for a campaign and
+   * period, `not_found` when none exists. Prepare reads it to refuse early; the
+   * unique index is what actually enforces the rule under a race.
+   */
+  findActiveByCampaignPeriod(input: {
+    campaignId: string;
+    period: string;
+  }): Promise<RevenueShareDistributionRepositoryResult<RevenueShareDistributionRecord>>;
+
   findPending(input: {
     readonly now: string;
     readonly limit: number;

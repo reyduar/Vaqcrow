@@ -72,12 +72,14 @@ export {
   parseDistributionRecipient,
   parsePrepareRevenueShareDistributionCommand,
   parsePreparedRevenueShareDistribution,
+  parseRevenueShareDerivation,
   parseRevenueShareDistributionSnapshot,
   parseRevenueShareDistributionState,
   parseRevenueShareDistributionTerms,
   parseSubmitRevenueShareDistributionCommand,
   prepareRevenueShareDistributionCommandSchema,
   preparedRevenueShareDistributionSchema,
+  revenueShareDerivationSchema,
   revenueShareDistributionSnapshotSchema,
   revenueShareDistributionStateSchema,
   revenueShareDistributionTermsSchema,
@@ -87,6 +89,7 @@ export type {
   DistributionRecipient,
   PrepareRevenueShareDistributionCommand,
   PreparedRevenueShareDistribution,
+  RevenueShareDerivation,
   RevenueShareDistributionSnapshot,
   RevenueShareDistributionState,
   RevenueShareDistributionTerms,
@@ -104,7 +107,9 @@ export {
   salesPeriodSchema,
   salesPeriodStatusSchema,
   simuladoLabelSchema,
-  smeRequestSchema
+  smeRequestReadSchema,
+  smeRequestSchema,
+  smeRequestSubmissionSchema
 } from "./sme-evidence.js";
 export type {
   EvidenceReference,
@@ -112,7 +117,9 @@ export type {
   ReviewFindingKind,
   SalesPeriodContract,
   SalesPeriodStatus,
-  SmeRequest
+  SmeRequest,
+  SmeRequestRead,
+  SmeRequestSubmission
 } from "./sme-evidence.js";
 
 export {
@@ -136,6 +143,18 @@ export {
 } from "./application-manual-review.js";
 export type { ApplicationManualReviewContext } from "./application-manual-review.js";
 
+export {
+  applicationAssessmentOutcomeSchema,
+  applicationAssessmentReadSchema,
+  applicationAssessmentSchema,
+  parseApplicationAssessmentRead
+} from "./application-assessment.js";
+export type {
+  ApplicationAssessment,
+  ApplicationAssessmentOutcome,
+  ApplicationAssessmentRead
+} from "./application-assessment.js";
+
 export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
 
@@ -153,6 +172,7 @@ export {
   parseContractInvocation,
   parseContractInvocationSubmission,
   parseContractInvocationTransactionStatus,
+  campaignIdSchema,
   parseContractOperation,
   parseOpenCampaignCommand,
   parsePrepareContractInvocationCommand,
@@ -167,6 +187,7 @@ export {
   submitContractInvocationCommandSchema
 } from "./campaign.js";
 export type {
+  CampaignId,
   CampaignSnapshot,
   CampaignState,
   ContractInvocation,

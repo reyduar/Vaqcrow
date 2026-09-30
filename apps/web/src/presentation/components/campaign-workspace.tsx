@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { CampaignVaultError } from "@/application/campaign/campaign-vault-errors";
-import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { xlmToStroops, type XlmAmountError } from "@/application/funding/xlm-amount";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -10,10 +9,12 @@ import type { WalletPort } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { createCampaignGateway } from "@/infrastructure/campaign/default-gateway";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
+import { useJourneyStore } from "@/state/journey-store-provider";
 import { useCampaignVault } from "@/state/use-campaign-vault";
 import type { CampaignState } from "@vaqcrow/contracts";
 import { Badge } from "./badge";
 import { Button } from "./button";
+import { StartWithRequestNotice } from "./start-with-request-notice";
 import { TextField } from "./text-field";
 import {
   TransactionReviewModal,
@@ -76,17 +77,12 @@ export interface CampaignWorkspaceProps {
   readonly gateway?: CampaignGateway | null;
   /** Injectable so the component can be exercised with a deterministic wallet double. */
   readonly wallet?: WalletPort;
-  /** The application the vault opens for; defaults to the demo's single fixed application (`D7`). */
-  readonly applicationId?: string;
-  /** `null` renders the open-campaign panel; a value renders the campaign view. The page keeps this in `?campaign=`. */
-  readonly campaignId?: string | null;
-  /** Called once the vault is open, so the page can move the id into the URL and re-render as the campaign view. */
-  readonly onCampaignOpened?: (campaignId: string) => void;
 }
 
 /**
- * Campaign vault container (Task #247). Renders one of two views depending
- * on whether a campaign id is already known: the open-campaign panel (the
+ * Campaign vault container (Task #247). Without a journey application it asks
+ * for the request first. Otherwise it renders one of two views depending on
+ * whether the journey already knows a campaign id: the open-campaign panel (the
  * SME connects Freighter and declares a goal and deadline; the SME signs
  * nothing — the platform opens the vault) or the campaign view (state,
  * progress and the connected investor's own contribute/withdraw/refund
@@ -95,11 +91,13 @@ export interface CampaignWorkspaceProps {
  */
 export function CampaignWorkspace({
   gateway = defaultGateway,
-  wallet = defaultWallet,
-  applicationId = DEMO_APPLICATION_ID,
-  campaignId = null,
-  onCampaignOpened
+  wallet = defaultWallet
 }: CampaignWorkspaceProps) {
+  // The journey owns both ids: the application the vault opens for, and the
+  // campaign once it is open (recorded below, or hydrated from the URL).
+  const applicationId = useJourneyStore((state) => state.applicationId);
+  const campaignId = useJourneyStore((state) => state.campaignId);
+  const recordCampaign = useJourneyStore((state) => state.recordCampaign);
   const {
     publicKey,
     isConnecting,
@@ -183,6 +181,8 @@ export function CampaignWorkspace({
       </p>
     ) : null;
 
+  if (applicationId === null) return <StartWithRequestNotice action="abrir la campaña" />;
+
   if (!campaignId) {
     const handleOpen = (event: React.FormEvent) => {
       event.preventDefault();
@@ -197,7 +197,7 @@ export function CampaignWorkspace({
         goalStroops: parsedGoal.stroops,
         deadline: toIsoDeadline(deadline)
       }).then((opened) => {
-        if (opened) onCampaignOpened?.(opened);
+        if (opened) recordCampaign(opened);
       });
     };
 

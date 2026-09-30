@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applicationIdSchema } from "./application-id.js";
 
 /** Period in `YYYY-MM` form, month 01-12. */
 export const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -48,6 +49,25 @@ export const smeRequestSchema = z
   });
 
 export type SmeRequest = z.infer<typeof smeRequestSchema>;
+
+/**
+ * `POST /sme-requests` response: the server-generated application id (the root
+ * identifier of the whole demo journey) with the request as persisted.
+ */
+export const smeRequestSubmissionSchema = z.strictObject({
+  applicationId: applicationIdSchema,
+  request: smeRequestSchema
+});
+
+export type SmeRequestSubmission = z.infer<typeof smeRequestSubmissionSchema>;
+
+/** `GET /sme-requests/:applicationId` response: the request and its sales series. */
+export const smeRequestReadSchema = z.strictObject({
+  request: smeRequestSchema,
+  salesPeriods: z.array(salesPeriodSchema)
+});
+
+export type SmeRequestRead = z.infer<typeof smeRequestReadSchema>;
 
 export const reviewFindingKindSchema = z.enum(["missing", "anomalous", "contradictory"]);
 

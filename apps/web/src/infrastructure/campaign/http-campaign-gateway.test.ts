@@ -195,6 +195,17 @@ describe("HttpCampaignGateway.getTransaction", () => {
     expect(result.campaign).toBeUndefined();
   });
 
+  it("names the investor in the poll so the API mirrors that contribution", async () => {
+    const { port, send } = http({ transactionHash: HASH, status: "pending" });
+
+    await new HttpCampaignGateway(port).getTransaction(CAMPAIGN_ID, HASH, INVESTOR);
+
+    expect(send).toHaveBeenCalledWith({
+      method: "GET",
+      path: `/campaigns/${CAMPAIGN_ID}/transactions/${HASH}?investor=${INVESTOR}`
+    });
+  });
+
   it("reads a succeeded transaction with the refreshed campaign", async () => {
     const { port } = http({ transactionHash: HASH, status: "success", campaign: snapshotWire });
 

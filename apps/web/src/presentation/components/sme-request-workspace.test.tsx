@@ -3,15 +3,28 @@ import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import { SmeRequestWorkspace } from "./sme-request-workspace";
 
 function renderWorkspace(gateway: SmeRequestGateway | null) {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <SmeRequestWorkspace gateway={gateway} />
+      <JourneyStoreProvider>
+        <SmeRequestWorkspace gateway={gateway} />
+      </JourneyStoreProvider>
     </SWRConfig>
   );
 }
+
+const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
+
+const SAVED_REQUEST = {
+  smeReference: "sme:SYN-PH-0001",
+  declaredTotalArs: 1_200_000,
+  periodStart: "2026-01",
+  periodEnd: "2026-03",
+  simuladoLabel: "SIMULADO" as const
+};
 
 function fillAndSubmit() {
   fireEvent.change(screen.getByLabelText(/Total declarado \(ARS\)/), { target: { value: "1200000" } });
@@ -44,7 +57,7 @@ describe("SmeRequestWorkspace", () => {
   it("shows sanitized backend field errors next to the field and no success message", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockRejectedValue(new HttpClientError("http", 422, { periodEnd: "before_start", evil: "x" })),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
 
@@ -64,8 +77,8 @@ describe("SmeRequestWorkspace", () => {
       simuladoLabel: "SIMULADO" as const
     };
     const gateway: SmeRequestGateway = {
-      submit: vi.fn().mockResolvedValue(request),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request }),
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
 
@@ -76,8 +89,8 @@ describe("SmeRequestWorkspace", () => {
 
   it("replaces the fallback review with backend data once loaded", async () => {
     const gateway: SmeRequestGateway = {
-      submit: vi.fn(),
-      loadCurrent: vi.fn().mockResolvedValue({
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
+      load: vi.fn().mockResolvedValue({
         request: {
           smeReference: "sme:B",
           declaredTotalArs: 100,
@@ -91,6 +104,9 @@ describe("SmeRequestWorkspace", () => {
       })
     };
     renderWorkspace(gateway);
+    expect(gateway.load).not.toHaveBeenCalled();
+
+    fillAndSubmit();
 
     await waitFor(() =>
       expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).not.toHaveTextContent("Junio 2026")
@@ -100,12 +116,40 @@ describe("SmeRequestWorkspace", () => {
     );
   });
 
-  it("tells the user when loading failed and keeps the synthetic review", async () => {
+  // The real API answers an empty series for a reference the sales feed does not know
+  // (review finding R3-real-api-empty-series-masked-by-stub). With no reported sales there is
+  // nothing to compare the declared total against, so claiming a mismatch against $0 would be
+  // untrue: the panel says there is no history, and neither keeps the synthetic fixture rows
+  // nor calls it a load failure.
+  it("says there is no sales history for this SME, and reports no mismatch, when the backend series is empty", async () => {
     const gateway: SmeRequestGateway = {
-      submit: vi.fn(),
-      loadCurrent: vi.fn().mockRejectedValue(new HttpClientError("network"))
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
+    expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).toHaveTextContent("Junio 2026");
+
+    fillAndSubmit();
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).not.toHaveTextContent("Junio 2026")
+    );
+    const review = screen.getByRole("region", { name: /Revisión de evidencia/ });
+    expect(review).toHaveTextContent("No hay historial de ventas disponible para esta PyME");
+    expect(review).not.toHaveTextContent("Total declarado no coincide");
+    expect(review).not.toHaveTextContent("Sin hallazgos para revisar");
+    expect(review).not.toHaveTextContent("Abril 2026");
+    expect(screen.queryByText(/No se pudo cargar/)).not.toBeInTheDocument();
+  });
+
+  it("tells the user when loading failed and keeps the synthetic review", async () => {
+    const gateway: SmeRequestGateway = {
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
+      load: vi.fn().mockRejectedValue(new HttpClientError("network"))
+    };
+    renderWorkspace(gateway);
+
+    fillAndSubmit();
 
     expect(await screen.findByText(/No se pudo cargar/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).toHaveTextContent("Junio 2026");
@@ -114,7 +158,7 @@ describe("SmeRequestWorkspace", () => {
   it("shows the connection message and no success when the submit fails with a network error", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockRejectedValue(new HttpClientError("network")),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
 
@@ -127,7 +171,7 @@ describe("SmeRequestWorkspace", () => {
   it("does not leak unknown backend fields or raw text into the visible copy on a 422", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockRejectedValue(new HttpClientError("http", 422, { evil: "leak_me", declaredTotalArs: "constructor" })),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     const { container } = renderWorkspace(gateway);
 
@@ -151,8 +195,8 @@ describe("SmeRequestWorkspace", () => {
       submit: vi
         .fn()
         .mockRejectedValueOnce(new HttpClientError("network"))
-        .mockResolvedValueOnce(request),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+        .mockResolvedValueOnce({ applicationId: APPLICATION_ID, request }),
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
 
@@ -168,7 +212,7 @@ describe("SmeRequestWorkspace", () => {
   it("does not call the gateway when the amount is not an integer of pesos", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn(),
-      loadCurrent: vi.fn().mockResolvedValue({ request: null, salesPeriods: [] })
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
     };
     renderWorkspace(gateway);
 
@@ -180,5 +224,30 @@ describe("SmeRequestWorkspace", () => {
     await waitFor(() => expect(screen.getByLabelText(/Total declarado \(ARS\)/)).toHaveAttribute("aria-invalid", "true"));
     expect(gateway.submit).not.toHaveBeenCalled();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("disables the submit control and ignores a second click while a request is in flight", async () => {
+    let resolveSubmit: (value: { applicationId: string; request: typeof SAVED_REQUEST }) => void = () => undefined;
+    const submit = vi.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveSubmit = resolve;
+      })
+    );
+    const gateway: SmeRequestGateway = {
+      submit,
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
+    };
+    renderWorkspace(gateway);
+
+    fillAndSubmit();
+
+    const pending = await screen.findByRole("button", { name: /Enviando/ });
+    expect(pending).toBeDisabled();
+    fireEvent.click(pending);
+    expect(submit).toHaveBeenCalledTimes(1);
+
+    resolveSubmit({ applicationId: APPLICATION_ID, request: SAVED_REQUEST });
+
+    expect(await screen.findByRole("button", { name: /Enviar solicitud/ })).toBeEnabled();
   });
 });

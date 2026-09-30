@@ -7,7 +7,8 @@ import type {
 import {
   DEMO_BUSINESS_ID,
   HISTORICAL_SALES_PERIODS,
-  NEXT_SALES_PERIOD
+  NEXT_SALES_PERIOD,
+  SME_REFERENCE_TO_BUSINESS_ID
 } from "./simulated-sales-dataset.js";
 
 /**
@@ -28,6 +29,20 @@ export type SimulatedSalesDataProviderOptions = {
   /** Simulate a provider-side failure instead of answering. */
   readonly failWith?: "unavailable";
 };
+
+/**
+ * Accepts either the business id or a synthetic SME reference and returns the
+ * business id, or `undefined` when the feed knows neither. `Object.hasOwn`
+ * keeps inherited keys (`constructor`, `__proto__`) from resolving.
+ */
+function resolveBusinessId(identifier: string): string | undefined {
+  if (identifier === DEMO_BUSINESS_ID) {
+    return DEMO_BUSINESS_ID;
+  }
+  return Object.hasOwn(SME_REFERENCE_TO_BUSINESS_ID, identifier)
+    ? SME_REFERENCE_TO_BUSINESS_ID[identifier]
+    : undefined;
+}
 
 export function createSimulatedSalesDataProvider(
   options: SimulatedSalesDataProviderOptions = {}
@@ -53,7 +68,7 @@ export function createSimulatedSalesDataProvider(
       if (options.failWith !== undefined) {
         return unavailable();
       }
-      if (businessId !== DEMO_BUSINESS_ID) {
+      if (resolveBusinessId(businessId) !== DEMO_BUSINESS_ID) {
         return notFound();
       }
       return {
@@ -68,7 +83,7 @@ export function createSimulatedSalesDataProvider(
       if (options.failWith !== undefined) {
         return unavailable();
       }
-      if (businessId !== DEMO_BUSINESS_ID) {
+      if (resolveBusinessId(businessId) !== DEMO_BUSINESS_ID) {
         return notFound();
       }
       // Idempotent: the first call applies the frozen next period; every

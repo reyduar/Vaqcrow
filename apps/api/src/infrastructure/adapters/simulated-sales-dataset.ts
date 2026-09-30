@@ -22,6 +22,17 @@ import type { SalesPeriodContract } from "@vaqcrow/contracts";
 /** The single demo business. No identifier is established by any request schema, so the slug is frozen here. */
 export const DEMO_BUSINESS_ID = "panaderia-horizonte";
 
+/**
+ * The synthetic SME references the sales feed can serve, mapped to the business
+ * whose series it holds. An SME request carries `smeReference` (the web submits
+ * `sme:SYN-PH-0001`), not a business id; both identifiers are synthetic and both
+ * belong to this simulated feed, so the linkage lives here and nowhere else. A
+ * real authorized source would resolve its own identifiers in its own adapter.
+ */
+export const SME_REFERENCE_TO_BUSINESS_ID: Readonly<Record<string, string>> = Object.freeze({
+  "sme:SYN-PH-0001": DEMO_BUSINESS_ID
+});
+
 /** Verbatim from the web fixture's `SALES_PROVENANCE`. */
 export const SALES_PROVENANCE = "Declaración mensual sintética";
 

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { disclosures } from "@/application/trust/disclosures";
 import { panaderiaHorizonte, SIMULADO_LABEL } from "@/application/fixtures/panaderia-horizonte";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import RequestPage from "./page";
 
 /**
@@ -11,13 +12,13 @@ import RequestPage from "./page";
  */
 describe("RequestPage", () => {
   it("renders the full simulation disclosure text verbatim", () => {
-    render(<RequestPage />);
+    render(<RequestPage />, { wrapper: JourneyStoreProvider });
 
     expect(screen.getByText(disclosures.simulation.text)).toBeInTheDocument();
   });
 
   it("renders Empresa and KYC synthetic values each with an adjacent SIMULADO badge", () => {
-    render(<RequestPage />);
+    render(<RequestPage />, { wrapper: JourneyStoreProvider });
 
     const legalNameNode = screen.getByText(panaderiaHorizonte.legalName);
     const legalNameWrapper = legalNameNode.closest<HTMLElement>("span.inline-flex");
@@ -31,7 +32,7 @@ describe("RequestPage", () => {
   });
 
   it("renders sales evidence table rows with a SIMULADO badge on every reported/anomalous period and none on the missing one", () => {
-    render(<RequestPage />);
+    render(<RequestPage />, { wrapper: JourneyStoreProvider });
 
     for (const period of panaderiaHorizonte.sales) {
       const row = within(screen.getByRole("table")).getByText(period.label).closest("tr");
@@ -47,7 +48,7 @@ describe("RequestPage", () => {
   });
 
   it("renders no step placeholder: this route carries its own content", () => {
-    render(<RequestPage />);
+    render(<RequestPage />, { wrapper: JourneyStoreProvider });
 
     // Issue #286: the journey surface a person walks must not show the
     // "Step content coming soon" placeholder. `/request` has real content, so

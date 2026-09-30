@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { DemoStep } from "@/application/navigation/demo-steps";
-import { demoStepHref } from "@/application/navigation/demo-steps";
+import { journeyStepHref } from "@/application/navigation/journey-params";
+import { useJourneyIds } from "@/state/journey-store-provider";
 
 export interface DemoStepNavProps {
   readonly previous: DemoStep | null;
@@ -8,10 +11,11 @@ export interface DemoStepNavProps {
 }
 
 export function DemoStepNav({ previous, next }: DemoStepNavProps) {
+  const ids = useJourneyIds();
   return (
     <nav aria-label="Demo step navigation">
-      {previous ? <Link href={demoStepHref(previous.slug)}>{previous.label}</Link> : null}
-      {next ? <Link href={demoStepHref(next.slug)}>{next.label}</Link> : null}
+      {previous ? <Link href={journeyStepHref(previous.slug, ids)}>{previous.label}</Link> : null}
+      {next ? <Link href={journeyStepHref(next.slug, ids)}>{next.label}</Link> : null}
     </nav>
   );
 }

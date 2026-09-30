@@ -57,7 +57,7 @@ test.beforeEach(async ({ request }) => {
 
 test.describe("without an id in the URL", () => {
   test("renders every unread source as absent when nothing ran in this session", async ({ page }) => {
-    await page.goto("/evidence");
+    await page.goto(`/evidence?application=${DEMO_APPLICATION_ID}`);
 
     const timeline = page.getByRole("region", { name: TIMELINE_NAME });
     await expect(timeline).toBeVisible();
@@ -94,7 +94,7 @@ test.describe("without an id in the URL", () => {
 
 test.describe("with the campaign id in the URL", () => {
   test("renders the vault as observed once the campaign id is in the URL", async ({ page }) => {
-    await page.goto(`/evidence?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/evidence?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
 
     const timeline = page.getByRole("region", { name: TIMELINE_NAME });
     await expect(timeline).toBeVisible();

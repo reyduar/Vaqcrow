@@ -2,18 +2,44 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
-import { createJourneyStore, type JourneyState, type JourneyStore } from "./journey-store";
+import type { JourneyIdSet } from "@/application/navigation/journey-params";
+import { createJourneyStore, type JourneyIds, type JourneyState, type JourneyStore } from "./journey-store";
 
 const JourneyStoreContext = createContext<JourneyStore | undefined>(undefined);
 
-/** Creates one journey store per mounted provider (never a module-level singleton). */
-export function JourneyStoreProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(() => createJourneyStore());
+/**
+ * Creates one journey store per mounted provider (never a module-level
+ * singleton). `initial` seeds identifiers for the first render only (tests and
+ * deep-linked entry); it is never re-read.
+ */
+export function JourneyStoreProvider({
+  children,
+  initial
+}: {
+  children: ReactNode;
+  initial?: Partial<JourneyIds>;
+}) {
+  const [store] = useState(() => createJourneyStore(initial));
   return <JourneyStoreContext.Provider value={store}>{children}</JourneyStoreContext.Provider>;
+}
+
+/** The store itself, for imperative reads (effects that must not subscribe). */
+export function useJourneyStoreApi(): JourneyStore {
+  const store = useContext(JourneyStoreContext);
+  if (!store) throw new Error("useJourneyStoreApi must be used within a JourneyStoreProvider.");
+  return store;
 }
 
 export function useJourneyStore<T>(selector: (state: JourneyState) => T): T {
   const store = useContext(JourneyStoreContext);
   if (!store) throw new Error("useJourneyStore must be used within a JourneyStoreProvider.");
   return useStore(store, selector);
+}
+
+/** The three journey identifiers, for building links that carry them. */
+export function useJourneyIds(): JourneyIdSet {
+  const applicationId = useJourneyStore((state) => state.applicationId);
+  const campaignId = useJourneyStore((state) => state.campaignId);
+  const distributionId = useJourneyStore((state) => state.distributionId);
+  return { applicationId, campaignId, distributionId };
 }

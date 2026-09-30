@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -6,6 +7,7 @@ import type { WalletPort } from "@/application/ports/wallet-port";
 import { WalletError } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
 import type { CampaignSnapshot } from "@vaqcrow/contracts";
+import { JourneyStoreProvider, useJourneyStore } from "@/state/journey-store-provider";
 import { CampaignWorkspace } from "./campaign-workspace";
 
 const CAMPAIGN_ID = "11111111-1111-4111-8111-111111111111";
@@ -15,6 +17,20 @@ const INVESTOR = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 const OTHER_INVESTOR = "GCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
 const CONTRACT = "CDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD";
 const HASH = "TRANSACTION-HASH";
+
+/** The journey as the approval step leaves it: an application, no campaign yet. */
+const render = (ui: ReactElement) =>
+  rtlRender(<JourneyStoreProvider initial={{ applicationId: APPLICATION_ID }}>{ui}</JourneyStoreProvider>);
+
+/** The journey once a campaign is known: what a reload of `/funding?application=..&campaign=..` hydrates. */
+const renderFunding = (ui: ReactElement) =>
+  rtlRender(
+    <JourneyStoreProvider initial={{ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID }}>{ui}</JourneyStoreProvider>
+  );
+
+function RecordedCampaign() {
+  return <p data-testid="recorded-campaign">{useJourneyStore((state) => state.campaignId) ?? "none"}</p>;
+}
 
 function snapshot(overrides: Partial<CampaignSnapshot> = {}): CampaignSnapshot {
   return {
@@ -68,9 +84,11 @@ async function connect() {
 describe("CampaignWorkspace: opening the vault", () => {
   it("renders the open panel with no campaign id and opens on submit", async () => {
     const gateway = createGateway();
-    const onCampaignOpened = vi.fn();
     render(
-      <CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={null} onCampaignOpened={onCampaignOpened} />
+      <>
+        <CampaignWorkspace gateway={gateway} wallet={createWallet()} />
+        <RecordedCampaign />
+      </>
     );
     await connect();
 
@@ -79,10 +97,30 @@ describe("CampaignWorkspace: opening the vault", () => {
     fireEvent.click(screen.getByRole("button", { name: /Abrir bóveda/i }));
 
     await waitFor(() => expect(gateway.openCampaign).toHaveBeenCalled());
+    // The vault opens for the journey's application, not a fixed demo one.
     expect(gateway.openCampaign).toHaveBeenCalledWith(
-      expect.objectContaining({ smeAccountId: INVESTOR, goalStroops: 50000000n })
+      expect.objectContaining({ applicationId: APPLICATION_ID, smeAccountId: INVESTOR, goalStroops: 50000000n })
     );
-    await waitFor(() => expect(onCampaignOpened).toHaveBeenCalledWith(CAMPAIGN_ID));
+    // The opened campaign is recorded in the journey and the view switches to it.
+    await waitFor(() => expect(screen.getByTestId("recorded-campaign")).toHaveTextContent(CAMPAIGN_ID));
+    expect(await screen.findByText(/Fondeo abierto/)).toBeInTheDocument();
+  });
+});
+
+describe("CampaignWorkspace: without a journey application", () => {
+  it("asks for the request first, and reads and opens nothing", () => {
+    const gateway = createGateway();
+    rtlRender(
+      <JourneyStoreProvider>
+        <CampaignWorkspace gateway={gateway} wallet={createWallet()} />
+      </JourneyStoreProvider>
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/primero hay que enviar la solicitud/i);
+    expect(screen.getByRole("link", { name: "Ir a la solicitud" })).toHaveAttribute("href", "/request");
+    expect(screen.queryByRole("button", { name: /Abrir bóveda/i })).not.toBeInTheDocument();
+    expect(gateway.getCampaign).not.toHaveBeenCalled();
+    expect(gateway.openCampaign).not.toHaveBeenCalled();
   });
 });
 
@@ -92,9 +130,11 @@ describe("CampaignWorkspace: the SME account blocked state", () => {
       .fn()
       .mockRejectedValue(new HttpClientError("http", 422, undefined, "sme_account_unavailable"));
     const gateway = createGateway({ openCampaign });
-    const onCampaignOpened = vi.fn();
     render(
-      <CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={null} onCampaignOpened={onCampaignOpened} />
+      <>
+        <CampaignWorkspace gateway={gateway} wallet={createWallet()} />
+        <RecordedCampaign />
+      </>
     );
     await connect();
 
@@ -103,7 +143,7 @@ describe("CampaignWorkspace: the SME account blocked state", () => {
     fireEvent.click(screen.getByRole("button", { name: /Abrir bóveda/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no se abrió/i);
-    expect(onCampaignOpened).not.toHaveBeenCalled();
+    expect(screen.getByTestId("recorded-campaign")).toHaveTextContent("none");
     expect(screen.getByRole("heading", { name: /Abrir bóveda de campaña/i })).toBeInTheDocument();
     expect(screen.queryByText(/Fondeo abierto|Meta alcanzada|Reembolso disponible/)).not.toBeInTheDocument();
   });
@@ -112,7 +152,7 @@ describe("CampaignWorkspace: the SME account blocked state", () => {
 describe("CampaignWorkspace: the three chain states", () => {
   it("renders the funding state and offers contribute and withdraw", async () => {
     const gateway = createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ state: "funding" })) });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
 
     expect(await screen.findByText("Fondeo abierto")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Aportar$/ })).toBeInTheDocument();
@@ -122,7 +162,7 @@ describe("CampaignWorkspace: the three chain states", () => {
 
   it("renders the settled state and hides contribute", async () => {
     const gateway = createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ state: "settled" })) });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
 
     expect(await screen.findByText("Meta alcanzada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();
@@ -133,7 +173,7 @@ describe("CampaignWorkspace: the three chain states", () => {
 
   it("renders the refunding state, hides contribute, and offers refund", async () => {
     const gateway = createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ state: "refunding" })) });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
 
     expect(await screen.findByText("Reembolso disponible")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Aportar$/ })).not.toBeInTheDocument();
@@ -146,7 +186,7 @@ describe("CampaignWorkspace: the three chain states", () => {
         .fn()
         .mockResolvedValue(snapshot({ state: "funding", deadline: "2020-01-01T00:00:00.000Z" }))
     });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
 
     expect(await screen.findByText("Fondeo abierto")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Reembolsar/ })).toBeInTheDocument();
@@ -156,7 +196,7 @@ describe("CampaignWorkspace: the three chain states", () => {
 describe("CampaignWorkspace: contributing", () => {
   it("opens the review with the real intent and signs nothing until Firmar en Freighter", async () => {
     const gateway = createGateway();
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -188,7 +228,7 @@ describe("CampaignWorkspace: contributing", () => {
     let resolvePrepare!: (value: unknown) => void;
     const prepareInvocation = vi.fn().mockReturnValue(new Promise((resolve) => (resolvePrepare = resolve)));
     const gateway = createGateway({ prepareInvocation });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -214,7 +254,7 @@ describe("CampaignWorkspace: contributing", () => {
   it("shows the canonical wrong-network message in the dialog and blocks signing, with no duplicate banner", async () => {
     const signTransaction = vi.fn().mockRejectedValue(new WalletError("network_mismatch", "another network"));
     const gateway = createGateway();
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -234,7 +274,7 @@ describe("CampaignWorkspace: contributing", () => {
   it("shows the gateway unavailable message in the dialog when the backend refuses", async () => {
     const prepareInvocation = vi.fn().mockRejectedValue(new HttpClientError("http", 503));
     const gateway = createGateway({ prepareInvocation });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -249,7 +289,7 @@ describe("CampaignWorkspace: contributing", () => {
   it("shows the reverted-contribution message in the dialog and keeps Aportar available, claiming no success", async () => {
     const getTransaction = vi.fn().mockResolvedValue({ transactionHash: HASH, status: "failed" });
     const gateway = createGateway({ getTransaction });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -269,7 +309,7 @@ describe("CampaignWorkspace: contributing", () => {
   it("reports a missing Freighter at signing time as a rejected state, never as a success", async () => {
     const signTransaction = vi.fn().mockRejectedValue(new WalletError("unavailable", "Freighter is not available"));
     const gateway = createGateway();
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet({ signTransaction })} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -287,7 +327,7 @@ describe("CampaignWorkspace: Freighter absent", () => {
   it("shows an install/enable Freighter message when connect fails because the wallet is unavailable", async () => {
     const connectMock = vi.fn().mockRejectedValue(new WalletError("unavailable", "Freighter is not available"));
     const gateway = createGateway();
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet({ connect: connectMock })} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet({ connect: connectMock })} />);
     await screen.findByText("Fondeo abierto");
 
     fireEvent.click(screen.getByRole("button", { name: /Conectar wallet/i }));
@@ -303,7 +343,7 @@ describe("CampaignWorkspace: the live funding-to-settled transition", () => {
       .fn()
       .mockResolvedValue({ transactionHash: HASH, status: "success", campaign: settled });
     const gateway = createGateway({ getTransaction });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Fondeo abierto");
 
@@ -326,7 +366,7 @@ describe("CampaignWorkspace: the live funding-to-settled transition", () => {
 describe("CampaignWorkspace: refunding", () => {
   it("sends the declared target address when refunding on behalf of another investor", async () => {
     const gateway = createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ state: "refunding" })) });
-    render(<CampaignWorkspace gateway={gateway} wallet={createWallet()} campaignId={CAMPAIGN_ID} />);
+    renderFunding(<CampaignWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await screen.findByText("Reembolso disponible");
 

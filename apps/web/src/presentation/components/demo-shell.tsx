@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { demoStepHref, demoSteps } from "@/application/navigation/demo-steps";
+import { demoSteps } from "@/application/navigation/demo-steps";
+import { journeyStepHref } from "@/application/navigation/journey-params";
 import { microcopy } from "@/application/trust/disclosures";
+import { useJourneyIds } from "@/state/journey-store-provider";
 import { useDemoStep } from "@/state/use-demo-step";
 import { AccountMenu } from "./account-menu";
 import { DemoNavbar } from "./demo-navbar";
@@ -31,10 +33,11 @@ const DEMO_FOOTER_COPYRIGHT = "Vaqcrow · 2026";
 
 export function DemoShell({ children }: DemoShellProps) {
   const demoStep = useDemoStep();
+  const ids = useJourneyIds();
 
   const navItems = demoSteps.map((step) => ({
     label: step.label,
-    href: demoStepHref(step.slug),
+    href: journeyStepHref(step.slug, ids),
     // `exactOptionalPropertyTypes` forbids `current: undefined`, so the key is
     // only spread in when the step is active.
     ...(demoStep?.step.slug === step.slug ? { current: true } : {})

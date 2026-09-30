@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
-import { parseRevenueShareDistributionId } from "@vaqcrow/contracts";
+import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
+import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
+import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
+import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
+import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
@@ -25,6 +29,45 @@ const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
 
+// The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
+// frozen synthetic data, no I/O — a real authorized source would replace it
+// here, at the composition root, and nowhere else.
+const salesDataProvider = createSimulatedSalesDataProvider();
+
+const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
+
+// Built first: the distribution derivation reconciles the campaign from the chain,
+// so it reuses the campaign group's repository and vault chain reader.
+const campaign = buildCampaignDependencies(config, {
+  supabase,
+  applicationReviews: applicationReviewRepository
+});
+
+// The distribution derivation (T5a): who is paid and how much is a function of
+// the case (settled campaign, approved decision, sales feed), never of the
+// request. Prepare and submit share this one binding.
+const deriveDistribution =
+  campaign === undefined
+    ? undefined
+    : (input: {
+        readonly applicationId: ApplicationId;
+        readonly campaignId: string;
+        readonly sourceAccountId: string;
+        readonly correlationId: CorrelationId;
+      }) =>
+        deriveRevenueShareDistribution(
+          {
+            // The campaign group's repository and vault reader, so the derivation
+            // reconciles from the chain instead of trusting a stale mirror.
+            campaigns: campaign.campaigns,
+            chain: campaign.chain,
+            applicationReviews: applicationReviewRepository,
+            smeRequests: smeRequestRepository,
+            salesData: salesDataProvider
+          },
+          input
+        );
+
 // The revenue-share distribution HTTP surface (S2c). Unlike the funding-intent
 // and campaign groups, which `index.ts` deliberately leaves unwired today, this
 // group is served so the demo can actually call it. `explorerUrl` is
@@ -35,7 +78,7 @@ const applicationReviewRepository = new SupabaseApplicationReviewRepository(supa
 const revenueShareDistributionRepository = new SupabaseRevenueShareDistributionRepository(supabase);
 
 const revenueShareDistribution =
-  config.stellar.explorerUrl === undefined
+  config.stellar.explorerUrl === undefined || deriveDistribution === undefined
     ? undefined
     : {
         ledger: new StellarLedger(config.stellar),
@@ -46,6 +89,7 @@ const revenueShareDistribution =
           networkPassphrase: config.stellar.networkPassphrase
         },
         explorerBaseUrl: config.stellar.explorerUrl,
+        derive: deriveDistribution,
         generateDistributionId: () => parseRevenueShareDistributionId(randomUUID())
       };
 
@@ -64,16 +108,6 @@ const assessmentProvider = createOpenCodeGoProvider({
   timeoutMs: config.llm.timeoutMs
 });
 
-const campaign = buildCampaignDependencies(config, {
-  supabase,
-  applicationReviews: applicationReviewRepository
-});
-
-// The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
-// frozen synthetic data, no I/O — a real authorized source would replace it
-// here, at the composition root, and nowhere else.
-const salesDataProvider = createSimulatedSalesDataProvider();
-
 const app = buildApp({
   applicationReviewRepository,
   revenueShareDistribution,
@@ -83,11 +117,19 @@ const app = buildApp({
   },
   applicationAssessment: {
     repository: applicationReviewRepository,
+    assessments: new SupabaseApplicationAssessmentRepository(supabase),
+    smeRequests: smeRequestRepository,
+    salesData: salesDataProvider,
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
   salesFeed: { provider: salesDataProvider },
+  smeRequest: {
+    repository: smeRequestRepository,
+    salesData: salesDataProvider,
+    generateApplicationId: () => parseApplicationId(randomUUID())
+  },
   cors: config.cors
 });
 

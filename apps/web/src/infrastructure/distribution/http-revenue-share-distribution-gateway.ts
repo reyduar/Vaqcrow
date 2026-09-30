@@ -10,6 +10,7 @@ import type {
 } from "@vaqcrow/contracts";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { HttpClientPort } from "@/application/ports/http-client-port";
+import { DERIVATION_FAILURE_REASONS } from "@/application/ports/revenue-share-distribution-gateway";
 import type {
   PrepareRevenueShareDistributionRequest,
   RevenueShareDistributionGateway,
@@ -65,15 +66,6 @@ function toWireTerms(terms: RevenueShareDistributionTerms): Record<string, unkno
   };
 }
 
-function toWireRecipients(
-  recipients: PrepareRevenueShareDistributionRequest["recipients"]
-): { accountId: string; amountStroops: string }[] {
-  return recipients.map((recipient) => ({
-    accountId: recipient.accountId,
-    amountStroops: recipient.amountStroops.toString()
-  }));
-}
-
 /**
  * Classifies a failure into the port's coarse kind.
  *
@@ -85,6 +77,14 @@ function toWireRecipients(
 function toError(caught: unknown): RevenueShareDistributionGatewayError {
   if (!(caught instanceof HttpClientError)) return { kind: "unknown" };
   if (caught.kind === "network") return { kind: "network" };
+
+  // The typed derivation outcomes are named by `{ code }` whatever the status.
+  if (caught.errorCode === "derivation_failed") {
+    const reason = DERIVATION_FAILURE_REASONS.find((known) => known === caught.errorReason);
+    return reason === undefined ? { kind: "unknown" } : { kind: "derivation_failed", reason };
+  }
+  if (caught.errorCode === "derivation_mismatch") return { kind: "derivation_mismatch" };
+  if (caught.errorCode === "already_distributed") return { kind: "already_distributed" };
 
   switch (caught.status) {
     case 400:
@@ -127,9 +127,9 @@ export class HttpRevenueShareDistributionGateway implements RevenueShareDistribu
         path: "/revenue-share-distributions",
         body: {
           sourceAccountId: command.sourceAccountId,
-          recipients: toWireRecipients(command.recipients),
-          memo: command.memo,
-          applicationId: command.applicationId
+          applicationId: command.applicationId,
+          campaignId: command.campaignId,
+          memo: command.memo
         }
       });
 
@@ -149,7 +149,8 @@ export class HttpRevenueShareDistributionGateway implements RevenueShareDistribu
         body: {
           signedXdr: command.signedXdr,
           terms: toWireTerms(command.terms),
-          applicationId: command.applicationId
+          applicationId: command.applicationId,
+          campaignId: command.campaignId
         }
       });
 

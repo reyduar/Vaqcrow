@@ -49,6 +49,13 @@ function extractErrorCode(data: unknown): string | undefined {
   return typeof code === "string" && CODE_PATTERN.test(code) ? code : undefined;
 }
 
+/** Extracts the identifier-shaped `reason` token of a `{ code, reason }` error envelope, or `undefined`. */
+function extractErrorReason(data: unknown): string | undefined {
+  if (typeof data !== "object" || data === null || !("reason" in data)) return undefined;
+  const reason = (data as { reason: unknown }).reason;
+  return typeof reason === "string" && CODE_PATTERN.test(reason) ? reason : undefined;
+}
+
 export interface AxiosHttpClientOptions {
   readonly baseUrl: string;
   readonly headers?: Readonly<Record<string, string>>;
@@ -93,7 +100,8 @@ export class AxiosHttpClient implements HttpClientPort {
         "http",
         response.status,
         extractFieldErrors(response.data),
-        extractErrorCode(response.data)
+        extractErrorCode(response.data),
+        extractErrorReason(response.data)
       );
     }
     return { status: response.status, body: response.data as T };

@@ -68,6 +68,8 @@ function distribution(overrides: Record<string, unknown> = {}): RevenueShareDist
     state: "submitted",
     transactionHash: "TRANSACTION-HASH",
     applicationId: APPLICATION_ID,
+    campaignId: null,
+    period: "2026-08",
     explorerUrl: DISTRIBUTION_EXPLORER,
     failureReason: null,
     lastCorrelationId: "22222222-2222-4222-8222-222222222222",
@@ -261,6 +263,17 @@ describe("buildEvidenceTimeline", () => {
       { label: "Destinatario 2", value: "0.4 XLM" },
       { label: "Destinatario 3", value: "0.35 XLM" }
     ]);
+  });
+
+  it("names the period the distribution settled, and omits it for a legacy row without one", () => {
+    const withPeriod = entry(buildEvidenceTimeline(allObserved()), "revenue-share-distribution");
+    expect(withPeriod.facts).toContainEqual({ label: "Período", value: "2026-08" });
+
+    const legacy = entry(
+      buildEvidenceTimeline(allObserved({ distribution: { kind: "observed", value: distribution({ period: null }) } })),
+      "revenue-share-distribution"
+    );
+    expect(legacy.facts.map((fact) => fact.label)).not.toContain("Período");
   });
 
   it("formats the calculation total as the recipients' exact sum", () => {

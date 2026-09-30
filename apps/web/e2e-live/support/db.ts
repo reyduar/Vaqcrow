@@ -7,9 +7,9 @@ import { LIVE_DB_CONTAINER } from "./live-targets";
  * database, the same shape `supabase/migrations/20260918114635_create_application_review.sql`
  * declares. The API exposes no route that creates this row (it is normally
  * written by the assessment/human-decision flow, out of scope here), so the
- * live campaign-vault journey needs its own approved application to open a
- * vault against — exactly the gap `odd/tasks/campaign-vault-web-journey.md`'s
- * own local verification ran into and worked around the same way (CLAUDE.md:
+ * live campaign-vault journey inserts its own approved application (no seed
+ * file is involved; `supabase/seed/` was retired) to open a vault against —
+ * exactly the gap `odd/tasks/campaign-vault-web-journey.md`'s own local verification ran into and worked around the same way (CLAUDE.md:
  * "Once the local migration test passes… `docker exec -i supabase_db_vaqcrow
  * psql …`").
  *

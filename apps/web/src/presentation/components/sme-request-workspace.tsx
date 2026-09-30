@@ -37,6 +37,11 @@ export function SmeRequestWorkspace({ gateway = defaultGateway }: SmeRequestWork
     DEMO_SME_REFERENCE
   );
 
+  // The service answered, but holds no sales for this SME: there is nothing to
+  // compare the declared total against, so no finding (least of all a mismatch
+  // against $0) is derived.
+  const hasNoSalesHistory = current ? current.salesPeriods.length === 0 : false;
+
   const items = useMemo(
     () =>
       current ? buildReviewItems(current.request, backendPeriodsToEvidenced(current.salesPeriods)) : demoReviewItems,
@@ -57,7 +62,16 @@ export function SmeRequestWorkspace({ gateway = defaultGateway }: SmeRequestWork
           No se pudo cargar el historial de ventas. Se muestran datos sintéticos de ejemplo, no los del servicio.
         </p>
       ) : null}
-      <EvidenceReviewPanel findings={items} simuladoLabel={SIMULADO_LABEL} />
+      {hasNoSalesHistory ? (
+        <section lang="es" aria-label="Revisión de evidencia" aria-live="polite">
+          <p>
+            No hay historial de ventas disponible para esta PyME: sin ventas informadas no hay contra
+            qué comparar el total declarado, y no se muestra ningún hallazgo.
+          </p>
+        </section>
+      ) : (
+        <EvidenceReviewPanel findings={items} simuladoLabel={SIMULADO_LABEL} />
+      )}
     </div>
   );
 }

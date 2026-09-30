@@ -19,6 +19,15 @@ describe("JourneyStoreProvider", () => {
     expect(result.current.applicationId).toBe("app-1");
   });
 
+  it("seeds the store from the optional initial identifiers", () => {
+    const { result } = renderHook(() => useJourneyStore((s) => s.applicationId), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <JourneyStoreProvider initial={{ applicationId: "app-seed" }}>{children}</JourneyStoreProvider>
+      )
+    });
+    expect(result.current).toBe("app-seed");
+  });
+
   it("throws a clear error outside the provider", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(() => renderHook(() => useJourneyStore((s) => s.applicationId))).toThrow(/JourneyStoreProvider/);
