@@ -696,6 +696,83 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     expect(body.campaign.state).toBe("funding");
   });
 
+  describe("recording the confirmed contribution (?investor=)", () => {
+    const success = () =>
+      invocationsDouble({ findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } }) });
+
+    it("reads the investor's on-chain contribution and reconciles it into the mirror on success", async () => {
+      const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 2_500_000n }) });
+      const campaigns = campaignsDouble();
+      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=${INVESTOR_ACCOUNT_ID}`
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(chain.readContribution).toHaveBeenCalledWith(CONTRACT_ADDRESS, INVESTOR_ACCOUNT_ID);
+      const snapshot = vi.mocked(campaigns.reconcile).mock.calls[0]?.[0].snapshot;
+      expect(snapshot?.contributions).toEqual([
+        expect.objectContaining({ investorAccountId: INVESTOR_ACCOUNT_ID, amountStroops: 2_500_000n })
+      ]);
+    });
+
+    it("records nothing when no investor is given, as before", async () => {
+      const chain = chainDouble();
+      const campaigns = campaignsDouble();
+      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+
+      await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
+
+      expect(chain.readContribution).not.toHaveBeenCalled();
+      expect(vi.mocked(campaigns.reconcile).mock.calls[0]?.[0].snapshot.contributions).toEqual([]);
+    });
+
+    it("does not read the chain for a pending transaction", async () => {
+      const chain = chainDouble();
+      app = buildApp({ campaign: deps({ chain }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=${INVESTOR_ACCOUNT_ID}`
+      });
+
+      expect(response.json()).toEqual({ transactionHash: TRANSACTION_HASH, status: "pending" });
+      expect(chain.readContribution).not.toHaveBeenCalled();
+    });
+
+    it("rejects a malformed investor with 400 before looking the transaction up", async () => {
+      const invocations = success();
+      app = buildApp({ campaign: deps({ invocations }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=not-an-account`
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ code: "invalid_request" });
+      expect(invocations.findResult).not.toHaveBeenCalled();
+    });
+
+    it("returns 503 when the investor's contribution cannot be read", async () => {
+      const chain = chainDouble({
+        readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      });
+      const campaigns = campaignsDouble();
+      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=${INVESTOR_ACCOUNT_ID}`
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(campaigns.reconcile).not.toHaveBeenCalled();
+    });
+  });
+
   it("returns 503 when the post-success chain read is unreachable", async () => {
     const invocations = invocationsDouble({
       findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } })
