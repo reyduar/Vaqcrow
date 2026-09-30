@@ -104,7 +104,9 @@ export {
   salesPeriodSchema,
   salesPeriodStatusSchema,
   simuladoLabelSchema,
-  smeRequestSchema
+  smeRequestReadSchema,
+  smeRequestSchema,
+  smeRequestSubmissionSchema
 } from "./sme-evidence.js";
 export type {
   EvidenceReference,
@@ -112,7 +114,9 @@ export type {
   ReviewFindingKind,
   SalesPeriodContract,
   SalesPeriodStatus,
-  SmeRequest
+  SmeRequest,
+  SmeRequestRead,
+  SmeRequestSubmission
 } from "./sme-evidence.js";
 
 export {

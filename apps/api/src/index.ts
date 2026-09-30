@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
-import { parseRevenueShareDistributionId } from "@vaqcrow/contracts";
+import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
@@ -9,6 +9,7 @@ import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
+import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
@@ -88,6 +89,11 @@ const app = buildApp({
   },
   campaign,
   salesFeed: { provider: salesDataProvider },
+  smeRequest: {
+    repository: new SupabaseSmeRequestRepository(supabase),
+    salesData: salesDataProvider,
+    generateApplicationId: () => parseApplicationId(randomUUID())
+  },
   cors: config.cors
 });
 

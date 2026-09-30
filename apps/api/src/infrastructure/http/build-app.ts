@@ -16,6 +16,8 @@ import { registerHealthRoute } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
 import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
 import type { RevenueShareDistributionRouteDependencies } from "./routes/revenue-share-distribution.route.js";
+import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
+import type { SmeRequestRouteDependencies } from "./routes/sme-request.route.js";
 import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
 
@@ -35,6 +37,7 @@ export function buildApp(dependencies: {
   readonly applicationAssessment?: ApplicationAssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
   readonly salesFeed?: SalesFeedRouteDependencies;
+  readonly smeRequest?: SmeRequestRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
@@ -80,6 +83,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.salesFeed) {
     registerSalesFeedRoute(app, dependencies.salesFeed);
+  }
+  if (dependencies.smeRequest) {
+    registerSmeRequestRoute(app, dependencies.smeRequest);
   }
   return app;
 }
