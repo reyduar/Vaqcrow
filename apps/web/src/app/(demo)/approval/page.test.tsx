@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { microcopy } from "@/application/trust/disclosures";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import ApprovalPage from "./page";
 
 /**
@@ -10,13 +11,13 @@ import ApprovalPage from "./page";
  */
 describe("ApprovalPage", () => {
   it("renders the human-decision microcopy", () => {
-    render(<ApprovalPage />);
+    render(<ApprovalPage />, { wrapper: JourneyStoreProvider });
 
     expect(screen.getByText(microcopy.humanDecision)).toBeInTheDocument();
   });
 
   it("renders the AI disclosure banner and the human-decision note as visually separate elements", () => {
-    render(<ApprovalPage />);
+    render(<ApprovalPage />, { wrapper: JourneyStoreProvider });
 
     const banner = screen.getByRole("note");
     const decisionNote = screen.getByText(microcopy.humanDecision);
@@ -27,11 +28,11 @@ describe("ApprovalPage", () => {
     expect(banner.contains(decisionNote)).toBe(false);
   });
 
-  it("renders the human decision form apart from the AI recommendation", () => {
-    render(<ApprovalPage />);
+  it("renders the human decision form apart from the AI assessment notice", () => {
+    render(<ApprovalPage />, { wrapper: JourneyStoreProvider });
 
     expect(screen.getByRole("form", { name: /Decisión humana/ })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /Recomendación de IA/ })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Sin evaluación de IA registrada/ })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(3);
   });
 });

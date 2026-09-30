@@ -37,8 +37,39 @@ const SALES_PERIODS = Object.freeze([
   { period: "2026-08", amountArs: 3745800, status: "reported", evidenceRef: "sales:2026-08", simuladoLabel: SIMULADO }
 ]);
 
+/**
+ * The reference the real API's sales feed knows (`sme:SYN-PH-0001` -> the synthetic
+ * bakery). Any other reference has no series, so the real API answers an EMPTY one
+ * and the application-scoped assessment refuses it with `sales_evidence_missing`.
+ */
+const KNOWN_SME_REFERENCE = "sme:SYN-PH-0001";
+
+/** Contract-shaped persisted assessment (strict `applicationAssessmentSchema` + provenance). */
+const ASSESSMENT = Object.freeze({
+  assessment: {
+    assessmentId: "asm_stub_001",
+    riskBand: "medium",
+    confidence: 0.72,
+    reasons: [{ claim: "Las ventas son estacionales", evidenceRefs: ["sales:2026-01"] }],
+    anomalies: [{ type: "outlier", evidenceRef: "sales:2026-06", severity: "review" }],
+    missingData: ["Declaración del período 2026-04"],
+    recommendedAction: "human_review",
+    questions: ["¿Qué explica el incremento de junio?"]
+  },
+  metadata: {
+    model: "simulated-underwriter",
+    promptVersion: "prompt-v1",
+    generatedAt: "2026-09-30T12:00:00.000Z",
+    source: "simulated"
+  },
+  recordedAt: "2026-09-30T12:00:01.000Z"
+});
+
 /** Last submitted request; reset per test via `POST /__reset` for isolation. */
 let currentRequest = null;
+
+/** applicationId -> the attempt (`handoffId`) that recorded its assessment. */
+const recordedAssessments = new Map();
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -76,8 +107,20 @@ function readJsonBody(request) {
   });
 }
 
+function recordedOutcome(applied) {
+  return {
+    outcome: "assessment_recorded",
+    applicationState: "human_review",
+    applied,
+    correlationId: CORRELATION_ID,
+    ...ASSESSMENT
+  };
+}
+
 const SME_REQUEST_PATH = /^\/sme-requests\/([^/]+)$/;
 const DECISION_PATH = /^\/application-reviews\/([^/]+)\/decisions$/;
+const ASSESSMENT_POST_PATH = /^\/application-reviews\/([^/]+)\/assessments$/;
+const ASSESSMENT_READ_PATH = /^\/application-reviews\/([^/]+)\/assessment$/;
 
 async function handle(request, response) {
   const url = new URL(request.url ?? "/", `http://${HOST}:${PORT}`);
@@ -96,6 +139,7 @@ async function handle(request, response) {
 
   if (request.method === "POST" && pathname === "/__reset") {
     currentRequest = null;
+    recordedAssessments.clear();
     resetCampaignFixtures();
     response.writeHead(204, CORS_HEADERS);
     response.end();
@@ -108,7 +152,59 @@ async function handle(request, response) {
       sendJson(response, 404, { code: "not_found" });
       return;
     }
-    sendJson(response, 200, { request: currentRequest, salesPeriods: SALES_PERIODS });
+    // Like the real API: a reference the feed does not know has an EMPTY series.
+    const salesPeriods = currentRequest.smeReference === KNOWN_SME_REFERENCE ? SALES_PERIODS : [];
+    sendJson(response, 200, { request: currentRequest, salesPeriods });
+    return;
+  }
+
+  // Test-only seed: an application that already has a recorded assessment (the approval
+  // step is exercised directly, with no request submitted first).
+  if (request.method === "POST" && pathname === "/__seed-assessment") {
+    const body = await readJsonBody(request);
+    recordedAssessments.set(body?.applicationId ?? APPLICATION_ID, "seeded");
+    response.writeHead(204, CORS_HEADERS);
+    response.end();
+    return;
+  }
+
+  const assessmentPostMatch = ASSESSMENT_POST_PATH.exec(pathname);
+  if (request.method === "POST" && assessmentPostMatch) {
+    const applicationId = decodeURIComponent(assessmentPostMatch[1]);
+    const body = await readJsonBody(request);
+    if (typeof body !== "object" || body === null || typeof body.handoffId !== "string") {
+      sendJson(response, 400, { code: "invalid_request" });
+      return;
+    }
+    if (currentRequest === null || applicationId !== APPLICATION_ID) {
+      sendJson(response, 404, { code: "not_found" });
+      return;
+    }
+    const existing = recordedAssessments.get(applicationId);
+    if (existing !== undefined) {
+      if (existing !== body.handoffId) {
+        sendJson(response, 409, { code: "correlation_conflict" });
+        return;
+      }
+      sendJson(response, 200, recordedOutcome(false));
+      return;
+    }
+    if (currentRequest.smeReference !== KNOWN_SME_REFERENCE) {
+      sendJson(response, 409, { code: "sales_evidence_missing" });
+      return;
+    }
+    recordedAssessments.set(applicationId, body.handoffId);
+    sendJson(response, 201, recordedOutcome(true));
+    return;
+  }
+
+  const assessmentReadMatch = ASSESSMENT_READ_PATH.exec(pathname);
+  if (request.method === "GET" && assessmentReadMatch) {
+    if (!recordedAssessments.has(decodeURIComponent(assessmentReadMatch[1]))) {
+      sendJson(response, 404, { code: "not_found" });
+      return;
+    }
+    sendJson(response, 200, ASSESSMENT);
     return;
   }
 

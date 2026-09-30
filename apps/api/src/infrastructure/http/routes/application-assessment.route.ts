@@ -42,7 +42,10 @@ export interface ApplicationAssessmentRouteDependencies {
     ApplicationReviewRepositoryPort,
     "findById" | "recordAssessmentFailureHandoff" | "transition"
   >;
-  readonly assessments: Pick<ApplicationAssessmentRepositoryPort, "record" | "findByApplicationId">;
+  readonly assessments: Pick<
+    ApplicationAssessmentRepositoryPort,
+    "record" | "findByApplicationId" | "findStoredByApplicationId"
+  >;
   readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
   readonly salesData: Pick<SalesDataProviderPort, "getPeriods">;
   readonly provider: AssessmentProviderPort;

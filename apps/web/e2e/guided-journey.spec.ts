@@ -80,3 +80,31 @@ test("submits the synthetic SME request to the local double and shows the backen
   await expect(evidence.getByText("Registro del servicio de solicitudes").first()).toBeVisible();
   await expect(evidence.getByText("Abril 2026")).toBeVisible();
 });
+
+test("assesses the submitted application and shows that same persisted assessment on the approval step", async ({
+  page
+}) => {
+  await page.goto("/request");
+  await page.getByLabel("Total declarado (ARS)").fill("3150000");
+  await page.getByLabel("Período desde").fill("2026-01");
+  await page.getByLabel("Período hasta").fill("2026-03");
+  await page.getByRole("button", { name: "Enviar solicitud" }).click();
+  await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
+
+  // Client-side navigation keeps the journey's application id.
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
+  await page.getByRole("button", { name: "Consultar evaluación de IA" }).click();
+  await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
+  await expect(page.getByRole("status").filter({ hasText: "pasó a revisión humana" })).toBeVisible();
+
+  await stepNav.getByRole("link", { name: "Approval" }).click();
+  await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
+});
+
+test("the assessment step asks for the request first when none was submitted", async ({ page }) => {
+  await page.goto("/ai-assessment");
+
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Consultar evaluación de IA" })).toHaveCount(0);
+});

@@ -1,9 +1,15 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { SWRConfig } from "swr";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ApplicationManualReviewContext } from "@vaqcrow/contracts";
+import type { AssessmentView } from "@/application/assessment/assessment-view";
+import type { AssessmentGateway } from "@/application/ports/assessment-gateway";
 import { HttpClientError } from "@/application/ports/http-client-port";
 import type { HumanDecisionGateway } from "@/application/ports/human-decision-gateway";
 import type { ManualReviewGateway } from "@/application/ports/manual-review-gateway";
+import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import { HumanDecisionWorkspace } from "./human-decision-workspace";
 
 const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" as ApplicationManualReviewContext["applicationId"];
@@ -48,6 +54,38 @@ const PERSISTED_CONTEXT = {
   recordedAt: "2026-09-28T12:05:00.000Z"
 };
 
+/** Fresh SWR cache per render; the journey store is seeded like the request step would leave it. */
+function render(ui: ReactElement, journeyApplicationId: string | null = null) {
+  return rtlRender(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <JourneyStoreProvider initial={{ applicationId: journeyApplicationId }}>{ui}</JourneyStoreProvider>
+    </SWRConfig>
+  );
+}
+
+const PERSISTED_VIEW: AssessmentView = {
+  assessmentId: "asm_persisted_001",
+  riskBand: "medium",
+  confidence: 0.72,
+  reasons: [{ claim: "Las ventas son estacionales", evidenceRefs: ["sales:2026-01"] }],
+  anomalies: [],
+  missingData: [],
+  recommendedAction: "human_review",
+  questions: [],
+  provenance: {
+    model: "glm-5.3-flash",
+    promptVersion: "assessment-v1",
+    generatedAt: "2026-09-30T12:00:00.000Z",
+    source: "provider"
+  }
+};
+
+const assessmentGatewayReturning = (view: AssessmentView | null): AssessmentGateway => ({
+  assess: vi.fn(),
+  load: vi.fn().mockResolvedValue(view)
+});
+
+
 function fillAndSubmit() {
   fireEvent.click(screen.getByRole("radio", { name: /Rechazar/ }));
   fireEvent.change(screen.getByLabelText(/Razón/), { target: { value: "Documentación insuficiente" } });
@@ -55,13 +93,71 @@ function fillAndSubmit() {
 }
 
 describe("HumanDecisionWorkspace", () => {
-  it("shows the AI recommendation apart from the human decision form", () => {
-    render(<HumanDecisionWorkspace gateway={null} applicationId={APPLICATION_ID} />);
+  it("shows the persisted assessment apart from the human decision form", async () => {
+    render(
+      <HumanDecisionWorkspace
+        gateway={null}
+        assessmentGateway={assessmentGatewayReturning(PERSISTED_VIEW)}
+        applicationId={APPLICATION_ID}
+      />
+    );
 
-    const recommendation = screen.getByRole("region", { name: /Recomendación de IA/ });
+    const assessment = await screen.findByRole("region", { name: "Evaluación de IA" });
     const decision = screen.getByRole("form", { name: /Decisión humana/ });
-    expect(recommendation.contains(decision)).toBe(false);
-    expect(recommendation).toHaveTextContent("SIMULADO");
+    expect(assessment.contains(decision)).toBe(false);
+    expect(assessment).toHaveTextContent("asm_persisted_001");
+    expect(assessment).toHaveTextContent(/solo asesora/i);
+  });
+
+  it("loads the assessment of the journey application, not the demo one", async () => {
+    const assessmentGateway = assessmentGatewayReturning(PERSISTED_VIEW);
+    render(<HumanDecisionWorkspace gateway={null} assessmentGateway={assessmentGateway} />, APPLICATION_ID);
+
+    await screen.findByRole("region", { name: "Evaluación de IA" });
+
+    expect(assessmentGateway.load).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+
+  // ASSUMPTION (T4 removes it): with no journey application the screen keeps
+  // targeting the seeded demo application, exactly as it did before T3b.
+  it("falls back to the demo application only when the journey has none", async () => {
+    const assessmentGateway = assessmentGatewayReturning(PERSISTED_VIEW);
+    render(<HumanDecisionWorkspace gateway={null} assessmentGateway={assessmentGateway} />);
+
+    await screen.findByRole("region", { name: "Evaluación de IA" });
+
+    expect(assessmentGateway.load).toHaveBeenCalledWith(DEMO_APPLICATION_ID);
+  });
+
+  it("says no assessment was recorded, and never shows a canned recommendation, when there is none", async () => {
+    render(
+      <HumanDecisionWorkspace
+        gateway={null}
+        assessmentGateway={assessmentGatewayReturning(null)}
+        applicationId={APPLICATION_ID}
+      />
+    );
+
+    const notice = await screen.findByRole("region", { name: /Sin evaluación de IA registrada/ });
+    expect(notice).toHaveTextContent(/no hay ninguna evaluación de IA registrada/i);
+    expect(screen.queryByRole("region", { name: "Evaluación de IA" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/72 % de confianza/)).not.toBeInTheDocument();
+    expect(screen.queryByText("SIMULADO")).not.toBeInTheDocument();
+    // The decision stays available: a person can still decide without an AI opinion.
+    expect(screen.getByRole("form", { name: /Decisión humana/ })).toBeInTheDocument();
+  });
+
+  it("says the assessment could not be loaded instead of claiming there is none", async () => {
+    const assessmentGateway: AssessmentGateway = {
+      assess: vi.fn(),
+      load: vi.fn().mockRejectedValue(new HttpClientError("http", 503, undefined, "unavailable"))
+    };
+    render(
+      <HumanDecisionWorkspace gateway={null} assessmentGateway={assessmentGateway} applicationId={APPLICATION_ID} />
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no se pudo cargar la evaluación/i);
+    expect(screen.queryByRole("region", { name: /Sin evaluación de IA registrada/ })).not.toBeInTheDocument();
   });
 
   it("renders the persisted manual-review context and drops the disconnected simulated recommendation for this flow", async () => {
@@ -74,21 +170,23 @@ describe("HumanDecisionWorkspace", () => {
     );
 
     expect(await screen.findByText(/no respondió a tiempo/i)).toBeInTheDocument();
-    // The persisted context is the truth for this flow; the canned fixture must be gone.
-    expect(screen.queryByRole("region", { name: /Recomendación de IA/ })).not.toBeInTheDocument();
+    // The persisted context is the truth for this flow: no assessment panel next to it.
+    expect(screen.queryByRole("region", { name: "Evaluación de IA" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Sin evaluación de IA registrada/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/72 % de confianza/)).not.toBeInTheDocument();
   });
 
-  it("keeps the simulated recommendation for an unrelated flow with no persisted context", async () => {
+  it("shows the persisted assessment when the manual-review context is absent", async () => {
     render(
       <HumanDecisionWorkspace
         gateway={null}
         manualReviewGateway={manualReviewGatewayReturning(null)}
+        assessmentGateway={assessmentGatewayReturning(PERSISTED_VIEW)}
         applicationId={APPLICATION_ID}
       />
     );
 
-    expect(await screen.findByRole("region", { name: /Recomendación de IA/ })).toHaveTextContent("SIMULADO");
+    expect(await screen.findByRole("region", { name: "Evaluación de IA" })).toBeInTheDocument();
     expect(screen.queryByText(/no respondió a tiempo/i)).not.toBeInTheDocument();
   });
 
@@ -106,7 +204,7 @@ describe("HumanDecisionWorkspace", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no se pudo cargar/i);
-    expect(screen.queryByRole("region", { name: /Recomendación de IA/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Sin evaluación de IA registrada/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/72 % de confianza/)).not.toBeInTheDocument();
   });
 

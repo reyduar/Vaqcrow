@@ -116,7 +116,7 @@ export interface RouteApplicationAssessmentDependencies {
     ApplicationReviewRepositoryPort,
     "findById" | "recordAssessmentFailureHandoff" | "transition"
   >;
-  readonly assessments: Pick<ApplicationAssessmentRepositoryPort, "record">;
+  readonly assessments: Pick<ApplicationAssessmentRepositoryPort, "record" | "findStoredByApplicationId">;
   readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
   readonly salesData: Pick<SalesDataProviderPort, "getPeriods">;
   readonly provider: AssessmentProviderPort;
@@ -141,6 +141,34 @@ export async function routeApplicationAssessment(
   dependencies: RouteApplicationAssessmentDependencies,
   rawInput: RouteApplicationAssessmentInput
 ): Promise<RouteApplicationAssessmentResult> {
+  // A retry of an attempt that already recorded a success is a deterministic
+  // replay: answer it from the stored record before loading evidence or spending
+  // a provider call. The atomic RPC stays the backstop for a concurrent race.
+  const stored = await dependencies.assessments.findStoredByApplicationId(rawInput.applicationId);
+
+  if (stored.ok) {
+    if (stored.value.attemptId !== rawInput.handoffId) {
+      return { ok: false, error: { code: "correlation_conflict" } };
+    }
+
+    return {
+      ok: true,
+      value: {
+        outcome: "assessment_recorded",
+        applicationState: "human_review",
+        applied: false,
+        correlationId: rawInput.correlationId,
+        assessment: stored.value.record.assessment,
+        metadata: stored.value.record.metadata,
+        recordedAt: stored.value.record.recordedAt
+      }
+    };
+  }
+
+  if (stored.error.code !== "not_found") {
+    return { ok: false, error: { code: "unavailable" } };
+  }
+
   const derived = await deriveEvidence(dependencies, rawInput.applicationId);
 
   if (!derived.ok) {

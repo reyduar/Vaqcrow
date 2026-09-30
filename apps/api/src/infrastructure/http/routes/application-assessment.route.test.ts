@@ -147,13 +147,18 @@ function collaboratorsFor(overrides: Collaborators = {}) {
     .fn<ApplicationAssessmentRepositoryPort["findByApplicationId"]>()
     .mockResolvedValue((overrides.find as never) ?? { ok: false, error: { code: "not_found" } });
 
+  const findStored = vi
+    .fn<ApplicationAssessmentRepositoryPort["findStoredByApplicationId"]>()
+    .mockResolvedValue({ ok: false, error: { code: "not_found" } });
+
   return {
     record,
     find,
+    findStored,
     getPeriods,
     findByApplicationId,
     dependencies: {
-      assessments: { record, findByApplicationId: find },
+      assessments: { record, findByApplicationId: find, findStoredByApplicationId: findStored },
       smeRequests: { findByApplicationId },
       salesData: { getPeriods }
     }

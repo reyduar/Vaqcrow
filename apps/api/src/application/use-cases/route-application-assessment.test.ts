@@ -17,7 +17,8 @@ import type {
 import type {
   ApplicationAssessmentRecordOutcome,
   ApplicationAssessmentRepositoryPort,
-  ApplicationAssessmentRepositoryResult
+  ApplicationAssessmentRepositoryResult,
+  StoredApplicationAssessment
 } from "../ports/application-assessment-repository-port.js";
 import type { SalesDataProviderPort, SalesDataProviderResult } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort, SmeRequestRepositoryResult, SmeRequestRecord } from "../ports/sme-request-repository-port.js";
@@ -141,6 +142,7 @@ interface CollaboratorOverrides {
   readonly smeRequest?: SmeRequestRepositoryResult<SmeRequestRecord>;
   readonly sales?: SalesDataProviderResult<readonly (typeof JANUARY | typeof JUNE)[]>;
   readonly record?: ApplicationAssessmentRepositoryResult<ApplicationAssessmentRecordOutcome>;
+  readonly stored?: ApplicationAssessmentRepositoryResult<StoredApplicationAssessment>;
 }
 
 function dependencies(
@@ -168,14 +170,19 @@ function dependencies(
     }
   );
 
+  const findStored = vi
+    .fn<ApplicationAssessmentRepositoryPort["findStoredByApplicationId"]>()
+    .mockResolvedValue(collaborators.stored ?? { ok: false, error: { code: "not_found" } });
+
   return {
     ...fake,
     findByApplicationId,
     getPeriods,
     record,
+    findStored,
     dependencies: {
       repository: fake.repository,
-      assessments: { record },
+      assessments: { record, findStoredByApplicationId: findStored },
       smeRequests: { findByApplicationId },
       salesData: { getPeriods },
       provider,
@@ -352,6 +359,82 @@ describe("routeApplicationAssessment", () => {
         assessment: { assessmentId: "asm_stored" },
         metadata: { model: "stored" }
       }
+    });
+  });
+
+  describe("a retry after a recorded success", () => {
+    const STORED_RECORD = {
+      assessment: { ...VALID_OUTPUT, assessmentId: "asm_stored" } as unknown as ApplicationAssessment,
+      metadata: { model: "stored", promptVersion: "v0", generatedAt: FIXED_NOW, source: "simulated" as const },
+      recordedAt: RECORDED_AT
+    };
+
+    it("replays the stored record for the same attempt without evidence, provider or feed", async () => {
+      const provider = providerWith(VALID_OUTPUT);
+      const run = vi.spyOn(provider, "assess");
+      const fake = dependencies(
+        { handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } },
+        provider,
+        5_000,
+        {
+          stored: { ok: true, value: { attemptId: HANDOFF_ID, record: STORED_RECORD } },
+          // Everything downstream would fail: the replay must not depend on any of it.
+          smeRequest: { ok: false, error: { code: "unavailable" } },
+          sales: { ok: false, error: { code: "unavailable" } }
+        }
+      );
+
+      const result = await routeApplicationAssessment(fake.dependencies, input);
+
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          outcome: "assessment_recorded",
+          applicationState: "human_review",
+          applied: false,
+          correlationId: CORRELATION_ID,
+          assessment: STORED_RECORD.assessment,
+          metadata: STORED_RECORD.metadata,
+          recordedAt: RECORDED_AT
+        }
+      });
+      expect(run).not.toHaveBeenCalled();
+      expect(fake.findByApplicationId).not.toHaveBeenCalled();
+      expect(fake.getPeriods).not.toHaveBeenCalled();
+      expect(fake.record).not.toHaveBeenCalled();
+    });
+
+    it("reports a correlation conflict for a different attempt without running anything", async () => {
+      const provider = providerWith(VALID_OUTPUT);
+      const run = vi.spyOn(provider, "assess");
+      const otherAttempt = parseAssessmentHandoffId("55555555-5555-4555-8555-555555555555");
+      const fake = dependencies(
+        { handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } },
+        provider,
+        5_000,
+        { stored: { ok: true, value: { attemptId: otherAttempt, record: STORED_RECORD } } }
+      );
+
+      const result = await routeApplicationAssessment(fake.dependencies, input);
+
+      expect(result).toEqual({ ok: false, error: { code: "correlation_conflict" } });
+      expect(run).not.toHaveBeenCalled();
+      expect(fake.getPeriods).not.toHaveBeenCalled();
+    });
+
+    it("fails closed as unavailable when the stored lookup itself fails", async () => {
+      const fake = dependencies(
+        { handoff: { ok: true, value: { record: HANDOFF_RECORD, applied: true } } },
+        providerWith(VALID_OUTPUT),
+        5_000,
+        { stored: { ok: false, error: { code: "unavailable" } } }
+      );
+
+      expect(await routeApplicationAssessment(fake.dependencies, input)).toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+      expect(fake.record).not.toHaveBeenCalled();
     });
   });
 

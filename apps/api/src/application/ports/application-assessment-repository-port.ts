@@ -30,6 +30,12 @@ export interface ApplicationAssessmentRecordOutcome {
   readonly applied: boolean;
 }
 
+/** A recorded assessment together with the attempt that recorded it. */
+export interface StoredApplicationAssessment {
+  readonly attemptId: AssessmentHandoffId;
+  readonly record: ApplicationAssessmentRead;
+}
+
 export interface ApplicationAssessmentRepositoryPort {
   /**
    * Atomically stores the validated assessment and moves the application from
@@ -51,4 +57,12 @@ export interface ApplicationAssessmentRepositoryPort {
   findByApplicationId(
     applicationId: ApplicationId
   ): Promise<ApplicationAssessmentRepositoryResult<ApplicationAssessmentRead>>;
+
+  /**
+   * Like `findByApplicationId`, plus the attempt id that recorded it, so a retry
+   * of that attempt can be answered as a replay before any evidence is loaded.
+   */
+  findStoredByApplicationId(
+    applicationId: ApplicationId
+  ): Promise<ApplicationAssessmentRepositoryResult<StoredApplicationAssessment>>;
 }
