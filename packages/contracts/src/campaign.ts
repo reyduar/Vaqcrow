@@ -19,6 +19,11 @@ import { stroopsSchema } from "./funding-intent.js";
  * number cannot represent a stroop count exactly above 2^53.
  */
 
+/** The identifier of a campaign (its vault), as the API mints and echoes it. */
+export const campaignIdSchema = z.uuidv4();
+
+export type CampaignId = z.infer<typeof campaignIdSchema>;
+
 /** A Stellar account (`G...`) public key — never key material. */
 export const stellarAccountIdSchema = z
   .string()
@@ -90,7 +95,7 @@ export function parseOpenCampaignCommand(input: unknown): OpenCampaignCommand {
  * client declaration.
  */
 export const campaignSnapshotSchema = z.strictObject({
-  campaignId: z.uuidv4(),
+  campaignId: campaignIdSchema,
   applicationId: applicationIdSchema,
   contractAddress: stellarContractIdSchema,
   network: z.string().trim().min(1),

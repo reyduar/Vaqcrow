@@ -72,12 +72,14 @@ export {
   parseDistributionRecipient,
   parsePrepareRevenueShareDistributionCommand,
   parsePreparedRevenueShareDistribution,
+  parseRevenueShareDerivation,
   parseRevenueShareDistributionSnapshot,
   parseRevenueShareDistributionState,
   parseRevenueShareDistributionTerms,
   parseSubmitRevenueShareDistributionCommand,
   prepareRevenueShareDistributionCommandSchema,
   preparedRevenueShareDistributionSchema,
+  revenueShareDerivationSchema,
   revenueShareDistributionSnapshotSchema,
   revenueShareDistributionStateSchema,
   revenueShareDistributionTermsSchema,
@@ -87,6 +89,7 @@ export type {
   DistributionRecipient,
   PrepareRevenueShareDistributionCommand,
   PreparedRevenueShareDistribution,
+  RevenueShareDerivation,
   RevenueShareDistributionSnapshot,
   RevenueShareDistributionState,
   RevenueShareDistributionTerms,
@@ -169,6 +172,7 @@ export {
   parseContractInvocation,
   parseContractInvocationSubmission,
   parseContractInvocationTransactionStatus,
+  campaignIdSchema,
   parseContractOperation,
   parseOpenCampaignCommand,
   parsePrepareContractInvocationCommand,
@@ -183,6 +187,7 @@ export {
   submitContractInvocationCommandSchema
 } from "./campaign.js";
 export type {
+  CampaignId,
   CampaignSnapshot,
   CampaignState,
   ContractInvocation,

@@ -1,5 +1,4 @@
 import type {
-  DistributionRecipient,
   PreparedRevenueShareDistribution,
   RevenueShareDistributionId,
   RevenueShareDistributionSnapshot,
@@ -20,6 +19,27 @@ export interface SubmittedRevenueShareDistribution {
 }
 
 /**
+ * The closed vocabulary the API gives for a refused derivation
+ * (`{ code: "derivation_failed", reason }`). A reason outside it is never
+ * guessed at: the gateway reports `unknown` instead.
+ */
+export const DERIVATION_FAILURE_REASONS = [
+  "campaign_not_found",
+  "application_not_found",
+  "application_mismatch",
+  "source_not_sme",
+  "campaign_not_settled",
+  "decision_not_approved",
+  "no_eligible_period",
+  "invalid_sales_data",
+  "no_contributors",
+  "contributions_incomplete",
+  "obligation_rounds_to_zero"
+] as const;
+
+export type DerivationFailureReason = (typeof DERIVATION_FAILURE_REASONS)[number];
+
+/**
  * Why a distribution call failed, as a coarse kind the UI can act on.
  *
  * Deliberately the same vocabulary `FundingSubmitErrorKind` uses for its
@@ -28,6 +48,9 @@ export interface SubmittedRevenueShareDistribution {
  * belongs to the workspace, which classifies `WalletError` itself.
  */
 export type RevenueShareDistributionErrorKind =
+  | "derivation_failed"
+  | "derivation_mismatch"
+  | "already_distributed"
   | "validation"
   | "account_not_found"
   | "not_found"
@@ -43,9 +66,9 @@ export type RevenueShareDistributionErrorKind =
  * message, body or headers — so nothing internal can reach the presentation
  * layer. The sentence a person reads is authored by the caller, not here.
  */
-export interface RevenueShareDistributionGatewayError {
-  readonly kind: RevenueShareDistributionErrorKind;
-}
+export type RevenueShareDistributionGatewayError =
+  | { readonly kind: "derivation_failed"; readonly reason: DerivationFailureReason }
+  | { readonly kind: Exclude<RevenueShareDistributionErrorKind, "derivation_failed"> };
 
 /**
  * A gateway answer: either contract-validated data or a sanitized failure.
@@ -60,19 +83,20 @@ export type RevenueShareDistributionResult<T> =
   | { readonly ok: false; readonly error: RevenueShareDistributionGatewayError };
 
 /**
- * What the caller declares before the API builds and simulates the
- * multi-payment envelope.
+ * What the caller declares before the API derives and builds the multi-payment
+ * envelope: the source, the case and an optional memo. There are no recipients
+ * or amounts: the API derives them from the settled campaign and the SME's
+ * sales, so the web cannot declare a split the case does not support.
  *
- * Plain data: `sourceAccountId` and `applicationId` are ordinary strings, not
- * branded contract types, because `application/` and `presentation/` hold no
- * runtime validation logic. The adapter is what parses this through the
- * `@vaqcrow/contracts` schemas on the way out.
+ * Plain data: the ids are ordinary strings, not branded contract types, because
+ * `application/` and `presentation/` hold no runtime validation logic. The
+ * adapter is what parses the answer through the `@vaqcrow/contracts` schemas.
  */
 export interface PrepareRevenueShareDistributionRequest {
   readonly sourceAccountId: string;
-  readonly recipients: readonly DistributionRecipient[];
+  readonly applicationId: string;
+  readonly campaignId: string;
   readonly memo: string | null;
-  readonly applicationId: string | null;
 }
 
 /**
@@ -84,7 +108,9 @@ export interface SubmitRevenueShareDistributionRequest {
   readonly distributionId: RevenueShareDistributionId;
   readonly signedXdr: string;
   readonly terms: RevenueShareDistributionTerms;
-  readonly applicationId: string | null;
+  /** The case the terms were derived for; the API re-derives and refuses terms that differ. */
+  readonly applicationId: string;
+  readonly campaignId: string;
 }
 
 /**
@@ -98,7 +124,7 @@ export interface SubmitRevenueShareDistributionRequest {
  * display formatting.
  */
 export interface RevenueShareDistributionGateway {
-  /** Builds the unsigned envelope. Stateless: nothing is persisted server-side. */
+  /** Derives the distribution and builds the unsigned envelope. Stateless: nothing is persisted server-side. */
   prepare(
     command: PrepareRevenueShareDistributionRequest
   ): Promise<RevenueShareDistributionResult<PreparedRevenueShareDistribution>>;

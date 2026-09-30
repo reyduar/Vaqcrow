@@ -28,12 +28,15 @@ export class HttpClientError extends Error {
   readonly fieldErrors: HttpFieldErrors | undefined;
   /** Sanitized machine code from a `{ code }` error envelope (e.g. `state_conflict`); never free text. */
   readonly errorCode: string | undefined;
+  /** Sanitized machine reason from a `{ code, reason }` envelope (e.g. `source_not_sme`); never free text. */
+  readonly errorReason: string | undefined;
 
   constructor(
     kind: "http" | "network",
     status?: number,
     fieldErrors?: HttpFieldErrors,
-    errorCode?: string
+    errorCode?: string,
+    errorReason?: string
   ) {
     super(kind === "http" ? `HTTP request failed with status ${status}` : "Network request failed");
     this.name = "HttpClientError";
@@ -41,6 +44,7 @@ export class HttpClientError extends Error {
     this.status = status;
     this.fieldErrors = fieldErrors;
     this.errorCode = errorCode;
+    this.errorReason = errorReason;
   }
 
   toJSON(): {
@@ -49,13 +53,15 @@ export class HttpClientError extends Error {
     status: number | undefined;
     fieldErrors: HttpFieldErrors | undefined;
     errorCode?: string;
+    errorReason?: string;
   } {
     return {
       name: this.name,
       kind: this.kind,
       status: this.status,
       fieldErrors: this.fieldErrors,
-      ...(this.errorCode !== undefined ? { errorCode: this.errorCode } : {})
+      ...(this.errorCode !== undefined ? { errorCode: this.errorCode } : {}),
+      ...(this.errorReason !== undefined ? { errorReason: this.errorReason } : {})
     };
   }
 }

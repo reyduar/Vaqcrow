@@ -7,6 +7,7 @@ import { HttpRevenueShareDistributionGateway } from "./http-revenue-share-distri
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
+const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const SOURCE = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
 const RECIPIENT_A = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const RECIPIENT_B = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
@@ -36,7 +37,19 @@ const wirePrepared = {
   ...wireTerms,
   distributionId: DISTRIBUTION_ID,
   xdr: "UNSIGNED-XDR",
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  // The API returns the case it derived the distribution for.
+  campaignId: CAMPAIGN_ID,
+  derivation: {
+    ruleVersion: "RS-2026-01",
+    rateBps: 450,
+    period: "2026-08",
+    salesArs: "3745800",
+    obligationArs: "168561",
+    excludedPeriods: [],
+    conversion: { goalStroops: "1000000000", approvedLimitArs: "5000000", totalStroops: "33712200" },
+    simulated: true
+  }
 };
 
 const wireSnapshot = {
@@ -45,6 +58,7 @@ const wireSnapshot = {
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
   applicationId: APPLICATION_ID,
+  campaignId: null,
   explorerUrl: EXPLORER_URL,
   failureReason: null,
   lastCorrelationId: CORRELATION_ID,
@@ -60,16 +74,17 @@ const parsedRecipients = [
 
 const prepareCommand = {
   sourceAccountId: SOURCE,
-  recipients: parsedRecipients,
-  memo: null,
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  memo: null
 };
 
 const submitCommand = {
   distributionId: DISTRIBUTION_ID as RevenueShareDistributionId,
   signedXdr: "SIGNED-XDR",
   terms: { ...wireTerms, recipients: parsedRecipients },
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID
 };
 
 function http(body: unknown, status = 200) {
@@ -83,7 +98,7 @@ function failing(error: unknown) {
 }
 
 describe("HttpRevenueShareDistributionGateway.prepare", () => {
-  it("posts the exact four body keys with every recipient amount as a decimal string", async () => {
+  it("posts the case (source, application, campaign, memo) and never any recipient or amount", async () => {
     const { port, send } = http({ distribution: wirePrepared });
 
     await new HttpRevenueShareDistributionGateway(port).prepare(prepareCommand);
@@ -93,14 +108,57 @@ describe("HttpRevenueShareDistributionGateway.prepare", () => {
       path: "/revenue-share-distributions",
       body: {
         sourceAccountId: SOURCE,
-        recipients: [
-          { accountId: RECIPIENT_A, amountStroops: LARGE_AMOUNT },
-          { accountId: RECIPIENT_B, amountStroops: SMALL_AMOUNT }
-        ],
-        memo: null,
-        applicationId: APPLICATION_ID
+        applicationId: APPLICATION_ID,
+        campaignId: CAMPAIGN_ID,
+        memo: null
       }
     });
+  });
+
+  it("returns the derivation breakdown the service computed", async () => {
+    const { port } = http({ distribution: wirePrepared });
+
+    const result = await new HttpRevenueShareDistributionGateway(port).prepare(prepareCommand);
+
+    if (!result.ok) throw new Error("expected success");
+    expect(result.value.campaignId).toBe(CAMPAIGN_ID);
+    expect(result.value.derivation).toEqual(wirePrepared.derivation);
+  });
+
+  it.each([
+    [404, "campaign_not_found"],
+    [404, "application_not_found"],
+    [409, "application_mismatch"],
+    [409, "source_not_sme"],
+    [409, "campaign_not_settled"],
+    [409, "decision_not_approved"],
+    [409, "contributions_incomplete"],
+    [422, "no_eligible_period"],
+    [422, "invalid_sales_data"],
+    [422, "no_contributors"],
+    [422, "obligation_rounds_to_zero"]
+  ])("maps a %i derivation_failed / %s refusal to its own typed reason", async (status, reason) => {
+    const { port } = failing(new HttpClientError("http", status, undefined, "derivation_failed", reason));
+
+    const result = await new HttpRevenueShareDistributionGateway(port).prepare(prepareCommand);
+
+    expect(result).toEqual({ ok: false, error: { kind: "derivation_failed", reason } });
+  });
+
+  it("maps a derivation_failed with a reason it does not know to unknown, never to a guess", async () => {
+    const { port } = failing(new HttpClientError("http", 409, undefined, "derivation_failed", "brand_new"));
+
+    const result = await new HttpRevenueShareDistributionGateway(port).prepare(prepareCommand);
+
+    expect(result).toEqual({ ok: false, error: { kind: "unknown" } });
+  });
+
+  it("maps an already distributed period (409) distinctly from another conflict", async () => {
+    const { port } = failing(new HttpClientError("http", 409, undefined, "already_distributed"));
+
+    const result = await new HttpRevenueShareDistributionGateway(port).prepare(prepareCommand);
+
+    expect(result).toEqual({ ok: false, error: { kind: "already_distributed" } });
   });
 
   it("returns the contract-validated prepared distribution with bigint amounts and the response passphrase", async () => {
@@ -175,7 +233,8 @@ describe("HttpRevenueShareDistributionGateway.submit", () => {
       body: {
         signedXdr: "SIGNED-XDR",
         terms: wireTerms,
-        applicationId: APPLICATION_ID
+        applicationId: APPLICATION_ID,
+        campaignId: CAMPAIGN_ID
       }
     });
   });
@@ -200,6 +259,33 @@ describe("HttpRevenueShareDistributionGateway.submit", () => {
     expect(result).toEqual({ ok: false, error: { kind: "xdr_rejected" } });
     if (result.ok) throw new Error("expected failure");
     expect(Object.keys(result.error)).toEqual(["kind"]);
+  });
+
+  it("maps a re-derivation that no longer matches the signed terms (422 derivation_mismatch)", async () => {
+    const { port } = failing(new HttpClientError("http", 422, undefined, "derivation_mismatch"));
+
+    const result = await new HttpRevenueShareDistributionGateway(port).submit(submitCommand);
+
+    expect(result).toEqual({ ok: false, error: { kind: "derivation_mismatch" } });
+  });
+
+  it("maps a derivation refusal and an already distributed period at submit too", async () => {
+    const refused = failing(new HttpClientError("http", 409, undefined, "derivation_failed", "source_not_sme"));
+    const repeated = failing(new HttpClientError("http", 409, undefined, "already_distributed"));
+
+    const first = await new HttpRevenueShareDistributionGateway(refused.port).submit(submitCommand);
+    const second = await new HttpRevenueShareDistributionGateway(repeated.port).submit(submitCommand);
+
+    expect(first).toEqual({ ok: false, error: { kind: "derivation_failed", reason: "source_not_sme" } });
+    expect(second).toEqual({ ok: false, error: { kind: "already_distributed" } });
+  });
+
+  it("posts the case the terms were derived for next to the signed envelope", async () => {
+    const { port, send } = http({ applied: true, distribution: wireSnapshot }, 202);
+
+    await new HttpRevenueShareDistributionGateway(port).submit(submitCommand);
+
+    expect(send.mock.calls[0]?.[0].body).toMatchObject({ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID });
   });
 
   it("maps an idempotency conflict (409) distinctly from another conflict", async () => {

@@ -9,8 +9,10 @@ import {
   parseRevenueShareDistributionState,
   parseRevenueShareDistributionTerms,
   parseSubmitRevenueShareDistributionCommand,
+  parseRevenueShareDerivation,
   prepareRevenueShareDistributionCommandSchema,
   preparedRevenueShareDistributionSchema,
+  revenueShareDerivationSchema,
   revenueShareDistributionIdSchema,
   revenueShareDistributionSnapshotSchema,
   revenueShareDistributionStateSchema,
@@ -21,6 +23,7 @@ import type { DistributionRecipient, RevenueShareDistributionId } from "./index.
 
 const VALID_DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-426614174000";
 const VALID_APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
+const VALID_CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const VALID_CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE_ACCOUNT_ID = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
 const RECIPIENT_ACCOUNT_ID = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -63,29 +66,55 @@ const validTerms: {
   recipients: validRecipients
 };
 
+/**
+ * The prepare command carries NO recipients or amounts: the server derives them
+ * from the campaign (T5a), so a client cannot declare who is paid or how much.
+ */
 const validPrepareCommand: {
   sourceAccountId: string;
-  recipients: { accountId: string; amountStroops: string }[];
+  applicationId: string;
+  campaignId: string;
   memo: string | null;
-  applicationId: string | null;
 } = {
   sourceAccountId: SOURCE_ACCOUNT_ID,
-  recipients: validRecipients,
-  memo: null,
-  applicationId: null
+  applicationId: VALID_APPLICATION_ID,
+  campaignId: VALID_CAMPAIGN_ID,
+  memo: null
+};
+
+/** The canonical example: 2026-08, 3,745,800 ARS x 450 bps floor = 168,561 ARS. */
+const validDerivation = {
+  ruleVersion: "RS-2026-01",
+  rateBps: 450,
+  period: "2026-08",
+  salesArs: "3745800",
+  obligationArs: "168561",
+  excludedPeriods: [
+    { period: "2026-04", status: "missing", reason: "missing_data" },
+    { period: "2026-06", status: "anomalous", reason: "requires_review" }
+  ],
+  conversion: {
+    goalStroops: "1000000000",
+    approvedLimitArs: "5000000",
+    totalStroops: "33712200"
+  },
+  simulated: true
 };
 
 const validPreparedDistribution = {
   distributionId: VALID_DISTRIBUTION_ID,
   xdr: "AAAAAgAAAABfakeUnsignedEnvelope",
-  applicationId: null as string | null,
+  applicationId: VALID_APPLICATION_ID as string,
+  campaignId: VALID_CAMPAIGN_ID as string,
+  derivation: validDerivation,
   ...validTerms
 };
 
 const validSubmitCommand = {
   signedXdr: "AAAAAgAAAABfakeSignedEnvelope",
   terms: validTerms,
-  applicationId: null as string | null
+  applicationId: VALID_APPLICATION_ID as string,
+  campaignId: VALID_CAMPAIGN_ID as string
 };
 
 const validSnapshot = {
@@ -94,6 +123,7 @@ const validSnapshot = {
   state: "submitted",
   transactionHash: "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
   applicationId: null as string | null,
+  campaignId: null as string | null,
   // Derived by the API from the hash it already persists, never stored.
   explorerUrl: "https://stellar.expert/explorer/testnet/tx/d0a1b2c3",
   // Absent unless the distribution failed, which the schema enforces in both
@@ -312,25 +342,20 @@ describe("revenueShareDistributionTermsSchema", () => {
 });
 
 describe("prepareRevenueShareDistributionCommandSchema", () => {
-  it("parses a valid command and yields bigint amounts", () => {
+  it("parses a valid command that names the case, never the recipients", () => {
     const parsed = parsePrepareRevenueShareDistributionCommand(validPrepareCommand);
 
     expect(parsed.sourceAccountId).toBe(SOURCE_ACCOUNT_ID);
-    expect(parsed.recipients[0]?.amountStroops).toBe(10_000_000n);
-    expectTypeOf(parsed.recipients[0]?.amountStroops).toEqualTypeOf<bigint | undefined>();
+    expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+    expect(parsed.campaignId).toBe(VALID_CAMPAIGN_ID);
     expect(parsed.memo).toBeNull();
-    expect(parsed.applicationId).toBeNull();
+    expect(parsed).not.toHaveProperty("recipients");
   });
 
-  it("accepts a present memo and a present application link", () => {
-    const parsed = parsePrepareRevenueShareDistributionCommand({
-      ...validPrepareCommand,
-      memo: "payout",
-      applicationId: VALID_APPLICATION_ID
-    });
-
-    expect(parsed.memo).toBe("payout");
-    expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+  it("accepts a present memo", () => {
+    expect(parsePrepareRevenueShareDistributionCommand({ ...validPrepareCommand, memo: "payout" }).memo).toBe(
+      "payout"
+    );
   });
 
   it.each(Object.keys(validPrepareCommand))("rejects a command missing %s", (key) => {
@@ -340,6 +365,13 @@ describe("prepareRevenueShareDistributionCommandSchema", () => {
     expect(prepareRevenueShareDistributionCommandSchema.safeParse(input).success).toBe(false);
   });
 
+  it("rejects client-supplied recipients: the server derives them", () => {
+    expect(
+      prepareRevenueShareDistributionCommandSchema.safeParse({ ...validPrepareCommand, recipients: validRecipients })
+        .success
+    ).toBe(false);
+  });
+
   it("rejects unknown keys", () => {
     expect(
       prepareRevenueShareDistributionCommandSchema.safeParse({
@@ -347,15 +379,6 @@ describe("prepareRevenueShareDistributionCommandSchema", () => {
         extra: "unexpected"
       }).success
     ).toBe(false);
-  });
-
-  it("rejects a command whose recipient is the source account", () => {
-    const result = prepareRevenueShareDistributionCommandSchema.safeParse({
-      ...validPrepareCommand,
-      recipients: [{ ...recipientOne, accountId: SOURCE_ACCOUNT_ID }]
-    });
-
-    expect(result.success).toBe(false);
   });
 
   it.each([
@@ -368,26 +391,53 @@ describe("prepareRevenueShareDistributionCommandSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects a duplicate recipient account", () => {
-    const result = prepareRevenueShareDistributionCommandSchema.safeParse({
-      ...validPrepareCommand,
-      recipients: [recipientOne, { ...recipientTwo, accountId: RECIPIENT_ACCOUNT_ID }]
-    });
-
-    expect(result.success).toBe(false);
-  });
-
   it.each([
-    ["an empty recipient list", { recipients: [] }],
-    ["a JSON number amount", { recipients: [{ ...recipientOne, amountStroops: 10_000_000 }] }],
-    ["a zero amount", { recipients: [{ ...recipientOne, amountStroops: "0" }] }],
     ["a memo over 28 bytes", { memo: "m".repeat(29) }],
     ["a malformed application ID", { applicationId: "not-a-uuid" }],
+    ["a null application ID", { applicationId: null }],
+    ["a malformed campaign ID", { campaignId: "not-a-uuid" }],
+    ["a null campaign ID", { campaignId: null }],
     ["an empty source account", { sourceAccountId: "" }]
   ])("rejects %s", (_description, override) => {
     expect(
       prepareRevenueShareDistributionCommandSchema.safeParse({ ...validPrepareCommand, ...override }).success
     ).toBe(false);
+  });
+});
+
+describe("revenueShareDerivationSchema", () => {
+  it("parses the canonical 2026-08 derivation and keeps money as decimal strings", () => {
+    const parsed = parseRevenueShareDerivation(validDerivation);
+
+    expect(parsed.period).toBe("2026-08");
+    expect(parsed.salesArs).toBe("3745800");
+    expect(parsed.obligationArs).toBe("168561");
+    expect(parsed.conversion.totalStroops).toBe("33712200");
+    expect(parsed.simulated).toBe(true);
+  });
+
+  it.each(Object.keys(validDerivation))("rejects a derivation missing %s", (key) => {
+    const input: Record<string, unknown> = { ...validDerivation };
+    delete input[key];
+
+    expect(revenueShareDerivationSchema.safeParse(input).success).toBe(false);
+  });
+
+  it.each([
+    ["a JSON number amount", { salesArs: 3_745_800 }],
+    ["a fractional amount", { obligationArs: "168561.5" }],
+    ["a negative amount", { obligationArs: "-1" }],
+    ["a malformed period", { period: "2026-13" }],
+    ["a rate that is not an integer", { rateBps: 4.5 }],
+    ["a derivation that is not labeled simulated", { simulated: false }],
+    ["an excluded period with an unknown reason", { excludedPeriods: [{ period: "2026-04", status: "missing", reason: "other" }] }],
+    ["a conversion with an unknown key", { conversion: { ...validDerivation.conversion, extra: "1" } }]
+  ])("rejects %s", (_description, override) => {
+    expect(revenueShareDerivationSchema.safeParse({ ...validDerivation, ...override }).success).toBe(false);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(revenueShareDerivationSchema.safeParse({ ...validDerivation, extra: "unexpected" }).success).toBe(false);
   });
 });
 
@@ -398,14 +448,13 @@ describe("preparedRevenueShareDistributionSchema", () => {
     expect(parsed.distributionId).toBe(VALID_DISTRIBUTION_ID);
     expect(parsed.xdr).toBe(validPreparedDistribution.xdr);
     expect(parsed.recipients[0]?.amountStroops).toBe(10_000_000n);
-    expect(parsed.applicationId).toBeNull();
+    expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+    expect(parsed.campaignId).toBe(VALID_CAMPAIGN_ID);
+    expect(parsed.derivation.obligationArs).toBe("168561");
   });
 
-  it("carries a declared application link alongside the terms", () => {
-    const parsed = parsePreparedRevenueShareDistribution({
-      ...validPreparedDistribution,
-      applicationId: VALID_APPLICATION_ID
-    });
+  it("carries the case ids alongside the terms, not inside them", () => {
+    const parsed = parsePreparedRevenueShareDistribution(validPreparedDistribution);
 
     expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
     // The link is declared metadata, not a term: it is not in the envelope and
@@ -415,7 +464,7 @@ describe("preparedRevenueShareDistributionSchema", () => {
     );
   });
 
-  it.each(["distributionId", "xdr", "applicationId", ...Object.keys(validTerms)])(
+  it.each(["distributionId", "xdr", "applicationId", "campaignId", "derivation", ...Object.keys(validTerms)])(
     "rejects a prepared distribution missing %s",
     (key) => {
       const input: Record<string, unknown> = { ...validPreparedDistribution };
@@ -438,6 +487,9 @@ describe("preparedRevenueShareDistributionSchema", () => {
     ["a malformed distribution ID", { distributionId: "not-a-uuid" }],
     ["an empty XDR", { xdr: "" }],
     ["a malformed application ID", { applicationId: "not-a-uuid" }],
+    ["a null application ID", { applicationId: null }],
+    ["a malformed campaign ID", { campaignId: "not-a-uuid" }],
+    ["a malformed derivation", { derivation: { ...validDerivation, simulated: false } }],
     ["a malformed terms object", { recipients: [] }]
   ])("rejects %s", (_description, override) => {
     expect(preparedRevenueShareDistributionSchema.safeParse({ ...validPreparedDistribution, ...override }).success).toBe(
@@ -459,16 +511,8 @@ describe("submitRevenueShareDistributionCommandSchema", () => {
 
     expect(parsed.signedXdr).toBe(validSubmitCommand.signedXdr);
     expect(parsed.terms.recipients[1]?.amountStroops).toBe(25_000_000n);
-    expect(parsed.applicationId).toBeNull();
-  });
-
-  it("accepts a declared application link", () => {
-    const parsed = parseSubmitRevenueShareDistributionCommand({
-      ...validSubmitCommand,
-      applicationId: VALID_APPLICATION_ID
-    });
-
     expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+    expect(parsed.campaignId).toBe(VALID_CAMPAIGN_ID);
   });
 
   it("rejects terms whose recipient is the source account", () => {
@@ -480,7 +524,7 @@ describe("submitRevenueShareDistributionCommandSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it.each(["signedXdr", "terms", "applicationId"])("rejects a submit command missing %s", (key) => {
+  it.each(["signedXdr", "terms", "applicationId", "campaignId"])("rejects a submit command missing %s", (key) => {
     const input: Record<string, unknown> = { ...validSubmitCommand };
     delete input[key];
 
@@ -491,6 +535,9 @@ describe("submitRevenueShareDistributionCommandSchema", () => {
     ["an empty signed XDR", { signedXdr: "" }],
     ["a non-string signed XDR", { signedXdr: 42 }],
     ["a malformed application ID", { applicationId: "not-a-uuid" }],
+    ["a null application ID", { applicationId: null }],
+    ["a malformed campaign ID", { campaignId: "not-a-uuid" }],
+    ["a null campaign ID", { campaignId: null }],
     ["an application link smuggled into the terms", { terms: { ...validTerms, applicationId: null } }],
     ["a malformed terms object", { terms: { network: "testnet" } }],
     ["terms with an unknown key", { terms: { ...validTerms, extra: "unexpected" } }],
@@ -535,6 +582,20 @@ describe("revenueShareDistributionSnapshotSchema", () => {
     });
 
     expect(parsed.applicationId).toBe(VALID_APPLICATION_ID);
+  });
+
+  it("accepts a snapshot with a campaign link and requires the field to be present", () => {
+    expect(parseRevenueShareDistributionSnapshot({ ...validSnapshot, campaignId: VALID_CAMPAIGN_ID }).campaignId).toBe(
+      VALID_CAMPAIGN_ID
+    );
+    expect(parseRevenueShareDistributionSnapshot(validSnapshot).campaignId).toBeNull();
+
+    const missing: Record<string, unknown> = { ...validSnapshot };
+    delete missing["campaignId"];
+    expect(revenueShareDistributionSnapshotSchema.safeParse(missing).success).toBe(false);
+    expect(
+      revenueShareDistributionSnapshotSchema.safeParse({ ...validSnapshot, campaignId: "not-a-uuid" }).success
+    ).toBe(false);
   });
 
   it("rejects a duplicate recipient account", () => {

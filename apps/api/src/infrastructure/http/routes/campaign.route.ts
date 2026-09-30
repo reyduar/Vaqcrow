@@ -437,9 +437,23 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
     }
   );
 
-  app.get<{ Params: { campaignId: string; hash: string } }>(
+  app.get<{ Params: { campaignId: string; hash: string }; Querystring: { investor?: string } }>(
     "/campaigns/:campaignId/transactions/:hash",
     async (request, reply) => {
+      // The investor whose contribution this transaction may have confirmed. The
+      // chain cannot enumerate contributors, so the mirror only learns an
+      // investor when a read names them: naming them here records the confirmed
+      // contribution, which is what a later revenue-share distribution pays.
+      let investorAccountId: string | undefined;
+
+      if (request.query.investor !== undefined) {
+        try {
+          investorAccountId = parseStellarAccountId(request.query.investor);
+        } catch {
+          return reply.code(400).send({ code: "invalid_request" });
+        }
+      }
+
       const outcome = await dependencies.invocations.findResult(request.params.hash);
 
       if (!outcome.ok) {
@@ -464,9 +478,25 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         return reply.code(503).send({ code: "unavailable" });
       }
 
+      const contributions: Omit<CampaignContributionRecord, "campaignId">[] = [];
+
+      if (investorAccountId !== undefined) {
+        const contribution = await dependencies.chain.readContribution(mirror.value.contractAddress, investorAccountId);
+
+        if (!contribution.ok) {
+          return reply.code(503).send({ code: "unavailable" });
+        }
+
+        contributions.push({
+          investorAccountId,
+          amountStroops: contribution.value,
+          lastObservedAt: chainState.value.observedAt.toISOString()
+        });
+      }
+
       const reconciled = await reconcileCampaign(dependencies.campaigns, {
         campaignId: mirror.value.campaignId,
-        snapshot: toChainCampaignSnapshot(chainState.value, []),
+        snapshot: toChainCampaignSnapshot(chainState.value, contributions),
         correlationId: parseCorrelationId(request.id)
       });
 

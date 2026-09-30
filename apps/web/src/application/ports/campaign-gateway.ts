@@ -47,6 +47,14 @@ export interface CampaignGateway {
     campaignId: string,
     command: SubmitContractInvocationCommand
   ): Promise<ContractInvocationSubmission>;
-  /** Polls a submitted invocation's own transaction; `campaign` is present only once it succeeds. */
-  getTransaction(campaignId: string, transactionHash: string): Promise<ContractInvocationTransactionStatus>;
+  /**
+   * Polls a submitted invocation's own transaction; `campaign` is present only once it succeeds.
+   * `investorAccountId` names the investor the transaction concerns, so the API
+   * mirrors that investor's confirmed contribution; omitted, nothing is recorded.
+   */
+  getTransaction(
+    campaignId: string,
+    transactionHash: string,
+    investorAccountId?: string
+  ): Promise<ContractInvocationTransactionStatus>;
 }

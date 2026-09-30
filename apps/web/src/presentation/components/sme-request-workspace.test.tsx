@@ -116,11 +116,12 @@ describe("SmeRequestWorkspace", () => {
     );
   });
 
-  // Characterization (green on first run): the real API answers an empty series for a
-  // reference the sales feed does not know (review finding R3-real-api-empty-series-masked-by-stub).
-  // The panel must show what the backend holds — no periods, so the declared total has
-  // nothing behind it — and must neither keep the synthetic fixture rows nor call it a load failure.
-  it("renders an empty backend series as no evidence, not as the synthetic fixture and not as a failure", async () => {
+  // The real API answers an empty series for a reference the sales feed does not know
+  // (review finding R3-real-api-empty-series-masked-by-stub). With no reported sales there is
+  // nothing to compare the declared total against, so claiming a mismatch against $0 would be
+  // untrue: the panel says there is no history, and neither keeps the synthetic fixture rows
+  // nor calls it a load failure.
+  it("says there is no sales history for this SME, and reports no mismatch, when the backend series is empty", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
       load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
@@ -134,8 +135,10 @@ describe("SmeRequestWorkspace", () => {
       expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).not.toHaveTextContent("Junio 2026")
     );
     const review = screen.getByRole("region", { name: /Revisión de evidencia/ });
+    expect(review).toHaveTextContent("No hay historial de ventas disponible para esta PyME");
+    expect(review).not.toHaveTextContent("Total declarado no coincide");
+    expect(review).not.toHaveTextContent("Sin hallazgos para revisar");
     expect(review).not.toHaveTextContent("Abril 2026");
-    expect(review).toHaveTextContent("Total declarado no coincide");
     expect(screen.queryByText(/No se pudo cargar/)).not.toBeInTheDocument();
   });
 

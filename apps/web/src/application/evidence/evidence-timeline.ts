@@ -7,7 +7,6 @@ import type {
   RevenueShareDistributionSnapshot,
   RevenueShareDistributionState
 } from "@vaqcrow/contracts";
-import { DEMO_DISTRIBUTION_RULE_VERSION } from "@/application/distribution/demo-distribution-recipients";
 import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import { microcopy } from "@/application/trust/disclosures";
@@ -69,6 +68,14 @@ export interface EvidenceEntry {
 }
 
 const SIMULADO_LABEL = "SIMULADO";
+
+/**
+ * The revenue-share rule version the demo applies (the domain engine's
+ * `RS-2026-01`). The distribution snapshot does not carry the derivation, so the
+ * timeline names the demo's single fixed rule here, for display only and under
+ * the `SIMULADO` label; the API stays the only authority for the calculation.
+ */
+const DISTRIBUTION_RULE_VERSION = "RS-2026-01";
 
 /** Testnet is context, not a claim of execution: both movements carry it in every state. */
 const TESTNET_BADGE: EvidenceBadgeSpec = { variant: "testnet", label: microcopy.testnetBadge };
@@ -238,7 +245,7 @@ function distributionEntry(source: EvidenceSource<RevenueShareDistributionSnapsh
 
   const calculation: EvidenceCalculation = {
     heading: "Cálculo de distribución",
-    ruleId: `${DEMO_DISTRIBUTION_RULE_VERSION} · ${SIMULADO_LABEL}`,
+    ruleId: `${DISTRIBUTION_RULE_VERSION} · ${SIMULADO_LABEL}`,
     inputs: distribution.recipients.map((recipient, index) => ({
       label: `Destinatario ${index + 1}`,
       value: `${formatStroopsAsXlm(recipient.amountStroops)} XLM`

@@ -108,6 +108,10 @@ select lives_ok(
 -- keeps the test database at the forward migration state for later tests.
 drop table public.campaign_refund_contact;
 drop table public.campaign_contribution;
+-- Later migrations that reference campaign must be reversed first
+-- (20260930173441 adds revenue_share_distribution.campaign_id).
+alter table public.revenue_share_distribution
+  drop constraint if exists revenue_share_distribution_campaign_id_fkey;
 drop table public.campaign;
 drop function public.set_campaign_updated_at();
 alter table public.funding_intent_legacy rename to funding_intent;

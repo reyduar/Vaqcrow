@@ -2,10 +2,11 @@ import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testin
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  demoDistributionRecipients,
-  SIMULADO_DISTRIBUTION_LABEL
-} from "@/application/distribution/demo-distribution-recipients";
-import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
+  DERIVATION_FAILURE_REASONS,
+  type RevenueShareDistributionErrorKind,
+  type RevenueShareDistributionGateway
+} from "@/application/ports/revenue-share-distribution-gateway";
+import { derivationFailureMessage } from "@/application/distribution/derivation-failure-copy";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { WalletError } from "@/application/ports/wallet-port";
 import type {
@@ -34,10 +35,24 @@ const SOURCE = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
 const PASSPHRASE = "passphrase-from-the-response";
 const ACK = "Confirmo que revisé los destinatarios y los montos";
 
-const recipients = demoDistributionRecipients.recipients.map((recipient) => ({
-  accountId: recipient.accountId,
-  amountStroops: recipient.amountStroops
-}));
+const RECIPIENT_A = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+const RECIPIENT_B = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+
+const recipients = [
+  { accountId: RECIPIENT_A, amountStroops: 20_227_320n },
+  { accountId: RECIPIENT_B, amountStroops: 13_484_880n }
+];
+
+const derivation = {
+  ruleVersion: "RS-2026-01",
+  rateBps: 450,
+  period: "2026-08",
+  salesArs: "3745800",
+  obligationArs: "168561",
+  excludedPeriods: [{ period: "2026-07", status: "missing", reason: "missing_data" }],
+  conversion: { goalStroops: "1000000000", approvedLimitArs: "5000000", totalStroops: "33712200" },
+  simulated: true
+};
 
 const prepared = {
   distributionId: DISTRIBUTION_ID,
@@ -49,7 +64,9 @@ const prepared = {
   memo: null,
   expiresAt: "2026-09-21T12:15:00.000Z",
   xdr: "UNSIGNED-XDR",
-  applicationId: null
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  derivation
 } as unknown as PreparedRevenueShareDistribution;
 
 const snapshot = {
@@ -99,16 +116,12 @@ function acknowledgeAndSign() {
 }
 
 describe("DistributionWorkspace", () => {
-  it("labels every synthetic recipient and the demo rule version as SIMULADO", () => {
+  it("labels the step as simulated and shows no recipients before the service has derived any", () => {
     render(<DistributionWorkspace gateway={createGateway()} wallet={createWallet()} />);
 
-    expect(screen.getAllByText(SIMULADO_DISTRIBUTION_LABEL).length).toBeGreaterThanOrEqual(
-      demoDistributionRecipients.recipients.length
-    );
-    for (const recipient of demoDistributionRecipients.recipients) {
-      expect(screen.getByText(recipient.accountId)).toBeInTheDocument();
-    }
-    expect(screen.getByText(demoDistributionRecipients.ruleVersion)).toBeInTheDocument();
+    expect(screen.getAllByText("SIMULADO").length).toBeGreaterThan(0);
+    expect(screen.queryByText(RECIPIENT_A)).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Cálculo de la distribución" })).not.toBeInTheDocument();
   });
 
   it("refuses to prepare without a connected wallet and never calls the gateway", async () => {
@@ -121,7 +134,7 @@ describe("DistributionWorkspace", () => {
     expect(gateway.prepare).not.toHaveBeenCalled();
   });
 
-  it("prepares for the journey application with the connected account as source, and signs nothing until the review is acknowledged", async () => {
+  it("prepares for the journey's application and campaign with the connected account as source, and signs nothing until the review is acknowledged", async () => {
     const gateway = createGateway();
     const wallet = createWallet();
     render(<DistributionWorkspace gateway={gateway} wallet={wallet} />);
@@ -130,12 +143,12 @@ describe("DistributionWorkspace", () => {
 
     expect(gateway.prepare).toHaveBeenCalledWith({
       sourceAccountId: SOURCE,
-      recipients,
-      memo: null,
-      applicationId: APPLICATION_ID
+      applicationId: APPLICATION_ID,
+      campaignId: CAMPAIGN_ID,
+      memo: null
     });
     expect(wallet.signTransaction).not.toHaveBeenCalled();
-    expect(within(screen.getByRole("dialog")).getByText(demoDistributionRecipients.ruleVersion)).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog")).getByText("RS-2026-01")).toBeInTheDocument();
 
     acknowledgeAndSign();
 
@@ -249,20 +262,110 @@ describe("DistributionWorkspace", () => {
     expect(gateway.prepare).not.toHaveBeenCalled();
   });
 
-  it("still prepares and submits without a campaign, but records no distribution the journey cannot hold", async () => {
+  it("asks to fund the campaign first, and prepares nothing, when the journey has an application but no campaign", () => {
     const gateway = createGateway();
     rtlRender(
       <JourneyStoreProvider initial={{ applicationId: APPLICATION_ID }}>
         <DistributionWorkspace gateway={gateway} wallet={createWallet()} />
-        <RecordedDistribution />
       </JourneyStoreProvider>
     );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/primero hay que fondear la campaña/i);
+    expect(screen.getByRole("link", { name: "Ir al fondeo" })).toHaveAttribute("href", "/funding");
+    expect(screen.queryByRole("button", { name: /Conectar wallet/i })).not.toBeInTheDocument();
+    expect(gateway.prepare).not.toHaveBeenCalled();
+  });
+
+  it("shows the derivation the service returned, labeled simulated, before anything is signed", async () => {
+    const wallet = createWallet();
+    render(<DistributionWorkspace gateway={createGateway()} wallet={wallet} />);
+    await connect();
+    await prepare();
+
+    // The review modal is open, so the page behind it is hidden from the a11y tree.
+    const region = screen.getByRole("region", { name: "Cálculo de la distribución", hidden: true });
+    expect(within(region).getByText("2026-08")).toBeInTheDocument();
+    expect(within(region).getByText("ARS 3.745.800")).toBeInTheDocument();
+    expect(within(region).getByText("4,50 %")).toBeInTheDocument();
+    expect(within(region).getByText("ARS 168.561")).toBeInTheDocument();
+    expect(within(region).getByText(/2026-07/)).toHaveTextContent("faltan datos");
+    expect(within(region).getByText("3.37122 XLM")).toBeInTheDocument();
+    expect(within(region).getByText(RECIPIENT_A)).toBeInTheDocument();
+    expect(within(region).getByText(RECIPIENT_B)).toBeInTheDocument();
+    // The same facts are in the review itself, where the person signs.
+    const review = within(screen.getByRole("dialog"));
+    expect(review.getByText("ARS 3.745.800")).toBeInTheDocument();
+    expect(review.getByText("4,50 %")).toBeInTheDocument();
+    expect(review.getByText("ARS 168.561")).toBeInTheDocument();
+    expect(review.getByText("2026-08")).toBeInTheDocument();
+    expect(wallet.signTransaction).not.toHaveBeenCalled();
+  });
+
+  it("submits the case the terms were derived for next to the signed envelope", async () => {
+    const gateway = createGateway();
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
     await connect();
     await prepare();
     acknowledgeAndSign();
 
-    await screen.findByText(/Enviada · pendiente de confirmación/i);
-    expect(gateway.submit).toHaveBeenCalled();
-    expect(screen.getByTestId("recorded-distribution")).toHaveTextContent("none");
+    await waitFor(() =>
+      expect(gateway.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, signedXdr: "SIGNED-XDR" })
+      )
+    );
+  });
+
+  it.each(DERIVATION_FAILURE_REASONS)("tells the person why the derivation was refused: %s", async (reason) => {
+    const gateway = createGateway({
+      prepare: vi.fn().mockResolvedValue({ ok: false, error: { kind: "derivation_failed", reason } })
+    });
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
+    await connect();
+
+    fireEvent.click(screen.getByRole("button", { name: /Preparar distribución/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(derivationFailureMessage(reason));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it.each<[RevenueShareDistributionErrorKind, RegExp]>([
+    ["already_distributed", /Ya existe una distribución para este período/i]
+  ])("reports %s at prepare truthfully", async (kind, message) => {
+    const gateway = createGateway({ prepare: vi.fn().mockResolvedValue({ ok: false, error: { kind } }) });
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
+    await connect();
+
+    fireEvent.click(screen.getByRole("button", { name: /Preparar distribución/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  });
+
+  it("reports a re-derivation that no longer matches the signed terms, and records nothing", async () => {
+    const gateway = createGateway({
+      submit: vi.fn().mockResolvedValue({ ok: false, error: { kind: "derivation_mismatch" } })
+    });
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
+    await connect();
+    await prepare();
+    acknowledgeAndSign();
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(
+      /ya no coinciden con lo que el servicio calcula/i
+    );
+    expect(screen.queryByText(/Enviada · pendiente de confirmación/i)).not.toBeInTheDocument();
+  });
+
+  it("explains a refused derivation at submit with the same specific message", async () => {
+    const gateway = createGateway({
+      submit: vi.fn().mockResolvedValue({ ok: false, error: { kind: "derivation_failed", reason: "source_not_sme" } })
+    });
+    render(<DistributionWorkspace gateway={gateway} wallet={createWallet()} />);
+    await connect();
+    await prepare();
+    acknowledgeAndSign();
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(
+      "Conecte en Freighter la cuenta de la PyME de esta campaña"
+    );
   });
 });

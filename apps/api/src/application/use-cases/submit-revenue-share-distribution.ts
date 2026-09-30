@@ -1,11 +1,16 @@
 import { parseRevenueShareDistributionSnapshot } from "@vaqcrow/contracts";
 import type {
   CorrelationId,
+  DistributionRecipient,
   RevenueShareDistributionId,
   RevenueShareDistributionSnapshot,
   SubmitRevenueShareDistributionCommand
 } from "@vaqcrow/contracts";
 import { transactionExplorerUrl } from "../explorer-url.js";
+import type {
+  DeriveRevenueShareDistributionErrorCode,
+  DeriveRevenueShareDistributionResult
+} from "./derive-revenue-share-distribution.js";
 import type {
   RevenueShareDistributionRecord,
   RevenueShareDistributionRepositoryPort
@@ -13,8 +18,15 @@ import type {
 import type { RevenueShareDistributionXdrPort } from "../ports/revenue-share-distribution-xdr-port.js";
 
 /**
- * Verifies a signed distribution envelope against the terms it claims to
- * implement, then persists it.
+ * Re-derives the distribution from the case, checks the declared terms against
+ * it, verifies a signed envelope against those terms, then persists it.
+ *
+ * The recipients and amounts are a function of the case (T5a): the submit
+ * re-derives them and refuses terms that differ (`derivation_mismatch`), so a
+ * client cannot sign and submit a split the case does not support even if it
+ * skipped the prepare step. If the case changed since prepare (a newer sales
+ * period, another contribution), the terms no longer match and the submission
+ * is refused rather than paying a stale split.
  *
  * The prepare step persists nothing (`D2`) and the client owns the terms
  * (`D4`), so the server holds no independent memory of what it built: the submit
@@ -39,11 +51,24 @@ export interface SubmitRevenueShareDistributionDeps {
   readonly repository: Pick<RevenueShareDistributionRepositoryPort, "submit">;
   /** The base a transaction link is built from. Normalised by configuration. */
   readonly explorerBaseUrl: string;
+  /** The same derivation prepare uses; the composition root binds it once. */
+  readonly derive: (input: {
+    readonly applicationId: SubmitRevenueShareDistributionCommand["applicationId"];
+    readonly campaignId: string;
+    readonly sourceAccountId: string;
+    readonly correlationId: CorrelationId;
+  }) => Promise<DeriveRevenueShareDistributionResult>;
 }
 
 export type SubmitRevenueShareDistributionError =
   | { readonly code: "xdr_rejected"; readonly reason: string }
-  | { readonly code: "idempotency_conflict" | "unavailable" };
+  | { readonly code: "derivation_mismatch" }
+  | {
+      readonly code: "derivation_failed";
+      /** The closed derivation vocabulary: safe to return, names no internal detail. */
+      readonly reason: Exclude<DeriveRevenueShareDistributionErrorCode, "unavailable">;
+    }
+  | { readonly code: "idempotency_conflict" | "already_distributed" | "unavailable" };
 
 export type SubmitRevenueShareDistributionResult =
   | {
@@ -64,6 +89,23 @@ export async function submitRevenueShareDistribution(
   }
 ): Promise<SubmitRevenueShareDistributionResult> {
   const terms = input.command.terms;
+
+  const derived = await deps.derive({
+    applicationId: input.command.applicationId,
+    campaignId: input.command.campaignId,
+    sourceAccountId: terms.sourceAccountId,
+    correlationId: input.correlationId
+  });
+
+  if (!derived.ok) {
+    return derived.error.code === "unavailable"
+      ? { ok: false, error: { code: "unavailable" } }
+      : { ok: false, error: { code: "derivation_failed", reason: derived.error.code } };
+  }
+
+  if (!sameRecipients(terms.recipients, derived.value.recipients)) {
+    return { ok: false, error: { code: "derivation_mismatch" } };
+  }
 
   const verified = deps.xdr.verify({ xdr: input.command.signedXdr, terms });
 
@@ -95,20 +137,22 @@ export async function submitRevenueShareDistribution(
       // The submission port models the absence of a memo as an omitted field,
       // so a `null` declared term is dropped rather than persisted as a null.
       ...(verified.value.memo === null ? {} : { memo: verified.value.memo }),
-      // The declared application link is the one thing on this record that
-      // verification cannot corroborate, because no envelope encodes it. It is
-      // persisted as declared (`D4`, traceability only) and never invented: an
-      // absent link stays absent rather than becoming a fabricated null link.
-      ...(input.command.applicationId === null
-        ? {}
-        : { applicationId: input.command.applicationId })
+      // Neither id is encoded by an envelope, so verification cannot corroborate
+      // them; re-derivation did: the recipients and amounts the envelope commits
+      // to are exactly what this case yields. They are persisted as the links
+      // that case was derived from.
+      applicationId: input.command.applicationId,
+      campaignId: input.command.campaignId,
+      // The derived period: the database refuses a second non-failed
+      // distribution of the same campaign and period.
+      period: derived.value.derivation.period
     },
     correlationId: input.correlationId
   });
 
   if (!submitted.ok) {
-    return submitted.error.code === "idempotency_conflict"
-      ? { ok: false, error: { code: "idempotency_conflict" } }
+    return submitted.error.code === "idempotency_conflict" || submitted.error.code === "already_distributed"
+      ? { ok: false, error: { code: submitted.error.code } }
       : { ok: false, error: { code: "unavailable" } };
   }
 
@@ -123,6 +167,22 @@ export async function submitRevenueShareDistribution(
   } catch {
     return { ok: false, error: { code: "unavailable" } };
   }
+}
+
+/**
+ * Whether the declared recipients are exactly the derived ones: the same
+ * destinations and the same amounts, in any order. Destinations are unique in
+ * both lists (the contract refuses duplicates), so a map comparison is exact.
+ */
+function sameRecipients(
+  declared: readonly DistributionRecipient[],
+  derived: readonly DistributionRecipient[]
+): boolean {
+  if (declared.length !== derived.length) return false;
+
+  const expected = new Map(derived.map((recipient) => [recipient.accountId, recipient.amountStroops]));
+
+  return declared.every((recipient) => expected.get(recipient.accountId) === recipient.amountStroops);
 }
 
 /**
@@ -152,6 +212,7 @@ function toRevenueShareDistributionSnapshot(
     state: record.state,
     transactionHash: record.transactionHash,
     applicationId: record.applicationId ?? null,
+    campaignId: record.campaignId ?? null,
     explorerUrl: transactionExplorerUrl(explorerBaseUrl, record.transactionHash),
     failureReason: record.failureReason ?? null,
     lastCorrelationId: record.lastCorrelationId,
