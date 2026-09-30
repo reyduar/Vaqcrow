@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
 import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
-import type { ApplicationId } from "@vaqcrow/contracts";
+import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
@@ -11,7 +11,6 @@ import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
-import { SupabaseCampaignRepository } from "./infrastructure/adapters/supabase-campaign-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -37,23 +36,37 @@ const salesDataProvider = createSimulatedSalesDataProvider();
 
 const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
 
+// Built first: the distribution derivation reconciles the campaign from the chain,
+// so it reuses the campaign group's repository and vault chain reader.
+const campaign = buildCampaignDependencies(config, {
+  supabase,
+  applicationReviews: applicationReviewRepository
+});
+
 // The distribution derivation (T5a): who is paid and how much is a function of
 // the case (settled campaign, approved decision, sales feed), never of the
 // request. Prepare and submit share this one binding.
-const deriveDistribution = (input: {
-  readonly applicationId: ApplicationId;
-  readonly campaignId: string;
-  readonly sourceAccountId: string;
-}) =>
-  deriveRevenueShareDistribution(
-    {
-      campaigns: new SupabaseCampaignRepository(supabase),
-      applicationReviews: applicationReviewRepository,
-      smeRequests: smeRequestRepository,
-      salesData: salesDataProvider
-    },
-    input
-  );
+const deriveDistribution =
+  campaign === undefined
+    ? undefined
+    : (input: {
+        readonly applicationId: ApplicationId;
+        readonly campaignId: string;
+        readonly sourceAccountId: string;
+        readonly correlationId: CorrelationId;
+      }) =>
+        deriveRevenueShareDistribution(
+          {
+            // The campaign group's repository and vault reader, so the derivation
+            // reconciles from the chain instead of trusting a stale mirror.
+            campaigns: campaign.campaigns,
+            chain: campaign.chain,
+            applicationReviews: applicationReviewRepository,
+            smeRequests: smeRequestRepository,
+            salesData: salesDataProvider
+          },
+          input
+        );
 
 // The revenue-share distribution HTTP surface (S2c). Unlike the funding-intent
 // and campaign groups, which `index.ts` deliberately leaves unwired today, this
@@ -65,7 +78,7 @@ const deriveDistribution = (input: {
 const revenueShareDistributionRepository = new SupabaseRevenueShareDistributionRepository(supabase);
 
 const revenueShareDistribution =
-  config.stellar.explorerUrl === undefined
+  config.stellar.explorerUrl === undefined || deriveDistribution === undefined
     ? undefined
     : {
         ledger: new StellarLedger(config.stellar),
@@ -93,11 +106,6 @@ const assessmentProvider = createOpenCodeGoProvider({
   model: config.llm.model,
   apiKey: config.llm.apiKey.reveal(),
   timeoutMs: config.llm.timeoutMs
-});
-
-const campaign = buildCampaignDependencies(config, {
-  supabase,
-  applicationReviews: applicationReviewRepository
 });
 
 const app = buildApp({

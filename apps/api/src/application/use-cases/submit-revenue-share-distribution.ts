@@ -56,6 +56,7 @@ export interface SubmitRevenueShareDistributionDeps {
     readonly applicationId: SubmitRevenueShareDistributionCommand["applicationId"];
     readonly campaignId: string;
     readonly sourceAccountId: string;
+    readonly correlationId: CorrelationId;
   }) => Promise<DeriveRevenueShareDistributionResult>;
 }
 
@@ -67,7 +68,7 @@ export type SubmitRevenueShareDistributionError =
       /** The closed derivation vocabulary: safe to return, names no internal detail. */
       readonly reason: Exclude<DeriveRevenueShareDistributionErrorCode, "unavailable">;
     }
-  | { readonly code: "idempotency_conflict" | "unavailable" };
+  | { readonly code: "idempotency_conflict" | "already_distributed" | "unavailable" };
 
 export type SubmitRevenueShareDistributionResult =
   | {
@@ -92,7 +93,8 @@ export async function submitRevenueShareDistribution(
   const derived = await deps.derive({
     applicationId: input.command.applicationId,
     campaignId: input.command.campaignId,
-    sourceAccountId: terms.sourceAccountId
+    sourceAccountId: terms.sourceAccountId,
+    correlationId: input.correlationId
   });
 
   if (!derived.ok) {
@@ -140,14 +142,17 @@ export async function submitRevenueShareDistribution(
       // to are exactly what this case yields. They are persisted as the links
       // that case was derived from.
       applicationId: input.command.applicationId,
-      campaignId: input.command.campaignId
+      campaignId: input.command.campaignId,
+      // The derived period: the database refuses a second non-failed
+      // distribution of the same campaign and period.
+      period: derived.value.derivation.period
     },
     correlationId: input.correlationId
   });
 
   if (!submitted.ok) {
-    return submitted.error.code === "idempotency_conflict"
-      ? { ok: false, error: { code: "idempotency_conflict" } }
+    return submitted.error.code === "idempotency_conflict" || submitted.error.code === "already_distributed"
+      ? { ok: false, error: { code: submitted.error.code } }
       : { ok: false, error: { code: "unavailable" } };
   }
 

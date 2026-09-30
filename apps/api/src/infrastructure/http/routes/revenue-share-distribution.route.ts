@@ -5,6 +5,7 @@ import {
   parseSubmitRevenueShareDistributionCommand
 } from "@vaqcrow/contracts";
 import type {
+  CorrelationId,
   PrepareRevenueShareDistributionCommand,
   PreparedRevenueShareDistribution,
   RevenueShareDistributionId,
@@ -43,10 +44,11 @@ export interface RevenueShareDistributionRouteDependencies {
   readonly ledger: LedgerPort;
   readonly xdr: RevenueShareDistributionXdrPort;
   /**
-   * The route submits and reports, so it depends on those two operations only.
+   * The route submits, reports and refuses a repeated campaign and period, so it
+   * depends on those operations only.
    * The confirmation/polling surface belongs to a later slice, not to this route.
    */
-  readonly repository: Pick<RevenueShareDistributionRepositoryPort, "submit" | "findById">;
+  readonly repository: Pick<RevenueShareDistributionRepositoryPort, "submit" | "findById" | "findActiveByCampaignPeriod">;
   readonly network: { readonly network: string; readonly networkPassphrase: string };
   readonly generateDistributionId: () => RevenueShareDistributionId;
   /**
@@ -65,6 +67,7 @@ export interface RevenueShareDistributionRouteDependencies {
     readonly applicationId: PrepareRevenueShareDistributionCommand["applicationId"];
     readonly campaignId: string;
     readonly sourceAccountId: string;
+    readonly correlationId: CorrelationId;
   }) => Promise<DeriveRevenueShareDistributionResult>;
 }
 
@@ -80,6 +83,7 @@ function derivationFailureStatus(
     case "application_not_found":
       return 404;
     case "application_mismatch":
+    case "source_not_sme":
     case "campaign_not_settled":
     case "decision_not_approved":
     case "contributions_incomplete":
@@ -160,6 +164,10 @@ export function registerRevenueShareDistributionRoute(
         return reply
           .code(derivationFailureStatus(result.error.reason))
           .send({ code: "derivation_failed", reason: result.error.reason });
+      case "already_distributed":
+        // 409: the campaign's period was already distributed (submitted or
+        // confirmed); a failed distribution does not count, so a retry is open.
+        return reply.code(409).send({ code: "already_distributed" });
       case "invalid_input":
         return reply.code(400).send({ code: "invalid_request" });
       case "unavailable":
@@ -228,6 +236,8 @@ export function registerRevenueShareDistributionRoute(
             .send({ code: "derivation_failed", reason: result.error.reason });
         case "idempotency_conflict":
           return reply.code(409).send({ code: "idempotency_conflict" });
+        case "already_distributed":
+          return reply.code(409).send({ code: "already_distributed" });
         case "unavailable":
           return reply.code(503).send({ code: "unavailable" });
       }

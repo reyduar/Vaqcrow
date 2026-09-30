@@ -119,11 +119,15 @@ describe("submitRevenueShareDistribution", () => {
     expect(derive).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
       campaignId: CAMPAIGN_ID,
-      sourceAccountId: SOURCE_ACCOUNT
+      sourceAccountId: SOURCE_ACCOUNT,
+      correlationId: CORRELATION_ID
     });
     const saved = vi.mocked(repository.submit).mock.calls[0]?.[0].record;
     expect(saved?.campaignId).toBe(CAMPAIGN_ID);
     expect(saved?.applicationId).toBe(APPLICATION_ID);
+    // The period is the derived one, persisted so the database enforces one
+    // distribution per campaign and period.
+    expect(saved?.period).toBe("2026-08");
     if (!result.ok) throw new Error("expected a submission");
     expect(result.value.applied).toBe(true);
     expect(result.value.distribution.campaignId).toBe(CAMPAIGN_ID);
@@ -175,7 +179,7 @@ describe("submitRevenueShareDistribution", () => {
     expect(repository.submit).not.toHaveBeenCalled();
   });
 
-  it.each(["campaign_not_found", "campaign_not_settled", "contributions_incomplete"] as const)(
+  it.each(["campaign_not_found", "campaign_not_settled", "contributions_incomplete", "source_not_sme"] as const)(
     "refuses a submission whose derivation fails (%s) without persisting",
     async (reason) => {
       const { deps, repository } = setup({ derive: { ok: false, error: { code: reason } } });
@@ -216,5 +220,18 @@ describe("submitRevenueShareDistribution", () => {
 
     expect(result).toEqual({ ok: false, error: { code: "xdr_rejected", reason: "recipients" } });
     expect(repository.submit).not.toHaveBeenCalled();
+  });
+
+  it("maps the period's unique violation to already_distributed", async () => {
+    const { deps, repository } = setup();
+    vi.mocked(repository.submit).mockResolvedValue({ ok: false, error: { code: "already_distributed" } });
+
+    const result = await submitRevenueShareDistribution(deps, {
+      distributionId: DISTRIBUTION_ID,
+      command: commandWith(derivedRecipients),
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "already_distributed" } });
   });
 });

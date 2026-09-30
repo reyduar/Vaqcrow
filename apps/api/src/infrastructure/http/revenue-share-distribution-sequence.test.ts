@@ -124,30 +124,31 @@ const SALES: readonly SalesPeriodContract[] = [
   { period: "2026-08", amountArs: 3_745_800, status: "reported", evidenceRef: "sales:2026-08", simuladoLabel: "SIMULADO" }
 ];
 
+const CAMPAIGN_MIRROR = {
+  campaignId: CAMPAIGN_ID,
+  applicationId: APPLICATION_ID,
+  smeAccountId: SOURCE_ACCOUNT,
+  contractAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+  network: "testnet",
+  tokenContractAddress: "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF",
+  goalStroops: GOAL_STROOPS,
+  deadline: "2026-12-01T00:00:00.000Z",
+  state: "settled" as const,
+  totalStroops: GOAL_STROOPS,
+  reconciliationStatus: "in_sync" as const,
+  lastReconciledAt: START,
+  createdAt: START,
+  updatedAt: START
+};
+
 /** Port doubles at the edge of the derivation: the case itself, read as the API reads it. */
 function derivationDeps(): Parameters<typeof deriveRevenueShareDistribution>[0] {
   return {
     campaigns: {
-      findById: () =>
-        Promise.resolve({
-          ok: true as const,
-          value: {
-            campaignId: CAMPAIGN_ID,
-            applicationId: APPLICATION_ID,
-            smeAccountId: SOURCE_ACCOUNT,
-            contractAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-            network: "testnet",
-            tokenContractAddress: "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF",
-            goalStroops: GOAL_STROOPS,
-            deadline: "2026-12-01T00:00:00.000Z",
-            state: "settled" as const,
-            totalStroops: GOAL_STROOPS,
-            reconciliationStatus: "in_sync" as const,
-            lastReconciledAt: START,
-            createdAt: START,
-            updatedAt: START
-          }
-        }),
+      findById: () => Promise.resolve({ ok: true as const, value: CAMPAIGN_MIRROR }),
+      // The mirror and the chain agree the vault settled; the reconcile write is
+      // a no-op here, the campaign persistence has its own suites.
+      reconcile: () => Promise.resolve({ ok: true as const, value: { campaign: CAMPAIGN_MIRROR, applied: true } }),
       findContributions: () =>
         Promise.resolve({
           ok: true as const,
@@ -155,6 +156,21 @@ function derivationDeps(): Parameters<typeof deriveRevenueShareDistribution>[0] 
             { campaignId: CAMPAIGN_ID, investorAccountId: FIRST_RECIPIENT, amountStroops: 750_000_000n, lastObservedAt: START },
             { campaignId: CAMPAIGN_ID, investorAccountId: SECOND_RECIPIENT, amountStroops: 250_000_000n, lastObservedAt: START }
           ]
+        })
+    },
+    chain: {
+      readCampaign: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: {
+            state: "settled" as const,
+            totalStroops: GOAL_STROOPS,
+            goalStroops: GOAL_STROOPS,
+            deadline: new Date(CAMPAIGN_MIRROR.deadline),
+            smeAccountId: SOURCE_ACCOUNT,
+            tokenContractId: CAMPAIGN_MIRROR.tokenContractAddress,
+            observedAt: new Date(START)
+          }
         })
     },
     applicationReviews: {
@@ -249,6 +265,7 @@ function inMemoryDistributionStore(): {
     let op: "insert" | "select" | "update" = "select";
     let payload: Record<string, unknown> | undefined;
     const eqFilters: Array<readonly [string, unknown]> = [];
+    const neqFilters: Array<readonly [string, unknown]> = [];
     let dueByOrBefore: string | undefined;
     let orderBy: string | undefined;
     let limitTo: number | undefined;
@@ -256,6 +273,7 @@ function inMemoryDistributionStore(): {
 
     const matches = (row: Record<string, unknown>): boolean =>
       eqFilters.every(([column, value]) => row[column] === value) &&
+      neqFilters.every(([column, value]) => row[column] !== value) &&
       (dueByOrBefore === undefined || String(row["next_attempt_at"]) <= dueByOrBefore);
 
     function run(): { data: unknown; error: { code: string; message: string } | null } {
@@ -275,6 +293,28 @@ function inMemoryDistributionStore(): {
 
         if (clash) {
           return { data: null, error: { code: "23505", message: "duplicate key" } };
+        }
+
+        // The partial unique index the migration declares: one non-failed
+        // distribution per (campaign_id, period), nulls excluded.
+        const periodClash =
+          payload["campaign_id"] != null &&
+          payload["period"] != null &&
+          [...rows.values()].some(
+            (row) =>
+              row["state"] !== "failed" &&
+              row["campaign_id"] === payload?.["campaign_id"] &&
+              row["period"] === payload?.["period"]
+          );
+
+        if (periodClash) {
+          return {
+            data: null,
+            error: {
+              code: "23505",
+              message: 'duplicate key value violates unique constraint "revenue_share_distribution_campaign_period_key"'
+            }
+          };
         }
 
         // The defaults the migration declares, plus the `updated_at` trigger. A
@@ -338,6 +378,10 @@ function inMemoryDistributionStore(): {
       select: () => self,
       eq: (column: string, value: unknown) => {
         eqFilters.push([column, value]);
+        return self;
+      },
+      neq: (column: string, value: unknown) => {
+        neqFilters.push([column, value]);
         return self;
       },
       lte: (column: string, value: unknown) => {
@@ -605,6 +649,56 @@ describe("revenue-share distribution sequence (real adapters, real use cases, re
     // `prepare` is stateless (`D2`): nothing is written until a signed envelope
     // exists, so there is no pre-submission row to reconcile later.
     expect(test.rows.size).toBe(0);
+
+    await test.app.close();
+  });
+
+  it("distributes a campaign's period once: a second submission is refused, a failed one frees the slot", async () => {
+    const test = harness();
+
+    const first = await prepare(test);
+    // A second envelope for the same case, prepared before the first is
+    // submitted (prepare is stateless), differs by memo and so by hash.
+    const secondResponse = await test.app.inject({
+      method: "POST",
+      url: "/revenue-share-distributions",
+      payload: { ...PREPARE_BODY, memo: "retry" }
+    });
+    expect(secondResponse.statusCode).toBe(200);
+    const second = secondResponse.json().distribution as WirePrepared;
+
+    expect((await submit(test, first, sign(first.xdr).signedXdr)).statusCode).toBe(202);
+    expect(test.rows.get(DISTRIBUTION_ID)?.period).toBe("2026-08");
+
+    // The unique index (period) refuses the second live distribution, typed.
+    const OTHER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const refused = await test.app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${OTHER_ID}/submission`,
+      payload: {
+        signedXdr: sign(second.xdr).signedXdr,
+        terms: termsOf(second),
+        applicationId: second.applicationId,
+        campaignId: second.campaignId
+      }
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toEqual({ code: "already_distributed" });
+    expect(test.rows.size).toBe(1);
+
+    // Prepare refuses early, before anyone is asked to sign.
+    const again = await test.app.inject({ method: "POST", url: "/revenue-share-distributions", payload: PREPARE_BODY });
+    expect(again.statusCode).toBe(409);
+    expect(again.json()).toEqual({ code: "already_distributed" });
+
+    // A failed distribution frees the slot: a retry prepares again.
+    const stored = test.rows.get(DISTRIBUTION_ID);
+    if (stored === undefined) throw new Error("expected the first distribution to be stored");
+    stored["state"] = "failed";
+    stored["failure_reason"] = "tx_failed";
+
+    const retry = await test.app.inject({ method: "POST", url: "/revenue-share-distributions", payload: PREPARE_BODY });
+    expect(retry.statusCode).toBe(200);
 
     await test.app.close();
   });

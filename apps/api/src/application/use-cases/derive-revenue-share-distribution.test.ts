@@ -1,4 +1,4 @@
-import { parseApplicationId } from "@vaqcrow/contracts";
+import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
 import type { HumanDecisionRecord, SalesPeriodContract, SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { ApplicationReviewRepositoryPort } from "../ports/application-review-repository-port.js";
@@ -7,6 +7,7 @@ import type {
   CampaignRecord,
   CampaignRepositoryPort
 } from "../ports/campaign-repository-port.js";
+import type { CampaignVaultChainPort } from "../ports/campaign-vault-chain-port.js";
 import type { SalesDataProviderPort } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 import {
@@ -85,20 +86,55 @@ const series: readonly SalesPeriodContract[] = [
   period("2026-08", 3_745_800)
 ];
 
+const CHAIN_STATE_BY_MIRROR_STATE = { open: "funding", settled: "settled", refundable: "refunding" } as const;
+
 function deps(
   overrides: {
     campaign?: unknown;
+    chain?: unknown;
+    reconcile?: unknown;
     contributions?: unknown;
     decision?: unknown;
     request?: unknown;
     sales?: unknown;
   } = {}
 ): DeriveRevenueShareDistributionDeps {
+  const mirror = ((overrides.campaign as { ok: true; value: CampaignRecord } | undefined)?.value ??
+    campaign) as CampaignRecord;
+
+  // By default the chain agrees with the mirror, so every pre-existing case keeps
+  // its meaning; the reconciliation cases override the chain explicitly.
+  const chainState = {
+    ok: true,
+    value: {
+      state: CHAIN_STATE_BY_MIRROR_STATE[mirror.state],
+      totalStroops: mirror.totalStroops,
+      goalStroops: mirror.goalStroops,
+      deadline: new Date(mirror.deadline),
+      smeAccountId: mirror.smeAccountId,
+      tokenContractId: mirror.tokenContractAddress,
+      observedAt: new Date("2026-09-30T13:00:00.000Z")
+    }
+  };
+
   return {
     campaigns: {
       findById: vi.fn().mockResolvedValue(overrides.campaign ?? { ok: true, value: campaign }),
-      findContributions: vi.fn().mockResolvedValue(overrides.contributions ?? { ok: true, value: contributions })
-    } as unknown as Pick<CampaignRepositoryPort, "findById" | "findContributions">,
+      findContributions: vi.fn().mockResolvedValue(overrides.contributions ?? { ok: true, value: contributions }),
+      reconcile: vi.fn().mockImplementation(
+        async (call: { snapshot: { state: CampaignRecord["state"]; totalStroops: bigint } }) =>
+          overrides.reconcile ?? {
+            ok: true,
+            value: {
+              campaign: { ...mirror, state: call.snapshot.state, totalStroops: call.snapshot.totalStroops },
+              applied: true
+            }
+          }
+      )
+    } as unknown as Pick<CampaignRepositoryPort, "findById" | "findContributions" | "reconcile">,
+    chain: {
+      readCampaign: vi.fn().mockResolvedValue(overrides.chain ?? chainState)
+    } as unknown as Pick<CampaignVaultChainPort, "readCampaign">,
     applicationReviews: {
       readLatestHumanDecision: vi.fn().mockResolvedValue(overrides.decision ?? { ok: true, value: approvedDecision })
     } as unknown as Pick<ApplicationReviewRepositoryPort, "readLatestHumanDecision">,
@@ -113,7 +149,13 @@ function deps(
   };
 }
 
-const input = { applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, sourceAccountId: SOURCE_ACCOUNT };
+const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
+const input = {
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  sourceAccountId: SOURCE_ACCOUNT,
+  correlationId: CORRELATION_ID
+};
 
 async function expectFailure(result: ReturnType<typeof deriveRevenueShareDistribution>, code: string) {
   const resolved = await result;
@@ -347,12 +389,72 @@ describe("deriveRevenueShareDistribution", () => {
       );
     });
 
+    it("refuses a source account that is not the campaign's SME account", async () => {
+      await expectFailure(deriveRevenueShareDistribution(deps(), { ...input, sourceAccountId: INVESTOR_A }), "source_not_sme");
+    });
+
+    it("reconciles from the chain first: a mirror that still says open derives once the vault settled", async () => {
+      const dependencies = deps({
+        campaign: { ok: true, value: { ...campaign, state: "open", totalStroops: GOAL_STROOPS } },
+        chain: {
+          ok: true,
+          value: {
+            state: "settled",
+            totalStroops: GOAL_STROOPS,
+            goalStroops: GOAL_STROOPS,
+            deadline: new Date(campaign.deadline),
+            smeAccountId: SOURCE_ACCOUNT,
+            tokenContractId: campaign.tokenContractAddress,
+            observedAt: new Date("2026-09-30T13:00:00.000Z")
+          }
+        }
+      });
+
+      const result = await deriveRevenueShareDistribution(dependencies, input);
+
+      expect(result.ok).toBe(true);
+      expect(dependencies.campaigns.reconcile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          campaignId: CAMPAIGN_ID,
+          correlationId: CORRELATION_ID,
+          snapshot: expect.objectContaining({ state: "settled" })
+        })
+      );
+    });
+
+    it("refuses when the chain says the vault is not settled even though the mirror says settled", async () => {
+      await expectFailure(
+        deriveRevenueShareDistribution(
+          deps({
+            chain: {
+              ok: true,
+              value: {
+                state: "funding",
+                totalStroops: 0n,
+                goalStroops: GOAL_STROOPS,
+                deadline: new Date(campaign.deadline),
+                smeAccountId: SOURCE_ACCOUNT,
+                tokenContractId: campaign.tokenContractAddress,
+                observedAt: new Date("2026-09-30T13:00:00.000Z")
+              }
+            }
+          }),
+          input
+        ),
+        "campaign_not_settled"
+      );
+    });
+
     it.each([
       ["the campaign read", { campaign: { ok: false, error: { code: "unavailable" } } }],
       ["the decision read", { decision: { ok: false, error: { code: "unavailable" } } }],
       ["the request read", { request: { ok: false, error: { code: "unavailable" } } }],
       ["the sales feed", { sales: { ok: false, error: { code: "unavailable" } } }],
-      ["the contributions read", { contributions: { ok: false, error: { code: "unavailable" } } }]
+      ["the contributions read", { contributions: { ok: false, error: { code: "unavailable" } } }],
+      ["the chain read", { chain: { ok: false, error: { code: "unavailable" } } }],
+      ["a chain read that finds no vault", { chain: { ok: false, error: { code: "not_found" } } }],
+      ["the reconciliation", { reconcile: { ok: false, error: { code: "unavailable" } } }],
+      ["a reconciliation that lost the race", { reconcile: { ok: false, error: { code: "state_conflict" } } }]
     ])("fails closed as unavailable when %s is unavailable", async (_description, overrides) => {
       await expectFailure(deriveRevenueShareDistribution(deps(overrides), input), "unavailable");
     });

@@ -45,6 +45,7 @@ function setup(
     derive?: DeriveRevenueShareDistributionResult;
     ledger?: Awaited<ReturnType<LedgerPort["getAccount"]>>;
     build?: ReturnType<RevenueShareDistributionXdrPort["build"]>;
+    existing?: unknown;
   } = {}
 ) {
   const derive = vi.fn().mockResolvedValue(overrides.derive ?? derived);
@@ -75,15 +76,20 @@ function setup(
     ),
     verify: vi.fn()
   };
+  // By default no distribution exists for the campaign and period.
+  const repository = {
+    findActiveByCampaignPeriod: vi.fn().mockResolvedValue(overrides.existing ?? { ok: false, error: { code: "not_found" } })
+  };
   const deps = {
     ledger,
     xdr,
+    repository,
     network: { network: "testnet", networkPassphrase: PASSPHRASE },
     generateDistributionId: () => DISTRIBUTION_ID,
     derive
   };
 
-  return { deps, derive, ledger, xdr };
+  return { deps, derive, ledger, xdr, repository };
 }
 
 describe("prepareRevenueShareDistribution", () => {
@@ -95,7 +101,8 @@ describe("prepareRevenueShareDistribution", () => {
     expect(derive).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
       campaignId: CAMPAIGN_ID,
-      sourceAccountId: SOURCE_ACCOUNT
+      sourceAccountId: SOURCE_ACCOUNT,
+      correlationId: CORRELATION_ID
     });
     expect(vi.mocked(xdr.build).mock.calls[0]?.[0].terms.recipients).toEqual(recipients);
     if (!result.ok) throw new Error("expected a prepared distribution");
@@ -125,7 +132,8 @@ describe("prepareRevenueShareDistribution", () => {
     "invalid_sales_data",
     "no_contributors",
     "contributions_incomplete",
-    "obligation_rounds_to_zero"
+    "obligation_rounds_to_zero",
+    "source_not_sme"
   ] as const)("reports a failed derivation (%s) and never reaches the ledger or the builder", async (reason) => {
     const { deps, ledger, xdr } = setup({ derive: { ok: false, error: { code: reason } } });
 
@@ -158,5 +166,30 @@ describe("prepareRevenueShareDistribution", () => {
     const result = await prepareRevenueShareDistribution(deps, { command, correlationId: CORRELATION_ID });
 
     expect(result).toEqual({ ok: false, error: { code: "invalid_input" } });
+  });
+
+  it("refuses early when the campaign and period already have a live distribution", async () => {
+    const { deps, repository, ledger, xdr } = setup({
+      existing: { ok: true, value: { distributionId: DISTRIBUTION_ID, state: "confirmed" } }
+    });
+
+    const result = await prepareRevenueShareDistribution(deps, { command, correlationId: CORRELATION_ID });
+
+    expect(result).toEqual({ ok: false, error: { code: "already_distributed" } });
+    expect(repository.findActiveByCampaignPeriod).toHaveBeenCalledWith({
+      campaignId: CAMPAIGN_ID,
+      period: "2026-08"
+    });
+    expect(ledger.getAccount).not.toHaveBeenCalled();
+    expect(xdr.build).not.toHaveBeenCalled();
+  });
+
+  it("fails closed as unavailable when the existing-distribution lookup is unavailable", async () => {
+    const { deps, xdr } = setup({ existing: { ok: false, error: { code: "unavailable" } } });
+
+    const result = await prepareRevenueShareDistribution(deps, { command, correlationId: CORRELATION_ID });
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(xdr.build).not.toHaveBeenCalled();
   });
 });

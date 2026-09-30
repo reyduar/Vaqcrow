@@ -6,6 +6,7 @@ import type {
   RevenueShareDistributionTerms
 } from "@vaqcrow/contracts";
 import type { LedgerPort } from "../ports/ledger-port.js";
+import type { RevenueShareDistributionRepositoryPort } from "../ports/revenue-share-distribution-repository-port.js";
 import type {
   DeriveRevenueShareDistributionErrorCode,
   DeriveRevenueShareDistributionResult
@@ -42,6 +43,8 @@ const REVENUE_SHARE_DISTRIBUTION_VALIDITY_SECONDS = 15 * 60;
 export interface PrepareRevenueShareDistributionDeps {
   readonly ledger: LedgerPort;
   readonly xdr: RevenueShareDistributionXdrPort;
+  /** Read only to refuse a second distribution of the same campaign and period. */
+  readonly repository: Pick<RevenueShareDistributionRepositoryPort, "findActiveByCampaignPeriod">;
   readonly network: { readonly network: string; readonly networkPassphrase: string };
   readonly generateDistributionId: () => RevenueShareDistributionId;
   /**
@@ -53,11 +56,12 @@ export interface PrepareRevenueShareDistributionDeps {
     readonly applicationId: PrepareRevenueShareDistributionCommand["applicationId"];
     readonly campaignId: string;
     readonly sourceAccountId: string;
+    readonly correlationId: CorrelationId;
   }) => Promise<DeriveRevenueShareDistributionResult>;
 }
 
 export type PrepareRevenueShareDistributionError =
-  | { readonly code: "account_not_found" | "invalid_input" | "unavailable" }
+  | { readonly code: "account_not_found" | "invalid_input" | "unavailable" | "already_distributed" }
   | {
       readonly code: "derivation_failed";
       /** The closed derivation vocabulary: safe to return, names no internal detail. */
@@ -80,7 +84,8 @@ export async function prepareRevenueShareDistribution(
   const derived = await deps.derive({
     applicationId: command.applicationId,
     campaignId: command.campaignId,
-    sourceAccountId: command.sourceAccountId
+    sourceAccountId: command.sourceAccountId,
+    correlationId: input.correlationId
   });
 
   if (!derived.ok) {
@@ -88,6 +93,16 @@ export async function prepareRevenueShareDistribution(
       ? { ok: false, error: { code: "unavailable" } }
       : { ok: false, error: { code: "derivation_failed", reason: derived.error.code } };
   }
+
+  // Refuse early: a campaign's period is distributed once. The unique index is
+  // the authority under a race; this read only spares the signer a doomed prompt.
+  const existing = await deps.repository.findActiveByCampaignPeriod({
+    campaignId: command.campaignId,
+    period: derived.value.derivation.period
+  });
+
+  if (existing.ok) return { ok: false, error: { code: "already_distributed" } };
+  if (existing.error.code !== "not_found") return { ok: false, error: { code: "unavailable" } };
 
   const account = await deps.ledger.getAccount(command.sourceAccountId);
 

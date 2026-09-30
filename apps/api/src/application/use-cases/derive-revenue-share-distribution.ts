@@ -1,5 +1,6 @@
 import type {
   ApplicationId,
+  CorrelationId,
   DistributionRecipient,
   RevenueShareDerivation,
   SalesPeriodContract
@@ -10,8 +11,11 @@ import {
   demoRevenueShareRule
 } from "@vaqcrow/domain";
 import type { RevenueSharePeriod } from "@vaqcrow/domain";
+import { reconcileCampaign } from "./reconcile-campaign.js";
 import type { ApplicationReviewRepositoryPort } from "../ports/application-review-repository-port.js";
 import type { CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { CampaignVaultChainPort } from "../ports/campaign-vault-chain-port.js";
+import { toChainCampaignSnapshot } from "../ports/campaign-vault-chain-port.js";
 import type { SalesDataProviderPort } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 
@@ -23,7 +27,13 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
  *
  * The derivation, in order:
  * 1. The campaign must exist, belong to the application and be `settled` — a
- *    vault that did not reach its goal has nothing to distribute.
+ *    vault that did not reach its goal has nothing to distribute. The signing
+ *    account must be the campaign's SME account (`source_not_sme`): only the
+ *    borrower owes the revenue share. The mirror is never trusted for the state:
+ *    the campaign is reconciled from the chain (the same path `GET /campaigns/:id`
+ *    uses) before it is read, so a mirror that still says `open` after the vault
+ *    settled derives, and a chain that cannot be read is `unavailable` rather
+ *    than a derivation from a possibly stale state.
  * 2. The obligation is the domain engine's (`demoRevenueShareRule`: 450 bps,
  *    floor, `RS-2026-01`) over **one period**: the latest `reported` period of
  *    the SME's sales feed. The demo story records the next period first, so the
@@ -49,7 +59,8 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
  */
 
 export interface DeriveRevenueShareDistributionDeps {
-  readonly campaigns: Pick<CampaignRepositoryPort, "findById" | "findContributions">;
+  readonly campaigns: Pick<CampaignRepositoryPort, "findById" | "findContributions" | "reconcile">;
+  readonly chain: Pick<CampaignVaultChainPort, "readCampaign">;
   readonly applicationReviews: Pick<ApplicationReviewRepositoryPort, "readLatestHumanDecision">;
   readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
   readonly salesData: Pick<SalesDataProviderPort, "getPeriods">;
@@ -58,6 +69,7 @@ export interface DeriveRevenueShareDistributionDeps {
 export type DeriveRevenueShareDistributionErrorCode =
   | "campaign_not_found"
   | "application_mismatch"
+  | "source_not_sme"
   | "campaign_not_settled"
   | "decision_not_approved"
   | "application_not_found"
@@ -88,15 +100,36 @@ export async function deriveRevenueShareDistribution(
     readonly campaignId: string;
     /** The account that signs the distribution; it is never a recipient. */
     readonly sourceAccountId: string;
+    /** Carried into the reconciliation write, which records who caused it. */
+    readonly correlationId: CorrelationId;
   }
 ): Promise<DeriveRevenueShareDistributionResult> {
-  const campaign = await deps.campaigns.findById(input.campaignId);
+  const mirror = await deps.campaigns.findById(input.campaignId);
 
-  if (!campaign.ok) {
-    return fail(campaign.error.code === "not_found" ? "campaign_not_found" : "unavailable");
+  if (!mirror.ok) {
+    return fail(mirror.error.code === "not_found" ? "campaign_not_found" : "unavailable");
   }
 
-  if (campaign.value.applicationId !== input.applicationId) return fail("application_mismatch");
+  if (mirror.value.applicationId !== input.applicationId) return fail("application_mismatch");
+  if (mirror.value.smeAccountId !== input.sourceAccountId) return fail("source_not_sme");
+
+  // Fresh state: the mirror can lag the vault, so the chain is read and the
+  // mirror reconciled before anything is derived from it. Any failure here is
+  // `unavailable` — a vault the chain cannot be asked about is not derivable.
+  const chainState = await deps.chain.readCampaign(mirror.value.contractAddress);
+
+  if (!chainState.ok) return fail("unavailable");
+
+  const reconciled = await reconcileCampaign(deps.campaigns, {
+    campaignId: mirror.value.campaignId,
+    snapshot: toChainCampaignSnapshot(chainState.value, []),
+    correlationId: input.correlationId
+  });
+
+  if (!reconciled.ok) return fail("unavailable");
+
+  const campaign = { ok: true as const, value: reconciled.value.campaign };
+
   if (campaign.value.state !== "settled") return fail("campaign_not_settled");
 
   const decision = await deps.applicationReviews.readLatestHumanDecision(input.applicationId);

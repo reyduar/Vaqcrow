@@ -194,13 +194,18 @@ function repositoryDouble(
   input: {
     submit?: unknown;
     findById?: unknown;
+    findActiveByCampaignPeriod?: unknown;
   } = {}
 ): RevenueShareDistributionRouteDependencies["repository"] {
   return {
     submit: vi
       .fn()
       .mockResolvedValue(input.submit ?? { ok: true, value: { record: snapshot, applied: true } }),
-    findById: vi.fn().mockResolvedValue(input.findById ?? { ok: true, value: snapshot })
+    findById: vi.fn().mockResolvedValue(input.findById ?? { ok: true, value: snapshot }),
+    // By default the campaign and period have no live distribution yet.
+    findActiveByCampaignPeriod: vi
+      .fn()
+      .mockResolvedValue(input.findActiveByCampaignPeriod ?? { ok: false, error: { code: "not_found" } })
   };
 }
 
@@ -272,7 +277,8 @@ describe("POST /revenue-share-distributions", () => {
     expect(derive).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
       campaignId: CAMPAIGN_ID,
-      sourceAccountId: SOURCE_ACCOUNT_ID
+      sourceAccountId: SOURCE_ACCOUNT_ID,
+      correlationId: expect.any(String)
     });
   });
 
@@ -313,6 +319,7 @@ describe("POST /revenue-share-distributions", () => {
     ["campaign_not_settled", 409],
     ["decision_not_approved", 409],
     ["contributions_incomplete", 409],
+    ["source_not_sme", 409],
     ["no_eligible_period", 422],
     ["invalid_sales_data", 422],
     ["no_contributors", 422],
@@ -330,6 +337,22 @@ describe("POST /revenue-share-distributions", () => {
 
     expect(response.statusCode).toBe(status);
     expect(response.json()).toEqual({ code: "derivation_failed", reason });
+  });
+
+  it("maps an already distributed campaign and period to 409 already_distributed at prepare", async () => {
+    const xdr = xdrDouble();
+    app = buildApp({
+      revenueShareDistribution: deps({
+        xdr,
+        repository: repositoryDouble({ findActiveByCampaignPeriod: { ok: true, value: snapshot } })
+      })
+    });
+
+    const response = await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ code: "already_distributed" });
+    expect(xdr.build).not.toHaveBeenCalled();
   });
 
   it("maps an unavailable derivation to 503 unavailable", async () => {
@@ -493,7 +516,8 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
     expect(derive).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
       campaignId: CAMPAIGN_ID,
-      sourceAccountId: SOURCE_ACCOUNT_ID
+      sourceAccountId: SOURCE_ACCOUNT_ID,
+      correlationId: expect.any(String)
     });
   });
 
@@ -686,6 +710,12 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
       { code: "idempotency_conflict" } as const,
       409,
       { code: "idempotency_conflict" }
+    ],
+    [
+      "a campaign and period that are already distributed",
+      { code: "already_distributed" } as const,
+      409,
+      { code: "already_distributed" }
     ],
     ["an unavailable store", { code: "unavailable" } as const, 503, { code: "unavailable" }],
     ["a missing record", { code: "not_found" } as const, 503, { code: "unavailable" }]
