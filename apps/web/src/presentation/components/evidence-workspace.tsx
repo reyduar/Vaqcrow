@@ -73,7 +73,12 @@ export function EvidenceWorkspace({
   const applicationId = useJourneyStore((state) => state.applicationId);
   const campaignId = useJourneyStore((state) => state.campaignId);
   const distributionId = useJourneyStore((state) => state.distributionId);
-  const [sources, setSources] = useState<EvidenceSources | undefined>();
+  // The read is stored with the ids it answered: sources of a superseded
+  // journey are never rendered (they read as loading) and a late response of a
+  // superseded read is dropped by the effect's `cancelled` guard.
+  const readKey = `${applicationId}|${campaignId}|${distributionId}`;
+  const [read, setRead] = useState<{ key: string; sources: EvidenceSources } | undefined>();
+  const sources = read?.key === readKey ? read.sources : undefined;
 
   useEffect(() => {
     if (applicationId === null) return;
@@ -124,13 +129,13 @@ export function EvidenceWorkspace({
         readDistribution()
       ]);
       if (cancelled) return;
-      setSources({ applicationId, decision, campaign, distribution });
+      setRead({ key: readKey, sources: { applicationId, decision, campaign, distribution } });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [applicationId, campaignId, distributionId, humanDecisionGateway, campaignGateway, distributionGateway]);
+  }, [applicationId, campaignId, distributionId, readKey, humanDecisionGateway, campaignGateway, distributionGateway]);
 
   if (applicationId === null) return <StartWithRequestNotice action="ver la evidencia" />;
 

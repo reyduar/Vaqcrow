@@ -141,3 +141,28 @@ test("a step that needs the application asks for the request when the URL carrie
   await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
   await expect(page.getByRole("form", { name: /Decisión humana/ })).toHaveCount(0);
 });
+
+test("browser history to another application's URL makes the journey follow it, and the URL is not rewritten back", async ({
+  page
+}) => {
+  const first = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
+  const second = "9a8b7c6d-1111-4222-8333-444455556666";
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  const fundingLink = stepNav.getByRole("link", { name: "Funding" });
+
+  await page.goto(`/approval?application=${first}`);
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${first}`));
+
+  // A second history entry for another application (the App Router syncs pushState into useSearchParams).
+  await page.evaluate((id) => window.history.pushState(null, "", `/approval?application=${id}`), second);
+  await expect(page).toHaveURL(new RegExp(`application=${second}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${second}`));
+
+  // Back to the first entry: the store follows the URL instead of writing its older ids over it.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`application=${first}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${first}`));
+  await page.goForward();
+  await expect(page).toHaveURL(new RegExp(`application=${second}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${second}`));
+});

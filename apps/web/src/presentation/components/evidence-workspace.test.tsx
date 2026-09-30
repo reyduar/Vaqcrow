@@ -1,4 +1,4 @@
-import { render as rtlRender, screen, within } from "@testing-library/react";
+import { act, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
@@ -11,7 +11,7 @@ import type {
   HumanDecisionRecord,
   RevenueShareDistributionSnapshot
 } from "@vaqcrow/contracts";
-import { JourneyStoreProvider } from "@/state/journey-store-provider";
+import { JourneyStoreProvider, useJourneyStore } from "@/state/journey-store-provider";
 import { EvidenceWorkspace } from "./evidence-workspace";
 
 const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -349,5 +349,69 @@ describe("EvidenceWorkspace", () => {
     ).not.toThrow();
 
     expect(await screen.findByText("Caso simulado")).toBeInTheDocument();
+  });
+
+  describe("the journey application changes while mounted", () => {
+    const OTHER_APPLICATION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+    function SwitchApplication() {
+      const recordApplication = useJourneyStore((state) => state.recordApplication);
+      return <button onClick={() => recordApplication(OTHER_APPLICATION_ID)}>switch application</button>;
+    }
+
+    it("drops the previous application's evidence immediately and loads the new one", async () => {
+      const humanDecisionGateway = createHumanDecisionGateway({
+        readLatest: vi
+          .fn()
+          .mockResolvedValueOnce(decision())
+          .mockReturnValueOnce(new Promise(() => {}))
+      });
+      renderRun(
+        <>
+          <SwitchApplication />
+          <EvidenceWorkspace
+            humanDecisionGateway={humanDecisionGateway}
+            campaignGateway={createCampaignGateway()}
+            distributionGateway={createDistributionGateway()}
+          />
+        </>
+      );
+      expect(await screen.findByText(actor)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "switch application" }));
+
+      expect(screen.queryByText(actor)).not.toBeInTheDocument();
+      expect(screen.queryByText("Fondeo abierto")).not.toBeInTheDocument();
+      expect(screen.getByText("Cargando la evidencia…")).toBeInTheDocument();
+      expect(humanDecisionGateway.readLatest).toHaveBeenLastCalledWith(OTHER_APPLICATION_ID);
+    });
+
+    it("ignores a slow response of the superseded application", async () => {
+      let resolveOld: (value: HumanDecisionRecord) => void = () => {};
+      const humanDecisionGateway = createHumanDecisionGateway({
+        readLatest: vi
+          .fn()
+          .mockReturnValueOnce(new Promise<HumanDecisionRecord>((resolve) => (resolveOld = resolve)))
+          .mockResolvedValueOnce(decision({ actor: "Nueva Revisora", applicationId: OTHER_APPLICATION_ID }))
+      });
+      render(
+        <>
+          <SwitchApplication />
+          <EvidenceWorkspace
+            humanDecisionGateway={humanDecisionGateway}
+            campaignGateway={createCampaignGateway()}
+            distributionGateway={createDistributionGateway()}
+          />
+        </>
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "switch application" }));
+      expect(await screen.findByText("Nueva Revisora")).toBeInTheDocument();
+
+      await act(async () => resolveOld(decision()));
+
+      expect(screen.getByText("Nueva Revisora")).toBeInTheDocument();
+      expect(screen.queryByText(actor)).not.toBeInTheDocument();
+    });
   });
 });
