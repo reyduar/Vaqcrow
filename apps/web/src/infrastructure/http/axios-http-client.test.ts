@@ -214,6 +214,17 @@ describe("AxiosHttpClient", () => {
       expect(JSON.stringify(error)).not.toContain("raw");
     });
 
+    it("surfaces a sanitized reason next to the code and drops one that is not identifier-shaped", async () => {
+      const typed = await failWith(409, { code: "derivation_failed", reason: "source_not_sme", message: "raw" });
+      expect(typed.errorCode).toBe("derivation_failed");
+      expect(typed.errorReason).toBe("source_not_sme");
+      expect(JSON.stringify(typed)).not.toContain("raw");
+
+      for (const reason of ["<script>", 7, "A".repeat(80), undefined]) {
+        expect((await failWith(409, { code: "derivation_failed", reason })).errorReason).toBeUndefined();
+      }
+    });
+
     it("drops codes that are not identifier-shaped", async () => {
       for (const data of [{ code: "<script>" }, { code: 7 }, { code: "A".repeat(80) }, {}, null]) {
         expect((await failWith(409, data)).errorCode).toBeUndefined();

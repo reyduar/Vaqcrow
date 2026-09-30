@@ -1,15 +1,14 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import {
-  demoDistributionRecipients,
-  SIMULADO_DISTRIBUTION_LABEL
-} from "@/application/distribution/demo-distribution-recipients";
+import { formatArs, formatRateBps } from "@/application/distribution/derivation-format";
+import { derivationFailureMessage } from "@/application/distribution/derivation-failure-copy";
 import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
 import type {
   RevenueShareDistributionErrorKind,
-  RevenueShareDistributionGateway
+  RevenueShareDistributionGateway,
+  RevenueShareDistributionGatewayError
 } from "@/application/ports/revenue-share-distribution-gateway";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { WalletError } from "@/application/ports/wallet-port";
@@ -24,8 +23,9 @@ import type {
 } from "@vaqcrow/contracts";
 import { Badge } from "./badge";
 import { Button } from "./button";
+import { DistributionDerivation } from "./distribution-derivation";
+import { FundCampaignFirstNotice } from "./fund-campaign-first-notice";
 import { StartWithRequestNotice } from "./start-with-request-notice";
-import { SyntheticValue } from "./synthetic-value";
 import {
   TransactionReviewModal,
   type TransactionReviewNetworkState,
@@ -66,9 +66,12 @@ interface DistributionFailure {
 }
 
 /** Authored here and never sourced from the backend or the wallet. */
-const MESSAGES: Readonly<Record<DistributionFailureKind, string>> = {
-  validation:
-    "El servicio rechazó los datos de la distribución. Revise los destinatarios y vuelva a prepararla.",
+const MESSAGES: Readonly<Record<Exclude<DistributionFailureKind, "derivation_failed">, string>> = {
+  validation: "El servicio rechazó los datos de la distribución. Vuelva a prepararla.",
+  derivation_mismatch:
+    "Los términos que se iban a firmar ya no coinciden con lo que el servicio calcula para esta campaña. No se registró nada; vuelva a preparar la distribución.",
+  already_distributed:
+    "Ya existe una distribución para este período de esta campaña. No se registró otra.",
   account_not_found:
     "La cuenta de origen no está fondeada en Testnet, así que no se pudo preparar la distribución. Fondee la cuenta en Testnet y vuelva a intentarlo.",
   not_found: "No se encontró la distribución en el servicio. Vuelva a prepararla.",
@@ -94,11 +97,19 @@ const MESSAGES: Readonly<Record<DistributionFailureKind, string>> = {
     "No se pudo completar la distribución por un error inesperado. No se confirmó nada; puede reintentar."
 };
 
-function failureOfKind(kind: DistributionFailureKind): DistributionFailure {
+function failureOfKind(kind: Exclude<DistributionFailureKind, "derivation_failed">): DistributionFailure {
   return { kind, message: MESSAGES[kind] };
 }
 
-const WALLET_KIND: Readonly<Record<WalletError["kind"], DistributionFailureKind>> = {
+/** A refused derivation names its reason; every other gateway failure is a coarse kind. */
+function failureOfError(error: RevenueShareDistributionGatewayError): DistributionFailure {
+  if (error.kind === "derivation_failed") {
+    return { kind: "derivation_failed", message: derivationFailureMessage(error.reason) };
+  }
+  return failureOfKind(error.kind);
+}
+
+const WALLET_KIND: Readonly<Record<WalletError["kind"], Exclude<DistributionFailureKind, "derivation_failed">>> = {
   rejected: "wallet_rejected",
   unavailable: "wallet_unavailable",
   network_mismatch: "wallet_network_mismatch",
@@ -155,10 +166,11 @@ export interface DistributionWorkspaceProps {
 /**
  * Distribution step container. It acts on the journey's application (without
  * one it asks for the request first) and records the distribution it prepares
- * in the journey. The connected account is the source; the
- * recipients are the frozen synthetic demo fixture. The service builds the
- * transaction, the person reviews the recipients and amounts and signs it in
- * Freighter, and the service verifies and submits it.
+ * in the journey. Without a funded campaign it asks for one first. The
+ * connected account is the source; the recipients and amounts are derived by the
+ * service from the campaign and the SME's sales, and shown (labeled simulated)
+ * before signing. The service builds the transaction, the person reviews the
+ * derivation and signs it in Freighter, and the service verifies and submits it.
  *
  * Nothing is signed until the person explicitly confirms inside the review
  * modal, and the passphrase always comes from the prepared response — never a
@@ -224,18 +236,18 @@ export function DistributionWorkspace({
       setFailure(failureOfKind("not_connected"));
       return;
     }
+    if (applicationId === null || campaignId === null) return;
 
     inFlightRef.current = true;
     setIsPreparing(true);
     try {
+      // Who is paid and how much is derived by the service from the campaign and
+      // the SME's sales; the web declares only the case.
       const result = await gateway.prepare({
         sourceAccountId: publicKey,
-        recipients: demoDistributionRecipients.recipients.map((recipient) => ({
-          accountId: recipient.accountId,
-          amountStroops: recipient.amountStroops
-        })),
-        memo: null,
-        applicationId
+        applicationId,
+        campaignId,
+        memo: null
       });
 
       if (result.ok) {
@@ -247,7 +259,7 @@ export function DistributionWorkspace({
         // page uses this to put the id in the URL so the hash survives navigation.
         onDistributionIdentified(result.value.distributionId);
       } else {
-        setFailure(failureOfKind(result.error.kind));
+        setFailure(failureOfError(result.error));
       }
     } catch {
       setFailure(failureOfKind("unknown"));
@@ -255,7 +267,7 @@ export function DistributionWorkspace({
       inFlightRef.current = false;
       setIsPreparing(false);
     }
-  }, [gateway, publicKey, applicationId, onDistributionIdentified]);
+  }, [gateway, publicKey, applicationId, campaignId, onDistributionIdentified]);
 
   const sign = useCallback(async () => {
     if (!prepared) return;
@@ -284,7 +296,8 @@ export function DistributionWorkspace({
           expiresAt: prepared.expiresAt,
           recipients: prepared.recipients
         },
-        applicationId: prepared.applicationId
+        applicationId: prepared.applicationId,
+        campaignId: prepared.campaignId
       });
 
       if (result.ok) {
@@ -296,7 +309,7 @@ export function DistributionWorkspace({
         // keeps the URL correct even if the prepared answer was never seen.
         onDistributionIdentified(result.value.distribution.distributionId);
       } else {
-        setFailure(failureOfKind(result.error.kind));
+        setFailure(failureOfError(result.error));
       }
     } catch (caught) {
       setFailure(toFailure(caught));
@@ -311,7 +324,7 @@ export function DistributionWorkspace({
     setFailure(undefined);
     const result = await gateway.getStatus(snapshot.distributionId);
     if (result.ok) setSnapshot(result.value);
-    else setFailure(failureOfKind(result.error.kind));
+    else setFailure(failureOfError(result.error));
   }, [gateway, snapshot]);
 
   const closeReview = () => {
@@ -336,17 +349,19 @@ export function DistributionWorkspace({
         : { signingStatus: "verification-rejected", signingErrorMessage: reviewError.message };
 
   if (applicationId === null) return <StartWithRequestNotice action="preparar la distribución" />;
+  if (campaignId === null) return <FundCampaignFirstNotice action="preparar la distribución" />;
 
   return (
     <section aria-label="Distribución de ingresos" lang="es" className="flex max-w-xl flex-col gap-4">
       <h3 className="text-lg font-semibold">Distribución de ingresos</h3>
       <div className="flex flex-wrap gap-2">
         <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
-        <Badge variant="simulado" label={SIMULADO_DISTRIBUTION_LABEL} lang="es" />
+        <Badge variant="simulado" label="SIMULADO" lang="es" />
       </div>
       <p className="text-sm">
-        El servicio arma la transacción de distribución y declara en qué red debe firmarse. Revise
-        la transacción y fírmela en su wallet; Vaqcrow nunca recibe sus claves ni mueve los fondos.
+        El servicio calcula la distribución a partir de la campaña y de las ventas simuladas de la
+        PyME, arma la transacción y declara en qué red debe firmarse. Revise el cálculo y fírmela en
+        su wallet; Vaqcrow nunca recibe sus claves ni mueve los fondos.
       </p>
 
       {/* The id the page read from `?distribution=`, shown so a reload keeps the
@@ -367,28 +382,9 @@ export function DistributionWorkspace({
         </Button>
       )}
 
-      <section aria-label="Destinatarios de la distribución" className="flex flex-col gap-2">
-        <h4 className="text-sm font-semibold">
-          Destinatarios <span className="text-muted">· datos simulados de la demo</span>
-        </h4>
-        <ul className="flex list-none flex-col gap-1 p-0 text-sm">
-          {demoDistributionRecipients.recipients.map((recipient, index) => (
-            <li key={recipient.accountId} className="flex flex-wrap items-center gap-2">
-              <SyntheticValue
-                label={`Destinatario ${index + 1}`}
-                value={`${formatStroopsAsXlm(recipient.amountStroops)} XLM`}
-                simuladoLabel={SIMULADO_DISTRIBUTION_LABEL}
-              />
-              <span className="font-mono text-xs break-all">{recipient.accountId}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="text-sm">
-          Versión de la regla{" "}
-          <span className="font-mono">{demoDistributionRecipients.ruleVersion}</span>{" "}
-          <Badge variant="simulado" label={SIMULADO_DISTRIBUTION_LABEL} lang="es" />
-        </p>
-      </section>
+      {prepared ? (
+        <DistributionDerivation derivation={prepared.derivation} recipients={prepared.recipients} />
+      ) : null}
 
       {bannerError ? (
         <p role="alert" className="text-sm text-trust-critical">
@@ -457,9 +453,13 @@ export function DistributionWorkspace({
           prepared
             ? [
                 {
-                  label: `Versión de la regla (${SIMULADO_DISTRIBUTION_LABEL})`,
-                  value: demoDistributionRecipients.ruleVersion
+                  label: "Versión de la regla (SIMULADO)",
+                  value: prepared.derivation.ruleVersion
                 },
+                { label: "Período (SIMULADO)", value: prepared.derivation.period },
+                { label: "Ventas informadas (SIMULADO)", value: formatArs(prepared.derivation.salesArs) },
+                { label: "Tasa", value: formatRateBps(prepared.derivation.rateBps) },
+                { label: "Obligación (SIMULADO)", value: formatArs(prepared.derivation.obligationArs) },
                 { label: "Cuenta de origen", value: publicKey ?? "", mono: true },
                 ...prepared.recipients.map((recipient, index) => ({
                   label: `Destinatario ${index + 1} · ${formatStroopsAsXlm(recipient.amountStroops)} XLM`,
