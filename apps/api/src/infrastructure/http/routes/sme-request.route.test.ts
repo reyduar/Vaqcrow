@@ -99,6 +99,23 @@ describe("POST /sme-requests", () => {
     expect(response.json()).toEqual({ errors: [{ field: "body", code: "invalid" }] });
   });
 
+  it("answers 400 with an empty errors list when only the database rejects the request", async () => {
+    const submit = vi.fn().mockResolvedValue({ ok: false, error: { code: "invalid_request" } });
+
+    const response = await build({ submit }).inject({ method: "POST", url: "/sme-requests", payload: request });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ errors: [] });
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 400 { body, invalid } for an unknown key without leaking schema text", async () => {
+    const response = await build().inject({ method: "POST", url: "/sme-requests", payload: { ...request, extra: 1 } });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ errors: [{ field: "body", code: "invalid" }] });
+  });
+
   it("answers 503 unavailable when persistence fails", async () => {
     const submit = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
 

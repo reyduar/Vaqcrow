@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(23);
 
 -- Structure and access control ------------------------------------------------
 
@@ -117,6 +117,39 @@ select is(
   0,
   'deleting the application removes its request'
 );
+
+-- The API's real role -----------------------------------------------------------
+-- The assertions above run as the migration owner. The API connects as
+-- service_role, so prove that role can complete the atomic insert itself (both
+-- tables) with only the grants the migration gives it.
+
+set local role service_role;
+
+select is(
+  (
+    select result_kind
+      from public.submit_sme_request(
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc4',
+        'sme:SYN-PH-0001', 9000000, '2026-01', '2026-06'
+      )
+  ),
+  'applied',
+  'service_role can call the submit command and it is applied'
+);
+
+select is(
+  (select state from public.application_review where application_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4'),
+  'awaiting_assessment',
+  'service_role submit created the application_review row'
+);
+
+select is(
+  (select declared_total_ars::text from public.sme_request where application_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4'),
+  '9000000',
+  'service_role submit created the sme_request row'
+);
+
+reset role;
 
 select * from finish();
 

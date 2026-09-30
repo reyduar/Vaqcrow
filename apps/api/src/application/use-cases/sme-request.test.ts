@@ -90,6 +90,39 @@ describe("submitSmeRequest", () => {
     });
   });
 
+  it("maps a root-level issue (unknown key, empty path) to the body field as invalid, not required", async () => {
+    const repo = repository();
+
+    const result = await submitSmeRequest(
+      { repository: repo, generateApplicationId: () => APPLICATION_ID },
+      { body: { ...request, extra: true }, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "invalid_request", fieldErrors: [{ field: "body", code: "invalid" }] }
+    });
+    expect(repo.submit).not.toHaveBeenCalled();
+  });
+
+  it("keeps field errors next to a root-level issue, root reported as invalid", async () => {
+    const result = await submitSmeRequest(
+      { repository: repository(), generateApplicationId: () => APPLICATION_ID },
+      { body: { ...request, declaredTotalArs: -1, extra: true }, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: "invalid_request",
+        fieldErrors: [
+          { field: "declaredTotalArs", code: "out_of_range" },
+          { field: "body", code: "invalid" }
+        ]
+      }
+    });
+  });
+
   it.each(["invalid_request", "unavailable", "not_found"] as const)(
     "maps repository failure %s to a sanitized error",
     async (code) => {
