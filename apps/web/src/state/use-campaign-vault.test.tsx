@@ -166,7 +166,8 @@ describe("useCampaignVault: contributing", () => {
       CAMPAIGN_ID,
       expect.objectContaining({ signedXdr: "SIGNED-XDR" })
     );
-    expect(gateway.getTransaction).toHaveBeenCalledWith(CAMPAIGN_ID, HASH);
+    // The poll names the investor so the API mirrors their confirmed contribution (T5a).
+    expect(gateway.getTransaction).toHaveBeenCalledWith(CAMPAIGN_ID, HASH, INVESTOR);
     expect(result.current.campaign?.totalStroops).toBe(15000000n);
     expect(result.current.error).toBeUndefined();
   });

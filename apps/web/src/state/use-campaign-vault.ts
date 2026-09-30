@@ -175,10 +175,11 @@ export function useCampaignVault(
   );
 
   const pollTransaction = useCallback(
-    async (id: string, transactionHash: string) => {
+    async (id: string, transactionHash: string, investorAccountId: string) => {
       if (!gateway) return;
       for (let attempt = 0; attempt < maxPollAttempts; attempt += 1) {
-        const status = await gateway.getTransaction(id, transactionHash);
+        // Naming the investor makes the API mirror their confirmed contribution.
+        const status = await gateway.getTransaction(id, transactionHash, investorAccountId);
 
         if (status.status === "success") {
           if (status.campaign) setCampaign(status.campaign);
@@ -240,7 +241,7 @@ export function useCampaignVault(
         const submitCommand = { ...command, signedXdr } satisfies SubmitContractInvocationCommand;
         const submission = await gateway.submitInvocation(campaignId, submitCommand);
 
-        await pollTransaction(campaignId, submission.transactionHash);
+        await pollTransaction(campaignId, submission.transactionHash, facts.investorAccountId);
       } catch (caught) {
         setError(toCampaignVaultError(caught));
       } finally {
