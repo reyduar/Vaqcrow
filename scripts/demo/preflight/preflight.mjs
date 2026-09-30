@@ -9,7 +9,20 @@
 
 export const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
-/** Names the API needs for the hosted demo (`apps/api` config modules). */
+/**
+ * Names whose ABSENCE breaks the hosted demo journey — not the names the API
+ * needs in order to boot.
+ *
+ * `STELLAR_HORIZON_URL` and `STELLAR_RPC_URL` are deliberately absent: both are
+ * optional and the API falls back to the canonical Testnet endpoints when they
+ * are unset (see the two constants below), so a deployment without them still
+ * boots and still reaches Testnet.
+ *
+ * `CORS_ALLOWED_ORIGINS` stays even though it is not a boot dependency either:
+ * absent outside `APP_ENV=local` it resolves to an empty allow-list
+ * (`apps/api/src/application/config/cors-config.ts`), which blocks the browser
+ * origin and so does break the journey.
+ */
 export const REQUIRED_API_ENV = [
   "APP_ENV",
   "SUPABASE_URL",
@@ -18,12 +31,20 @@ export const REQUIRED_API_ENV = [
   "LLM_MODEL",
   "LLM_API_KEY",
   "STELLAR_NETWORK",
-  "STELLAR_HORIZON_URL",
-  "STELLAR_RPC_URL",
   "STELLAR_CAMPAIGN_FACTORY_ID",
   "STELLAR_PLATFORM_SECRET_KEY",
   "CORS_ALLOWED_ORIGINS"
 ];
+
+/**
+ * Canonical Testnet endpoints, mirrored from
+ * `apps/api/src/application/config/stellar-config.ts` (`STELLAR_TESTNET_HORIZON_URL`,
+ * `STELLAR_TESTNET_RPC_URL`). The API returns these exact values when the
+ * variable is unset, so the preflight probes the same endpoint the API would
+ * use. Keep this pair in sync with that module.
+ */
+export const STELLAR_TESTNET_HORIZON_URL = "https://horizon-testnet.stellar.org";
+export const STELLAR_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 
 /** Names the web needs. */
 export const REQUIRED_WEB_ENV = ["NEXT_PUBLIC_API_BASE_URL"];
@@ -190,7 +211,7 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
   const get = (name) => (isPresent(env[name]) ? env[name].trim() : undefined);
   const timeout = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const rpcCall = async (method, params) => {
-    const response = await fetchFn(get("STELLAR_RPC_URL"), {
+    const response = await fetchFn(rpc, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, ...(params ? { params } : {}) }),
@@ -203,8 +224,14 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
   };
 
   const apiBase = options.api ?? get("NEXT_PUBLIC_API_BASE_URL");
-  const horizon = get("STELLAR_HORIZON_URL");
-  const rpc = get("STELLAR_RPC_URL");
+  // Both endpoints are optional: when unset, probe the canonical Testnet
+  // endpoint the API itself would use, and say so in the check detail.
+  const horizonConfigured = get("STELLAR_HORIZON_URL");
+  const rpcConfigured = get("STELLAR_RPC_URL");
+  const horizon = horizonConfigured ?? STELLAR_TESTNET_HORIZON_URL;
+  const rpc = rpcConfigured ?? STELLAR_TESTNET_RPC_URL;
+  const horizonSource = horizonConfigured ? "" : ` (canonical Testnet default ${horizon}; STELLAR_HORIZON_URL unset)`;
+  const rpcSource = rpcConfigured ? "" : ` (canonical Testnet default ${rpc}; STELLAR_RPC_URL unset)`;
   const supabaseUrl = get("SUPABASE_URL");
   const serviceKey = get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -262,13 +289,12 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
       "horizon",
       "Horizon reachable, Testnet",
       async () => {
-        if (!horizon) return { ok: false, detail: "STELLAR_HORIZON_URL is not set" };
         const response = await fetchFn(`${trimSlash(horizon)}/`, { signal: timeout() });
-        if (!response.ok) return { ok: false, detail: `HTTP ${response.status}` };
+        if (!response.ok) return { ok: false, detail: `HTTP ${response.status}${horizonSource}` };
         const body = await response.json();
         return body.network_passphrase === TESTNET_PASSPHRASE
-          ? { ok: true, detail: "HTTP 200, Testnet passphrase" }
-          : { ok: false, detail: "network passphrase is not Testnet" };
+          ? { ok: true, detail: `HTTP 200, Testnet passphrase${horizonSource}` }
+          : { ok: false, detail: `network passphrase is not Testnet${horizonSource}` };
       },
       redact
     ),
@@ -276,13 +302,14 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
       "rpc",
       "Soroban RPC healthy, Testnet",
       async () => {
-        if (!rpc) return { ok: false, detail: "STELLAR_RPC_URL is not set" };
         const health = await rpcCall("getHealth");
-        if (health?.status !== "healthy") return { ok: false, detail: `getHealth status: ${health?.status ?? "unknown"}` };
+        if (health?.status !== "healthy") {
+          return { ok: false, detail: `getHealth status: ${health?.status ?? "unknown"}${rpcSource}` };
+        }
         const network = await rpcCall("getNetwork");
         return network?.passphrase === TESTNET_PASSPHRASE
-          ? { ok: true, detail: "healthy, Testnet passphrase" }
-          : { ok: false, detail: "network passphrase is not Testnet" };
+          ? { ok: true, detail: `healthy, Testnet passphrase${rpcSource}` }
+          : { ok: false, detail: `network passphrase is not Testnet${rpcSource}` };
       },
       redact
     ),
@@ -292,7 +319,6 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
       async () => {
         const factoryId = get("STELLAR_CAMPAIGN_FACTORY_ID");
         if (!factoryId) return { ok: false, detail: "STELLAR_CAMPAIGN_FACTORY_ID is not set" };
-        if (!rpc) return { ok: false, detail: "STELLAR_RPC_URL is not set" };
         if (!contractInstanceKey) return { ok: false, detail: "cannot build the ledger key (Stellar SDK unavailable)" };
         const result = await rpcCall("getLedgerEntries", { keys: [contractInstanceKey(factoryId)] });
         const found = Array.isArray(result?.entries) && result.entries.length > 0;
@@ -309,7 +335,6 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
       id,
       label,
       async () => {
-        if (!horizon) return { ok: false, detail: "STELLAR_HORIZON_URL is not set" };
         const response = await fetchFn(`${trimSlash(horizon)}/accounts/${publicKey}`, { signal: timeout() });
         if (response.status === 404) return { ok: false, detail: `${abbreviate(publicKey)} not found on Horizon (unfunded)` };
         if (!response.ok) return { ok: false, detail: `${abbreviate(publicKey)}: Horizon HTTP ${response.status}` };

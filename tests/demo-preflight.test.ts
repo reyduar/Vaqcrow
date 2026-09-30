@@ -4,6 +4,8 @@ import {
   REQUIRED_API_ENV,
   REQUIRED_WEB_ENV,
   JOURNEY_TABLES,
+  STELLAR_TESTNET_HORIZON_URL,
+  STELLAR_TESTNET_RPC_URL,
   exitCodeFor,
   formatReport,
   parseArgs,
@@ -22,6 +24,10 @@ const API = "https://api.example.test";
 const HORIZON = "https://horizon.example.test";
 const RPC = "https://rpc.example.test";
 const SUPABASE = "https://ref.supabase.example.test";
+// The canonical Testnet endpoints the API falls back to when the variables are
+// unset (`apps/api/src/application/config/stellar-config.ts`).
+const CANONICAL_HORIZON = "https://horizon-testnet.stellar.org";
+const CANONICAL_RPC = "https://soroban-testnet.stellar.org";
 
 const env = {
   APP_ENV: "demo",
@@ -50,15 +56,23 @@ type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>
 /** A fetch double: routes by exact URL (+ JSON-RPC method), every unhandled call is a test failure. */
 function fetchDouble(overrides: Record<string, Handler> = {}) {
   const account = (xlm: string) => json({ balances: [{ asset_type: "native", balance: xlm }] });
+  // Both the configured and the canonical Testnet bases are routable, so a test
+  // can unset the variables and still reach the endpoint the API would use.
+  const horizonBases = [HORIZON, CANONICAL_HORIZON];
+  const rpcBases = [RPC, CANONICAL_RPC];
   const handlers: Record<string, Handler> = {
     [`GET ${API}/health`]: () => json({ status: "ok" }),
-    [`GET ${HORIZON}/`]: () => json({ network_passphrase: TESTNET }),
     "RPC getHealth": () => json({ result: { status: "healthy" } }),
     "RPC getNetwork": () => json({ result: { passphrase: TESTNET } }),
     "RPC getLedgerEntries": () => json({ result: { entries: [{ key: "k" }] } }),
-    [`GET ${HORIZON}/accounts/${PLATFORM}`]: () => account("9999.0000000"),
-    [`GET ${HORIZON}/accounts/${SME}`]: () => account("9999.0000000"),
-    [`GET ${HORIZON}/accounts/${INVESTOR}`]: () => account("9999.0000000"),
+    ...Object.fromEntries(
+      horizonBases.flatMap((base) => [
+        [`GET ${base}/`, () => json({ network_passphrase: TESTNET })],
+        [`GET ${base}/accounts/${PLATFORM}`, () => account("9999.0000000")],
+        [`GET ${base}/accounts/${SME}`, () => account("9999.0000000")],
+        [`GET ${base}/accounts/${INVESTOR}`, () => account("9999.0000000")]
+      ]) as Array<[string, Handler]>
+    ),
     ...Object.fromEntries(
       JOURNEY_TABLES.map((table) => [`HEAD ${SUPABASE}/rest/v1/${table}?select=*&limit=0`, () => new Response(null, { status: 200 })])
     ),
@@ -66,16 +80,16 @@ function fetchDouble(overrides: Record<string, Handler> = {}) {
       new Response(null, { status: 200 }),
     ...overrides
   };
-  const calls: { key: string; init?: RequestInit }[] = [];
+  const calls: { key: string; url: string; init?: RequestInit }[] = [];
   const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
     let key = `${method} ${url}`;
-    if (url === RPC) {
+    if (rpcBases.includes(url)) {
       const body = JSON.parse(String(init?.body)) as { method: string };
       key = `RPC ${body.method}`;
     }
-    calls.push({ key, ...(init ? { init } : {}) });
+    calls.push({ key, url, ...(init ? { init } : {}) });
     const handler = handlers[key];
     if (!handler) throw new Error(`unexpected request: ${key}`);
     return handler(url, init);
@@ -171,6 +185,25 @@ describe("demo preflight: environment names", () => {
     expect(check?.detail).toContain(name);
   });
 
+  it("does not require the optional Stellar endpoints: the journey-critical env alone is green", async () => {
+    const { STELLAR_HORIZON_URL: _horizon, STELLAR_RPC_URL: _rpc, ...journeyCritical } = env;
+    void _horizon;
+    void _rpc;
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: journeyCritical }));
+    expect(statusOf(report, "env-api")).toBe("pass");
+  });
+
+  it("keeps the optional Stellar endpoints out of the required-name list", () => {
+    expect(REQUIRED_API_ENV).not.toContain("STELLAR_HORIZON_URL");
+    expect(REQUIRED_API_ENV).not.toContain("STELLAR_RPC_URL");
+  });
+
+  it("exports the canonical Testnet endpoints mirrored from the API config", () => {
+    expect(STELLAR_TESTNET_HORIZON_URL).toBe(CANONICAL_HORIZON);
+    expect(STELLAR_TESTNET_RPC_URL).toBe(CANONICAL_RPC);
+  });
+
   it("requires the factory id and the platform key as a pair", async () => {
     const { fetchFn } = fetchDouble();
     const { STELLAR_PLATFORM_SECRET_KEY: _secret, ...rest } = env;
@@ -225,6 +258,35 @@ describe("demo preflight: service reachability", () => {
 
     const wrongNetwork = fetchDouble({ "RPC getNetwork": () => json({ result: { passphrase: "Standalone Network ; February 2017" } }) });
     expect(statusOf(await runPreflight(deps(wrongNetwork.fetchFn)), "rpc")).toBe("fail");
+  });
+
+  it("probes the canonical Testnet endpoints when the Stellar URL variables are unset", async () => {
+    const { STELLAR_HORIZON_URL: _horizon, STELLAR_RPC_URL: _rpc, ...rest } = env;
+    void _horizon;
+    void _rpc;
+    const { fetchFn, calls } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: rest }));
+    expect(statusOf(report, "horizon")).toBe("pass");
+    expect(statusOf(report, "rpc")).toBe("pass");
+    expect(calls.some((call) => call.key === `GET ${CANONICAL_HORIZON}/`)).toBe(true);
+    expect(calls.some((call) => call.key === `GET ${CANONICAL_HORIZON}/accounts/${PLATFORM}`)).toBe(true);
+    const rpcUrls = calls.filter((call) => call.key.startsWith("RPC ")).map((call) => call.url);
+    expect(rpcUrls.length).toBeGreaterThan(0);
+    expect(rpcUrls.every((url) => url === CANONICAL_RPC)).toBe(true);
+  });
+
+  it("names the canonical Testnet default in the horizon and rpc details when unset", async () => {
+    const { STELLAR_HORIZON_URL: _horizon, STELLAR_RPC_URL: _rpc, ...rest } = env;
+    void _horizon;
+    void _rpc;
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: rest }));
+    const horizon = report.checks.find((candidate) => candidate.id === "horizon");
+    const rpc = report.checks.find((candidate) => candidate.id === "rpc");
+    expect(horizon?.detail).toContain(CANONICAL_HORIZON);
+    expect(horizon?.detail).toMatch(/unset/);
+    expect(rpc?.detail).toContain(CANONICAL_RPC);
+    expect(rpc?.detail).toMatch(/unset/);
   });
 
   it("checks the factory contract instance through getLedgerEntries and fails when absent", async () => {
