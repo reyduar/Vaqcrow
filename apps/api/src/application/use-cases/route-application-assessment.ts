@@ -332,8 +332,10 @@ function assessmentRecordError(
  * for this application: an application already in `human_review` has no durable
  * handoff, its inputs were NOT preserved by this attempt, and the result says so
  * (`inputsPreserved: false`, `handoff: "absent"`). This state is reachable —
- * `supabase/seed/demo-application.sql` inserts the demo application directly in
- * `human_review`, and no other production path creates that state.
+ * a row inserted directly in `human_review` (an operator or a test fixture)
+ * reaches it, and so does any application whose assessment already succeeded.
+ * The demo journey itself never starts there: `POST /sme-requests` creates the
+ * application in `awaiting_assessment`.
  *
  * The state is read with `findById` rather than by widening the transition
  * rules: `human_review` is resolved as idempotent success while every other

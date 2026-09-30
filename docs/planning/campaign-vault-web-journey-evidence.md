@@ -41,6 +41,9 @@ El entorno de la corrida es el **despliegue hosteado**: API en Railway (`api-pro
 ## 3. Qué quedó implementado en esta unidad
 
 - **El paso de arranque que faltaba.** El recorrido hosteado no podía empezar: nada en el producto crea la fila `application_review` que la aprobación necesita —`ApplicationReviewRepositoryPort.create`/`transition` no tienen ningún consumidor en producción, y `/request` publica contra una ruta que no existe—. El perfil local lo tapaba sembrando la fila con `docker exec` contra el contenedor local; el hosteado no tenía equivalente. `supabase/seed/demo-application.sql` es ese paso, idempotente, y crea la fila en `human_review` para que la decisión humana se tome por la interfaz real en vez de saltearla.
+
+  > [!warning] Retirado
+  > Ese seed ya no existe: desde #95 (T2a) el recorrido crea su propia `application_review` con `POST /sme-requests`, y el script `supabase/seed/demo-application.sql` se eliminó en T6. Se conserva este párrafo como registro histórico de cómo se resolvió el arranque en ese momento.
 - **La decisión de almacenamiento y rotación del secreto de plataforma**, registrada en `cloud-environment-configuration-evidence.md` §5.1, con el respaldo verificado de que el `owner` de la fábrica es inmutable.
 - **Una guía operativa** (`docs/guides/freighter-and-testnet-walkthrough.md`) para que el recorrido lo pueda ejecutar alguien que no lo construyó.
 - La implementación del recorrido y sus pruebas vienen de [#247](https://github.com/reyduar/Vaqcrow/issues/247) y [#248](https://github.com/reyduar/Vaqcrow/issues/248), mergeadas en `main` por el PR [#285](https://github.com/reyduar/Vaqcrow/pull/285).
