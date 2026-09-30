@@ -84,6 +84,12 @@
       "sourceType": "github",
       "skillPath": "skills/zk-proofs/SKILL.md",
       "computedHash": "00403ff513e5a9db4a937cd3f71369acf397820141a25e8df068696410813060"
+    },
+    "zustand": {
+      "source": "lobehub/lobehub",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/zustand/SKILL.md",
+      "computedHash": "663fbdb4f16955398f46456637aca329a9c0d65c3eba1c91bb46811064aec0cb"
     }
   }
 }
