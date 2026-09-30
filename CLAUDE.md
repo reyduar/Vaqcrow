@@ -89,6 +89,21 @@ Pull-request-gated tests (`pnpm run test`, and everything `pnpm run verify` runs
 
 `odd/tasks/<slug>.md` is the iteration log that feeds that document: work units with commit hashes, RED→GREEN cycles, design decisions, advisories and how each was resolved. Keep it detailed enough that the evidence document can be written from it without re-deriving anything, and keep it current as the work happens. `odd/` is versioned — it is the record of how the work actually happened, not scratch space.
 
+## Documentation alignment and settled decisions
+
+A change to behavior, a variable's contract, or a verified fact must update every document that repeats it. The documents to check and keep aligned: `docs/planning/*-evidence.md` (the evidence corpus, authoritative for what was actually verified), `docs/architecture/*.md` (how the system works and its honest limits), `docs/planning/demo-run-preflight.md` (the operator runbook), `odd/tasks/*.md` (iteration logs and task records), and `AGENTS.md`/`CLAUDE.md` themselves — byte-identical twins that must be edited together.
+
+Before writing or approving a factual claim of the form "this was proven", "this was never exercised", or "this variable is required", cross-check it against the evidence corpus **and** the code. A document that contradicts the evidence corpus is a defect, not a nuance — a stale "never exercised" claim once survived a four-lens review and sent an operator to a needless rehearsal.
+
+`scripts/demo/preflight` mirrors the `apps/api` config modules (`apps/api/src/application/config/`). When one side's requirement changes — a variable becomes optional, a default changes, a check is added — the other side and its tests change in the same work unit; the preflight probes what the API would actually use rather than restating its requirements from memory.
+
+Settled decisions — do not relitigate without new evidence:
+
+- **No database reset between rehearsals (Option A).** Each rehearsal creates a fresh application and campaign; the evidence page filters by the current run's identifiers.
+- **The canonical Testnet Horizon/RPC endpoints are defaults, not required variables.** Both `STELLAR_HORIZON_URL` and `STELLAR_RPC_URL` are optional, falling back to `https://horizon-testnet.stellar.org` and `https://soroban-testnet.stellar.org`.
+- **The platform-key ↔ factory-`owner` correspondence is retired (proven 2026-09-25).** `POST /campaigns` deployed a vault on the hosted deployment; never describe it as unproven.
+- **The 2026-12-16 Testnet reset invalidates the contract addresses**, so the factory is redeployed and `STELLAR_CAMPAIGN_FACTORY_ID` re-pointed after that date.
+
 ## Workflow
 
 ### Branching
@@ -97,7 +112,10 @@ When starting work on an issue, name the branch exactly as `docs/planning/demo-t
 
 ### Skills
 
-Match the active skill registry (`.atl/skill-registry.md`, kept fresh automatically) to the technology being touched, and load the matching skill before writing code in that area — this mirrors `demo-tasks-list.md`'s own "Gate compartido antes de dependencias" convention. Currently installed and relevant to this stack: `supabase` + `supabase-postgres-best-practices` (schema, RLS, migrations), `heroui-react` / `heroui-native` / `heroui-migration` (UI components), `frontend-design` (visual/UX decisions). Stellar/Freighter/Horizon work has no skill installed yet: `docs/planning/stellar-blockchain-requirements.md` §Parte 4 (Tabla de skills recomendadas) is a vetted catalog with install commands — `stellar-dev` (Stellar Foundation) is its primary recommendation — install and load the relevant one when that work actually starts, rather than improvising. Playwright/Next.js have no dedicated skill catalog documented yet; check the registry and install through the same gate if a relevant one exists before adding either as a dependency.
+Match the active skill registry (`.atl/skill-registry.md`, kept fresh automatically) to the technology being touched, and load the matching skill before writing code in that area — this mirrors `demo-tasks-list.md`'s own "Gate compartido antes de dependencias" convention. Currently installed and relevant to this stack: `supabase` + `supabase-postgres-best-practices` (schema, RLS, migrations), `heroui-react` / `heroui-native` / `heroui-migration` (UI components), `frontend-design` (visual/UX decisions), `zustand` (client state in `apps/web/src/state/`). Stellar/Freighter/Horizon work has no skill installed yet: `docs/planning/stellar-blockchain-requirements.md` §Parte 4 (Tabla de skills recomendadas) is a vetted catalog with install commands — `stellar-dev` (Stellar Foundation) is its primary recommendation — install and load the relevant one when that work actually starts, rather than improvising. Playwright/Next.js have no dedicated skill catalog documented yet; check the registry and install through the same gate if a relevant one exists before adding either as a dependency.
+
+> [!warning] `zustand` is an upstream skill, not a Vaqcrow convention
+> `skills-lock.json` records it as sourced from `lobehub/lobehub`, so its examples (`@lobechat/types`, `flattenActions`, class-based `ActionImpl` slices, `internal_dispatch*` reducers) describe **that** codebase, not this one. Where it disagrees with the repository, the repository wins. The established pattern here is `apps/web/src/state/journey-store.ts`: `zustand/vanilla` `createStore` + `StoreApi`, wired through a context provider that creates one store per mount (`journey-store-provider.tsx` via `useState(() => createJourneyStore())`) — **never a module-level singleton** — consumed with `useStore(store, selector)`. The store holds client workflow identifiers only; SWR owns server state and the backend owns authoritative state. Use the skill for Zustand technique (selectors, store shapes, optimistic updates), not for its structural conventions.
 
 ### Obsidian-flavored Markdown
 

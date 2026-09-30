@@ -1,4 +1,3 @@
-import { parseAssessmentEvidenceBundle } from "@vaqcrow/ai";
 import type { AssessmentProviderPort } from "@vaqcrow/ai";
 import {
   parseApplicationId,
@@ -6,37 +5,49 @@ import {
   parseCorrelationId
 } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
+import type { ApplicationAssessmentRepositoryPort } from "../../../application/ports/application-assessment-repository-port.js";
 import type { ApplicationReviewRepositoryPort } from "../../../application/ports/application-review-repository-port.js";
-import { routeAssessmentFailureToManualReview } from "../../../application/use-cases/route-assessment-failure-to-manual-review.js";
+import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
+import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
+import { routeApplicationAssessment } from "../../../application/use-cases/route-application-assessment.js";
 
 /**
- * The application-scoped assessment surface (Feature #22, Task #71).
+ * The application-scoped assessment surface (Feature #22 Task #71, Feature #30
+ * Task #95 / T3a).
  *
- * It runs the same provider-independent assessment the standalone `POST
- * /assessments` runs, but bound to an application: a closed-set failure is
- * persisted as a sanitized handoff and routed to truthful manual review, while a
- * valid assessment is returned advisory and leaves the application untouched.
- * The route owns exactly what the other routes own — the exact body key set,
- * the status mapping and the correlation identity — plus the application id and
- * the caller-supplied `handoffId`.
+ * `POST` runs the same provider-independent assessment the standalone `POST
+ * /assessments` runs, bound to an application and fed by evidence the server
+ * derives from the persisted SME request and its sales periods — the body is
+ * only `{ handoffId }`, a client can no longer supply evidence. A valid
+ * assessment is persisted and the application moves to `human_review` in one
+ * atomic command (201 recorded, 200 same-attempt replay); a closed-set failure is
+ * persisted as a sanitized handoff and routed to truthful manual review; a
+ * request with no sales periods is `409 sales_evidence_missing` and changes
+ * nothing. `GET` reads the persisted assessment (404 until one is recorded).
  *
- * `handoffId` is the caller's idempotency key and the durable replay identity:
- * it is stored as the handoff's correlation, so retrying the same attempt
- * replays it and a different key against a durable handoff is an explicit
- * `correlation_conflict`. `request.id` stays the transport correlation (the
- * `x-correlation-id` header) and never decides replay.
+ * `handoffId` is the caller's per-attempt idempotency key for both outcomes: it
+ * is the recorded assessment's attempt id and the failure handoff's durable
+ * correlation, so retrying the same attempt replays and a different key against
+ * a durable record is an explicit `correlation_conflict`. `request.id` stays the
+ * transport correlation (the `x-correlation-id` header) and never decides replay.
  *
  * The provider and the timeout arrive from the dependencies; a request can never
  * choose them. The standalone `POST /assessments` contract is not changed.
  */
 
-const BODY_KEYS = new Set(["evidence", "handoffId"]);
+const BODY_KEYS = new Set(["handoffId"]);
 
 export interface ApplicationAssessmentRouteDependencies {
   readonly repository: Pick<
     ApplicationReviewRepositoryPort,
     "findById" | "recordAssessmentFailureHandoff" | "transition"
   >;
+  readonly assessments: Pick<
+    ApplicationAssessmentRepositoryPort,
+    "record" | "findByApplicationId" | "findStoredByApplicationId"
+  >;
+  readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
+  readonly salesData: Pick<SalesDataProviderPort, "getPeriods">;
   readonly provider: AssessmentProviderPort;
   readonly timeoutMs: number;
 }
@@ -62,30 +73,26 @@ export function registerApplicationAssessmentRoute(
       }
 
       let applicationId;
-      let evidence;
       let handoffId;
       try {
         applicationId = parseApplicationId(request.params.applicationId);
-        evidence = parseAssessmentEvidenceBundle(request.body["evidence"]);
         handoffId = parseAssessmentHandoffId(request.body["handoffId"]);
       } catch {
         return reply.code(400).send({ code: "invalid_request" });
       }
 
-      const result = await routeAssessmentFailureToManualReview(dependencies, {
+      const result = await routeApplicationAssessment(dependencies, {
         applicationId,
-        evidence,
         handoffId,
         // Transport trace only: request.id never decides replay.
         correlationId: parseCorrelationId(request.id)
       });
 
       if (result.ok) {
-        // 201 when this call performed the routing, 200 when it was already
-        // applied (same-key replay or crash recovery, or already in human_review).
-        return reply
-          .code(result.value.outcome === "manual_review" && result.value.applied ? 201 : 200)
-          .send(result.value);
+        // 201 when this call performed the recording/routing, 200 when it was
+        // already applied (same-key replay or crash recovery, or already in
+        // human_review).
+        return reply.code(result.value.applied ? 201 : 200).send(result.value);
       }
 
       switch (result.error.code) {
@@ -97,9 +104,33 @@ export function registerApplicationAssessmentRoute(
             .send({ code: "state_conflict", actualState: result.error.actualState });
         case "correlation_conflict":
           return reply.code(409).send({ code: "correlation_conflict" });
+        case "sales_evidence_missing":
+          return reply.code(409).send({ code: "sales_evidence_missing" });
         case "unavailable":
           return reply.code(503).send({ code: "unavailable" });
       }
+    }
+  );
+
+  app.get<{ Params: { applicationId: string } }>(
+    "/application-reviews/:applicationId/assessment",
+    async (request, reply) => {
+      let applicationId;
+      try {
+        applicationId = parseApplicationId(request.params.applicationId);
+      } catch {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      const result = await dependencies.assessments.findByApplicationId(applicationId);
+
+      if (result.ok) {
+        return reply.code(200).send(result.value);
+      }
+
+      return result.error.code === "not_found"
+        ? reply.code(404).send({ code: "not_found" })
+        : reply.code(503).send({ code: "unavailable" });
     }
   );
 }

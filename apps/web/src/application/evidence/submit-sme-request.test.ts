@@ -1,3 +1,4 @@
+import { parseApplicationId } from "@vaqcrow/contracts";
 import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { HttpClientError } from "@/application/ports/http-client-port";
@@ -6,6 +7,7 @@ import { buildSmeRequest, submitSmeRequest } from "./submit-sme-request";
 
 const VALUES = { declaredTotalArs: "1200000", periodStart: "2026-01", periodEnd: "2026-08" };
 const REF = "sme:SYN-TEST";
+const APPLICATION_ID = parseApplicationId("3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10");
 
 const SAVED: SmeRequest = {
   smeReference: REF,
@@ -16,7 +18,7 @@ const SAVED: SmeRequest = {
 };
 
 function gateway(submit: SmeRequestGateway["submit"]): SmeRequestGateway {
-  return { submit, loadCurrent: vi.fn() };
+  return { submit, load: vi.fn() };
 }
 
 describe("buildSmeRequest", () => {
@@ -37,12 +39,12 @@ describe("buildSmeRequest", () => {
 
 describe("submitSmeRequest", () => {
   it("sends the built request and returns the saved one", async () => {
-    const submit = vi.fn<SmeRequestGateway["submit"]>().mockResolvedValue(SAVED);
+    const submit = vi.fn<SmeRequestGateway["submit"]>().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED });
 
     const result = await submitSmeRequest(gateway(submit), VALUES, REF);
 
     expect(submit).toHaveBeenCalledWith(SAVED);
-    expect(result).toEqual({ ok: true, request: SAVED });
+    expect(result).toEqual({ ok: true, applicationId: APPLICATION_ID, request: SAVED });
   });
 
   it("does not call the gateway for a non-integer amount", async () => {

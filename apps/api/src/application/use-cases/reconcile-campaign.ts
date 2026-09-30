@@ -15,7 +15,7 @@ export type ReconcileCampaignResult =
  * is assessed before that write, so it is observable instead of silently erased.
  */
 export async function reconcileCampaign(
-  repository: CampaignRepositoryPort,
+  repository: Pick<CampaignRepositoryPort, "findById" | "reconcile">,
   input: { readonly campaignId: string; readonly snapshot: ChainCampaignSnapshot; readonly correlationId: CorrelationId }
 ): Promise<ReconcileCampaignResult> {
   const current = await repository.findById(input.campaignId);

@@ -80,7 +80,7 @@ const REFUNDING_FIXTURE_ALREADY_CONTRIBUTED_STROOPS = 30n * XLM;
 const FIXED_INVOCATION_ID = "50000000-0000-4000-8000-000000000000";
 const FIXED_EXPIRES_AT = "2030-01-01T00:00:00.000Z";
 
-/** @type {Map<string, { campaignId: string; applicationId: string; contractAddress: string; network: string; state: "funding" | "settled" | "refunding"; goalStroops: bigint; totalStroops: bigint; deadline: string; smeAccountId: string; contributions: Map<string, bigint> }>} */
+/** @type {Map<string, { campaignId: string; applicationId: string; contractAddress: string; network: string; state: "funding" | "settled" | "refunding"; goalStroops: bigint; totalStroops: bigint; deadline: string; smeAccountId: string; contributions: Map<string, bigint>; mirrored: Map<string, bigint> }>} */
 let campaigns = new Map();
 /** @type {Map<string, { status: "success" | "failed"; campaignId: string }>} */
 let transactions = new Map();
@@ -100,7 +100,8 @@ function freshFixtures() {
     totalStroops: 0n,
     deadline: "2030-06-01T00:00:00.000Z",
     smeAccountId: SME_ACCOUNT_OK,
-    contributions: new Map()
+    contributions: new Map(),
+    mirrored: new Map()
   });
 
   map.set(REFUNDING_CAMPAIGN_ID, {
@@ -113,7 +114,8 @@ function freshFixtures() {
     totalStroops: REFUNDING_FIXTURE_ALREADY_CONTRIBUTED_STROOPS,
     deadline: "2020-01-01T00:00:00.000Z",
     smeAccountId: SME_ACCOUNT_OK,
-    contributions: new Map([[INVESTOR_ACCOUNT_REFUND_TARGET, REFUNDING_FIXTURE_ALREADY_CONTRIBUTED_STROOPS]])
+    contributions: new Map([[INVESTOR_ACCOUNT_REFUND_TARGET, REFUNDING_FIXTURE_ALREADY_CONTRIBUTED_STROOPS]]),
+    mirrored: new Map()
   });
 
   return map;
@@ -128,6 +130,18 @@ export function resetCampaignFixtures() {
 }
 
 resetCampaignFixtures();
+
+/**
+ * The campaign as the real API's mirror would hold it, for the sibling
+ * distribution double. `mirrored` is what the API records in
+ * `campaign_contribution`: an investor's confirmed contribution is mirrored
+ * only when the transaction poll named that investor (`?investor=`), exactly
+ * like the real route, so a distribution can only be derived for contributors
+ * the web actually reported.
+ */
+export function getStubCampaign(campaignId) {
+  return campaigns.get(campaignId);
+}
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -225,7 +239,8 @@ export async function tryHandleCampaignRequest(request, response, method, pathna
       totalStroops: 0n,
       deadline,
       smeAccountId,
-      contributions: new Map()
+      contributions: new Map(),
+      mirrored: new Map()
     };
     campaigns.set(OPENED_CAMPAIGN_ID, record);
     sendJson(response, 201, { campaign: toCampaignWire(record, undefined) });
@@ -354,9 +369,16 @@ export async function tryHandleCampaignRequest(request, response, method, pathna
       return true;
     }
 
-    // Matches the real transaction-status endpoint: the reconciled snapshot
-    // it returns never carries `investorContributionStroops` (no `investor`
-    // query parameter exists on this path).
+    // Naming the investor makes the real API mirror that investor's confirmed
+    // contribution; without `?investor=` nothing is recorded.
+    const investor = url.searchParams.get("investor") ?? undefined;
+    if (investor !== undefined) {
+      const contributed = record.contributions.get(investor) ?? 0n;
+      if (contributed > 0n) record.mirrored.set(investor, contributed);
+    }
+
+    // The reconciled snapshot it returns never carries
+    // `investorContributionStroops` (the viewer query is on `GET /campaigns/:id`).
     sendJson(response, 200, { transactionHash, status: "success", campaign: toCampaignWire(record, undefined) });
     return true;
   }

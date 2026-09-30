@@ -1,18 +1,17 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { describe, expect, it } from "vitest";
 import { disclosures, microcopy } from "@/application/trust/disclosures";
 
-const { replace, get } = vi.hoisted(() => ({
-  replace: vi.fn(),
-  get: vi.fn().mockReturnValue(null)
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
-  useSearchParams: () => ({ get, toString: () => "" })
-}));
-
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import FundingPage from "./page";
+
+const APP = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
+const CAMPAIGN = "11111111-1111-4111-8111-111111111111";
+
+/** The journey as the approval step leaves it: an application, no campaign yet. */
+const render = (ui: ReactElement) =>
+  rtlRender(<JourneyStoreProvider initial={{ applicationId: APP }}>{ui}</JourneyStoreProvider>);
 
 /**
  * Route-scoped disclosure assertions (Feature #17 / Task #54, spec obs #445)
@@ -48,7 +47,7 @@ describe("FundingPage", () => {
     expect(screen.getByText(microcopy.preSignCheck)).toBeInTheDocument();
   });
 
-  it("renders the campaign vault workspace, starting at the open-campaign panel with no ?campaign= in the URL", () => {
+  it("renders the campaign vault workspace, starting at the open-campaign panel while the journey has no campaign", () => {
     render(<FundingPage />);
 
     expect(screen.queryByText(/Step content coming soon/i)).not.toBeInTheDocument();
@@ -56,10 +55,23 @@ describe("FundingPage", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Abrir bóveda de campaña" })).toBeInTheDocument();
   });
 
-  it("resumes the campaign workspace (not the open panel) when ?campaign= is already in the URL", () => {
-    get.mockReturnValueOnce("11111111-1111-4111-8111-111111111111");
+  it("asks for the request first when the journey has no application", () => {
+    rtlRender(
+      <JourneyStoreProvider>
+        <FundingPage />
+      </JourneyStoreProvider>
+    );
 
-    render(<FundingPage />);
+    expect(screen.getByRole("link", { name: "Ir a la solicitud" })).toHaveAttribute("href", "/request");
+    expect(screen.queryByRole("heading", { level: 3, name: "Abrir bóveda de campaña" })).not.toBeInTheDocument();
+  });
+
+  it("resumes the campaign workspace (not the open panel) when the journey already has a campaign", () => {
+    rtlRender(
+      <JourneyStoreProvider initial={{ applicationId: APP, campaignId: CAMPAIGN }}>
+        <FundingPage />
+      </JourneyStoreProvider>
+    );
 
     // No backend is configured in this test environment, so the campaign
     // never finishes loading; what matters here is which branch the page

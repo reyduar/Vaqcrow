@@ -117,10 +117,15 @@ export class HttpCampaignGateway implements CampaignGateway {
     return parseContractInvocationSubmission(response.body);
   }
 
-  async getTransaction(campaignId: string, transactionHash: string): Promise<ContractInvocationTransactionStatus> {
+  async getTransaction(
+    campaignId: string,
+    transactionHash: string,
+    investorAccountId?: string
+  ): Promise<ContractInvocationTransactionStatus> {
+    const query = investorAccountId ? `?investor=${encodeURIComponent(investorAccountId)}` : "";
     const response = await this.http.send<unknown>({
       method: "GET",
-      path: `/campaigns/${encodeURIComponent(campaignId)}/transactions/${encodeURIComponent(transactionHash)}`
+      path: `/campaigns/${encodeURIComponent(campaignId)}/transactions/${encodeURIComponent(transactionHash)}${query}`
     });
 
     return parseContractInvocationTransactionStatus(response.body);

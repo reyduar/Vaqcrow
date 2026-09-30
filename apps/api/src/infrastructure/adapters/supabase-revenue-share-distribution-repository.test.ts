@@ -11,6 +11,9 @@ import { SupabaseRevenueShareDistributionRepository } from "./supabase-revenue-s
 const DISTRIBUTION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER_DISTRIBUTION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const APPLICATION_ID = "11111111-1111-4111-8111-111111111111";
+const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
+const PERIOD = "2026-08";
+const PERIOD_INDEX = "revenue_share_distribution_campaign_period_key";
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
 const ORIGINAL_CORRELATION_ID = parseCorrelationId("33333333-3333-4333-8333-333333333333");
 const CREATED_AT = "2026-09-20T12:00:00.000Z";
@@ -38,7 +41,7 @@ const SECOND_RECIPIENT: DistributionRecipient = {
 const RECIPIENTS: readonly DistributionRecipient[] = [FIRST_RECIPIENT, SECOND_RECIPIENT];
 
 /** The required facts, before the two optional ones are layered on. */
-const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applicationId"> = {
+const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applicationId" | "campaignId" | "period"> = {
   distributionId: DISTRIBUTION_ID,
   network: "testnet",
   networkPassphrase: "Test SDF Network ; September 2015",
@@ -53,7 +56,9 @@ const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applic
 const SUBMISSION: RevenueShareDistributionSubmission = {
   ...SUBMISSION_BASE,
   memo: "synthetic-memo",
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  period: PERIOD
 };
 
 const EXPECTED_RECORD: RevenueShareDistributionRecord = {
@@ -92,6 +97,7 @@ interface RecordedCalls {
   readonly insert: unknown[];
   readonly update: unknown[];
   readonly eq: Array<readonly [column: string, value: unknown]>;
+  readonly neq: Array<readonly [column: string, value: unknown]>;
   readonly lte: Array<readonly [column: string, value: unknown]>;
   readonly order: Array<readonly [column: string, value: unknown]>;
   readonly limit: number[];
@@ -116,7 +122,7 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): {
   calls: RecordedCalls;
 } {
   let cursor = 0;
-  const calls: RecordedCalls = { insert: [], update: [], eq: [], lte: [], order: [], limit: [] };
+  const calls: RecordedCalls = { insert: [], update: [], eq: [], neq: [], lte: [], order: [], limit: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -142,6 +148,10 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): {
       select: () => self,
       eq: (column: string, value: unknown) => {
         calls.eq.push([column, value]);
+        return self;
+      },
+      neq: (column: string, value: unknown) => {
+        calls.neq.push([column, value]);
         return self;
       },
       lte: (column: string, value: unknown) => {
@@ -192,6 +202,8 @@ function persistedRow(overrides: Readonly<Record<string, unknown>> = {}): Record
     signed_xdr: SUBMISSION.signedXdr,
     transaction_hash: SUBMISSION.transactionHash,
     application_id: SUBMISSION.applicationId,
+    campaign_id: SUBMISSION.campaignId,
+    period: SUBMISSION.period,
     failure_reason: null,
     confirmation_attempts: 0,
     next_attempt_at: NEXT_ATTEMPT_AT,
@@ -230,6 +242,8 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
           signed_xdr: SUBMISSION.signedXdr,
           transaction_hash: TRANSACTION_HASH,
           application_id: APPLICATION_ID,
+          campaign_id: CAMPAIGN_ID,
+          period: PERIOD,
           last_correlation_id: CORRELATION_ID,
           revenue_share_distribution_recipient: [
             { position: 0, account_id: FIRST_RECIPIENT_ACCOUNT, amount_stroops: "10000000" },
@@ -261,9 +275,9 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       expect(result.value.record.recipients).toEqual([FIRST_RECIPIENT, SECOND_RECIPIENT]);
     });
 
-    it("omits memo and application id when the distribution carries neither", async () => {
+    it("omits memo, application id and campaign id when the distribution carries neither", async () => {
       const { client, calls } = createFakeSupabaseClient([
-        { data: persistedRow({ memo: null, application_id: null }), error: null }
+        { data: persistedRow({ memo: null, application_id: null, campaign_id: null, period: null }), error: null }
       ]);
       const repository = new SupabaseRevenueShareDistributionRepository(client);
 
@@ -285,6 +299,8 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
           signed_xdr: SUBMISSION.signedXdr,
           transaction_hash: TRANSACTION_HASH,
           application_id: null,
+          campaign_id: null,
+          period: null,
           last_correlation_id: CORRELATION_ID,
           revenue_share_distribution_recipient: [
             { position: 0, account_id: FIRST_RECIPIENT_ACCOUNT, amount_stroops: "10000000" },
@@ -294,6 +310,7 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       ]);
       expect(result.value.record).not.toHaveProperty("memo");
       expect(result.value.record).not.toHaveProperty("applicationId");
+      expect(result.value.record).not.toHaveProperty("campaignId");
     });
 
     it("decodes an exact decimal-string amount losslessly, the form the write path sends", async () => {
@@ -376,6 +393,30 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       expect(result).toEqual({ ok: false, error: { code: "idempotency_conflict" } });
     });
 
+    it("reports already_distributed when the campaign and period already have a live distribution", async () => {
+      const { client } = createFakeSupabaseClient([
+        {
+          data: null,
+          error: {
+            ...fakeError("23505"),
+            message: `duplicate key value violates unique constraint "${PERIOD_INDEX}"`
+          }
+        },
+        // The follow-up read by the submitted id finds nothing: the violation
+        // came from the period index, not from this distribution's key.
+        { data: null, error: null }
+      ]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const result = await repository.submit({
+        record: { ...SUBMISSION, distributionId: OTHER_DISTRIBUTION_ID },
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "already_distributed" } });
+      expect(JSON.stringify(result)).not.toContain(PERIOD_INDEX);
+    });
+
     it("maps a non-unique PostgREST failure to unavailable", async () => {
       const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("23514") }]);
       const repository = new SupabaseRevenueShareDistributionRepository(client);
@@ -392,6 +433,40 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       const repository = new SupabaseRevenueShareDistributionRepository(client);
 
       const result = await repository.submit({ record: SUBMISSION, correlationId: CORRELATION_ID });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    });
+  });
+
+  describe("findActiveByCampaignPeriod", () => {
+    it("reads the non-failed distribution of the campaign and period", async () => {
+      const { client, calls } = createFakeSupabaseClient([{ data: persistedRow(), error: null }]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const result = await repository.findActiveByCampaignPeriod({ campaignId: CAMPAIGN_ID, period: PERIOD });
+
+      expect(result).toEqual({ ok: true, value: EXPECTED_RECORD });
+      expect(calls.eq).toEqual([
+        ["campaign_id", CAMPAIGN_ID],
+        ["period", PERIOD]
+      ]);
+      expect(calls.neq).toEqual([["state", "failed"]]);
+    });
+
+    it("reports not_found when no live distribution exists", async () => {
+      const { client } = createFakeSupabaseClient([{ data: null, error: null }]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const result = await repository.findActiveByCampaignPeriod({ campaignId: CAMPAIGN_ID, period: PERIOD });
+
+      expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    });
+
+    it("maps a PostgREST failure to unavailable", async () => {
+      const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("PGRST000") }]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const result = await repository.findActiveByCampaignPeriod({ campaignId: CAMPAIGN_ID, period: PERIOD });
 
       expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     });

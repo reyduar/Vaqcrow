@@ -1,18 +1,17 @@
-import type { SalesPeriodContract, SmeRequest } from "@vaqcrow/contracts";
+import type { SmeRequest, SmeRequestRead, SmeRequestSubmission } from "@vaqcrow/contracts";
 
-/** Server-held state for the current SME request. */
-export interface SmeRequestCurrent {
-  readonly request: SmeRequest | null;
-  readonly salesPeriods: readonly SalesPeriodContract[];
-}
+/** `POST /sme-requests` outcome: the created application and the stored request. */
+export type SmeRequestSubmitted = SmeRequestSubmission;
+
+/** `GET /sme-requests/:applicationId` outcome: the request and its sales series. */
+export type SmeRequestCurrent = SmeRequestRead;
 
 /**
- * Port for the SME request backend. NOTE: `apps/api` exposes no SME endpoint
- * yet; the HTTP adapter uses documented placeholder paths (see
- * `infrastructure/sme/http-sme-request-gateway.ts`). Implementations must
- * return contract-validated data and throw on anything else.
+ * Port for the SME request backend (`apps/api`, `sme-request.route.ts`).
+ * Implementations must return contract-validated data and throw on anything
+ * else.
  */
 export interface SmeRequestGateway {
-  submit(request: SmeRequest): Promise<SmeRequest>;
-  loadCurrent(): Promise<SmeRequestCurrent>;
+  submit(request: SmeRequest): Promise<SmeRequestSubmitted>;
+  load(applicationId: string): Promise<SmeRequestCurrent>;
 }

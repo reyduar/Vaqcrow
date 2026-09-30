@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/local-only";
 import { installFreighterEmulator, setFreighterScenario } from "./support/freighter-emulator";
-import { STUB_API_BASE_URL } from "./support/targets";
+import { DEMO_APPLICATION_ID, STUB_API_BASE_URL } from "./support/targets";
 
 /**
  * The campaign view's `<dl>` renders "Meta", "Total aportado" and (once a
@@ -60,7 +60,7 @@ test.beforeEach(async ({ request, page }) => {
 
 test.describe("opening the vault", () => {
   test("a missing SME account is shown as a blocked state, not a failed payout", async ({ page }) => {
-    await page.goto("/funding");
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: SME_ACCOUNT_BLOCKED,
@@ -83,7 +83,7 @@ test.describe("opening the vault", () => {
   });
 
   test("connects Freighter, opens the vault and renders the campaign view", async ({ page }) => {
-    await page.goto("/funding");
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: SME_ACCOUNT_OK,
@@ -107,7 +107,7 @@ test.describe("opening the vault", () => {
 
 test.describe("contributing", () => {
   test("connects, signs and reflects the new total", async ({ page }) => {
-    await page.goto(`/funding?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_OK,
@@ -129,7 +129,7 @@ test.describe("contributing", () => {
   test("a contribution that reaches the goal settles the vault and removes the contribute controls", async ({
     page
   }) => {
-    await page.goto(`/funding?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_OK,
@@ -156,7 +156,7 @@ test.describe("contributing", () => {
 
 test.describe("refunding", () => {
   test("refunds another investor's registered address permissionlessly", async ({ page }) => {
-    await page.goto(`/funding?campaign=${REFUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${REFUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_REFUND_TRIGGER,
@@ -179,7 +179,7 @@ test.describe("refunding", () => {
 
 test.describe("error paths", () => {
   test("Freighter absent is reported, not treated as a rejection", async ({ page }) => {
-    await page.goto("/funding");
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}`);
     await setFreighterScenario(page, null);
 
     await page.getByRole("button", { name: "Conectar wallet" }).click();
@@ -191,7 +191,7 @@ test.describe("error paths", () => {
   });
 
   test("a wallet on the wrong network is reported before anything is signed", async ({ page }) => {
-    await page.goto(`/funding?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_OK,
@@ -214,7 +214,7 @@ test.describe("error paths", () => {
   });
 
   test("declining the signature is reported and nothing is sent", async ({ page }) => {
-    await page.goto(`/funding?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_OK,
@@ -237,7 +237,7 @@ test.describe("error paths", () => {
   });
 
   test("a reverted contribution is reported and never claimed as a success", async ({ page }) => {
-    await page.goto(`/funding?campaign=${FUNDING_CAMPAIGN_ID}`);
+    await page.goto(`/funding?application=${DEMO_APPLICATION_ID}&campaign=${FUNDING_CAMPAIGN_ID}`);
     await setFreighterScenario(page, {
       installed: true,
       publicKey: INVESTOR_ACCOUNT_FAILED,

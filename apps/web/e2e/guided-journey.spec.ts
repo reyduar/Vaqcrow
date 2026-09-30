@@ -75,8 +75,94 @@ test("submits the synthetic SME request to the local double and shows the backen
   await page.getByRole("button", { name: "Enviar solicitud" }).click();
 
   await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
-  // Backend provenance only exists once `GET /sme-requests/current` returned the double's data.
+  // Backend provenance only exists once `GET /sme-requests/:applicationId` returned the double's data.
   const evidence = page.getByRole("region", { name: "Revisión de evidencia" });
   await expect(evidence.getByText("Registro del servicio de solicitudes").first()).toBeVisible();
   await expect(evidence.getByText("Abril 2026")).toBeVisible();
+});
+
+test("assesses the submitted application and shows that same persisted assessment on the approval step", async ({
+  page
+}) => {
+  await page.goto("/request");
+  await page.getByLabel("Total declarado (ARS)").fill("3150000");
+  await page.getByLabel("Período desde").fill("2026-01");
+  await page.getByLabel("Período hasta").fill("2026-03");
+  await page.getByRole("button", { name: "Enviar solicitud" }).click();
+  await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
+
+  // Client-side navigation keeps the journey's application id.
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
+  await page.getByRole("button", { name: "Consultar evaluación de IA" }).click();
+  await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
+  await expect(page.getByRole("status").filter({ hasText: "pasó a revisión humana" })).toBeVisible();
+
+  await stepNav.getByRole("link", { name: "Approval" }).click();
+  await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
+});
+
+test("the assessment step asks for the request first when none was submitted", async ({ page }) => {
+  await page.goto("/ai-assessment");
+
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Consultar evaluación de IA" })).toHaveCount(0);
+});
+
+test("the submitted application survives navigating between steps and a reload", async ({ page }) => {
+  await page.goto("/request");
+  await page.getByLabel("Total declarado (ARS)").fill("3150000");
+  await page.getByLabel("Período desde").fill("2026-01");
+  await page.getByLabel("Período hasta").fill("2026-03");
+  await page.getByRole("button", { name: "Enviar solicitud" }).click();
+  await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
+
+  // The journey id is now in the URL, so this very page could already be reloaded or shared.
+  await expect(page).toHaveURL(/\/request\?application=[0-9a-f-]{36}$/);
+  const applicationId = new URL(page.url()).searchParams.get("application");
+  expect(applicationId).not.toBeNull();
+
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
+  await stepNav.getByRole("link", { name: "Approval" }).click();
+  await expect(page).toHaveURL(new RegExp(`/approval\\?application=${applicationId}$`));
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toBeVisible();
+
+  // A full reload rebuilds the in-memory store from the URL: same application, not the "send the request" notice.
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`/approval\\?application=${applicationId}$`));
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toBeVisible();
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toHaveCount(0);
+});
+
+test("a step that needs the application asks for the request when the URL carries none", async ({ page }) => {
+  await page.goto("/approval");
+
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toHaveCount(0);
+});
+
+test("browser history to another application's URL makes the journey follow it, and the URL is not rewritten back", async ({
+  page
+}) => {
+  const first = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
+  const second = "9a8b7c6d-1111-4222-8333-444455556666";
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  const fundingLink = stepNav.getByRole("link", { name: "Funding" });
+
+  await page.goto(`/approval?application=${first}`);
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${first}`));
+
+  // A second history entry for another application (the App Router syncs pushState into useSearchParams).
+  await page.evaluate((id) => window.history.pushState(null, "", `/approval?application=${id}`), second);
+  await expect(page).toHaveURL(new RegExp(`application=${second}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${second}`));
+
+  // Back to the first entry: the store follows the URL instead of writing its older ids over it.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`application=${first}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${first}`));
+  await page.goForward();
+  await expect(page).toHaveURL(new RegExp(`application=${second}$`));
+  await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${second}`));
 });
