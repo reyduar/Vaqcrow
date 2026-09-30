@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: () => undefined }),
   useSearchParams: () => new URLSearchParams()
 }));
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import AiAssessmentPage from "./ai-assessment/page";
 import ApprovalPage from "./approval/page";
 import DistributionPage from "./distribution/page";
@@ -60,7 +61,7 @@ const pages = [
 
 describe("Prohibited/conditioned terms", () => {
   it.each(pages)("route %s never renders a prohibited phrase unqualified", (_slug, Page) => {
-    const { container } = render(<Page />);
+    const { container } = render(<Page />, { wrapper: JourneyStoreProvider });
     const text = container.textContent ?? "";
 
     for (const phrase of PROHIBITED_PHRASES) {

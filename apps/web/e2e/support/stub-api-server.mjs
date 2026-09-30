@@ -2,7 +2,7 @@
 /**
  * Deterministic local double for the demo's HTTP contracts (issue #47).
  *
- * `apps/web` talks to the future `apps/api` over the paths documented in
+ * `apps/web` talks to the future `apps/api` over the contracts documented in
  * `src/infrastructure/sme/http-sme-request-gateway.ts` and
  * `src/infrastructure/decision/http-human-decision-gateway.ts`. Those endpoints do not
  * exist yet, so browser tests run against this in-process double instead of a live
@@ -22,6 +22,7 @@ const SIMULADO = "SIMULADO";
 
 /** Frozen server-side literals so assertions never race a real clock or RNG. */
 const DECIDED_AT = "2026-09-19T12:00:00-03:00";
+const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
 const CORRELATION_ID = "11111111-2222-4333-8444-555555555555";
 
 /** Contract-shaped sales history (`salesPeriodSchema` is a strict object). */
@@ -75,6 +76,7 @@ function readJsonBody(request) {
   });
 }
 
+const SME_REQUEST_PATH = /^\/sme-requests\/([^/]+)$/;
 const DECISION_PATH = /^\/application-reviews\/([^/]+)\/decisions$/;
 
 async function handle(request, response) {
@@ -100,7 +102,12 @@ async function handle(request, response) {
     return;
   }
 
-  if (request.method === "GET" && pathname === "/sme-requests/current") {
+  const smeReadMatch = SME_REQUEST_PATH.exec(pathname);
+  if (request.method === "GET" && smeReadMatch) {
+    if (currentRequest === null || decodeURIComponent(smeReadMatch[1]) !== APPLICATION_ID) {
+      sendJson(response, 404, { code: "not_found" });
+      return;
+    }
     sendJson(response, 200, { request: currentRequest, salesPeriods: SALES_PERIODS });
     return;
   }
@@ -112,7 +119,7 @@ async function handle(request, response) {
       return;
     }
     currentRequest = body;
-    sendJson(response, 201, body);
+    sendJson(response, 201, { applicationId: APPLICATION_ID, request: body });
     return;
   }
 

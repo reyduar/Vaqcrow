@@ -75,7 +75,7 @@ test("submits the synthetic SME request to the local double and shows the backen
   await page.getByRole("button", { name: "Enviar solicitud" }).click();
 
   await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
-  // Backend provenance only exists once `GET /sme-requests/current` returned the double's data.
+  // Backend provenance only exists once `GET /sme-requests/:applicationId` returned the double's data.
   const evidence = page.getByRole("region", { name: "Revisión de evidencia" });
   await expect(evidence.getByText("Registro del servicio de solicitudes").first()).toBeVisible();
   await expect(evidence.getByText("Abril 2026")).toBeVisible();
