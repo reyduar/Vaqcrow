@@ -39,6 +39,11 @@ const SELECT_WITH_RECIPIENTS = `*, ${RECIPIENT_TABLE}(*)`;
  */
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 
+/** The partial unique index that allows one non-failed distribution per campaign and period. */
+const PERIOD_UNIQUE_INDEX = "revenue_share_distribution_campaign_period_key";
+
+const FAILED_STATE: RevenueShareDistributionState = "failed";
+
 /**
  * A verified submission can only ever produce this state, so the insert pins it.
  * Every other state is reached by a transition, never by a write.
@@ -72,7 +77,11 @@ export class SupabaseRevenueShareDistributionRepository
 
       if (error) {
         if (error.code === POSTGRES_UNIQUE_VIOLATION) {
-          return this.resolveDuplicateSubmission(record.distributionId, record.transactionHash);
+          return this.resolveDuplicateSubmission(
+            record.distributionId,
+            record.transactionHash,
+            this.violatesPeriodIndex(error)
+          );
         }
 
         return {
@@ -100,6 +109,33 @@ export class SupabaseRevenueShareDistributionRepository
       if (error) {
         // findById has no CorrelationId in hand; log the lookup subject instead.
         return { ok: false, error: this.toRepositoryError(error, undefined, distributionId) };
+      }
+
+      if (!data) {
+        return { ok: false, error: { code: "not_found" } };
+      }
+
+      return { ok: true, value: this.toRecord(data) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async findActiveByCampaignPeriod(input: {
+    campaignId: string;
+    period: string;
+  }): Promise<RevenueShareDistributionRepositoryResult<RevenueShareDistributionRecord>> {
+    try {
+      const { data, error } = await this.client
+        .from(PARENT_TABLE)
+        .select(SELECT_WITH_RECIPIENTS)
+        .eq("campaign_id", input.campaignId)
+        .eq("period", input.period)
+        .neq("state", FAILED_STATE)
+        .maybeSingle();
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error, undefined, undefined) };
       }
 
       if (!data) {
@@ -254,13 +290,19 @@ export class SupabaseRevenueShareDistributionRepository
    */
   private async resolveDuplicateSubmission(
     distributionId: string,
-    transactionHash: string
+    transactionHash: string,
+    periodIndexViolated: boolean
   ): Promise<RevenueShareDistributionRepositoryResult<RevenueShareDistributionSubmissionOutcome>> {
     const existing = await this.findById(distributionId);
 
     if (!existing.ok) {
       if (existing.error.code === "not_found") {
-        return { ok: false, error: { code: "idempotency_conflict" } };
+        // No row under this id, so the violation came from another key: the
+        // period index means the campaign's period is already distributed.
+        return {
+          ok: false,
+          error: { code: periodIndexViolated ? "already_distributed" : "idempotency_conflict" }
+        };
       }
 
       return existing;
@@ -271,6 +313,14 @@ export class SupabaseRevenueShareDistributionRepository
     }
 
     return { ok: false, error: { code: "idempotency_conflict" } };
+  }
+
+  /**
+   * Classifies a unique violation by the index it names. The Postgres text is
+   * read here only to choose a typed code and is never returned or logged.
+   */
+  private violatesPeriodIndex(error: PostgrestError): boolean {
+    return `${error.message} ${error.details}`.includes(PERIOD_UNIQUE_INDEX);
   }
 
   private toInsertRow(
@@ -290,6 +340,7 @@ export class SupabaseRevenueShareDistributionRepository
       transaction_hash: record.transactionHash,
       application_id: record.applicationId ?? null,
       campaign_id: record.campaignId ?? null,
+      period: record.period ?? null,
       last_correlation_id: correlationId,
       // PostgREST casts a numeric JSON string to bigint. A JS bigint is not
       // JSON-serializable and a JS number would silently lose precision above
@@ -330,6 +381,7 @@ export class SupabaseRevenueShareDistributionRepository
 
     const applicationId = value.application_id;
     const campaignId = value.campaign_id;
+    const period = value.period;
     const confirmedAt = this.toOptionalTimestamp(value.confirmed_at);
     const ledgerSequence = this.toOptionalLedger(value.ledger_sequence);
     const failureReason = this.toOptionalFailureReason(value.failure_reason);
@@ -361,6 +413,7 @@ export class SupabaseRevenueShareDistributionRepository
       ...(campaignId === null || campaignId === undefined
         ? {}
         : { campaignId: campaignIdSchema.parse(campaignId) }),
+      ...(period === null || period === undefined ? {} : { period: this.toText(period) }),
       recipients: terms.recipients,
       state,
       lastCorrelationId: parseCorrelationId(value.last_correlation_id),
