@@ -108,3 +108,36 @@ test("the assessment step asks for the request first when none was submitted", a
   await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Consultar evaluación de IA" })).toHaveCount(0);
 });
+
+test("the submitted application survives navigating between steps and a reload", async ({ page }) => {
+  await page.goto("/request");
+  await page.getByLabel("Total declarado (ARS)").fill("3150000");
+  await page.getByLabel("Período desde").fill("2026-01");
+  await page.getByLabel("Período hasta").fill("2026-03");
+  await page.getByRole("button", { name: "Enviar solicitud" }).click();
+  await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
+
+  // The journey id is now in the URL, so this very page could already be reloaded or shared.
+  await expect(page).toHaveURL(/\/request\?application=[0-9a-f-]{36}$/);
+  const applicationId = new URL(page.url()).searchParams.get("application");
+  expect(applicationId).not.toBeNull();
+
+  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
+  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
+  await stepNav.getByRole("link", { name: "Approval" }).click();
+  await expect(page).toHaveURL(new RegExp(`/approval\\?application=${applicationId}$`));
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toBeVisible();
+
+  // A full reload rebuilds the in-memory store from the URL: same application, not the "send the request" notice.
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`/approval\\?application=${applicationId}$`));
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toBeVisible();
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toHaveCount(0);
+});
+
+test("a step that needs the application asks for the request when the URL carries none", async ({ page }) => {
+  await page.goto("/approval");
+
+  await expect(page.getByText(/primero hay que enviar la solicitud/i)).toBeVisible();
+  await expect(page.getByRole("form", { name: /Decisión humana/ })).toHaveCount(0);
+});
