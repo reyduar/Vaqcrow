@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createJourneyStore } from "./journey-store";
 
 describe("createJourneyStore", () => {
@@ -109,5 +109,33 @@ describe("createJourneyStore", () => {
     const b = createJourneyStore();
     a.getState().recordApplication("x");
     expect(b.getState().applicationId).toBeNull();
+  });
+  describe("hydrate (URL wins)", () => {
+    it("replaces the ids wholesale, dropping the ones not supplied", () => {
+      const store = createJourneyStore({ applicationId: "a", campaignId: "c", distributionId: "d" });
+      store.getState().hydrate({ applicationId: "b", campaignId: null, distributionId: null });
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: null, distributionId: null });
+    });
+
+    it("normalizes like the initial state and enforces the hierarchy", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      store.getState().hydrate({ applicationId: " b ", campaignId: " c ", distributionId: null });
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: "c" });
+      expect(() => store.getState().hydrate({ applicationId: "", campaignId: null, distributionId: null })).toThrow(
+        /non-empty/
+      );
+      expect(() => store.getState().hydrate({ applicationId: null, campaignId: "c", distributionId: null })).toThrow(
+        /application/i
+      );
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: "c" });
+    });
+
+    it("does not notify subscribers when the ids are unchanged", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      const listener = vi.fn();
+      store.subscribe(listener);
+      store.getState().hydrate({ applicationId: "a", campaignId: null, distributionId: null });
+      expect(listener).not.toHaveBeenCalled();
+    });
   });
 });

@@ -20,6 +20,12 @@ export interface JourneyActions {
   /** A different campaign invalidates the distribution id. */
   recordCampaign: (id: string) => void;
   recordDistribution: (id: string) => void;
+  /**
+   * The URL won: replaces the ids wholesale (unsupplied ones become null) after
+   * the same normalization and hierarchy rules as the initial state. A no-op
+   * when nothing changes, so subscribers are not notified needlessly.
+   */
+  hydrate: (ids: Partial<JourneyIds>) => void;
   reset: () => void;
 }
 
@@ -78,6 +84,18 @@ export function createJourneyStore(initial: Partial<JourneyIds> = {}): JourneySt
         throw new Error("A distribution identifier requires a campaign identifier.");
       }
       set({ distributionId: next });
+    },
+    hydrate: (ids) => {
+      const next = normalizeInitial(ids);
+      const current = get();
+      if (
+        next.applicationId === current.applicationId &&
+        next.campaignId === current.campaignId &&
+        next.distributionId === current.distributionId
+      ) {
+        return;
+      }
+      set(next);
     },
     reset: () => set({ ...EMPTY })
   }));

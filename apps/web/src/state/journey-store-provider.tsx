@@ -23,6 +23,13 @@ export function JourneyStoreProvider({
   return <JourneyStoreContext.Provider value={store}>{children}</JourneyStoreContext.Provider>;
 }
 
+/** The store itself, for imperative reads (effects that must not subscribe). */
+export function useJourneyStoreApi(): JourneyStore {
+  const store = useContext(JourneyStoreContext);
+  if (!store) throw new Error("useJourneyStoreApi must be used within a JourneyStoreProvider.");
+  return store;
+}
+
 export function useJourneyStore<T>(selector: (state: JourneyState) => T): T {
   const store = useContext(JourneyStoreContext);
   if (!store) throw new Error("useJourneyStore must be used within a JourneyStoreProvider.");
