@@ -82,9 +82,7 @@ function toFieldErrors(body: unknown, issues: readonly ContractIssue[]): readonl
   const seen = new Set<string>();
   const errors: SmeRequestFieldError[] = [];
   for (const issue of relevant) {
-    const field = typeof issue.path[0] === "string" ? issue.path[0] : "body";
-    const value = (body as Record<string, unknown>)[field];
-    const error = { field, code: toCode(issue.code, value) };
+    const error = toFieldError(body as Record<string, unknown>, issue);
     const key = `${error.field}:${error.code}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -92,6 +90,20 @@ function toFieldErrors(body: unknown, issues: readonly ContractIssue[]): readonl
     }
   }
   return errors;
+}
+
+/**
+ * A root-level issue (empty path: an unknown key, a refinement without a path)
+ * belongs to the body as a whole. It is reported as `{ body, invalid }` — the
+ * same pair a non-object body gets, which the web treats as a form-level
+ * error — never as `required`, which would blame a field that is not missing.
+ */
+function toFieldError(body: Readonly<Record<string, unknown>>, issue: ContractIssue): SmeRequestFieldError {
+  const field = issue.path[0];
+  if (typeof field !== "string") {
+    return { field: "body", code: "invalid" };
+  }
+  return { field, code: toCode(issue.code, body[field]) };
 }
 
 function toCode(issueCode: string, value: unknown): string {
