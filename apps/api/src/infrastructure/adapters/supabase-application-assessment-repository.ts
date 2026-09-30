@@ -1,4 +1,8 @@
-import { applicationReviewStateSchema, parseApplicationAssessmentRead } from "@vaqcrow/contracts";
+import {
+  applicationReviewStateSchema,
+  parseApplicationAssessmentRead,
+  parseAssessmentHandoffId
+} from "@vaqcrow/contracts";
 import type {
   ApplicationAssessment,
   ApplicationAssessmentRead,
@@ -11,7 +15,8 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type {
   ApplicationAssessmentRecordOutcome,
   ApplicationAssessmentRepositoryPort,
-  ApplicationAssessmentRepositoryResult
+  ApplicationAssessmentRepositoryResult,
+  StoredApplicationAssessment
 } from "../../application/ports/application-assessment-repository-port.js";
 
 const TABLE = "application_assessment";
@@ -26,9 +31,14 @@ interface RecordRpcRow {
 }
 
 interface AssessmentTableRow {
+  readonly attempt_id?: unknown;
   readonly assessment?: unknown;
   readonly metadata?: unknown;
   readonly created_at?: unknown;
+}
+
+function toRecordFields(row: AssessmentTableRow): Pick<RecordRpcRow, "assessment" | "metadata" | "recorded_at"> {
+  return { assessment: row.assessment, metadata: row.metadata, recorded_at: row.created_at };
 }
 
 export class SupabaseApplicationAssessmentRepository implements ApplicationAssessmentRepositoryPort {
@@ -86,6 +96,22 @@ export class SupabaseApplicationAssessmentRepository implements ApplicationAsses
   async findByApplicationId(
     applicationId: ApplicationId
   ): Promise<ApplicationAssessmentRepositoryResult<ApplicationAssessmentRead>> {
+    return this.readRow(applicationId, (row) => this.toRecord(toRecordFields(row)));
+  }
+
+  async findStoredByApplicationId(
+    applicationId: ApplicationId
+  ): Promise<ApplicationAssessmentRepositoryResult<StoredApplicationAssessment>> {
+    return this.readRow(applicationId, (row) => ({
+      attemptId: parseAssessmentHandoffId(row.attempt_id),
+      record: this.toRecord(toRecordFields(row))
+    }));
+  }
+
+  private async readRow<T>(
+    applicationId: ApplicationId,
+    project: (row: AssessmentTableRow) => T
+  ): Promise<ApplicationAssessmentRepositoryResult<T>> {
     try {
       const { data, error } = await this.client
         .from(TABLE)
@@ -102,12 +128,9 @@ export class SupabaseApplicationAssessmentRepository implements ApplicationAsses
         return { ok: false, error: { code: "not_found" } };
       }
 
-      const row = data as AssessmentTableRow;
-      return {
-        ok: true,
-        value: this.toRecord({ assessment: row.assessment, metadata: row.metadata, recorded_at: row.created_at })
-      };
+      return { ok: true, value: project(data as AssessmentTableRow) };
     } catch {
+      // Includes a stored row that no longer satisfies the shared contract.
       return { ok: false, error: { code: "unavailable" } };
     }
   }

@@ -154,6 +154,24 @@ describe("SupabaseApplicationAssessmentRepository.record", () => {
     });
   });
 
+  // Characterization (green on first run): the adapter already parses actual_state
+  // through the shared enum inside its try/catch, so nothing unknown can escape.
+  it.each([
+    ["null", null],
+    ["missing", undefined],
+    ["an unknown state", "archived"],
+    ["a non-string", 7]
+  ])("maps a state_conflict row with %s actual_state to sanitized unavailable", async (_label, actual) => {
+    const { client } = fakeClient({
+      data: [{ ...RPC_ROW, result_kind: "state_conflict", actual_state: actual }]
+    });
+
+    const result = await new SupabaseApplicationAssessmentRepository(client).record(INPUT);
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(JSON.stringify(result)).not.toContain("archived");
+  });
+
   it("treats a malformed stored record as unavailable instead of widening it", async () => {
     const { client } = fakeClient({ data: [{ ...RPC_ROW, assessment: { ...ASSESSMENT, extra: 1 } }] });
 
@@ -216,5 +234,58 @@ describe("SupabaseApplicationAssessmentRepository.findByApplicationId", () => {
       ok: false,
       error: { code: "unavailable" }
     });
+  });
+});
+
+describe("SupabaseApplicationAssessmentRepository.findStoredByApplicationId", () => {
+  it("returns the stored attempt id together with the validated record", async () => {
+    const { client, eq, from } = fakeClient({
+      data: {
+        application_id: APPLICATION_ID,
+        attempt_id: ATTEMPT_ID,
+        assessment: ASSESSMENT,
+        metadata: METADATA,
+        created_at: RECORDED_AT
+      }
+    });
+
+    const result = await new SupabaseApplicationAssessmentRepository(client).findStoredByApplicationId(
+      APPLICATION_ID
+    );
+
+    expect(from).toEqual(["application_assessment"]);
+    expect(eq).toEqual([["application_id", APPLICATION_ID]]);
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        attemptId: ATTEMPT_ID,
+        record: { assessment: ASSESSMENT, metadata: METADATA, recordedAt: RECORDED_AT }
+      }
+    });
+  });
+
+  it("is not_found when nothing was recorded", async () => {
+    const { client } = fakeClient({ data: null });
+
+    expect(
+      await new SupabaseApplicationAssessmentRepository(client).findStoredByApplicationId(APPLICATION_ID)
+    ).toEqual({ ok: false, error: { code: "not_found" } });
+  });
+
+  it("is unavailable for a malformed attempt id, a malformed record or a read error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const row = { assessment: ASSESSMENT, metadata: METADATA, created_at: RECORDED_AT };
+
+    for (const step of [
+      { data: { ...row, attempt_id: "not-a-uuid" } },
+      { data: { ...row, attempt_id: ATTEMPT_ID, assessment: { ...ASSESSMENT, extra: 1 } } },
+      { error: pgError("XX000") }
+    ]) {
+      const result = await new SupabaseApplicationAssessmentRepository(
+        fakeClient(step).client
+      ).findStoredByApplicationId(APPLICATION_ID);
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    }
   });
 });
