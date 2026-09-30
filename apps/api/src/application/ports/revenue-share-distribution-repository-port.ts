@@ -86,6 +86,13 @@ export interface RevenueShareDistributionSubmission {
   /** Traceability link to the application under review, when there is one. */
   readonly applicationId?: string;
   /**
+   * The settled campaign the recipients and amounts were derived from. Set when
+   * the server derived the distribution (T5a); immutable after insert, enforced
+   * by the column-scoped grant. Absent for a distribution recorded before the
+   * link existed.
+   */
+  readonly campaignId?: string;
+  /**
    * One native payment per destination, in the order the envelope encodes them.
    * Each entry is exactly `(accountId, amountStroops)`; a traceability label the
    * envelope cannot carry does not belong here.

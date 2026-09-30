@@ -1,5 +1,6 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import {
+  campaignIdSchema,
   parseApplicationId,
   parseCorrelationId,
   parseRevenueShareDistributionId,
@@ -288,6 +289,7 @@ export class SupabaseRevenueShareDistributionRepository
       signed_xdr: record.signedXdr,
       transaction_hash: record.transactionHash,
       application_id: record.applicationId ?? null,
+      campaign_id: record.campaignId ?? null,
       last_correlation_id: correlationId,
       // PostgREST casts a numeric JSON string to bigint. A JS bigint is not
       // JSON-serializable and a JS number would silently lose precision above
@@ -327,6 +329,7 @@ export class SupabaseRevenueShareDistributionRepository
     const state = parseRevenueShareDistributionState(value.state);
 
     const applicationId = value.application_id;
+    const campaignId = value.campaign_id;
     const confirmedAt = this.toOptionalTimestamp(value.confirmed_at);
     const ledgerSequence = this.toOptionalLedger(value.ledger_sequence);
     const failureReason = this.toOptionalFailureReason(value.failure_reason);
@@ -355,6 +358,9 @@ export class SupabaseRevenueShareDistributionRepository
       ...(applicationId === null || applicationId === undefined
         ? {}
         : { applicationId: parseApplicationId(applicationId) }),
+      ...(campaignId === null || campaignId === undefined
+        ? {}
+        : { campaignId: campaignIdSchema.parse(campaignId) }),
       recipients: terms.recipients,
       state,
       lastCorrelationId: parseCorrelationId(value.last_correlation_id),

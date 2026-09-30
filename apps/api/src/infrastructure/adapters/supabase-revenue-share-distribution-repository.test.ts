@@ -11,6 +11,7 @@ import { SupabaseRevenueShareDistributionRepository } from "./supabase-revenue-s
 const DISTRIBUTION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER_DISTRIBUTION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const APPLICATION_ID = "11111111-1111-4111-8111-111111111111";
+const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
 const ORIGINAL_CORRELATION_ID = parseCorrelationId("33333333-3333-4333-8333-333333333333");
 const CREATED_AT = "2026-09-20T12:00:00.000Z";
@@ -38,7 +39,7 @@ const SECOND_RECIPIENT: DistributionRecipient = {
 const RECIPIENTS: readonly DistributionRecipient[] = [FIRST_RECIPIENT, SECOND_RECIPIENT];
 
 /** The required facts, before the two optional ones are layered on. */
-const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applicationId"> = {
+const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applicationId" | "campaignId"> = {
   distributionId: DISTRIBUTION_ID,
   network: "testnet",
   networkPassphrase: "Test SDF Network ; September 2015",
@@ -53,7 +54,8 @@ const SUBMISSION_BASE: Omit<RevenueShareDistributionSubmission, "memo" | "applic
 const SUBMISSION: RevenueShareDistributionSubmission = {
   ...SUBMISSION_BASE,
   memo: "synthetic-memo",
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID
 };
 
 const EXPECTED_RECORD: RevenueShareDistributionRecord = {
@@ -192,6 +194,7 @@ function persistedRow(overrides: Readonly<Record<string, unknown>> = {}): Record
     signed_xdr: SUBMISSION.signedXdr,
     transaction_hash: SUBMISSION.transactionHash,
     application_id: SUBMISSION.applicationId,
+    campaign_id: SUBMISSION.campaignId,
     failure_reason: null,
     confirmation_attempts: 0,
     next_attempt_at: NEXT_ATTEMPT_AT,
@@ -230,6 +233,7 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
           signed_xdr: SUBMISSION.signedXdr,
           transaction_hash: TRANSACTION_HASH,
           application_id: APPLICATION_ID,
+          campaign_id: CAMPAIGN_ID,
           last_correlation_id: CORRELATION_ID,
           revenue_share_distribution_recipient: [
             { position: 0, account_id: FIRST_RECIPIENT_ACCOUNT, amount_stroops: "10000000" },
@@ -261,9 +265,9 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       expect(result.value.record.recipients).toEqual([FIRST_RECIPIENT, SECOND_RECIPIENT]);
     });
 
-    it("omits memo and application id when the distribution carries neither", async () => {
+    it("omits memo, application id and campaign id when the distribution carries neither", async () => {
       const { client, calls } = createFakeSupabaseClient([
-        { data: persistedRow({ memo: null, application_id: null }), error: null }
+        { data: persistedRow({ memo: null, application_id: null, campaign_id: null }), error: null }
       ]);
       const repository = new SupabaseRevenueShareDistributionRepository(client);
 
@@ -285,6 +289,7 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
           signed_xdr: SUBMISSION.signedXdr,
           transaction_hash: TRANSACTION_HASH,
           application_id: null,
+          campaign_id: null,
           last_correlation_id: CORRELATION_ID,
           revenue_share_distribution_recipient: [
             { position: 0, account_id: FIRST_RECIPIENT_ACCOUNT, amount_stroops: "10000000" },
@@ -294,6 +299,7 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
       ]);
       expect(result.value.record).not.toHaveProperty("memo");
       expect(result.value.record).not.toHaveProperty("applicationId");
+      expect(result.value.record).not.toHaveProperty("campaignId");
     });
 
     it("decodes an exact decimal-string amount losslessly, the form the write path sends", async () => {
