@@ -56,6 +56,9 @@ Los defectos 4 y 5 los detectó el check de Vercel del PR #288, en dos iteracion
 
 - **No verificado end-to-end por navegador.** La API no tiene logging a nivel request, así que no hay rastro servidor de tráfico del frontend. Los únicos errores en los logs (`22P02` a las 02:18 del 25/09) son sondas propias con id malformado.
 - **`POST /campaigns` nunca se ejercitó.** Que la clave corresponda al `owner` de la fábrica se prueba recién ahí.
+
+  > [!info] Retirado (2026-09-30)
+  > Este límite ya no rige: `POST /campaigns` se ejercitó contra el despliegue hosteado el **2026-09-25** (`201`, bóveda `CBANYZNPLW243WBRPJTD5VBBZVKWI6FPIKBAKTMTNZLWTK7SU6ZOWZW6`, tx `845f9040ebbab23225f433f3057e5cc17ec53cf45ae1a5dad4080b1d460672d5`, ledger 4864817, `successful: true`), lo que prueba que la clave de plataforma es el `owner` de la fábrica. Se conserva como registro histórico. Ver [[docs/planning/cloud-environment-configuration-evidence|Evidencia de la configuración del entorno en la nube]] y `docs/planning/demo-run-preflight.md` §6.
 - Placeholder "Step content coming soon" visible en `/request`, después del contenido real.
 - `NEXT_PUBLIC_API_BASE_URL` no tiene target `preview`.
 - Sin decisión registrada: almacenamiento/rotación del secreto de plataforma; SSO en previews; dominio propio.
