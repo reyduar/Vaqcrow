@@ -16,6 +16,47 @@ describe("createJourneyStore", () => {
     expect(store.getState().campaignId).toBeNull();
   });
 
+  describe("initial identifiers (T1-F)", () => {
+    it("trims them exactly like the record actions", () => {
+      const store = createJourneyStore({ applicationId: "  app-1 ", campaignId: " c ", distributionId: " d " });
+      expect(store.getState()).toMatchObject({ applicationId: "app-1", campaignId: "c", distributionId: "d" });
+    });
+
+    it.each(["", "   "])("rejects a blank initial identifier %j", (bad) => {
+      expect(() => createJourneyStore({ applicationId: bad })).toThrow(/non-empty/);
+      expect(() => createJourneyStore({ applicationId: "a", campaignId: bad })).toThrow(/non-empty/);
+      expect(() => createJourneyStore({ applicationId: "a", campaignId: "c", distributionId: bad })).toThrow(
+        /non-empty/
+      );
+    });
+
+    it("rejects a campaign without an application and a distribution without a campaign", () => {
+      expect(() => createJourneyStore({ campaignId: "c" })).toThrow(/application/i);
+      expect(() => createJourneyStore({ applicationId: "a", distributionId: "d" })).toThrow(/campaign/i);
+    });
+
+    it("treats explicit nulls as absent", () => {
+      expect(createJourneyStore({ applicationId: null, campaignId: null }).getState()).toMatchObject({
+        applicationId: null,
+        campaignId: null
+      });
+    });
+  });
+
+  describe("parentless writes (T1-F)", () => {
+    it("recordCampaign without an application throws and leaves state untouched", () => {
+      const store = createJourneyStore();
+      expect(() => store.getState().recordCampaign("c")).toThrow(/application/i);
+      expect(store.getState().campaignId).toBeNull();
+    });
+
+    it("recordDistribution without a campaign throws and leaves state untouched", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      expect(() => store.getState().recordDistribution("d")).toThrow(/campaign/i);
+      expect(store.getState().distributionId).toBeNull();
+    });
+  });
+
   it("records and trims identifiers", () => {
     const store = createJourneyStore();
     store.getState().recordApplication("  app-1 ");

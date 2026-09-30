@@ -34,10 +34,31 @@ function normalizeId(id: string): string {
   return trimmed;
 }
 
+function normalizeOptionalId(id: string | null | undefined): string | null {
+  return id === null || id === undefined ? null : normalizeId(id);
+}
+
+/**
+ * The hierarchy is the store's invariant: a campaign needs an application and a
+ * distribution needs a campaign, whether they arrive as initial state or as a
+ * later write. A violation throws instead of silently storing an orphan.
+ */
+function normalizeInitial(initial: Partial<JourneyIds>): JourneyIds {
+  const applicationId = normalizeOptionalId(initial.applicationId);
+  const campaignId = normalizeOptionalId(initial.campaignId);
+  const distributionId = normalizeOptionalId(initial.distributionId);
+  if (campaignId !== null && applicationId === null) {
+    throw new Error("A campaign identifier requires an application identifier.");
+  }
+  if (distributionId !== null && campaignId === null) {
+    throw new Error("A distribution identifier requires a campaign identifier.");
+  }
+  return { applicationId, campaignId, distributionId };
+}
+
 export function createJourneyStore(initial: Partial<JourneyIds> = {}): JourneyStore {
   return createStore<JourneyState>()((set, get) => ({
-    ...EMPTY,
-    ...initial,
+    ...normalizeInitial(initial),
     recordApplication: (id) => {
       const next = normalizeId(id);
       if (next === get().applicationId) return;
@@ -45,10 +66,19 @@ export function createJourneyStore(initial: Partial<JourneyIds> = {}): JourneySt
     },
     recordCampaign: (id) => {
       const next = normalizeId(id);
+      if (get().applicationId === null) {
+        throw new Error("A campaign identifier requires an application identifier.");
+      }
       if (next === get().campaignId) return;
       set({ campaignId: next, distributionId: null });
     },
-    recordDistribution: (id) => set({ distributionId: normalizeId(id) }),
+    recordDistribution: (id) => {
+      const next = normalizeId(id);
+      if (get().campaignId === null) {
+        throw new Error("A distribution identifier requires a campaign identifier.");
+      }
+      set({ distributionId: next });
+    },
     reset: () => set({ ...EMPTY })
   }));
 }
