@@ -116,6 +116,29 @@ describe("SmeRequestWorkspace", () => {
     );
   });
 
+  // Characterization (green on first run): the real API answers an empty series for a
+  // reference the sales feed does not know (review finding R3-real-api-empty-series-masked-by-stub).
+  // The panel must show what the backend holds — no periods, so the declared total has
+  // nothing behind it — and must neither keep the synthetic fixture rows nor call it a load failure.
+  it("renders an empty backend series as no evidence, not as the synthetic fixture and not as a failure", async () => {
+    const gateway: SmeRequestGateway = {
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
+      load: vi.fn().mockResolvedValue({ request: SAVED_REQUEST, salesPeriods: [] })
+    };
+    renderWorkspace(gateway);
+    expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).toHaveTextContent("Junio 2026");
+
+    fillAndSubmit();
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: /Revisión de evidencia/ })).not.toHaveTextContent("Junio 2026")
+    );
+    const review = screen.getByRole("region", { name: /Revisión de evidencia/ });
+    expect(review).not.toHaveTextContent("Abril 2026");
+    expect(review).toHaveTextContent("Total declarado no coincide");
+    expect(screen.queryByText(/No se pudo cargar/)).not.toBeInTheDocument();
+  });
+
   it("tells the user when loading failed and keeps the synthetic review", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SAVED_REQUEST }),
