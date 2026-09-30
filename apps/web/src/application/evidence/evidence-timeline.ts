@@ -239,6 +239,9 @@ function distributionEntry(source: EvidenceSource<RevenueShareDistributionSnapsh
     { label: "Destinatarios", value: String(distribution.recipients.length) },
     { label: "Total", value: `${formatStroopsAsXlm(sumStroops(distribution.recipients))} XLM` }
   ];
+  if (distribution.period !== null) {
+    facts.push({ label: "Período", value: distribution.period });
+  }
   if (distribution.failureReason !== null) {
     facts.push({ label: "Motivo del fallo", value: failureReasonCopy(distribution.failureReason) });
   }

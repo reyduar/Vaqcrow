@@ -124,6 +124,8 @@ const validSnapshot = {
   transactionHash: "d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
   applicationId: null as string | null,
   campaignId: null as string | null,
+  // The YYYY-MM period the distribution settled; null for one recorded before it was persisted.
+  period: null as string | null,
   // Derived by the API from the hash it already persists, never stored.
   explorerUrl: "https://stellar.expert/explorer/testnet/tx/d0a1b2c3",
   // Absent unless the distribution failed, which the schema enforces in both
@@ -565,6 +567,18 @@ describe("submitRevenueShareDistributionCommandSchema", () => {
 });
 
 describe("revenueShareDistributionSnapshotSchema", () => {
+  it("carries the settled period, null for a legacy row, and requires the field to be present", () => {
+    expect(parseRevenueShareDistributionSnapshot({ ...validSnapshot, period: "2026-08" }).period).toBe("2026-08");
+    expect(parseRevenueShareDistributionSnapshot(validSnapshot).period).toBeNull();
+
+    const missing: Record<string, unknown> = { ...validSnapshot };
+    delete missing["period"];
+    expect(revenueShareDistributionSnapshotSchema.safeParse(missing).success).toBe(false);
+    expect(revenueShareDistributionSnapshotSchema.safeParse({ ...validSnapshot, period: "2026-13" }).success).toBe(
+      false
+    );
+  });
+
   it("parses a snapshot with a null application link", () => {
     const parsed = parseRevenueShareDistributionSnapshot(validSnapshot);
 

@@ -213,6 +213,7 @@ function toRevenueShareDistributionSnapshot(
     transactionHash: record.transactionHash,
     applicationId: record.applicationId ?? null,
     campaignId: record.campaignId ?? null,
+    period: record.period ?? null,
     explorerUrl: transactionExplorerUrl(explorerBaseUrl, record.transactionHash),
     failureReason: record.failureReason ?? null,
     lastCorrelationId: record.lastCorrelationId,
