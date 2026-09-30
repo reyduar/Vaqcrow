@@ -21,7 +21,7 @@ Every demo route works in isolation (mapping, 2026-09-30):
 - Runner: Vitest — `pnpm --filter @vaqcrow/web exec vitest run <file>` (web), `pnpm --filter @vaqcrow/api exec vitest run <file>` (api).
 
 ## Tasks
-- [ ] T1 — Install `zustand` in `apps/web`; add the journey store (identifiers only) and its provider mounted in the `(demo)` layout. Route: delegated writer (store, provider, layout, manifest/lockfile: 2+ files).
+- [x] T1 — Install `zustand` in `apps/web`; add the journey store (identifiers only) and its provider mounted in the `(demo)` layout. Route: delegated writer (store, provider, layout, manifest/lockfile: 2+ files).
 - [ ] T2 — Backend SME request: `POST /sme-requests` + `GET /sme-requests/current` in `apps/api` creating the `application_review` row and returning `applicationId`; web gateway contract aligned; store records `applicationId`. Honor the SME account-provisioning decision (2026-09-22, Engram `planning/sme-account-provisioning`): the request carries the SME-owned public key read from Freighter; Vaqcrow never generates or stores a seed.
 - [ ] T3 — Tie AI assessment to the application: send the submitted request's evidence, record the outcome against the application (success → `human_review`, failure → existing manual-review handoff).
 - [ ] T4 — Replace `DEMO_APPLICATION_ID` in approval, funding, distribution and evidence with store identifiers; record `campaignId`/`distributionId`; step navigation preserves them (URL stays shareable for evidence).
@@ -40,3 +40,7 @@ Every demo route works in isolation (mapping, 2026-09-30):
 
 ## Progress
 - 2026-09-30: branch `Vaqcrow#95_Task_Implement_complete_vertical_demo_journey` created from `main`; mapping recorded above.
+- 2026-09-30 T1 (delegated writer, uncommitted): installed `zustand` `^5.0.15` in `apps/web` only (lockfile updated). Files: `apps/web/src/state/journey-store.ts` (+ `.test.ts`, 10 tests), `apps/web/src/state/journey-store-provider.tsx` (+ `.test.tsx`, 3 tests), `apps/web/src/app/(demo)/layout.tsx` (provider wraps `DemoShell`). Store holds identifiers only; new applicationId clears campaign/distribution, new campaignId clears distribution, same id is a no-op, empty/whitespace ids throw.
+  - RED: both new test files failed at import resolution (`./journey-store` and `./journey-store-provider` did not exist): 2 files failed, 0 tests collected.
+  - GREEN: 4 files / 17 tests pass (store, provider, `layout.test.tsx`, `layout.traversal.test.tsx`).
+  - Verification: `web typecheck` clean; `web lint` 0 errors (1 pre-existing warning in `fetch-http-client.ts`); `web test` 107 files / 798 tests pass; `pnpm run boundaries` no violations.
