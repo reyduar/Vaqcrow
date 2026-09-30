@@ -27,6 +27,7 @@ Every demo route works in isolation (mapping, 2026-09-30):
 - [ ] T4 — Replace `DEMO_APPLICATION_ID` in approval, funding, distribution and evidence with store identifiers; record `campaignId`/`distributionId`; step navigation preserves them (URL stays shareable for evidence).
 - [ ] T5 — Option A: link `businessId` ↔ `applicationId`; derive distribution recipients/amounts from sales periods via `calculateRevenueShareObligation`/`allocateRevenueShare` in the prepare use case; retire the recipient fixture from the journey; link the distribution to its campaign.
 - [ ] T6 — Seed/reset path for a timed hosted run.
+- [ ] T1-F — Review follow-ups for the journey store (advisory, non-blocking; fold into T4 before it adds consumers): normalize and validate `createJourneyStore` initial ids (R3-initial-ids-unvalidated, WARNING); decide and test whether `recordCampaign`/`recordDistribution` may run without a parent id (R3-hierarchy-not-enforced); add a `(demo)` layout test with a probe child calling `useJourneyStore` (R3-layout-mount-unasserted).
 - Follow-up (Task #96): single full-journey Playwright spec with the stub API extended to assessments, decisions and distributions.
 
 ## Delivery
@@ -45,3 +46,4 @@ Every demo route works in isolation (mapping, 2026-09-30):
   - GREEN: 4 files / 17 tests pass (store, provider, `layout.test.tsx`, `layout.traversal.test.tsx`).
   - Verification: `web typecheck` clean; `web lint` 0 errors (1 pre-existing warning in `fetch-http-client.ts`); `web test` 107 files / 798 tests pass; `pnpm run boundaries` no violations.
   - Commit `526e6a6` (8 files, +237/−3). RDD assessment (`--base-ref dcd4ef5 --committed-only`): risk `medium`, `review_due=false`, reason `under_budget` — stays pending in the slice until a later commit reaches the delivery budget. Reviewed boundary remains `dcd4ef5`.
+- 2026-09-30 zustand skill installed by the user (`7e2516d`); feature doc updated (`8674607`). RDD on the slice `dcd4ef5..8674607` (`--committed-only`): risk `medium`, `review_due=true` (`slice_budget_reached`, 18 files / 1282 lines, mostly vendored skill docs). User granted consent; lens `review-reliability`; lineage `review-776bffd5e3fbeead` **approved** and acknowledged (authority burned). Three advisory findings recorded as T1-F. Reviewed boundary advances to `8674607`.
