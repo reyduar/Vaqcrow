@@ -207,6 +207,7 @@ export async function tryHandleDistributionRequest(request, response, method, pa
       transactionHash: TRANSACTION_HASH,
       applicationId: body.applicationId,
       campaignId: body.campaignId,
+      period: PERIOD,
       explorerUrl: EXPLORER_URL,
       failureReason: null,
       lastCorrelationId: CORRELATION_ID,

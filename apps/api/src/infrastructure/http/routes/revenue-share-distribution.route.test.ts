@@ -147,6 +147,7 @@ const snapshot: RevenueShareDistributionRecord = {
   transactionHash: TRANSACTION_HASH,
   applicationId: APPLICATION_ID,
   campaignId: CAMPAIGN_ID,
+  period: "2026-08",
   state: "submitted",
   lastCorrelationId: parseCorrelationId(CORRELATION_ID),
   confirmationAttempts: 0,
@@ -169,6 +170,7 @@ const wireSnapshot = {
   transactionHash: TRANSACTION_HASH,
   applicationId: APPLICATION_ID,
   campaignId: CAMPAIGN_ID,
+  period: "2026-08",
   explorerUrl: `${EXPLORER_BASE_URL}/tx/${TRANSACTION_HASH}`,
   failureReason: null,
   lastCorrelationId: CORRELATION_ID,
@@ -501,6 +503,8 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
     expect(response.statusCode).toBe(202);
     expect(response.json().distribution.applicationId).toBe(APPLICATION_ID);
     expect(response.json().distribution.campaignId).toBe(CAMPAIGN_ID);
+    // The derived period is persisted and echoed back on the snapshot.
+    expect(response.json().distribution.period).toBe("2026-08");
   });
 
   it("re-derives the distribution from the case before verifying the envelope", async () => {

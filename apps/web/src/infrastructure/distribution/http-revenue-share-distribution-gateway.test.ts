@@ -59,6 +59,7 @@ const wireSnapshot = {
   transactionHash: TRANSACTION_HASH,
   applicationId: APPLICATION_ID,
   campaignId: null,
+  period: "2026-08",
   explorerUrl: EXPLORER_URL,
   failureReason: null,
   lastCorrelationId: CORRELATION_ID,
@@ -329,6 +330,7 @@ describe("HttpRevenueShareDistributionGateway.getStatus", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("expected success");
     expect(result.value.state).toBe("submitted");
+    expect(result.value.period).toBe("2026-08");
     expect(result.value.transactionHash).toBe(TRANSACTION_HASH);
     expect(result.value.recipients).toEqual(parsedRecipients);
   });

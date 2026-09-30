@@ -125,7 +125,7 @@ La bóveda de campaña se habilita con **cinco variables**, y dos de ellas son u
 > [!warning] Una sola clave es peor que ninguna
 > `campaign-vault-config.ts` resuelve el slice así: **sin ninguna** de las dos claves del par devuelve `{ enabled: false }` y las rutas `/campaigns` no se registran (el navegador recibe un `404` de Fastify); **con exactamente una** devuelve un error de configuración. Ese error se lanza al cargar el módulo, sin `try/catch`, así que **el proceso no arranca**. Configurar sólo `STELLAR_CAMPAIGN_FACTORY_ID` o sólo `STELLAR_PLATFORM_SECRET_KEY` tumba la API entera en vez de degradarla.
 
-La fábrica de Testnet tiene como `owner` la identidad `vaqcrow-testnet`, con clave pública `GBCOTYYE3KGV745LQ4MELTP4IK2Z2RX2OESRNWP2LY6XLEI73X3PX2ZG` (leída de la red). La correspondencia entre `STELLAR_PLATFORM_SECRET_KEY` y ese `owner` sólo queda probada cuando la API abre efectivamente una campaña (`POST /campaigns`); ver los límites en la evidencia.
+La fábrica de Testnet tiene como `owner` la identidad `vaqcrow-testnet`, con clave pública `GBCOTYYE3KGV745LQ4MELTP4IK2Z2RX2OESRNWP2LY6XLEI73X3PX2ZG` (leída de la red). La correspondencia entre `STELLAR_PLATFORM_SECRET_KEY` y ese `owner` **quedó probada** el 2026-09-25, cuando la API abrió una campaña contra el despliegue hosteado (`POST /campaigns` → `201`, bóveda `CBANYZNPLW…`): un `factory.deploy()` exitoso sólo es posible si la clave de plataforma es el `owner` almacenado, que es inmutable. La evidencia y las tres capas de verificación están en [[docs/planning/cloud-environment-configuration-evidence|Evidencia de la configuración del entorno en la nube]].
 
 ## 6. Red local vs Testnet: dos mundos que no se mezclan
 
@@ -146,7 +146,7 @@ La fábrica de Testnet tiene como `owner` la identidad `vaqcrow-testnet`, con cl
 2. **La IA es asesora.** Propone una evaluación; no aprueba, no calcula obligaciones y no mueve fondos. La aprobación es humana.
 3. **Reset de Testnet agendado para el 2026-12-16.** Las direcciones de contrato de Testnet valen hasta ese reset; después hay que redesplegar y reapuntar la configuración.
 4. **API y web no se ejercitaron de punta a punta por navegador.** La configuración está desplegada y verificada por partes (bundle servido, `/health`, CORS), pero el recorrido completo en el navegador contra producción no se corrió; la evidencia lo declara como límite.
-5. **`POST /campaigns` no se ejercitó contra el despliegue hosteado.** Por eso la correspondencia entre la clave de plataforma y el `owner` de la fábrica todavía no quedó probada en vivo (ver [§5](#5-la-configuración-de-la-bóveda-un-par-estricto)).
+5. **`POST /campaigns` retirado como límite.** Se ejercitó contra el despliegue hosteado el **2026-09-25** (`201`, bóveda `CBANYZNPLW…`, tx `845f9040…`, ledger 4864817), lo que prueba que la clave de plataforma es el `owner` de la fábrica (ver [§5](#5-la-configuración-de-la-bóveda-un-par-estricto) y [[docs/planning/cloud-environment-configuration-evidence|Evidencia de la configuración del entorno en la nube]]). Como riesgo de configuración sólo queda el reset de Testnet del 2026-12-16 (límite 3).
 6. **Decisiones operativas sin registrar.** El almacenamiento y la rotación del secreto de plataforma, el SSO de los previews de Vercel y el dominio propio siguen abiertos.
 
 > [!tip] Estado del entorno

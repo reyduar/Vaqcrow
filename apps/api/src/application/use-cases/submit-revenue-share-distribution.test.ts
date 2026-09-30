@@ -74,6 +74,7 @@ const record = {
   transactionHash: HASH,
   applicationId: APPLICATION_ID,
   campaignId: CAMPAIGN_ID,
+  period: "2026-08",
   state: "submitted",
   lastCorrelationId: CORRELATION_ID,
   confirmationAttempts: 0,
@@ -131,6 +132,7 @@ describe("submitRevenueShareDistribution", () => {
     if (!result.ok) throw new Error("expected a submission");
     expect(result.value.applied).toBe(true);
     expect(result.value.distribution.campaignId).toBe(CAMPAIGN_ID);
+    expect(result.value.distribution.period).toBe("2026-08");
   });
 
   it("accepts the derived recipients in any order", async () => {

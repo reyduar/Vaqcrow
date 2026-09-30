@@ -276,6 +276,16 @@ describe("useCampaignVault: withdrawing", () => {
       expect.objectContaining({ operation: "withdraw", investorAccountId: INVESTOR, amountStroops: null })
     );
   });
+
+  // Characterization (green on first run): the poll already names the connected investor.
+  it("names the connected investor when polling the withdraw so the mirror reconciles", async () => {
+    const gateway = createGateway();
+    const { result } = await renderConnected(gateway, createWallet());
+
+    await act(() => result.current.withdraw());
+
+    expect(gateway.getTransaction).toHaveBeenCalledWith(CAMPAIGN_ID, HASH, INVESTOR);
+  });
 });
 
 describe("useCampaignVault: refunding", () => {
@@ -301,5 +311,24 @@ describe("useCampaignVault: refunding", () => {
       CAMPAIGN_ID,
       expect.objectContaining({ operation: "refund", investorAccountId: OTHER_INVESTOR, sourceAccountId: INVESTOR })
     );
+  });
+
+  // Characterization (green on first run): the refund poll names the refunded investor, not the caller.
+  it("names the refunded investor when polling a refund for the connected wallet", async () => {
+    const gateway = createGateway();
+    const { result } = await renderConnected(gateway, createWallet());
+
+    await act(() => result.current.refund());
+
+    expect(gateway.getTransaction).toHaveBeenCalledWith(CAMPAIGN_ID, HASH, INVESTOR);
+  });
+
+  it("names the target investor, not the caller, when polling a refund for another address", async () => {
+    const gateway = createGateway();
+    const { result } = await renderConnected(gateway, createWallet());
+
+    await act(() => result.current.refund(OTHER_INVESTOR));
+
+    expect(gateway.getTransaction).toHaveBeenCalledWith(CAMPAIGN_ID, HASH, OTHER_INVESTOR);
   });
 });

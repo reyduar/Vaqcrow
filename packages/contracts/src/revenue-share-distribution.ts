@@ -353,6 +353,8 @@ export const revenueShareDistributionSnapshotSchema = z
     applicationId: applicationIdSchema.nullable(),
     /** The settled campaign the distribution was derived from; null for one recorded before the link existed. */
     campaignId: campaignIdSchema.nullable(),
+    /** The `YYYY-MM` period the distribution settled; null for one recorded before the period was persisted. */
+    period: periodSchema.nullable(),
     explorerUrl: z.url(),
     failureReason: stellarFailureReasonSchema.nullable(),
     lastCorrelationId: correlationIdSchema,
