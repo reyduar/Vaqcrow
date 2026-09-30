@@ -114,8 +114,8 @@ Out of scope / explicitly not touched:
   against the evidence corpus and the code before it is written or approved) plus
   the standing decisions already settled, so no agent relitigates them.
   *Route: delegated writer.*
-- [ ] **A8** — `complete-vertical-demo-journey.md`: T6 follow-up entry.
-  *Route: parent, after the commits exist.*
+- [x] **A8** — `complete-vertical-demo-journey.md`: T6 follow-up entry.
+  *Route: parent (landed in `0a71da7`).*
 
 ## Acceptance criteria
 
@@ -153,7 +153,8 @@ Out of scope / explicitly not touched:
 - [x] Defects found and evidenced (preflight over-strict; runbook §6 false).
 - [x] Implementation (A1–A7).
 - [x] Verification (all commands run, results below).
-- [x] Commits (work units 1–4; this record closes in a fifth commit).
+- [x] Commits (six work units, below).
+- [x] Worktree released: the review transaction was abandoned, so this branch can keep taking commits.
 
 Work-unit commits on `Vaqcrow#95_Task_Implement_complete_vertical_demo_journey-09-demo-reset`:
 
@@ -163,7 +164,13 @@ Work-unit commits on `Vaqcrow#95_Task_Implement_complete_vertical_demo_journey-0
 | 2 | `3a27b8c` | `docs(planning): retire the factory-owner risk and record where the demo variables live` (A4+A5) |
 | 3 | `6111025` | `docs(architecture): drop the stale factory-owner limitation` (A6) |
 | 4 | `8eac982` | `docs(agents): record the document-alignment rule and the settled decisions` (A7) |
-| 5 | _(this record)_ | `docs(odd): record the preflight and document-alignment work` |
+| 5 | `0a8cc7e` | `docs(odd): record the preflight and document-alignment work` |
+| 6 | `0a71da7` | `docs(odd): record the T6 follow-up and retire the last stale claims` (A8) |
+
+> [!warning] Independent review: no verdict
+> This slice was `review_due` (medium tier, 456 changed lines, `slice_budget_reached`). The single selected lens (`review-reliability`) produced no capturable result on four consecutive Task attempts in the OpenCode runtime (`opencode_task_output_empty`), so transaction `review-a0cf920b0d99a156` was abandoned by the operator on 2026-09-30 under reason `operator_disposition`. `captured_lens_results` was empty and `findings_present` was false, so no lens work was discarded. This slice is therefore **self-verified** by `pnpm run verify` exit 0 and the 50 preflight tests — **not** reviewed by an independent lens. Nothing was marked PASS and no verdict was fabricated.
+>
+> The reviewer prompt must be **only** the provider-issued `GENTLE_AI_REVIEW_BINDING` line: the OpenCode host injects the `GENTLE_AI_REVIEW_CONTEXT` block itself, and hand-assembling it duplicates the `…_CONTEXT_END` / `…_PATCH_END` markers. The four failed attempts above did exactly that; the hypothesis is unproven because the bare-prompt variant was never actually emitted.
 
 ## Verification evidence
 
