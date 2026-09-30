@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
+import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
 import { buildApp } from "../build-app.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
@@ -172,5 +173,35 @@ describe("GET /sme-requests/:applicationId", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });
+  });
+});
+
+describe("GET /sme-requests/:applicationId with the simulated sales feed", () => {
+  it("returns the real series for the synthetic SME reference", async () => {
+    const response = await build({}, createSimulatedSalesDataProvider()).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.request).toEqual(request);
+    expect(body.salesPeriods).toHaveLength(8);
+    expect(body.salesPeriods[0]).toMatchObject({ period: "2026-01", simuladoLabel: "SIMULADO" });
+  });
+
+  it("still declares an empty series for an unknown SME reference", async () => {
+    const unknown = { ...request, smeReference: "sme:UNKNOWN" };
+    const findByApplicationId = vi
+      .fn()
+      .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: unknown } });
+
+    const response = await build({ findByApplicationId }, createSimulatedSalesDataProvider()).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().salesPeriods).toEqual([]);
   });
 });

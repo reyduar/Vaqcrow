@@ -3,7 +3,8 @@ import type { SalesDataProviderResult } from "../../application/ports/sales-data
 import {
   DEMO_BUSINESS_ID,
   HISTORICAL_SALES_PERIODS,
-  NEXT_SALES_PERIOD
+  NEXT_SALES_PERIOD,
+  SME_REFERENCE_TO_BUSINESS_ID
 } from "./simulated-sales-dataset.js";
 import { createSimulatedSalesDataProvider } from "./simulated-sales-data-provider.js";
 
@@ -140,5 +141,45 @@ describe("createSimulatedSalesDataProvider", () => {
 
     expect(periods).toEqual({ ok: false, error: { code: "unavailable" } });
     expect(recorded).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+});
+
+describe("synthetic SME reference mapping (one place, inside the simulated feed)", () => {
+  const SME_REFERENCE = "sme:SYN-PH-0001";
+
+  it("maps the synthetic SME reference to the demo business", () => {
+    expect(SME_REFERENCE_TO_BUSINESS_ID[SME_REFERENCE]).toBe(DEMO_BUSINESS_ID);
+  });
+
+  it("serves the same series for the SME reference as for the business id", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    const byReference = unwrap(await provider.getPeriods(SME_REFERENCE));
+    const byBusiness = unwrap(await provider.getPeriods(DEMO_BUSINESS_ID));
+
+    expect(byReference).toEqual(byBusiness);
+    expect(byReference).toHaveLength(8);
+  });
+
+  it("shares the recorded feed period between the reference and the business id", async () => {
+    const provider = createSimulatedSalesDataProvider();
+    unwrap(await provider.recordNextPeriod(SME_REFERENCE));
+
+    expect(unwrap(await provider.getPeriods(DEMO_BUSINESS_ID))).toHaveLength(9);
+    expect(unwrap(await provider.getPeriods(SME_REFERENCE))).toHaveLength(9);
+  });
+
+  it("keeps an unknown reference not_found on both methods", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    expect(await provider.getPeriods("sme:UNKNOWN")).toEqual({ ok: false, error: { code: "not_found" } });
+    expect(await provider.recordNextPeriod("sme:UNKNOWN")).toEqual({ ok: false, error: { code: "not_found" } });
+  });
+
+  it("does not resolve inherited object keys as references", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    expect(await provider.getPeriods("constructor")).toEqual({ ok: false, error: { code: "not_found" } });
+    expect(await provider.getPeriods("__proto__")).toEqual({ ok: false, error: { code: "not_found" } });
   });
 });
