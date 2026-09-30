@@ -8,13 +8,16 @@
  * decisions (who may sign, which campaigns qualify, what a repeat looks like)
  * with frozen literals, so two runs observe byte-identical responses.
  *
- * The derivation is the demo case: the latest reported period 2026-08 with
- * 3,745,800 ARS of sales at 450 bps gives a 168,561 ARS obligation, converted
- * to stroops in the proportion the campaign was funded
+ * The derivation reads the SME's sales feed through the `latestReportedSalesPeriod`
+ * dependency the sibling server injects, exactly like the real API: the demo's
+ * latest reported period (2026-08 with 3,745,800 ARS, or 2026-09 with 3,860,000 ARS
+ * once the feed has recorded it) at 450 bps gives the obligation, converted to
+ * stroops in the proportion the campaign was funded
  * (`floor(obligationArs x goalStroops / approvedLimitArs)`), and split
  * pro-rata over the contributions the web reported through the transaction poll
  * (`?investor=`). Like the real API it refuses a campaign whose mirrored
- * contributions do not add up to its total (`contributions_incomplete`).
+ * contributions do not add up to its total (`contributions_incomplete`), and a
+ * feed with no reported period (`no_eligible_period`).
  */
 import { getStubCampaign, STUB_NETWORK_PASSPHRASE } from "./stub-campaign-routes.mjs";
 
@@ -27,8 +30,6 @@ const FIXED_TIMESTAMP = "2026-09-30T12:00:00.000Z";
 
 const RULE_VERSION = "RS-2026-01";
 const RATE_BPS = 450;
-const PERIOD = "2026-08";
-const SALES_ARS = 3745800n;
 const APPROVED_LIMIT_ARS = 5000000n;
 /** Periods of the demo series that cannot be used, reported rather than hidden. */
 const EXCLUDED_PERIODS = Object.freeze([
@@ -72,7 +73,7 @@ function splitTotal(mirrored, totalStroops) {
 }
 
 /** Runs the derivation the real API runs; returns either a failure or the derived case. */
-function derive(body) {
+function derive(body, latestPeriod) {
   const campaign = getStubCampaign(body.campaignId);
   if (!campaign) return { failure: { status: 404, reason: "campaign_not_found" } };
   if (campaign.applicationId !== body.applicationId) {
@@ -82,6 +83,9 @@ function derive(body) {
     return { failure: { status: 409, reason: "source_not_sme" } };
   }
   if (campaign.state !== "settled") return { failure: { status: 409, reason: "campaign_not_settled" } };
+  // The obligation is computed over the latest reported period of the SME's feed,
+  // like the real derivation: the recorded month is the one being settled.
+  if (latestPeriod === null) return { failure: { status: 422, reason: "no_eligible_period" } };
   if (campaign.mirrored.size === 0) return { failure: { status: 422, reason: "no_contributors" } };
 
   const mirroredTotal = [...campaign.mirrored.values()].reduce((acc, amount) => acc + amount, 0n);
@@ -89,7 +93,8 @@ function derive(body) {
     return { failure: { status: 409, reason: "contributions_incomplete" } };
   }
 
-  const obligationArs = (SALES_ARS * BigInt(RATE_BPS)) / 10_000n;
+  const salesArs = BigInt(latestPeriod.amountArs);
+  const obligationArs = (salesArs * BigInt(RATE_BPS)) / 10_000n;
   const totalStroops = (obligationArs * campaign.goalStroops) / APPROVED_LIMIT_ARS;
   if (totalStroops === 0n) return { failure: { status: 422, reason: "obligation_rounds_to_zero" } };
 
@@ -99,8 +104,8 @@ function derive(body) {
     derivation: {
       ruleVersion: RULE_VERSION,
       rateBps: RATE_BPS,
-      period: PERIOD,
-      salesArs: SALES_ARS.toString(),
+      period: latestPeriod.period,
+      salesArs: salesArs.toString(),
       obligationArs: obligationArs.toString(),
       excludedPeriods: EXCLUDED_PERIODS,
       conversion: {
@@ -124,7 +129,13 @@ const SUBMISSION_PATH = /^\/revenue-share-distributions\/([^/]+)\/submission$/;
  * response was already sent), `false` if the path/method is not one of this
  * router's, so the caller can fall through to its own 404.
  */
-export async function tryHandleDistributionRequest(request, response, method, pathname, { sendJson, readJsonBody }) {
+export async function tryHandleDistributionRequest(
+  request,
+  response,
+  method,
+  pathname,
+  { sendJson, readJsonBody, latestReportedSalesPeriod }
+) {
   if (method === "POST" && pathname === "/revenue-share-distributions") {
     const body = await readJsonBody(request);
     const keys = ["sourceAccountId", "applicationId", "campaignId", "memo"];
@@ -139,12 +150,16 @@ export async function tryHandleDistributionRequest(request, response, method, pa
       return true;
     }
 
-    const derived = derive(body);
+    const derived = derive(body, latestReportedSalesPeriod());
     if (derived.failure) {
       failDerivation(sendJson, response, derived.failure.status, derived.failure.reason);
       return true;
     }
-    if (distributed && distributed.campaignId === body.campaignId && distributed.period === PERIOD) {
+    if (
+      distributed &&
+      distributed.campaignId === body.campaignId &&
+      distributed.period === derived.derivation.period
+    ) {
       sendJson(response, 409, { code: "already_distributed" });
       return true;
     }
@@ -181,11 +196,14 @@ export async function tryHandleDistributionRequest(request, response, method, pa
       return true;
     }
 
-    const derived = derive({
-      sourceAccountId: body.terms?.sourceAccountId,
-      applicationId: body.applicationId,
-      campaignId: body.campaignId
-    });
+    const derived = derive(
+      {
+        sourceAccountId: body.terms?.sourceAccountId,
+        applicationId: body.applicationId,
+        campaignId: body.campaignId
+      },
+      latestReportedSalesPeriod()
+    );
     if (derived.failure) {
       failDerivation(sendJson, response, derived.failure.status, derived.failure.reason);
       return true;
@@ -195,7 +213,11 @@ export async function tryHandleDistributionRequest(request, response, method, pa
       sendJson(response, 422, { code: "derivation_mismatch" });
       return true;
     }
-    if (distributed && distributed.campaignId === body.campaignId && distributed.period === PERIOD) {
+    if (
+      distributed &&
+      distributed.campaignId === body.campaignId &&
+      distributed.period === derived.derivation.period
+    ) {
       sendJson(response, 409, { code: "already_distributed" });
       return true;
     }
@@ -207,14 +229,14 @@ export async function tryHandleDistributionRequest(request, response, method, pa
       transactionHash: TRANSACTION_HASH,
       applicationId: body.applicationId,
       campaignId: body.campaignId,
-      period: PERIOD,
+      period: derived.derivation.period,
       explorerUrl: EXPLORER_URL,
       failureReason: null,
       lastCorrelationId: CORRELATION_ID,
       createdAt: FIXED_TIMESTAMP,
       updatedAt: FIXED_TIMESTAMP
     };
-    distributed = { period: PERIOD, campaignId: body.campaignId, snapshot };
+    distributed = { period: derived.derivation.period, campaignId: body.campaignId, snapshot };
     sendJson(response, 202, { applied: true, distribution: snapshot });
     return true;
   }

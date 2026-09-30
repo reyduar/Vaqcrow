@@ -38,12 +38,23 @@ const SALES_PERIODS = Object.freeze([
   { period: "2026-08", amountArs: 3745800, status: "reported", evidenceRef: "sales:2026-08", simuladoLabel: SIMULADO }
 ]);
 
+/** The next period the feed records (the real provider's `NEXT_SALES_PERIOD`): 2026-09, reported. */
+const NEXT_SALES_PERIOD = Object.freeze({
+  period: "2026-09",
+  amountArs: 3860000,
+  status: "reported",
+  evidenceRef: "sales:2026-09",
+  simuladoLabel: SIMULADO
+});
+
 /**
  * The reference the real API's sales feed knows (`sme:SYN-PH-0001` -> the synthetic
- * bakery). Any other reference has no series, so the real API answers an EMPTY one
- * and the application-scoped assessment refuses it with `sales_evidence_missing`.
+ * bakery) and the business id that resolves to the same series. Any other value has
+ * no series, so the real API answers an EMPTY one and the application-scoped
+ * assessment refuses it with `sales_evidence_missing`.
  */
 const KNOWN_SME_REFERENCE = "sme:SYN-PH-0001";
+const DEMO_BUSINESS_ID = "panaderia-horizonte";
 
 /** Contract-shaped persisted assessment (strict `applicationAssessmentSchema` + provenance). */
 const ASSESSMENT = Object.freeze({
@@ -68,6 +79,12 @@ const ASSESSMENT = Object.freeze({
 
 /** Last submitted request; reset per test via `POST /__reset` for isolation. */
 let currentRequest = null;
+
+/** Whether the feed's next period has been recorded (`POST /businesses/:id/sales-periods`). */
+let salesPeriodRecorded = false;
+
+/** Last recorded human decision; reset per test via `POST /__reset` for isolation. */
+let latestDecision = null;
 
 /** applicationId -> the attempt (`handoffId`) that recorded its assessment. */
 const recordedAssessments = new Map();
@@ -118,8 +135,24 @@ function recordedOutcome(applied) {
   };
 }
 
+/** The series the feed serves: the historical periods, plus the next one once it has been recorded. */
+function currentSalesPeriods() {
+  return salesPeriodRecorded ? [...SALES_PERIODS, NEXT_SALES_PERIOD] : SALES_PERIODS;
+}
+
+/** The latest reported period of a series (`YYYY-MM` sorts lexicographically), or `null`. */
+function latestReportedPeriod(periods) {
+  let latest = null;
+  for (const entry of periods) {
+    if (entry.status !== "reported" || entry.amountArs === null) continue;
+    if (latest === null || entry.period > latest.period) latest = entry;
+  }
+  return latest;
+}
+
 const SME_REQUEST_PATH = /^\/sme-requests\/([^/]+)$/;
 const DECISION_PATH = /^\/application-reviews\/([^/]+)\/decisions$/;
+const SALES_FEED_PATH = /^\/businesses\/([^/]+)\/sales-periods$/;
 const ASSESSMENT_POST_PATH = /^\/application-reviews\/([^/]+)\/assessments$/;
 const ASSESSMENT_READ_PATH = /^\/application-reviews\/([^/]+)\/assessment$/;
 
@@ -140,6 +173,8 @@ async function handle(request, response) {
 
   if (request.method === "POST" && pathname === "/__reset") {
     currentRequest = null;
+    salesPeriodRecorded = false;
+    latestDecision = null;
     recordedAssessments.clear();
     resetCampaignFixtures();
     resetDistributionFixtures();
@@ -155,9 +190,46 @@ async function handle(request, response) {
       return;
     }
     // Like the real API: a reference the feed does not know has an EMPTY series.
-    const salesPeriods = currentRequest.smeReference === KNOWN_SME_REFERENCE ? SALES_PERIODS : [];
+    const salesPeriods = currentRequest.smeReference === KNOWN_SME_REFERENCE ? currentSalesPeriods() : [];
     sendJson(response, 200, { request: currentRequest, salesPeriods });
     return;
+  }
+
+  // The monthly sales feed (the real `SalesDataProviderPort` routes). Both the
+  // business id and the synthetic SME reference resolve to the one demo series.
+  const salesFeedMatch = SALES_FEED_PATH.exec(pathname);
+  if (salesFeedMatch) {
+    const identifier = decodeURIComponent(salesFeedMatch[1]);
+    const known = identifier === DEMO_BUSINESS_ID || identifier === KNOWN_SME_REFERENCE;
+
+    if (request.method === "GET") {
+      if (!known) {
+        sendJson(response, 404, { code: "not_found" });
+        return;
+      }
+      sendJson(response, 200, { businessId: identifier, periods: currentSalesPeriods() });
+      return;
+    }
+
+    if (request.method === "POST") {
+      const body = await readJsonBody(request);
+      // The record-next body must be exactly `{}`, like the real route: extra keys
+      // or a missing body are a 400 before the provider is ever consulted.
+      if (typeof body !== "object" || body === null || Array.isArray(body) || Object.keys(body).length !== 0) {
+        sendJson(response, 400, { code: "invalid_request" });
+        return;
+      }
+      if (!known) {
+        sendJson(response, 404, { code: "not_found" });
+        return;
+      }
+      // Idempotent, like the real provider: the first call applies the period and
+      // every later call returns the identical period with `applied: false`.
+      const applied = !salesPeriodRecorded;
+      salesPeriodRecorded = true;
+      sendJson(response, applied ? 201 : 200, { applied, period: NEXT_SALES_PERIOD });
+      return;
+    }
   }
 
   // Test-only seed: an application that already has a recorded assessment (the approval
@@ -230,11 +302,22 @@ async function handle(request, response) {
       return;
     }
     // The gateway sends the command without `applicationId` (it travels in the path);
-    // the record the UI renders carries it back, exactly like the real API would.
-    sendJson(response, 201, {
-      applied: true,
-      decision: { ...body, applicationId, decidedAt: DECIDED_AT, correlationId: CORRELATION_ID }
-    });
+    // the record the UI renders carries it back, exactly like the real API would. It
+    // is kept so the evidence step can read the same decision back.
+    const decision = { ...body, applicationId, decidedAt: DECIDED_AT, correlationId: CORRELATION_ID };
+    latestDecision = decision;
+    sendJson(response, 201, { applied: true, decision });
+    return;
+  }
+
+  if (request.method === "GET" && decisionMatch) {
+    const applicationId = decodeURIComponent(decisionMatch[1]);
+    if (latestDecision === null || latestDecision.applicationId !== applicationId) {
+      // The API's truthful `not_found`: nothing recorded yet, never an empty success.
+      sendJson(response, 404, { code: "not_found" });
+      return;
+    }
+    sendJson(response, 200, { decision: latestDecision });
     return;
   }
 
@@ -249,7 +332,10 @@ async function handle(request, response) {
   if (pathname === "/revenue-share-distributions" || pathname.startsWith("/revenue-share-distributions/")) {
     const handled = await tryHandleDistributionRequest(request, response, request.method, pathname, {
       sendJson,
-      readJsonBody
+      readJsonBody,
+      // The derivation reads the SME's feed, exactly like the real API: the latest
+      // reported period (2026-08, or 2026-09 once it has been recorded).
+      latestReportedSalesPeriod: () => latestReportedPeriod(currentSalesPeriods())
     });
     if (handled) return;
   }
