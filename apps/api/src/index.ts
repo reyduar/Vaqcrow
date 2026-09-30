@@ -9,6 +9,7 @@ import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
+import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
@@ -75,6 +76,8 @@ const campaign = buildCampaignDependencies(config, {
 // here, at the composition root, and nowhere else.
 const salesDataProvider = createSimulatedSalesDataProvider();
 
+const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
+
 const app = buildApp({
   applicationReviewRepository,
   revenueShareDistribution,
@@ -84,13 +87,16 @@ const app = buildApp({
   },
   applicationAssessment: {
     repository: applicationReviewRepository,
+    assessments: new SupabaseApplicationAssessmentRepository(supabase),
+    smeRequests: smeRequestRepository,
+    salesData: salesDataProvider,
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
   salesFeed: { provider: salesDataProvider },
   smeRequest: {
-    repository: new SupabaseSmeRequestRepository(supabase),
+    repository: smeRequestRepository,
     salesData: salesDataProvider,
     generateApplicationId: () => parseApplicationId(randomUUID())
   },
