@@ -1,44 +1,30 @@
-import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { disclosures, microcopy } from "@/application/trust/disclosures";
 
-const { get, workspace } = vi.hoisted(() => ({
-  // `URLSearchParams.get` answers `null` for a missing key, so the default keeps
-  // the page's "no id" branch truthful; individual tests answer per key.
-  get: vi.fn<(key: string) => string | null>().mockReturnValue(null),
-  // Captures the props the page hands to the workspace, so this suite proves the
-  // page's own read of the URL without standing up the real workspace.
-  workspace: {
-    campaignId: undefined as string | null | undefined,
-    distributionId: undefined as string | null | undefined
-  }
-}));
+// The workspace's own behaviour has its own suite; the page's own wiring — it
+// renders the workspace inside the journey — is what these tests prove. The
+// probe shows the ids the journey holds, as the workspace reads them.
+vi.mock("@/presentation/components/evidence-workspace", async () => {
+  const { useJourneyStore } = await import("@/state/journey-store-provider");
+  return {
+    EvidenceWorkspace: () => {
+      const campaignId = useJourneyStore((state) => state.campaignId);
+      const distributionId = useJourneyStore((state) => state.distributionId);
+      return <p>{`campaign:${campaignId ?? "sin referencia"} distribution:${distributionId ?? "sin referencia"}`}</p>;
+    }
+  };
+});
 
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => ({ get })
-}));
-
-// The workspace's own behaviour has its own suite; the page's own wiring — the
-// two ids it reads from `?campaign=` and `?distribution=` — is what these tests
-// prove.
-vi.mock("@/presentation/components/evidence-workspace", () => ({
-  EvidenceWorkspace: (props: {
-    readonly campaignId?: string | null;
-    readonly distributionId?: string | null;
-  }) => {
-    workspace.campaignId = props.campaignId;
-    workspace.distributionId = props.distributionId;
-    // Render the ids the page handed down, as `/distribution` does, so the
-    // wiring survives the route-level assertions too.
-    return (
-      <p>
-        {`campaign:${props.campaignId ?? "sin referencia"} distribution:${props.distributionId ?? "sin referencia"}`}
-      </p>
-    );
-  }
-}));
-
+import type { JourneyIds } from "@/state/journey-store";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import EvidencePage from "./page";
+
+const APP = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
+
+const render = (ui: ReactElement, initial: Partial<JourneyIds> = { applicationId: APP }) =>
+  rtlRender(<JourneyStoreProvider initial={initial}>{ui}</JourneyStoreProvider>);
 
 /**
  * Route-scoped disclosure assertions (Feature #17 / Task #54, spec obs #445)
@@ -47,18 +33,10 @@ import EvidencePage from "./page";
  * DEMO/TESTNET header chrome and cross-route co-presence are covered by
  * `trust-disclosures.integration.test.tsx`.
  *
- * T93-01 adds the page's own URL read: the two ids the journey carried must
- * reach the workspace unchanged, and a missing id must arrive as `null` (a
- * declared absence) rather than being swallowed.
+ * The journey wiring: the ids the journey carried reach the workspace unchanged,
+ * and a missing id stays a declared absence rather than being swallowed.
  */
 describe("EvidencePage", () => {
-  afterEach(() => {
-    get.mockReset();
-    get.mockReturnValue(null);
-    workspace.campaignId = undefined;
-    workspace.distributionId = undefined;
-  });
-
   it("renders the full simulation, testnet, non-custody, contract-custody, and no-production disclosure texts verbatim", () => {
     render(<EvidencePage />);
 
@@ -92,36 +70,18 @@ describe("EvidencePage", () => {
     expect(screen.queryByText(/Step content coming soon/i)).not.toBeInTheDocument();
   });
 
-  it("reads ?campaign= and ?distribution= and hands both ids to the workspace", () => {
+  it("shows the campaign and distribution the journey holds, so a shared link renders the same run", () => {
     const campaignId = "123e4567-e89b-42d3-a456-4266141740ab";
     const distributionId = "223e4567-e89b-42d3-a456-4266141740ab";
-    get.mockImplementation((key) =>
-      key === "campaign" ? campaignId : key === "distribution" ? distributionId : null
-    );
 
-    render(<EvidencePage />);
+    render(<EvidencePage />, { applicationId: APP, campaignId, distributionId });
 
-    expect(workspace.campaignId).toBe(campaignId);
-    expect(workspace.distributionId).toBe(distributionId);
-    // The page reads exactly the two keys the journey carries; any other read
-    // would make it depend on a query key the URL contract does not define.
-    expect(get.mock.calls.map(([key]) => key)).toEqual(["campaign", "distribution"]);
-    expect(
-      screen.getByText(`campaign:${campaignId} distribution:${distributionId}`)
-    ).toBeInTheDocument();
+    expect(screen.getByText(`campaign:${campaignId} distribution:${distributionId}`)).toBeInTheDocument();
   });
 
-  it("hands the workspace null for both ids when neither is in the url", () => {
+  it("declares both ids absent when the journey holds neither", () => {
     render(<EvidencePage />);
 
-    // A missing key is a declared absence, never coerced to an empty string that
-    // a downstream reader could mistake for a supplied id.
-    expect(workspace.campaignId).toBeNull();
-    expect(workspace.distributionId).toBeNull();
-    expect(workspace.campaignId).not.toBe("");
-    expect(workspace.distributionId).not.toBe("");
-    expect(
-      screen.getByText("campaign:sin referencia distribution:sin referencia")
-    ).toBeInTheDocument();
+    expect(screen.getByText("campaign:sin referencia distribution:sin referencia")).toBeInTheDocument();
   });
 });

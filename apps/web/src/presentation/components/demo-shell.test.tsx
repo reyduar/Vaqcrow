@@ -1,7 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import { render as rtlRender, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { disclosures, microcopy } from "@/application/trust/disclosures";
+import { JourneyStoreProvider } from "@/state/journey-store-provider";
 import { DemoShell } from "./demo-shell";
+
+const APP = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
+const CAMPAIGN = "40000000-0000-4000-8000-000000000000";
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: JourneyStoreProvider });
 
 const { usePathname } = vi.hoisted(() => ({
   usePathname: vi.fn()
@@ -85,5 +92,25 @@ describe("DemoShell", () => {
     expect(screen.getByText("Fallback content")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Principal" })).toBeInTheDocument();
     expect(screen.getByText(disclosures["no-production"].text)).toBeInTheDocument();
+  });
+  it("carries the journey identifiers on the navbar and step-nav links", () => {
+    usePathname.mockReturnValue("/approval");
+
+    rtlRender(
+      <JourneyStoreProvider initial={{ applicationId: APP, campaignId: CAMPAIGN }}>
+        <DemoShell>
+          <p>Step body content</p>
+        </DemoShell>
+      </JourneyStoreProvider>
+    );
+
+    const query = `?application=${APP}&campaign=${CAMPAIGN}`;
+    const primaryNav = within(screen.getByRole("navigation", { name: "Principal" }));
+    expect(primaryNav.getByRole("link", { name: "Funding" })).toHaveAttribute("href", `/funding${query}`);
+    const stepNav = within(screen.getByRole("navigation", { name: "Demo step navigation" }));
+    expect(stepNav.getByRole("link", { name: "AI Assessment" })).toHaveAttribute(
+      "href",
+      `/ai-assessment${query}`
+    );
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { DEMO_ACTOR, DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
+import { DEMO_ACTOR } from "@/application/fixtures/demo-application";
 import type { AssessmentGateway } from "@/application/ports/assessment-gateway";
 import type { HumanDecisionGateway } from "@/application/ports/human-decision-gateway";
 import type { ManualReviewGateway } from "@/application/ports/manual-review-gateway";
@@ -15,6 +15,7 @@ import { AiAssessmentPanel } from "./ai-assessment-panel";
 import { HumanDecisionForm } from "./human-decision-form";
 import { HumanDecisionRecordView } from "./human-decision-record";
 import { ManualReviewContextPanel } from "./manual-review-context-panel";
+import { StartWithRequestNotice } from "./start-with-request-notice";
 
 const defaultGateway = createHumanDecisionGateway(process.env["NEXT_PUBLIC_API_BASE_URL"]);
 const defaultManualReviewGateway = createManualReviewGateway(process.env["NEXT_PUBLIC_API_BASE_URL"]);
@@ -27,7 +28,7 @@ export interface HumanDecisionWorkspaceProps {
   readonly manualReviewGateway?: ManualReviewGateway | null;
   /** Injectable for tests; the read side of the persisted assessment. */
   readonly assessmentGateway?: AssessmentGateway | null;
-  /** Overrides the journey application (tests); otherwise the journey's, then the demo fallback. */
+  /** Overrides the journey application (tests); otherwise the journey's. With neither, the step asks for the request first. */
   readonly applicationId?: string;
 }
 
@@ -48,16 +49,21 @@ export interface HumanDecisionWorkspaceProps {
  * but could not be read, so the screen says so instead of claiming there is none.
  */
 export function HumanDecisionWorkspace({
+  applicationId: applicationIdOverride,
+  ...rest
+}: HumanDecisionWorkspaceProps) {
+  const journeyApplicationId = useJourneyStore((state) => state.applicationId);
+  const applicationId = applicationIdOverride ?? journeyApplicationId;
+  if (applicationId === null) return <StartWithRequestNotice action="registrar la decisión" />;
+  return <HumanDecisionForApplication applicationId={applicationId} {...rest} />;
+}
+
+function HumanDecisionForApplication({
   gateway = defaultGateway,
   manualReviewGateway = defaultManualReviewGateway,
   assessmentGateway = defaultAssessmentGateway,
-  applicationId: applicationIdOverride
-}: HumanDecisionWorkspaceProps) {
-  const journeyApplicationId = useJourneyStore((state) => state.applicationId);
-  // ASSUMPTION (T4 removes it for every route): with no application in the
-  // journey the step keeps targeting the seeded demo application, as it did
-  // before the journey carried real identifiers.
-  const applicationId = applicationIdOverride ?? journeyApplicationId ?? DEMO_APPLICATION_ID;
+  applicationId
+}: HumanDecisionWorkspaceProps & { readonly applicationId: string }) {
   const { submit, isSubmitting, error, recorded } = useHumanDecision(gateway, applicationId);
   const manualReview = useManualReviewContext(manualReviewGateway, applicationId);
   const assessment = usePersistedAssessment(assessmentGateway, applicationId);

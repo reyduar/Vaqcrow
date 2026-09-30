@@ -14,7 +14,7 @@ test("never preselects a decision and keeps the persisted AI assessment advisory
   // The approval step shows what the backend persisted; seed an assessment for the demo application.
   await request.post(`${STUB_API_BASE_URL}/__seed-assessment`, { data: { applicationId: DEMO_APPLICATION_ID } });
 
-  await page.goto("/approval");
+  await page.goto(`/approval?application=${DEMO_APPLICATION_ID}`);
 
   await expect(page.getByRole("heading", { name: "Evaluación de IA", exact: true })).toBeVisible();
   await expect(page.getByText(/La IA solo asesora: no aprueba, no define límites y no transfiere fondos/)).toBeVisible();
@@ -28,7 +28,7 @@ test("never preselects a decision and keeps the persisted AI assessment advisory
 test("says no assessment was recorded, instead of showing a canned one, and still lets a person decide", async ({
   page
 }) => {
-  await page.goto("/approval");
+  await page.goto(`/approval?application=${DEMO_APPLICATION_ID}`);
 
   await expect(page.getByRole("heading", { name: "Sin evaluación de IA", exact: true })).toBeVisible();
   await expect(page.getByText("Todavía no hay ninguna evaluación de IA registrada para esta solicitud.")).toBeVisible();
@@ -37,7 +37,7 @@ test("says no assessment was recorded, instead of showing a canned one, and stil
 });
 
 test("refuses an incomplete decision locally and records nothing", async ({ page }) => {
-  await page.goto("/approval");
+  await page.goto(`/approval?application=${DEMO_APPLICATION_ID}`);
 
   await page.getByRole("button", { name: "Registrar decisión" }).click();
 
@@ -49,7 +49,7 @@ test("refuses an incomplete decision locally and records nothing", async ({ page
 test("records an approved decision and renders only the backend record", async ({ page }) => {
   const reason = "Aprobado por el comité de crédito (demo).";
 
-  await page.goto("/approval");
+  await page.goto(`/approval?application=${DEMO_APPLICATION_ID}`);
   await page.getByRole("radio", { name: "Aprobar" }).check();
   await page.getByLabel("Razón de la decisión").fill(reason);
   await page.getByLabel("Límite aprobado (ARS)").fill("5000000");
@@ -73,7 +73,7 @@ test("posts the decision to the demo application id only", async ({ page }) => {
     if (request.url().includes("/decisions")) decisionCalls.push(request.url());
   });
 
-  await page.goto("/approval");
+  await page.goto(`/approval?application=${DEMO_APPLICATION_ID}`);
   await page.getByRole("radio", { name: "Rechazar" }).check();
   await page.getByLabel("Razón de la decisión").fill("Fuera de política de riesgo (demo).");
   await page.getByRole("button", { name: "Registrar decisión" }).click();

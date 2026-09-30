@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { DemoShell } from "@/presentation/components/demo-shell";
-import { JourneyStoreProvider } from "@/state/journey-store-provider";
+import { DemoJourney } from "@/state/demo-journey";
 
 export default function DemoLayout({ children }: { children: ReactNode }) {
   return (
-    <JourneyStoreProvider>
+    <DemoJourney>
       <DemoShell>{children}</DemoShell>
-    </JourneyStoreProvider>
+    </DemoJourney>
   );
 }

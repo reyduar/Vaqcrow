@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createJourneyStore } from "./journey-store";
 
 describe("createJourneyStore", () => {
@@ -14,6 +14,47 @@ describe("createJourneyStore", () => {
     const store = createJourneyStore({ applicationId: "app-1" });
     expect(store.getState().applicationId).toBe("app-1");
     expect(store.getState().campaignId).toBeNull();
+  });
+
+  describe("initial identifiers (T1-F)", () => {
+    it("trims them exactly like the record actions", () => {
+      const store = createJourneyStore({ applicationId: "  app-1 ", campaignId: " c ", distributionId: " d " });
+      expect(store.getState()).toMatchObject({ applicationId: "app-1", campaignId: "c", distributionId: "d" });
+    });
+
+    it.each(["", "   "])("rejects a blank initial identifier %j", (bad) => {
+      expect(() => createJourneyStore({ applicationId: bad })).toThrow(/non-empty/);
+      expect(() => createJourneyStore({ applicationId: "a", campaignId: bad })).toThrow(/non-empty/);
+      expect(() => createJourneyStore({ applicationId: "a", campaignId: "c", distributionId: bad })).toThrow(
+        /non-empty/
+      );
+    });
+
+    it("rejects a campaign without an application and a distribution without a campaign", () => {
+      expect(() => createJourneyStore({ campaignId: "c" })).toThrow(/application/i);
+      expect(() => createJourneyStore({ applicationId: "a", distributionId: "d" })).toThrow(/campaign/i);
+    });
+
+    it("treats explicit nulls as absent", () => {
+      expect(createJourneyStore({ applicationId: null, campaignId: null }).getState()).toMatchObject({
+        applicationId: null,
+        campaignId: null
+      });
+    });
+  });
+
+  describe("parentless writes (T1-F)", () => {
+    it("recordCampaign without an application throws and leaves state untouched", () => {
+      const store = createJourneyStore();
+      expect(() => store.getState().recordCampaign("c")).toThrow(/application/i);
+      expect(store.getState().campaignId).toBeNull();
+    });
+
+    it("recordDistribution without a campaign throws and leaves state untouched", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      expect(() => store.getState().recordDistribution("d")).toThrow(/campaign/i);
+      expect(store.getState().distributionId).toBeNull();
+    });
   });
 
   it("records and trims identifiers", () => {
@@ -68,5 +109,33 @@ describe("createJourneyStore", () => {
     const b = createJourneyStore();
     a.getState().recordApplication("x");
     expect(b.getState().applicationId).toBeNull();
+  });
+  describe("hydrate (URL wins)", () => {
+    it("replaces the ids wholesale, dropping the ones not supplied", () => {
+      const store = createJourneyStore({ applicationId: "a", campaignId: "c", distributionId: "d" });
+      store.getState().hydrate({ applicationId: "b", campaignId: null, distributionId: null });
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: null, distributionId: null });
+    });
+
+    it("normalizes like the initial state and enforces the hierarchy", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      store.getState().hydrate({ applicationId: " b ", campaignId: " c ", distributionId: null });
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: "c" });
+      expect(() => store.getState().hydrate({ applicationId: "", campaignId: null, distributionId: null })).toThrow(
+        /non-empty/
+      );
+      expect(() => store.getState().hydrate({ applicationId: null, campaignId: "c", distributionId: null })).toThrow(
+        /application/i
+      );
+      expect(store.getState()).toMatchObject({ applicationId: "b", campaignId: "c" });
+    });
+
+    it("does not notify subscribers when the ids are unchanged", () => {
+      const store = createJourneyStore({ applicationId: "a" });
+      const listener = vi.fn();
+      store.subscribe(listener);
+      store.getState().hydrate({ applicationId: "a", campaignId: null, distributionId: null });
+      expect(listener).not.toHaveBeenCalled();
+    });
   });
 });

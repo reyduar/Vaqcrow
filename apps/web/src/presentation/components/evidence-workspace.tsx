@@ -6,7 +6,6 @@ import {
   type EvidenceSource,
   type EvidenceSources
 } from "@/application/evidence/evidence-timeline";
-import { DEMO_APPLICATION_ID } from "@/application/fixtures/demo-application";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
 import type { HumanDecisionGateway } from "@/application/ports/human-decision-gateway";
 import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
@@ -14,6 +13,7 @@ import { createCampaignGateway } from "@/infrastructure/campaign/default-gateway
 import { HttpHumanDecisionGateway } from "@/infrastructure/decision/http-human-decision-gateway";
 import { HttpRevenueShareDistributionGateway } from "@/infrastructure/distribution/http-revenue-share-distribution-gateway";
 import { AxiosHttpClient } from "@/infrastructure/http/axios-http-client";
+import { useJourneyStore } from "@/state/journey-store-provider";
 import type {
   CampaignSnapshot,
   HumanDecisionRecord,
@@ -21,6 +21,7 @@ import type {
   RevenueShareDistributionSnapshot
 } from "@vaqcrow/contracts";
 import { EvidenceTimeline } from "./evidence-timeline";
+import { StartWithRequestNotice } from "./start-with-request-notice";
 
 /**
  * The demo's env-configured gateways, held at module scope so they stay stable
@@ -44,10 +45,6 @@ const defaultCampaignGateway = createCampaignGateway(process.env["NEXT_PUBLIC_AP
 const defaultDistributionGateway = createDistributionGateway();
 
 export interface EvidenceWorkspaceProps {
-  /** The campaign id the page read from `?campaign=`; absent means it was not run in this session. */
-  readonly campaignId?: string | null;
-  /** The distribution id the page read from `?distribution=`; absent means it was not run in this session. */
-  readonly distributionId?: string | null;
   /** Injectable for tests; `undefined` uses the env-configured gateway, `null` forces "cannot read". */
   readonly humanDecisionGateway?: HumanDecisionGateway | null;
   readonly campaignGateway?: CampaignGateway | null;
@@ -57,7 +54,8 @@ export interface EvidenceWorkspaceProps {
 /**
  * Evidence step container (Feature #29 / Task #92, T92-04). Reads the three
  * persisted sources the dashboard correlates — the latest human decision, the
- * campaign vault named in the URL, the distribution named in the URL — and
+ * campaign vault and the distribution the journey holds (without an
+ * application it asks for the request first) — and
  * projects them through the pure `buildEvidenceTimeline` before rendering.
  *
  * A missing base URL, a missing id or a rejected read is data, never an
@@ -66,21 +64,30 @@ export interface EvidenceWorkspaceProps {
  * facts, hashes or a calculation. Nothing here signs, submits or moves money.
  */
 export function EvidenceWorkspace({
-  campaignId = null,
-  distributionId = null,
   humanDecisionGateway = defaultHumanDecisionGateway,
   campaignGateway = defaultCampaignGateway,
   distributionGateway = defaultDistributionGateway
 }: EvidenceWorkspaceProps) {
-  const [sources, setSources] = useState<EvidenceSources | undefined>();
+  // Every id comes from the journey (hydrated from the URL, so a shared link
+  // resumes the same run); a movement whose id is missing was not run here.
+  const applicationId = useJourneyStore((state) => state.applicationId);
+  const campaignId = useJourneyStore((state) => state.campaignId);
+  const distributionId = useJourneyStore((state) => state.distributionId);
+  // The read is stored with the ids it answered: sources of a superseded
+  // journey are never rendered (they read as loading) and a late response of a
+  // superseded read is dropped by the effect's `cancelled` guard.
+  const readKey = `${applicationId}|${campaignId}|${distributionId}`;
+  const [read, setRead] = useState<{ key: string; sources: EvidenceSources } | undefined>();
+  const sources = read?.key === readKey ? read.sources : undefined;
 
   useEffect(() => {
+    if (applicationId === null) return;
     let cancelled = false;
 
     const readDecision = async (): Promise<EvidenceSource<HumanDecisionRecord>> => {
       if (!humanDecisionGateway) return { kind: "unavailable" };
       try {
-        const value = await humanDecisionGateway.readLatest(DEMO_APPLICATION_ID);
+        const value = await humanDecisionGateway.readLatest(applicationId);
         // `null` is the API's truthful `not_found`: no decision recorded yet.
         return value === null ? { kind: "absent" } : { kind: "observed", value };
       } catch {
@@ -122,13 +129,15 @@ export function EvidenceWorkspace({
         readDistribution()
       ]);
       if (cancelled) return;
-      setSources({ applicationId: DEMO_APPLICATION_ID, decision, campaign, distribution });
+      setRead({ key: readKey, sources: { applicationId, decision, campaign, distribution } });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [campaignId, distributionId, humanDecisionGateway, campaignGateway, distributionGateway]);
+  }, [applicationId, campaignId, distributionId, readKey, humanDecisionGateway, campaignGateway, distributionGateway]);
+
+  if (applicationId === null) return <StartWithRequestNotice action="ver la evidencia" />;
 
   if (!sources) {
     return (

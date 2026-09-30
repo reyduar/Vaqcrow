@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { demoStepHref } from "@/application/navigation/demo-steps";
 import { microcopy } from "@/application/trust/disclosures";
 import type { AssessmentGateway } from "@/application/ports/assessment-gateway";
 import { createAssessmentGateway } from "@/infrastructure/assessment/default-gateway";
 import { useJourneyStore } from "@/state/journey-store-provider";
 import { useAssessment } from "@/state/use-assessment";
 import { AiAssessmentPanel } from "./ai-assessment-panel";
+import { StartWithRequestNotice } from "./start-with-request-notice";
 import { TrustBanner } from "./trust-banner";
 
 /**
@@ -52,12 +51,7 @@ export function AssessmentWorkspace({ gateway = defaultGateway }: { readonly gat
   return (
     <div className="flex flex-col gap-4">
       {applicationId === null ? (
-        <p role="status" className="text-sm">
-          Todavía no hay una solicitud enviada: primero hay que enviar la solicitud para poder consultar la evaluación.{" "}
-          <Link href={demoStepHref("request")} className="underline">
-            Ir a la solicitud
-          </Link>
-        </p>
+        <StartWithRequestNotice action="consultar la evaluación" />
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <button
