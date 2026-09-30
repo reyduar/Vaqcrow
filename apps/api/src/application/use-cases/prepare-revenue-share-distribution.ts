@@ -6,11 +6,17 @@ import type {
   RevenueShareDistributionTerms
 } from "@vaqcrow/contracts";
 import type { LedgerPort } from "../ports/ledger-port.js";
+import type {
+  DeriveRevenueShareDistributionErrorCode,
+  DeriveRevenueShareDistributionResult
+} from "./derive-revenue-share-distribution.js";
 import type { RevenueShareDistributionXdrPort } from "../ports/revenue-share-distribution-xdr-port.js";
 
 /**
- * Builds the unsigned envelope for a revenue-share distribution and returns it
- * with the terms it was built from. It persists nothing (`D2`), for the same
+ * Derives a revenue-share distribution from the case, builds its unsigned
+ * envelope and returns it with the terms it was built from. The recipients and
+ * amounts are derived by the server (`deriveRevenueShareDistribution`, T5a) and
+ * never supplied by the caller. It persists nothing (`D2`), for the same
  * reason `prepareFundingIntent` does not: a distribution only becomes evidence
  * once a signed transaction exists, so there is no pre-submission row to write
  * and no pre-submission state to invent.
@@ -38,11 +44,25 @@ export interface PrepareRevenueShareDistributionDeps {
   readonly xdr: RevenueShareDistributionXdrPort;
   readonly network: { readonly network: string; readonly networkPassphrase: string };
   readonly generateDistributionId: () => RevenueShareDistributionId;
+  /**
+   * The derivation, injected as a function so this use case depends on its
+   * result and not on the ports it reads. The composition root binds it to
+   * `deriveRevenueShareDistribution`.
+   */
+  readonly derive: (input: {
+    readonly applicationId: PrepareRevenueShareDistributionCommand["applicationId"];
+    readonly campaignId: string;
+    readonly sourceAccountId: string;
+  }) => Promise<DeriveRevenueShareDistributionResult>;
 }
 
-export type PrepareRevenueShareDistributionError = {
-  readonly code: "account_not_found" | "invalid_input" | "unavailable";
-};
+export type PrepareRevenueShareDistributionError =
+  | { readonly code: "account_not_found" | "invalid_input" | "unavailable" }
+  | {
+      readonly code: "derivation_failed";
+      /** The closed derivation vocabulary: safe to return, names no internal detail. */
+      readonly reason: Exclude<DeriveRevenueShareDistributionErrorCode, "unavailable">;
+    };
 
 export type PrepareRevenueShareDistributionResult =
   | { readonly ok: true; readonly value: PreparedRevenueShareDistribution }
@@ -56,6 +76,18 @@ export async function prepareRevenueShareDistribution(
   }
 ): Promise<PrepareRevenueShareDistributionResult> {
   const command = input.command;
+
+  const derived = await deps.derive({
+    applicationId: command.applicationId,
+    campaignId: command.campaignId,
+    sourceAccountId: command.sourceAccountId
+  });
+
+  if (!derived.ok) {
+    return derived.error.code === "unavailable"
+      ? { ok: false, error: { code: "unavailable" } }
+      : { ok: false, error: { code: "derivation_failed", reason: derived.error.code } };
+  }
 
   const account = await deps.ledger.getAccount(command.sourceAccountId);
 
@@ -77,7 +109,7 @@ export async function prepareRevenueShareDistribution(
     sourceSequence: account.value.sequence,
     memo: command.memo,
     expiresAt: new Date(maxTimeUnixSeconds * 1000).toISOString(),
-    recipients: command.recipients
+    recipients: [...derived.value.recipients]
   };
 
   const built = deps.xdr.build({ terms, maxTimeUnixSeconds });
@@ -107,10 +139,12 @@ export async function prepareRevenueShareDistribution(
       recipients: [...built.value.recipients],
       memo: built.value.memo,
       expiresAt: built.value.expiresAt,
-      // Declared metadata, echoed so the client can hand it back at submit. It
-      // is not part of the terms: the envelope does not carry it, so no
-      // verification could ever check it (`D4`).
-      applicationId: command.applicationId
+      // The case the distribution was derived for, echoed so the client can
+      // hand it back at submit, where it is re-derived. Neither id is a term:
+      // the envelope does not carry them.
+      applicationId: command.applicationId,
+      campaignId: command.campaignId,
+      derivation: derived.value.derivation
     }
   };
 }

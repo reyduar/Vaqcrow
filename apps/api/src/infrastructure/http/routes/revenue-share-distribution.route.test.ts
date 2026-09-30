@@ -3,8 +3,13 @@ import {
   parseCorrelationId,
   parseRevenueShareDistributionId
 } from "@vaqcrow/contracts";
+import type { DistributionRecipient, RevenueShareDerivation } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type {
+  DeriveRevenueShareDistributionErrorCode,
+  DeriveRevenueShareDistributionResult
+} from "../../../application/use-cases/derive-revenue-share-distribution.js";
 import type { RevenueShareDistributionRecord } from "../../../application/ports/revenue-share-distribution-repository-port.js";
 import type {
   BuiltRevenueShareDistributionXdr,
@@ -22,6 +27,7 @@ import type { RevenueShareDistributionRouteDependencies } from "./revenue-share-
 
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
+const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE_ACCOUNT_ID = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
 const RECIPIENT_A = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -37,14 +43,23 @@ const EXPLORER_BASE_URL = "https://stellar.expert/explorer/testnet";
 const LARGE_AMOUNT = "9007199254740993";
 const SMALL_AMOUNT = "10000000";
 
+/** No recipients: the server derives them from the case. */
 const prepareBody = {
   sourceAccountId: SOURCE_ACCOUNT_ID,
-  recipients: [
-    { accountId: RECIPIENT_A, amountStroops: LARGE_AMOUNT },
-    { accountId: RECIPIENT_B, amountStroops: SMALL_AMOUNT }
-  ],
-  memo: null,
-  applicationId: null
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  memo: null
+};
+
+const derivation: RevenueShareDerivation = {
+  ruleVersion: "RS-2026-01",
+  rateBps: 450,
+  period: "2026-08",
+  salesArs: "3745800",
+  obligationArs: "168561",
+  excludedPeriods: [{ period: "2026-04", status: "missing", reason: "missing_data" }],
+  conversion: { goalStroops: "1000000000", approvedLimitArs: "5000000", totalStroops: "33712200" },
+  simulated: true
 };
 
 const terms = {
@@ -68,12 +83,17 @@ const parsedRecipients = [
 
 const parsedTerms = { ...terms, recipients: parsedRecipients };
 
-const submissionBody = { signedXdr: SIGNED_XDR, terms, applicationId: null };
+const submissionBody = { signedXdr: SIGNED_XDR, terms, applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID };
 
 const account: LedgerAccount = {
   accountId: SOURCE_ACCOUNT_ID,
   sequence: "1234567890",
   nativeBalanceStroops: 50_000_000n
+};
+
+const derived: DeriveRevenueShareDistributionResult = {
+  ok: true,
+  value: { recipients: parsedRecipients as readonly DistributionRecipient[], derivation }
 };
 
 const built: BuiltRevenueShareDistributionXdr = {
@@ -110,7 +130,9 @@ const wirePreparedDistribution = {
   memo: null,
   expiresAt: EXPIRES_AT,
   recipients: wireRecipients,
-  applicationId: null
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  derivation
 };
 
 const snapshot: RevenueShareDistributionRecord = {
@@ -123,6 +145,8 @@ const snapshot: RevenueShareDistributionRecord = {
   expiresAt: EXPIRES_AT,
   signedXdr: SIGNED_XDR,
   transactionHash: TRANSACTION_HASH,
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
   state: "submitted",
   lastCorrelationId: parseCorrelationId(CORRELATION_ID),
   confirmationAttempts: 0,
@@ -143,7 +167,8 @@ const wireSnapshot = {
   recipients: wireRecipients,
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
-  applicationId: null,
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
   explorerUrl: `${EXPLORER_BASE_URL}/tx/${TRANSACTION_HASH}`,
   failureReason: null,
   lastCorrelationId: CORRELATION_ID,
@@ -184,9 +209,11 @@ function deps(
     ledger?: LedgerPort;
     xdr?: RevenueShareDistributionXdrPort;
     repository?: RevenueShareDistributionRouteDependencies["repository"];
+    derive?: RevenueShareDistributionRouteDependencies["derive"];
   } = {}
 ): RevenueShareDistributionRouteDependencies {
   return {
+    derive: overrides.derive ?? vi.fn().mockResolvedValue(derived),
     ledger: overrides.ledger ?? ledgerReturning({ ok: true, value: account }),
     xdr: overrides.xdr ?? xdrDouble(),
     repository: overrides.repository ?? repositoryDouble(),
@@ -215,6 +242,7 @@ describe("POST /revenue-share-distributions", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ distribution: wirePreparedDistribution });
+    expect(response.json().distribution.derivation).toEqual(derivation);
     expect(typeof response.json().distribution.recipients[0].amountStroops).toBe("string");
     expect(response.json().distribution.recipients[0].amountStroops).toBe(LARGE_AMOUNT);
   });
@@ -235,21 +263,37 @@ describe("POST /revenue-share-distributions", () => {
     expect(input?.maxTimeUnixSeconds).toBeLessThanOrEqual(nowSeconds + 15 * 60 + 5);
   });
 
+  it("derives the recipients from the case and never reads them from the body", async () => {
+    const derive = vi.fn().mockResolvedValue(derived);
+    app = buildApp({ revenueShareDistribution: deps({ derive }) });
+
+    await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
+
+    expect(derive).toHaveBeenCalledWith({
+      applicationId: APPLICATION_ID,
+      campaignId: CAMPAIGN_ID,
+      sourceAccountId: SOURCE_ACCOUNT_ID
+    });
+  });
+
   const invalidPrepareBodies: ReadonlyArray<readonly [string, object | string]> = [
     ["a missing field", { ...prepareBody, memo: undefined }],
     ["an extra field", { ...prepareBody, unexpected: true }],
-    ["a JSON number amount", { ...prepareBody, recipients: [{ ...prepareBody.recipients[0], amountStroops: 10_000_000 }] }],
-    ["a zero amount", { ...prepareBody, recipients: [{ ...prepareBody.recipients[0], amountStroops: "0" }] }],
-    ["an empty recipient list", { ...prepareBody, recipients: [] }],
-    ["duplicate recipients", { ...prepareBody, recipients: [prepareBody.recipients[0], prepareBody.recipients[0]] }],
-    ["a recipient equal to the source", { ...prepareBody, recipients: [{ accountId: SOURCE_ACCOUNT_ID, amountStroops: "1" }] }],
+    [
+      "client-supplied recipients",
+      { ...prepareBody, recipients: [{ accountId: RECIPIENT_A, amountStroops: SMALL_AMOUNT }] }
+    ],
+    ["a missing campaign", { sourceAccountId: SOURCE_ACCOUNT_ID, applicationId: APPLICATION_ID, memo: null }],
+    ["a null application ID", { ...prepareBody, applicationId: null }],
     ["a malformed application ID", { ...prepareBody, applicationId: "not-a-uuid" }],
-    ["a malformed recipient account", { ...prepareBody, recipients: [{ accountId: "nope", amountStroops: "1" }] }],
+    ["a malformed campaign ID", { ...prepareBody, campaignId: "not-a-uuid" }],
+    ["a malformed source account", { ...prepareBody, sourceAccountId: "nope" }],
     ["an array body", [1, 2, 3]]
   ];
 
   it.each(invalidPrepareBodies)("rejects %s with 400 invalid_request", async (_description, payload) => {
-    app = buildApp({ revenueShareDistribution: deps() });
+    const derive = vi.fn().mockResolvedValue(derived);
+    app = buildApp({ revenueShareDistribution: deps({ derive }) });
 
     const response = await app.inject({
       method: "POST",
@@ -259,6 +303,46 @@ describe("POST /revenue-share-distributions", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(derive).not.toHaveBeenCalled();
+  });
+
+  const derivationStatuses: ReadonlyArray<readonly [Exclude<DeriveRevenueShareDistributionErrorCode, "unavailable">, number]> = [
+    ["campaign_not_found", 404],
+    ["application_not_found", 404],
+    ["application_mismatch", 409],
+    ["campaign_not_settled", 409],
+    ["decision_not_approved", 409],
+    ["contributions_incomplete", 409],
+    ["no_eligible_period", 422],
+    ["invalid_sales_data", 422],
+    ["no_contributors", 422],
+    ["obligation_rounds_to_zero", 422]
+  ];
+
+  it.each(derivationStatuses)("maps a failed derivation (%s) to %i derivation_failed with its reason", async (reason, status) => {
+    app = buildApp({
+      revenueShareDistribution: deps({
+        derive: vi.fn().mockResolvedValue({ ok: false, error: { code: reason } })
+      })
+    });
+
+    const response = await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({ code: "derivation_failed", reason });
+  });
+
+  it("maps an unavailable derivation to 503 unavailable", async () => {
+    app = buildApp({
+      revenueShareDistribution: deps({
+        derive: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      })
+    });
+
+    const response = await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 
   it("does not reach the ledger for a rejected body", async () => {
@@ -378,24 +462,86 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
     expect(response.json()).toEqual({ applied: false, distribution: wireSnapshot });
   });
 
-  it("forwards a declared application link to the repository", async () => {
-    const repository = repositoryDouble({
-      submit: {
-        ok: true,
-        value: { record: { ...snapshot, applicationId: APPLICATION_ID }, applied: true }
-      }
-    });
+  it("forwards the case links to the repository", async () => {
+    const repository = repositoryDouble();
     app = buildApp({ revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
       url: `/revenue-share-distributions/${DISTRIBUTION_ID}/submission`,
-      payload: { ...submissionBody, applicationId: APPLICATION_ID }
+      payload: submissionBody
     });
 
-    expect(vi.mocked(repository.submit).mock.calls[0]?.[0].record.applicationId).toBe(APPLICATION_ID);
+    const saved = vi.mocked(repository.submit).mock.calls[0]?.[0].record;
+    expect(saved?.applicationId).toBe(APPLICATION_ID);
+    expect(saved?.campaignId).toBe(CAMPAIGN_ID);
     expect(response.statusCode).toBe(202);
     expect(response.json().distribution.applicationId).toBe(APPLICATION_ID);
+    expect(response.json().distribution.campaignId).toBe(CAMPAIGN_ID);
+  });
+
+  it("re-derives the distribution from the case before verifying the envelope", async () => {
+    const derive = vi.fn().mockResolvedValue(derived);
+    app = buildApp({ revenueShareDistribution: deps({ derive }) });
+
+    await app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}/submission`,
+      payload: submissionBody
+    });
+
+    expect(derive).toHaveBeenCalledWith({
+      applicationId: APPLICATION_ID,
+      campaignId: CAMPAIGN_ID,
+      sourceAccountId: SOURCE_ACCOUNT_ID
+    });
+  });
+
+  it("returns 422 derivation_mismatch when the declared terms differ from the derivation, persisting nothing", async () => {
+    const repository = repositoryDouble();
+    const xdr = xdrDouble();
+    const derive = vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        recipients: [
+          { accountId: RECIPIENT_A, amountStroops: 1n },
+          { accountId: RECIPIENT_B, amountStroops: 10_000_000n }
+        ],
+        derivation
+      }
+    });
+    app = buildApp({ revenueShareDistribution: deps({ repository, xdr, derive }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}/submission`,
+      payload: submissionBody
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "derivation_mismatch" });
+    expect(xdr.verify).not.toHaveBeenCalled();
+    expect(repository.submit).not.toHaveBeenCalled();
+  });
+
+  it("maps a failed derivation at submit to its status and reason", async () => {
+    const repository = repositoryDouble();
+    app = buildApp({
+      revenueShareDistribution: deps({
+        repository,
+        derive: vi.fn().mockResolvedValue({ ok: false, error: { code: "campaign_not_settled" } })
+      })
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}/submission`,
+      payload: submissionBody
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ code: "derivation_failed", reason: "campaign_not_settled" });
+    expect(repository.submit).not.toHaveBeenCalled();
   });
 
   it("forwards the verified hash, the signed XDR and a generated correlation ID", async () => {
@@ -458,8 +604,12 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
   });
 
   const driftedBodies: ReadonlyArray<readonly [string, object | string]> = [
-    ["a body missing signedXdr", { terms, applicationId: null }],
-    ["a body missing the application link", { signedXdr: SIGNED_XDR, terms }],
+    ["a body missing signedXdr", { terms, applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID }],
+    ["a body missing the application link", { signedXdr: SIGNED_XDR, terms, campaignId: CAMPAIGN_ID }],
+    ["a body missing the campaign link", { signedXdr: SIGNED_XDR, terms, applicationId: APPLICATION_ID }],
+    ["a null campaign link", { ...submissionBody, campaignId: null }],
+    ["a null application link", { ...submissionBody, applicationId: null }],
+    ["a malformed campaign link", { ...submissionBody, campaignId: "not-a-uuid" }],
     ["a body with an extra key", { ...submissionBody, extra: true }],
     ["an empty signed XDR", { ...submissionBody, signedXdr: "" }],
     ["a malformed application link", { ...submissionBody, applicationId: "not-a-uuid" }],

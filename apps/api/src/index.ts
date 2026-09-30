@@ -1,14 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { createOpenCodeGoProvider } from "@vaqcrow/ai";
 import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
+import type { ApplicationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
+import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
+import { SupabaseCampaignRepository } from "./infrastructure/adapters/supabase-campaign-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -26,6 +29,31 @@ const config = parseApiConfig(process.env);
 const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
+
+// The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
+// frozen synthetic data, no I/O — a real authorized source would replace it
+// here, at the composition root, and nowhere else.
+const salesDataProvider = createSimulatedSalesDataProvider();
+
+const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
+
+// The distribution derivation (T5a): who is paid and how much is a function of
+// the case (settled campaign, approved decision, sales feed), never of the
+// request. Prepare and submit share this one binding.
+const deriveDistribution = (input: {
+  readonly applicationId: ApplicationId;
+  readonly campaignId: string;
+  readonly sourceAccountId: string;
+}) =>
+  deriveRevenueShareDistribution(
+    {
+      campaigns: new SupabaseCampaignRepository(supabase),
+      applicationReviews: applicationReviewRepository,
+      smeRequests: smeRequestRepository,
+      salesData: salesDataProvider
+    },
+    input
+  );
 
 // The revenue-share distribution HTTP surface (S2c). Unlike the funding-intent
 // and campaign groups, which `index.ts` deliberately leaves unwired today, this
@@ -48,6 +76,7 @@ const revenueShareDistribution =
           networkPassphrase: config.stellar.networkPassphrase
         },
         explorerBaseUrl: config.stellar.explorerUrl,
+        derive: deriveDistribution,
         generateDistributionId: () => parseRevenueShareDistributionId(randomUUID())
       };
 
@@ -70,13 +99,6 @@ const campaign = buildCampaignDependencies(config, {
   supabase,
   applicationReviews: applicationReviewRepository
 });
-
-// The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
-// frozen synthetic data, no I/O — a real authorized source would replace it
-// here, at the composition root, and nowhere else.
-const salesDataProvider = createSimulatedSalesDataProvider();
-
-const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
 
 const app = buildApp({
   applicationReviewRepository,

@@ -5,6 +5,7 @@ import {
   parseSubmitRevenueShareDistributionCommand
 } from "@vaqcrow/contracts";
 import type {
+  PrepareRevenueShareDistributionCommand,
   PreparedRevenueShareDistribution,
   RevenueShareDistributionId,
   RevenueShareDistributionSnapshot
@@ -13,12 +14,16 @@ import type { FastifyInstance } from "fastify";
 import type { LedgerPort } from "../../../application/ports/ledger-port.js";
 import type { RevenueShareDistributionRepositoryPort } from "../../../application/ports/revenue-share-distribution-repository-port.js";
 import type { RevenueShareDistributionXdrPort } from "../../../application/ports/revenue-share-distribution-xdr-port.js";
+import type {
+  DeriveRevenueShareDistributionErrorCode,
+  DeriveRevenueShareDistributionResult
+} from "../../../application/use-cases/derive-revenue-share-distribution.js";
 import { getRevenueShareDistribution } from "../../../application/use-cases/get-revenue-share-distribution.js";
 import { prepareRevenueShareDistribution } from "../../../application/use-cases/prepare-revenue-share-distribution.js";
 import { submitRevenueShareDistribution } from "../../../application/use-cases/submit-revenue-share-distribution.js";
 
 /**
- * The HTTP surface for a revenue-share distribution: build it, submit the signed
+ * The HTTP surface for a revenue-share distribution: derive and build it, submit the signed
  * envelope, report its status.
  *
  * The route owns three things the use cases deliberately do not: the exact body
@@ -30,9 +35,9 @@ import { submitRevenueShareDistribution } from "../../../application/use-cases/s
  * list rather than a single pair.
  */
 
-const PREPARE_BODY_KEYS = new Set(["sourceAccountId", "recipients", "memo", "applicationId"]);
+const PREPARE_BODY_KEYS = new Set(["sourceAccountId", "applicationId", "campaignId", "memo"]);
 
-const SUBMIT_BODY_KEYS = new Set(["signedXdr", "terms", "applicationId"]);
+const SUBMIT_BODY_KEYS = new Set(["signedXdr", "terms", "applicationId", "campaignId"]);
 
 export interface RevenueShareDistributionRouteDependencies {
   readonly ledger: LedgerPort;
@@ -51,6 +56,40 @@ export interface RevenueShareDistributionRouteDependencies {
    * about the network (`D1`): it is told where a hash opens instead of deciding.
    */
   readonly explorerBaseUrl: string;
+  /**
+   * Derives who is paid and how much from the case (T5a). Bound once at the
+   * composition root to `deriveRevenueShareDistribution`, so prepare and submit
+   * share one derivation.
+   */
+  readonly derive: (input: {
+    readonly applicationId: PrepareRevenueShareDistributionCommand["applicationId"];
+    readonly campaignId: string;
+    readonly sourceAccountId: string;
+  }) => Promise<DeriveRevenueShareDistributionResult>;
+}
+
+/**
+ * The status each derivation failure maps to. The reason is a closed vocabulary
+ * with no internal detail, so it is returned as-is: the caller can act on it.
+ */
+function derivationFailureStatus(
+  reason: Exclude<DeriveRevenueShareDistributionErrorCode, "unavailable">
+): 404 | 409 | 422 {
+  switch (reason) {
+    case "campaign_not_found":
+    case "application_not_found":
+      return 404;
+    case "application_mismatch":
+    case "campaign_not_settled":
+    case "decision_not_approved":
+    case "contributions_incomplete":
+      return 409;
+    case "no_eligible_period":
+    case "invalid_sales_data":
+    case "no_contributors":
+    case "obligation_rounds_to_zero":
+      return 422;
+  }
 }
 
 function hasExactBodyKeys(
@@ -95,9 +134,9 @@ export function registerRevenueShareDistributionRoute(
     try {
       command = parsePrepareRevenueShareDistributionCommand({
         sourceAccountId: request.body["sourceAccountId"],
-        recipients: request.body["recipients"],
-        memo: request.body["memo"],
-        applicationId: request.body["applicationId"]
+        applicationId: request.body["applicationId"],
+        campaignId: request.body["campaignId"],
+        memo: request.body["memo"]
       });
     } catch {
       return reply.code(400).send({ code: "invalid_request" });
@@ -117,6 +156,10 @@ export function registerRevenueShareDistributionRoute(
     switch (result.error.code) {
       case "account_not_found":
         return reply.code(404).send({ code: "account_not_found" });
+      case "derivation_failed":
+        return reply
+          .code(derivationFailureStatus(result.error.reason))
+          .send({ code: "derivation_failed", reason: result.error.reason });
       case "invalid_input":
         return reply.code(400).send({ code: "invalid_request" });
       case "unavailable":
@@ -138,7 +181,8 @@ export function registerRevenueShareDistributionRoute(
         command = parseSubmitRevenueShareDistributionCommand({
           signedXdr: request.body["signedXdr"],
           terms: request.body["terms"],
-          applicationId: request.body["applicationId"]
+          applicationId: request.body["applicationId"],
+          campaignId: request.body["campaignId"]
         });
       } catch {
         return reply.code(400).send({ code: "invalid_request" });
@@ -172,6 +216,16 @@ export function registerRevenueShareDistributionRoute(
           // that failed, which would describe the envelope back to whoever
           // tampered with it; it exists for logs and tests only.
           return reply.code(422).send({ code: "xdr_rejected" });
+        case "derivation_mismatch":
+          // 422 like `xdr_rejected`: the body is well-formed and semantically
+          // refused, because the declared recipients or amounts are not what the
+          // case derives. Nothing is echoed: the derivation is not described
+          // back to whoever declared a different split.
+          return reply.code(422).send({ code: "derivation_mismatch" });
+        case "derivation_failed":
+          return reply
+            .code(derivationFailureStatus(result.error.reason))
+            .send({ code: "derivation_failed", reason: result.error.reason });
         case "idempotency_conflict":
           return reply.code(409).send({ code: "idempotency_conflict" });
         case "unavailable":

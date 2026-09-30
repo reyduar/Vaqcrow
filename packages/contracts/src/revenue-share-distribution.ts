@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { applicationIdSchema } from "./application-id.js";
-import { stellarAccountIdSchema } from "./campaign.js";
+import { campaignIdSchema, stellarAccountIdSchema } from "./campaign.js";
 import { correlationIdSchema } from "./correlation-id.js";
 import { stroopsSchema } from "./funding-intent.js";
 import { revenueShareDistributionIdSchema } from "./revenue-share-distribution-id.js";
+import { periodSchema } from "./sme-evidence.js";
 import { stellarFailureReasonSchema } from "./stellar-failure-reason.js";
 
 /**
@@ -203,20 +204,69 @@ export function parseRevenueShareDistributionTerms(input: unknown): RevenueShare
 }
 
 /**
- * What the caller declares before the API builds and simulates the
- * multi-payment envelope: the source, the recipients, an optional memo and the
- * declared application link.
+ * The facts the server derived a distribution from, returned with the prepared
+ * distribution so a person sees WHY each investor is paid what they are paid
+ * (T5a, `revenue-share-calculation-evidence.md`).
+ *
+ * Every amount is a **decimal string**, never a JSON number: the same rule the
+ * rest of this contract applies to money. Amounts in `*Ars` are whole pesos (the
+ * domain engine's minor unit for the demo) and amounts in `*Stroops` are stroops;
+ * the conversion between them is declared in `conversion`, not inferred.
+ *
+ * `simulated` is the literal `true`: the sales series, the approved limit and
+ * the ARS/stroop conversion are all synthetic, and a derivation that did not
+ * say so would claim a market quote the demo does not have.
  */
-export const prepareRevenueShareDistributionCommandSchema = z
-  .strictObject({
-    sourceAccountId: stellarAccountIdSchema,
-    recipients: z.array(distributionRecipientSchema).min(1),
-    memo: memoShape,
-    applicationId: applicationIdSchema.nullable()
-  })
-  .superRefine((value, context) => {
-    checkDistributionRecipients(value.recipients, value.sourceAccountId, context);
-  });
+const nonNegativeIntegerStringShape = z.string().regex(/^\d+$/, "must be a non-negative decimal integer string");
+
+export const revenueShareDerivationSchema = z.strictObject({
+  ruleVersion: z.string().trim().min(1),
+  /** Integer basis points: 450 is 4.50 %. */
+  rateBps: z.int().min(1).max(10_000),
+  /** The single period the obligation was computed on (YYYY-MM). */
+  period: periodSchema,
+  salesArs: nonNegativeIntegerStringShape,
+  obligationArs: nonNegativeIntegerStringShape,
+  /** Periods of the series that were not eligible, reported rather than hidden. */
+  excludedPeriods: z.array(
+    z.strictObject({
+      period: periodSchema,
+      status: z.enum(["missing", "anomalous"]),
+      reason: z.enum(["missing_data", "requires_review"])
+    })
+  ),
+  /**
+   * `stroops = floor(obligationArs x goalStroops / approvedLimitArs)`: investors
+   * receive in the same proportion they funded, not at an invented market rate.
+   */
+  conversion: z.strictObject({
+    goalStroops: nonNegativeIntegerStringShape,
+    approvedLimitArs: nonNegativeIntegerStringShape,
+    totalStroops: nonNegativeIntegerStringShape
+  }),
+  simulated: z.literal(true)
+});
+
+export type RevenueShareDerivation = z.infer<typeof revenueShareDerivationSchema>;
+
+export function parseRevenueShareDerivation(input: unknown): RevenueShareDerivation {
+  return revenueShareDerivationSchema.parse(input);
+}
+
+/**
+ * What the caller declares before the API derives and builds the multi-payment
+ * envelope: the source, the case (application and settled campaign) and an
+ * optional memo. It deliberately carries **no recipients or amounts**: who is
+ * paid and how much is derived by the server from the campaign's contributors
+ * and the SME's sales (T5a), so a client cannot declare a split the case does
+ * not support.
+ */
+export const prepareRevenueShareDistributionCommandSchema = z.strictObject({
+  sourceAccountId: stellarAccountIdSchema,
+  applicationId: applicationIdSchema,
+  campaignId: campaignIdSchema,
+  memo: memoShape
+});
 
 export type PrepareRevenueShareDistributionCommand = z.infer<
   typeof prepareRevenueShareDistributionCommandSchema
@@ -231,19 +281,22 @@ export function parsePrepareRevenueShareDistributionCommand(
 /**
  * What the prepare response returns and what the client echoes at submit: the
  * terms, plus the id that names the distribution, the unsigned envelope to
- * sign, and the declared application link.
+ * sign, the case it was derived for, and the derivation itself.
  *
- * `applicationId` deliberately sits **outside** `revenueShareDistributionTermsSchema`.
- * The terms are exactly what the XDR port binds to the signed envelope, and
- * `applicationId` is not encoded in an envelope — no transaction carries it.
- * Folding it into the terms would advertise a check that can never happen. It
- * travels as declared metadata alongside the terms instead (`D4`, traceability
- * only).
+ * `applicationId` and `campaignId` deliberately sit **outside**
+ * `revenueShareDistributionTermsSchema`. The terms are exactly what the XDR
+ * port binds to the signed envelope, and neither id is encoded in an envelope.
+ * Folding them into the terms would advertise a check that can never happen.
+ * They are instead checked by re-derivation at submit: the recipients and
+ * amounts the envelope commits to must equal what the server derives for that
+ * case.
  */
 export const preparedRevenueShareDistributionSchema = revenueShareDistributionTermsSchema.safeExtend({
   distributionId: revenueShareDistributionIdSchema,
   xdr: z.string().min(1),
-  applicationId: applicationIdSchema.nullable()
+  applicationId: applicationIdSchema,
+  campaignId: campaignIdSchema,
+  derivation: revenueShareDerivationSchema
 });
 
 export type PreparedRevenueShareDistribution = z.infer<typeof preparedRevenueShareDistributionSchema>;
@@ -256,19 +309,20 @@ export function parsePreparedRevenueShareDistribution(
 
 /**
  * The submit command declares the distribution's terms so the server can bind
- * the persisted record to the signed envelope (`D4`): prepare persists nothing,
- * so the terms the person was shown are the only thing the server can verify
- * the envelope against.
+ * the persisted record to the signed envelope (`D4`), and names the case so the
+ * server can re-derive the recipients and amounts and refuse terms that differ
+ * (`derivation_mismatch`).
  *
- * `applicationId` is a sibling of `terms`, not a member of it, for the same
- * reason it is not a term: verification cannot check a value the envelope does
- * not carry. It is required-but-nullable, so a client that drops it is refused
- * rather than silently losing the link.
+ * `applicationId` and `campaignId` are siblings of `terms`, not members of it,
+ * for the same reason they are not terms: the envelope does not carry them. Both
+ * are required and non-null: a distribution that cannot be re-derived cannot be
+ * verified.
  */
 export const submitRevenueShareDistributionCommandSchema = z.strictObject({
   signedXdr: z.string().min(1),
   terms: revenueShareDistributionTermsSchema,
-  applicationId: applicationIdSchema.nullable()
+  applicationId: applicationIdSchema,
+  campaignId: campaignIdSchema
 });
 
 export type SubmitRevenueShareDistributionCommand = z.infer<
@@ -297,6 +351,8 @@ export const revenueShareDistributionSnapshotSchema = z
     state: revenueShareDistributionStateSchema,
     transactionHash: z.string().trim().min(1),
     applicationId: applicationIdSchema.nullable(),
+    /** The settled campaign the distribution was derived from; null for one recorded before the link existed. */
+    campaignId: campaignIdSchema.nullable(),
     explorerUrl: z.url(),
     failureReason: stellarFailureReasonSchema.nullable(),
     lastCorrelationId: correlationIdSchema,

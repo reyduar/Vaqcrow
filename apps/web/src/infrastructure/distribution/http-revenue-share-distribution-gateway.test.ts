@@ -36,7 +36,21 @@ const wirePrepared = {
   ...wireTerms,
   distributionId: DISTRIBUTION_ID,
   xdr: "UNSIGNED-XDR",
-  applicationId: APPLICATION_ID
+  applicationId: APPLICATION_ID,
+  // T5a: the API returns the case it derived the distribution for. The web
+  // gateway itself moves to the server-derived prepare in T5b; these fixtures
+  // only follow the response contract.
+  campaignId: "33333333-3333-4333-8333-333333333333",
+  derivation: {
+    ruleVersion: "RS-2026-01",
+    rateBps: 450,
+    period: "2026-08",
+    salesArs: "3745800",
+    obligationArs: "168561",
+    excludedPeriods: [],
+    conversion: { goalStroops: "1000000000", approvedLimitArs: "5000000", totalStroops: "33712200" },
+    simulated: true
+  }
 };
 
 const wireSnapshot = {
@@ -45,6 +59,7 @@ const wireSnapshot = {
   state: "submitted",
   transactionHash: TRANSACTION_HASH,
   applicationId: APPLICATION_ID,
+  campaignId: null,
   explorerUrl: EXPLORER_URL,
   failureReason: null,
   lastCorrelationId: CORRELATION_ID,

@@ -9,10 +9,15 @@ import {
 import type { Transaction } from "@stellar/stellar-sdk";
 import type { FastifyInstance } from "fastify";
 import { describe, expect, it } from "vitest";
-import { generateCorrelationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
-import type { CorrelationId } from "@vaqcrow/contracts";
+import {
+  generateCorrelationId,
+  parseApplicationId,
+  parseRevenueShareDistributionId
+} from "@vaqcrow/contracts";
+import type { CorrelationId, SalesPeriodContract } from "@vaqcrow/contracts";
 import { STELLAR_TESTNET_NETWORK_PASSPHRASE } from "../../application/config/stellar-config.js";
 import type { StellarConfig } from "../../application/config/stellar-config.js";
+import { deriveRevenueShareDistribution } from "../../application/use-cases/derive-revenue-share-distribution.js";
 import { confirmRevenueShareDistributions } from "../../application/use-cases/confirm-revenue-share-distributions.js";
 import type { ConfirmRevenueShareDistributionsResult } from "../../application/use-cases/confirm-revenue-share-distributions.js";
 import { StellarLedger } from "../adapters/stellar-ledger.js";
@@ -72,9 +77,19 @@ const SOURCE_ACCOUNT = sourceKeypair.publicKey();
 const FIRST_RECIPIENT = firstRecipientKeypair.publicKey();
 const SECOND_RECIPIENT = secondRecipientKeypair.publicKey();
 
-/** One XLM and a quarter, in stroops — exact integers, never floats. */
-const FIRST_AMOUNT_STROOPS = 10_000_000n;
-const SECOND_AMOUNT_STROOPS = 2_500_000n;
+const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
+const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
+
+/**
+ * The case the server derives from (T5a): a settled campaign funded 75 % / 25 %
+ * by the two recipients, an approved limit of 5,000,000 ARS, and the canonical
+ * 2026-08 sales period. 3,745,800 ARS x 450 bps floor = 168,561 ARS, converted
+ * in the funded proportion: floor(168,561 x 1,000,000,000 / 5,000,000) =
+ * 33,712,200 stroops, split 25,284,150 / 8,428,050 — exact integers, no floats.
+ */
+const GOAL_STROOPS = 1_000_000_000n;
+const FIRST_AMOUNT_STROOPS = 25_284_150n;
+const SECOND_AMOUNT_STROOPS = 8_428_050n;
 const FIRST_AMOUNT = FIRST_AMOUNT_STROOPS.toString();
 const SECOND_AMOUNT = SECOND_AMOUNT_STROOPS.toString();
 
@@ -95,15 +110,88 @@ const POLICY: ConfirmationPolicy = {
   maxBackoffMs: 60_000
 };
 
+/** No recipients: the server derives them from the case. */
 const PREPARE_BODY = {
   sourceAccountId: SOURCE_ACCOUNT,
-  recipients: [
-    { accountId: FIRST_RECIPIENT, amountStroops: FIRST_AMOUNT },
-    { accountId: SECOND_RECIPIENT, amountStroops: SECOND_AMOUNT }
-  ],
-  memo: null,
-  applicationId: null
+  applicationId: APPLICATION_ID,
+  campaignId: CAMPAIGN_ID,
+  memo: null
 };
+
+const SALES: readonly SalesPeriodContract[] = [
+  { period: "2026-04", amountArs: null, status: "missing", evidenceRef: "sales:2026-04", simuladoLabel: "SIMULADO" },
+  { period: "2026-07", amountArs: 3_690_300, status: "reported", evidenceRef: "sales:2026-07", simuladoLabel: "SIMULADO" },
+  { period: "2026-08", amountArs: 3_745_800, status: "reported", evidenceRef: "sales:2026-08", simuladoLabel: "SIMULADO" }
+];
+
+/** Port doubles at the edge of the derivation: the case itself, read as the API reads it. */
+function derivationDeps(): Parameters<typeof deriveRevenueShareDistribution>[0] {
+  return {
+    campaigns: {
+      findById: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: {
+            campaignId: CAMPAIGN_ID,
+            applicationId: APPLICATION_ID,
+            smeAccountId: SOURCE_ACCOUNT,
+            contractAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+            network: "testnet",
+            tokenContractAddress: "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF",
+            goalStroops: GOAL_STROOPS,
+            deadline: "2026-12-01T00:00:00.000Z",
+            state: "settled" as const,
+            totalStroops: GOAL_STROOPS,
+            reconciliationStatus: "in_sync" as const,
+            lastReconciledAt: START,
+            createdAt: START,
+            updatedAt: START
+          }
+        }),
+      findContributions: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: [
+            { campaignId: CAMPAIGN_ID, investorAccountId: FIRST_RECIPIENT, amountStroops: 750_000_000n, lastObservedAt: START },
+            { campaignId: CAMPAIGN_ID, investorAccountId: SECOND_RECIPIENT, amountStroops: 250_000_000n, lastObservedAt: START }
+          ]
+        })
+    },
+    applicationReviews: {
+      readLatestHumanDecision: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: {
+            decisionId: "44444444-4444-4444-8444-444444444444",
+            applicationId: APPLICATION_ID,
+            outcome: "approved",
+            actor: "analyst",
+            reason: "Looks sound",
+            approvedLimitArs: 5_000_000,
+            decidedAt: START,
+            correlationId: CORRELATION_ID
+          } as never
+        })
+    },
+    smeRequests: {
+      findByApplicationId: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: {
+            applicationId: APPLICATION_ID,
+            request: {
+              smeReference: "sme:SYN-PH-0001",
+              declaredTotalArs: 15_000_000,
+              periodStart: "2026-01",
+              periodEnd: "2026-08",
+              simuladoLabel: "SIMULADO" as const
+            }
+          }
+        })
+    },
+    salesData: { getPeriods: () => Promise.resolve({ ok: true as const, value: SALES }) }
+  };
+}
 
 /** The prepared distribution as it crosses the wire. */
 interface WirePrepared {
@@ -116,7 +204,9 @@ interface WirePrepared {
   readonly memo: string | null;
   readonly expiresAt: string;
   readonly recipients: ReadonlyArray<{ readonly accountId: string; readonly amountStroops: string }>;
-  readonly applicationId: string | null;
+  readonly applicationId: string;
+  readonly campaignId: string;
+  readonly derivation: { readonly obligationArs: string; readonly period: string };
 }
 
 /**
@@ -391,6 +481,7 @@ function harness(): Harness {
       repository,
       network: { network: "testnet", networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE },
       explorerBaseUrl: EXPLORER_BASE_URL,
+      derive: (input) => deriveRevenueShareDistribution(derivationDeps(), input),
       generateDistributionId: () => DISTRIBUTION_ID
     }
   });
@@ -455,7 +546,12 @@ async function submit(
   return test.app.inject({
     method: "POST",
     url: `/revenue-share-distributions/${prepared.distributionId}/submission`,
-    payload: { signedXdr, terms: termsOf(prepared), applicationId: null }
+    payload: {
+      signedXdr,
+      terms: termsOf(prepared),
+      applicationId: prepared.applicationId,
+      campaignId: prepared.campaignId
+    }
   });
 }
 
@@ -500,6 +596,12 @@ describe("revenue-share distribution sequence (real adapters, real use cases, re
       { accountId: SECOND_RECIPIENT, amountStroops: SECOND_AMOUNT }
     ]);
 
+    // The amounts were derived by the server from the case, not supplied: the
+    // canonical 168,561 ARS obligation, converted in the funded proportion.
+    expect(prepared.derivation.period).toBe("2026-08");
+    expect(prepared.derivation.obligationArs).toBe("168561");
+    expect(prepared.campaignId).toBe(CAMPAIGN_ID);
+
     // `prepare` is stateless (`D2`): nothing is written until a signed envelope
     // exists, so there is no pre-submission row to reconcile later.
     expect(test.rows.size).toBe(0);
@@ -533,6 +635,9 @@ describe("revenue-share distribution sequence (real adapters, real use cases, re
     expect(row?.state).toBe("submitted");
     expect(row?.confirmation_attempts).toBe(0);
     expect(row?.transaction_hash).toBe(signed.hash);
+    // The case the distribution was derived from is persisted with it.
+    expect(row?.campaign_id).toBe(CAMPAIGN_ID);
+    expect(row?.application_id).toBe(APPLICATION_ID);
     expect(storedRecipients(row)).toEqual([
       { position: 0, account_id: FIRST_RECIPIENT, amount_stroops: FIRST_AMOUNT },
       { position: 1, account_id: SECOND_RECIPIENT, amount_stroops: SECOND_AMOUNT }
@@ -561,6 +666,57 @@ describe("revenue-share distribution sequence (real adapters, real use cases, re
     // No duplicate parent and no duplicate recipient rows.
     expect(test.rows.size).toBe(1);
     expect(storedRecipients(test.rows.get(DISTRIBUTION_ID))).toHaveLength(2);
+
+    await test.app.close();
+  });
+
+  it("refuses a correctly signed envelope whose declared split is not the one the case derives, persisting nothing", async () => {
+    const test = harness();
+
+    const prepared = await prepare(test);
+    const declared = termsOf(prepared);
+
+    // A client that skips the derivation: it builds and signs a real envelope
+    // that pays one investor more, and declares exactly those terms. The
+    // envelope matches its own terms, so only the re-derivation can refuse it.
+    const inflated = {
+      ...declared,
+      recipients: declared.recipients.map((recipient, index) => ({
+        accountId: recipient.accountId,
+        amountStroops: (BigInt(recipient.amountStroops) + (index === 0 ? 1n : 0n)).toString()
+      }))
+    };
+    const built = test.xdr.build({
+      terms: {
+        ...inflated,
+        sourceSequence: ACCOUNT_SEQUENCE,
+        recipients: inflated.recipients.map((recipient) => ({
+          accountId: recipient.accountId,
+          amountStroops: BigInt(recipient.amountStroops)
+        }))
+      },
+      maxTimeUnixSeconds: Math.floor(Date.parse(declared.expiresAt) / 1000)
+    });
+
+    if (!built.ok) {
+      throw new Error("the harness failed to build the inflated envelope");
+    }
+
+    const signed = sign(built.value.xdr);
+    const response = await test.app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${prepared.distributionId}/submission`,
+      payload: {
+        signedXdr: signed.signedXdr,
+        terms: { ...inflated, sourceSequence: built.value.sourceSequence },
+        applicationId: prepared.applicationId,
+        campaignId: prepared.campaignId
+      }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "derivation_mismatch" });
+    expect(test.rows.size).toBe(0);
 
     await test.app.close();
   });
