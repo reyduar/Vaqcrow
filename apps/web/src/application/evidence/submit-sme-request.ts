@@ -7,7 +7,9 @@ export type BuildSmeRequestResult =
   | { readonly ok: true; readonly request: SmeRequest }
   | { readonly ok: false; readonly error: SmeRequestSubmitError };
 
-export type SubmitSmeRequestResult = BuildSmeRequestResult;
+export type SubmitSmeRequestResult =
+  | { readonly ok: true; readonly applicationId: string; readonly request: SmeRequest }
+  | { readonly ok: false; readonly error: SmeRequestSubmitError };
 
 const DIGITS_ONLY = /^\d+$/;
 
@@ -37,7 +39,7 @@ export function buildSmeRequest(values: SmeRequestFormValues, smeReference: stri
   };
 }
 
-/** Never reports success unless the gateway resolved with a validated request. */
+/** Never reports success unless the gateway resolved with a validated application id and request. */
 export async function submitSmeRequest(
   gateway: SmeRequestGateway,
   values: SmeRequestFormValues,
@@ -46,7 +48,8 @@ export async function submitSmeRequest(
   const built = buildSmeRequest(values, smeReference);
   if (!built.ok) return built;
   try {
-    return { ok: true, request: await gateway.submit(built.request) };
+    const { applicationId, request } = await gateway.submit(built.request);
+    return { ok: true, applicationId, request };
   } catch (error) {
     return { ok: false, error: toSmeSubmitError(error) };
   }
