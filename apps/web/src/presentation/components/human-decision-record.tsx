@@ -49,7 +49,7 @@ export function HumanDecisionRecordView({ recorded }: HumanDecisionRecordViewPro
         <dt>Fecha del servidor</dt>
         <dd>{decision.decidedAt}</dd>
         <dt>ID de correlación</dt>
-        <dd>{decision.correlationId}</dd>
+        <dd className="font-mono">{decision.correlationId}</dd>
       </dl>
     </section>
   );

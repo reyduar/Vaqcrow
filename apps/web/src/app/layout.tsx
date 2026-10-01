@@ -1,6 +1,32 @@
+import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+
+/**
+ * Geist is the demo's single sans family and Geist Mono its monospaced one,
+ * per `docs/design/demo-ui.md` §5.5: the template loads both from Google Fonts
+ * and, by the source-of-truth decision, the template wins over the earlier
+ * Inter recommendation. `next/font/google` self-hosts them at build time (no
+ * request reaches Google from the browser, and no new dependency is added).
+ *
+ * Each font exposes a CSS variable that `globals.css` maps onto Tailwind's
+ * `--font-sans` / `--font-mono`, so the body inherits Geist and every
+ * `font-mono` value — hashes, ids, correlation ids — resolves to Geist Mono.
+ * The system stack after each variable is the fallback if the webfont is
+ * unavailable.
+ */
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap"
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap"
+});
 
 /**
  * Applies the persisted theme before the first paint.
@@ -20,7 +46,12 @@ const THEME_BOOTSTRAP = `(function(){try{var p=localStorage.getItem("vaqcrow-the
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es" className="light" data-theme="light" suppressHydrationWarning>
+    <html
+      lang="es"
+      className={`light ${geistSans.variable} ${geistMono.variable}`}
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
