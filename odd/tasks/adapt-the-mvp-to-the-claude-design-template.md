@@ -187,13 +187,24 @@ disclosures asserted.
 
 ## Implementation status
 
-Cheapest-first, one work unit per slice. Slices 1–4 are shipped; 5 remains.
+Cheapest-first, one work unit per slice. Slices 1–5 are shipped.
 
 - [x] Slice 1 — Spanish copy pass — commit `beda484a2799998a6219303efe2503e32eeb1b2f`
 - [x] Slice 2 — Foundation in `globals.css` + `layout.tsx` — commit `8bca5dd8d631b360921a3d171000ef4161f9aaa6`
 - [x] Slice 3 — Primitives — commit `4c383dd80d4bf673883c9244e423b0f8d57af483`
 - [x] Slice 4 — Shell — commit `29e633ecb5cf05819d5cdb021b6e74db3ef31d2b`
-- [ ] Slice 5 — Per-screen
+- [x] Slice 5 — Per-screen (four work units, cheapest first)
+  - `/request` + `/approval` (and the shared shell container) — commit `dc06cbf0136d65b5ca5178d64c68fa111bd3ed01`
+  - `/ai-assessment` + `/distribution` — commit `8f0fb3aa055bc14f93cda910db1feec3457bb3b5`
+  - `/funding` — commit `dedbe40a05a598f261b0ba8c4d4e0d4c48107d94`
+  - `/evidence` — commit `cc6d3357c0c7daf4189b1c24466d7bea78edcc8f`
+
+### Slice 5 decision — `/` stays a redirect to `/request`
+
+The template's Landing is **not built**: it is a product-scope decision, not a
+styling one (see Out of scope below), so `/` keeps its `redirect("/request")`
+(`apps/web/src/app/page.tsx`) unchanged. No route was added, removed, renamed or
+re-slugged.
 
 ### Slice 3 success tone (decision applied, bounded)
 
@@ -250,6 +261,10 @@ now matches the template — the per-slice checks above carry that.
 - `8bca5dd8d631b360921a3d171000ef4161f9aaa6` — `feat(web): load Geist and align the token foundation with the template` (Slice 2).
 - `4c383dd80d4bf673883c9244e423b0f8d57af483` — `feat(web): align the demo primitives with the Claude Design template` (Slice 3).
 - `29e633ecb5cf05819d5cdb021b6e74db3ef31d2b` — `feat(web): align the demo shell with the Claude Design template` (Slice 4).
+- `dc06cbf0136d65b5ca5178d64c68fa111bd3ed01` — `feat(web): align the solicitud and aprobación screens with the template` (Slice 5).
+- `8f0fb3aa055bc14f93cda910db1feec3457bb3b5` — `feat(web): align the evaluación de IA and distribución screens with the template` (Slice 5).
+- `dedbe40a05a598f261b0ba8c4d4e0d4c48107d94` — `feat(web): align the fondeo screen with the template` (Slice 5).
+- `cc6d3357c0c7daf4189b1c24466d7bea78edcc8f` — `feat(web): align the evidencia screen with the template` (Slice 5).
 
 ## Sources
 
