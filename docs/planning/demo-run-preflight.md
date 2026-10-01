@@ -104,6 +104,9 @@ Chequea, cada uno con ✔/✖ y un motivo corto:
 - **Período de la distribución.** Se usa el **último mes informado**, `2026-08`, salvo que antes se registre `2026-09` con `POST /businesses/panaderia-horizonte/sales-periods`. Hay una única distribución no fallida por campaña y período (`already_distributed`), y cada ensayo usa una campaña nueva.
 - **Un solo navegador con Freighter en Testnet**, con la wallet de la PyME y la del inversor ya importadas, para no perder tiempo cambiando de cuenta.
 
+> [!warning] La evaluación de IA es lenta y una falla quema la solicitud
+> En el servicio hosteado, la evaluación de IA tarda del orden de **uno a dos minutos** y puede superar el timeout configurado. `LLM_TIMEOUT_MS=120000` está fijado en ese servicio —el máximo que permite el código (`apps/api/src/application/config/llm-config.ts`: default 30 s, mínimo 1 s, máximo 120 s)—, así que no se puede subir más. **Una evaluación fallida quema la solicitud**: el fallo queda registrado de forma durable como un handoff sanitizado y, por diseño, un nuevo `handoffId` contra ese registro devuelve `409 correlation_conflict`. Ante una evaluación fallida, hay que empezar una solicitud nueva: no reintentar la misma. El detalle medido está en [[docs/planning/complete-vertical-demo-journey-evidence|la evidencia del recorrido vertical]], §7 límite 3.
+
 ## 5. Firmas de Freighter en la corrida
 
 1. **PyME**: conecta Freighter al abrir la bóveda (aporta su clave pública). **No firma**: la plataforma abre la bóveda con su propia clave.
