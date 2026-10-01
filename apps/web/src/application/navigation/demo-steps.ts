@@ -12,12 +12,12 @@ export interface DemoStep {
 }
 
 export const demoSteps: readonly DemoStep[] = Object.freeze([
-  Object.freeze({ slug: "request", label: "Request" }),
-  Object.freeze({ slug: "ai-assessment", label: "AI Assessment" }),
-  Object.freeze({ slug: "approval", label: "Approval" }),
-  Object.freeze({ slug: "funding", label: "Funding" }),
-  Object.freeze({ slug: "distribution", label: "Distribution" }),
-  Object.freeze({ slug: "evidence", label: "Evidence" })
+  Object.freeze({ slug: "request", label: "Solicitud" }),
+  Object.freeze({ slug: "ai-assessment", label: "Evaluación de IA" }),
+  Object.freeze({ slug: "approval", label: "Aprobación" }),
+  Object.freeze({ slug: "funding", label: "Fondeo" }),
+  Object.freeze({ slug: "distribution", label: "Distribución" }),
+  Object.freeze({ slug: "evidence", label: "Evidencia" })
 ] as const);
 
 export const demoStepCount = 6;

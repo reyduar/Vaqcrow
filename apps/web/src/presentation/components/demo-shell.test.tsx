@@ -28,18 +28,18 @@ describe("DemoShell", () => {
       </DemoShell>
     );
 
-    expect(screen.getByRole("heading", { name: "Approval" })).toBeInTheDocument();
-    expect(screen.getByText("Step 3 of 6: Approval")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Aprobación" })).toBeInTheDocument();
+    expect(screen.getByText("Paso 3 de 6: Aprobación")).toBeInTheDocument();
     expect(screen.getByText("Step body content")).toBeInTheDocument();
 
     // The six step labels are also primary-nav links now, so the step nav
     // assertions are scoped to its own landmark to stay unambiguous.
-    const stepNav = within(screen.getByRole("navigation", { name: "Demo step navigation" }));
-    expect(stepNav.getByRole("link", { name: "AI Assessment" })).toHaveAttribute(
+    const stepNav = within(screen.getByRole("navigation", { name: "Navegación de pasos" }));
+    expect(stepNav.getByRole("link", { name: "Evaluación de IA" })).toHaveAttribute(
       "href",
       "/ai-assessment"
     );
-    expect(stepNav.getByRole("link", { name: "Funding" })).toHaveAttribute("href", "/funding");
+    expect(stepNav.getByRole("link", { name: "Fondeo" })).toHaveAttribute("href", "/funding");
   });
 
   it("renders the persistent navigation chrome: navbar, current step, account identity, theme switcher, and footer", () => {
@@ -53,11 +53,11 @@ describe("DemoShell", () => {
 
     const primaryNav = screen.getByRole("navigation", { name: "Principal" });
     expect(primaryNav).toBeInTheDocument();
-    expect(within(primaryNav).getByRole("link", { name: "Approval" })).toHaveAttribute(
+    expect(within(primaryNav).getByRole("link", { name: "Aprobación" })).toHaveAttribute(
       "aria-current",
       "page"
     );
-    expect(within(primaryNav).getByRole("link", { name: "Request" })).not.toHaveAttribute(
+    expect(within(primaryNav).getByRole("link", { name: "Solicitud" })).not.toHaveAttribute(
       "aria-current"
     );
 
@@ -106,9 +106,9 @@ describe("DemoShell", () => {
 
     const query = `?application=${APP}&campaign=${CAMPAIGN}`;
     const primaryNav = within(screen.getByRole("navigation", { name: "Principal" }));
-    expect(primaryNav.getByRole("link", { name: "Funding" })).toHaveAttribute("href", `/funding${query}`);
-    const stepNav = within(screen.getByRole("navigation", { name: "Demo step navigation" }));
-    expect(stepNav.getByRole("link", { name: "AI Assessment" })).toHaveAttribute(
+    expect(primaryNav.getByRole("link", { name: "Fondeo" })).toHaveAttribute("href", `/funding${query}`);
+    const stepNav = within(screen.getByRole("navigation", { name: "Navegación de pasos" }));
+    expect(stepNav.getByRole("link", { name: "Evaluación de IA" })).toHaveAttribute(
       "href",
       `/ai-assessment${query}`
     );

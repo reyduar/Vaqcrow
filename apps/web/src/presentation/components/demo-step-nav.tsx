@@ -13,7 +13,7 @@ export interface DemoStepNavProps {
 export function DemoStepNav({ previous, next }: DemoStepNavProps) {
   const ids = useJourneyIds();
   return (
-    <nav aria-label="Demo step navigation">
+    <nav aria-label="Navegación de pasos">
       {previous ? <Link href={journeyStepHref(previous.slug, ids)}>{previous.label}</Link> : null}
       {next ? <Link href={journeyStepHref(next.slug, ids)}>{next.label}</Link> : null}
     </nav>

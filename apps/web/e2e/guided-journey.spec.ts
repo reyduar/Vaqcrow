@@ -7,12 +7,12 @@ import { STUB_API_BASE_URL } from "./support/targets";
  * the behavior `apps/web`'s unit tests can only approximate with mocked routers.
  */
 const STEPS = [
-  { slug: "request", label: "Request" },
-  { slug: "ai-assessment", label: "AI Assessment" },
-  { slug: "approval", label: "Approval" },
-  { slug: "funding", label: "Funding" },
-  { slug: "distribution", label: "Distribution" },
-  { slug: "evidence", label: "Evidence" }
+  { slug: "request", label: "Solicitud" },
+  { slug: "ai-assessment", label: "Evaluación de IA" },
+  { slug: "approval", label: "Aprobación" },
+  { slug: "funding", label: "Fondeo" },
+  { slug: "distribution", label: "Distribución" },
+  { slug: "evidence", label: "Evidencia" }
 ] as const;
 
 test.beforeEach(async ({ request }) => {
@@ -24,7 +24,7 @@ test("the root redirects to the first demo step", async ({ page }) => {
   await page.goto("/");
 
   await expect(page).toHaveURL(/\/request$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Request" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Solicitud" })).toBeVisible();
 });
 
 test("the shell renders the demo chrome and the step progress", async ({ page }) => {
@@ -38,7 +38,7 @@ test("the shell renders the demo chrome and the step progress", async ({ page })
     .locator("header")
     .filter({ has: page.getByRole("link", { name: "Vaqcrow, inicio" }) });
   await expect(demoHeader.getByText("TESTNET · Activos sin valor económico")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Demo progress" })).toContainText("Step 1 of 6: Request");
+  await expect(page.getByRole("navigation", { name: "Progreso de la demo" })).toContainText("Paso 1 de 6: Solicitud");
 });
 
 test("walks the six guided steps in order", async ({ page }) => {
@@ -47,8 +47,8 @@ test("walks the six guided steps in order", async ({ page }) => {
   for (const [index, step] of STEPS.entries()) {
     await expect(page).toHaveURL(new RegExp(`/${step.slug}$`));
     await expect(page.getByRole("heading", { level: 1, name: step.label })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Demo progress" })).toContainText(
-      `Step ${index + 1} of 6: ${step.label}`
+    await expect(page.getByRole("navigation", { name: "Progreso de la demo" })).toContainText(
+      `Paso ${index + 1} de 6: ${step.label}`
     );
 
     const next = STEPS[index + 1];
@@ -56,7 +56,7 @@ test("walks the six guided steps in order", async ({ page }) => {
       // The step labels are also primary-nav links, so target the dedicated
       // step-navigation landmark instead of the ambiguous global link name.
       await page
-        .getByRole("navigation", { name: "Demo step navigation" })
+        .getByRole("navigation", { name: "Navegación de pasos" })
         .getByRole("link", { name: next.label })
         .click();
     }
@@ -92,13 +92,13 @@ test("assesses the submitted application and shows that same persisted assessmen
   await expect(page.getByRole("status")).toContainText("Solicitud registrada en el entorno de demostración");
 
   // Client-side navigation keeps the journey's application id.
-  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
-  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
+  const stepNav = page.getByRole("navigation", { name: "Navegación de pasos" });
+  await stepNav.getByRole("link", { name: "Evaluación de IA" }).click();
   await page.getByRole("button", { name: "Consultar evaluación de IA" }).click();
   await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
   await expect(page.getByRole("status").filter({ hasText: "pasó a revisión humana" })).toBeVisible();
 
-  await stepNav.getByRole("link", { name: "Approval" }).click();
+  await stepNav.getByRole("link", { name: "Aprobación" }).click();
   await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
 });
 
@@ -122,9 +122,9 @@ test("the submitted application survives navigating between steps and a reload",
   const applicationId = new URL(page.url()).searchParams.get("application");
   expect(applicationId).not.toBeNull();
 
-  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
-  await stepNav.getByRole("link", { name: "AI Assessment" }).click();
-  await stepNav.getByRole("link", { name: "Approval" }).click();
+  const stepNav = page.getByRole("navigation", { name: "Navegación de pasos" });
+  await stepNav.getByRole("link", { name: "Evaluación de IA" }).click();
+  await stepNav.getByRole("link", { name: "Aprobación" }).click();
   await expect(page).toHaveURL(new RegExp(`/approval\\?application=${applicationId}$`));
   await expect(page.getByRole("form", { name: /Decisión humana/ })).toBeVisible();
 
@@ -147,8 +147,8 @@ test("browser history to another application's URL makes the journey follow it, 
 }) => {
   const first = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";
   const second = "9a8b7c6d-1111-4222-8333-444455556666";
-  const stepNav = page.getByRole("navigation", { name: "Demo step navigation" });
-  const fundingLink = stepNav.getByRole("link", { name: "Funding" });
+  const stepNav = page.getByRole("navigation", { name: "Navegación de pasos" });
+  const fundingLink = stepNav.getByRole("link", { name: "Fondeo" });
 
   await page.goto(`/approval?application=${first}`);
   await expect(fundingLink).toHaveAttribute("href", new RegExp(`application=${first}`));

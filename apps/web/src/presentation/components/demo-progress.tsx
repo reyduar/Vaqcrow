@@ -8,9 +8,9 @@ export interface DemoProgressProps {
 
 export function DemoProgress({ step, position, total }: DemoProgressProps) {
   return (
-    <nav aria-label="Demo progress">
+    <nav aria-label="Progreso de la demo">
       <p aria-current="step">
-        Step {position} of {total}: {step.label}
+        Paso {position} de {total}: {step.label}
       </p>
     </nav>
   );
