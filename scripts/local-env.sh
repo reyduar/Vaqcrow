@@ -38,9 +38,11 @@ API_WAIT_SECONDS="${API_WAIT_SECONDS:-60}"
 # reads/writes through it). Everything below is either UI-only (studio),
 # unused by the demo (storage-api and its imgproxy dependent, realtime,
 # edge-runtime, supavisor pooling), or log/mail infra with no consumer here
-# (logflare, vector, mailpit — mailpit replaced the older `inbucket` name in
-# supabase CLI 2.x, confirmed against `supabase start --help`).
-SUPABASE_EXCLUDE="studio,imgproxy,edge-runtime,logflare,vector,mailpit,realtime,storage-api,supavisor"
+# (logflare, vector). mailpit is deliberately NOT excluded: with email
+# confirmation on (#370) gotrue needs it to deliver signup links locally
+# (`mailpit` replaced the older `inbucket` name in supabase CLI 2.x, confirmed
+# against `supabase start --help`).
+SUPABASE_EXCLUDE="studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor"
 
 require_docker() {
   if ! docker info >/dev/null 2>&1; then
