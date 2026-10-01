@@ -265,6 +265,7 @@ now matches the template — the per-slice checks above carry that.
 - `8f0fb3aa055bc14f93cda910db1feec3457bb3b5` — `feat(web): align the evaluación de IA and distribución screens with the template` (Slice 5).
 - `dedbe40a05a598f261b0ba8c4d4e0d4c48107d94` — `feat(web): align the fondeo screen with the template` (Slice 5).
 - `cc6d3357c0c7daf4189b1c24466d7bea78edcc8f` — `feat(web): align the evidencia screen with the template` (Slice 5).
+- `1795dcbc7425ab86d965e8f66f3b75c846778544` — `refactor(web): use the framework type scale for the slice-5 screen headers` (Slice 5 cleanup).
 
 ## Sources
 
