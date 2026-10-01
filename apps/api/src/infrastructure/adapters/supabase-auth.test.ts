@@ -8,6 +8,8 @@ interface Fake {
   readonly user?: { id: string } | null;
   readonly userError?: { message: string; status?: number; name?: string } | null;
   readonly getUserReject?: Error;
+  readonly getUserHangs?: boolean;
+  readonly profileHangs?: boolean;
   readonly profile?: unknown;
   readonly profileError?: { code: string; message: string; details: string; hint: string } | null;
   readonly profileReject?: Error;
@@ -22,7 +24,9 @@ function fakeClient(fake: Fake) {
       return builder;
     },
     maybeSingle: () =>
-      fake.profileReject
+      fake.profileHangs
+        ? new Promise(() => undefined)
+        : fake.profileReject
         ? Promise.reject(fake.profileReject)
         : Promise.resolve({ data: fake.profile ?? null, error: fake.profileError ?? null })
   };
@@ -30,6 +34,7 @@ function fakeClient(fake: Fake) {
     auth: {
       getUser: (token: string) => {
         calls.getUser.push(token);
+        if (fake.getUserHangs) return new Promise(() => undefined);
         return fake.getUserReject
           ? Promise.reject(fake.getUserReject)
           : Promise.resolve({
@@ -150,5 +155,46 @@ describe("SupabaseAuth.verifyAccessToken", () => {
       ok: false,
       error: { code: "unavailable" }
     });
+  });
+
+  it("answers unavailable on a rate limit (429) from Auth instead of rejecting the token", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client, calls } = fakeClient({ user: null, userError: { message: "slow down", status: 429, name: "AuthApiError" } });
+
+    const result = await new SupabaseAuth(client).verifyAccessToken("jwt");
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(calls.from).toEqual([]);
+    expect(error).toHaveBeenCalledWith("[SupabaseAuth] token verification failed", { status: 429, name: "AuthApiError" });
+  });
+
+  it("answers unavailable when getUser does not answer in time, logging a sanitized cause", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ getUserHangs: true });
+
+    const result = await new SupabaseAuth(client, { timeoutMs: 10 }).verifyAccessToken("secret-jwt");
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(error).toHaveBeenCalledWith("[SupabaseAuth] unexpected failure", { cause: "timeout" });
+    expect(JSON.stringify(error.mock.calls)).not.toContain("secret-jwt");
+  });
+
+  it("answers unavailable when the profile read does not answer in time", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ profileHangs: true });
+
+    const result = await new SupabaseAuth(client, { timeoutMs: 10 }).verifyAccessToken("jwt");
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(error).toHaveBeenCalledWith("[SupabaseAuth] unexpected failure", { cause: "timeout" });
+  });
+
+  it("logs only the error name of an unexpected rejection, never its message", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ getUserReject: new TypeError("ECONNRESET with token abc") });
+
+    await new SupabaseAuth(client).verifyAccessToken("jwt");
+
+    expect(error).toHaveBeenCalledWith("[SupabaseAuth] unexpected failure", { cause: "TypeError" });
   });
 });

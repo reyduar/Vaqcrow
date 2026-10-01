@@ -12,6 +12,33 @@ interface ProfileRow {
 }
 
 const UNAUTHENTICATED = { ok: false, error: { code: "unauthenticated" } } as const;
+/** Upper bound for each provider call; a stalled Auth or database must not stall the request. */
+const DEFAULT_TIMEOUT_MS = 5_000;
+
+class TimeoutError extends Error {
+  constructor() {
+    super("timeout");
+    this.name = "TimeoutError";
+  }
+}
+
+async function withTimeout<T>(work: PromiseLike<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new TimeoutError()), timeoutMs);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function describeCause(cause: unknown): string {
+  if (cause instanceof TimeoutError) return "timeout";
+  return cause instanceof Error ? cause.name : "unknown";
+}
+
 const UNAVAILABLE = { ok: false, error: { code: "unavailable" } } as const;
 
 /**
@@ -23,11 +50,18 @@ const UNAVAILABLE = { ok: false, error: { code: "unavailable" } } as const;
  * is ever used.
  */
 export class SupabaseAuth implements AuthPort {
-  constructor(private readonly client: SupabaseClient) {}
+  private readonly timeoutMs: number;
+
+  constructor(
+    private readonly client: SupabaseClient,
+    options: { readonly timeoutMs?: number } = {}
+  ) {
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  }
 
   async verifyAccessToken(token: string): Promise<AuthResult<Principal>> {
     try {
-      const { data, error } = await this.client.auth.getUser(token);
+      const { data, error } = await withTimeout(this.client.auth.getUser(token), this.timeoutMs);
 
       if (error) {
         // 4xx (except rate limiting) = the token is not acceptable; anything else is the provider failing.
@@ -43,11 +77,14 @@ export class SupabaseAuth implements AuthPort {
         return UNAUTHENTICATED;
       }
 
-      const profile = await this.client
-        .from(PROFILE_TABLE)
-        .select("user_id, role, status, display_name")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
+      const profile = await withTimeout(
+        this.client
+          .from(PROFILE_TABLE)
+          .select("user_id, role, status, display_name")
+          .eq("user_id", data.user.id)
+          .maybeSingle(),
+        this.timeoutMs
+      );
 
       if (profile.error) {
         this.log("profile read failed", {
@@ -84,8 +121,9 @@ export class SupabaseAuth implements AuthPort {
           displayName: row.display_name
         }
       };
-    } catch {
-      this.log("unexpected failure", {});
+    } catch (cause) {
+      // Only the error name: a message could echo the token or provider details.
+      this.log("unexpected failure", { cause: describeCause(cause) });
       return UNAVAILABLE;
     }
   }

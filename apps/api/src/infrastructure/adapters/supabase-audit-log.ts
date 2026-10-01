@@ -22,16 +22,18 @@ export class SupabaseAuditLog implements AuditLogPort {
         // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
         console.error("[SupabaseAuditLog] append failed", {
           code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
           correlationId: entry.correlationId
         });
         return { ok: false, error: { code: "unavailable" } };
       }
 
       return { ok: true, value: undefined };
-    } catch {
+    } catch (cause) {
+      // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
+      console.error("[SupabaseAuditLog] append failed", {
+        cause: cause instanceof Error ? cause.name : "unknown",
+        correlationId: entry.correlationId
+      });
       return { ok: false, error: { code: "unavailable" } };
     }
   }

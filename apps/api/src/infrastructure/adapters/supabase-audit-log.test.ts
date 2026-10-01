@@ -70,11 +70,22 @@ describe("SupabaseAuditLog.append", () => {
     expect(error).toHaveBeenCalled();
   });
 
-  it("answers unavailable when the insert rejects", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const { client } = fakeClient({ reject: new Error("network") });
+  it("answers unavailable when the insert rejects, logging only the error name", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ reject: new TypeError("network down with secret") });
     expect(
-      await new SupabaseAuditLog(client).append({ actorUserId: "u1", action: "x", targetType: "t", targetId: "i" })
+      await new SupabaseAuditLog(client).append({ actorUserId: "u1", action: "x", targetType: "t", targetId: "i", correlationId: "c1" })
     ).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(error).toHaveBeenCalledWith("[SupabaseAuditLog] append failed", { cause: "TypeError", correlationId: "c1" });
+    expect(JSON.stringify(error.mock.calls)).not.toContain("secret");
+  });
+
+  it("logs the sanitized error code of a rejected insert, not its message, details or hint", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ error: { code: "23503", message: "secret", details: "d", hint: "h" } });
+
+    await new SupabaseAuditLog(client).append({ actorUserId: "u1", action: "x", targetType: "t", targetId: "i", correlationId: "c1" });
+
+    expect(error).toHaveBeenCalledWith("[SupabaseAuditLog] append failed", { code: "23503", correlationId: "c1" });
   });
 });
