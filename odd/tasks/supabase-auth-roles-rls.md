@@ -47,11 +47,12 @@ Un usuario `Inactivo` recibe `401` aunque su token sea válido.
 
 ## Unidades de trabajo
 
-- [ ] **U1 — Esquema de identidad.** Migración: `profile` (usuario, rol, nombre visible, usuario único, estado `active`/`inactive`), `audit_log` append-only, trigger de alta que sólo acepta `PYME`/`INVERSOR`, RLS y grants explícitos. pgTAP primero (RED). Probar local y aplicar al remoto en la misma unidad. Ruta: delegada (escritor único; preparación de escritura sobre 4+ archivos).
+- [x] **U1 — Esquema de identidad.** Migración: `profile` (usuario, rol, nombre visible, usuario único, estado `active`/`inactive`), `audit_log` append-only, trigger de alta que sólo acepta `PYME`/`INVERSOR`, RLS y grants explícitos. pgTAP primero (RED). Probar local y aplicar al remoto en la misma unidad. Ruta: delegada (escritor único; preparación de escritura sobre 4+ archivos).
   - Migración: `supabase/migrations/20260930180000_create_identity_and_audit.sql` (`profile`, trigger `on_auth_user_created` -> `handle_new_user()` security definer con `search_path=''` y execute revocado, `audit_log` append-only con índices, RLS y grants explícitos, política `profile_select_own`). Test: `supabase/tests/identity_and_audit.sql` (32 aserciones).
   - RED: `pnpm run test:db` sin la migración -> `relation "public.profile" does not exist`, `Failed 37/37 subtests`, `Result: FAIL`.
   - GREEN: `pnpm exec supabase migration up --local` aplicó la migración; `pnpm run test:db` -> `Files=7, Tests=147, Result: PASS` (plan corregido de 37 a 32 al contar mal las aserciones; las 32 pasaron a la primera). `pnpm run test:boundaries` -> 143 passed; `pnpm exec vitest run tests/rls-grants-containment.test.ts` -> 8 passed (sin cambios necesarios).
-  - Pendiente: aplicar al proyecto remoto y verificar esquema, grants/RLS y versión de historial (lo hace el orquestador); por eso el checkbox sigue sin marcar.
+  - Remoto (2026-10-01, MCP de Supabase): `apply_migration` con el cuerpo del archivo (SHA-256 `461e580f…`) y la versión del historial alineada a `20260930180000`. Verificado: `profile` y `audit_log` con RLS; grants `authenticated:SELECT` + `service_role:INSERT/SELECT/UPDATE` en `profile` y `service_role:INSERT/SELECT` en `audit_log`; política `profile_select_own` (SELECT, authenticated); trigger `on_auth_user_created` presente; `handle_new_user()` security definer sin execute para anon/authenticated; `application_review` y `human_decision` sin cambios. Advisor de seguridad: sólo el INFO `rls_enabled_no_policy` esperado para las tablas exclusivas de `service_role`.
+  - Commit: `eaa8f69`. Revisión del orquestador: el rol `ADMIN` sólo entra por `app_metadata` (escribible solo por `service_role`).
 - [ ] **U2 — Autorización en la API.** `AuthPort` + adaptador Supabase, hook `onRequest` con denegación por defecto y tabla de políticas, `actor` desde el principal, puerto y adaptador de auditoría. Tests de matriz rol × endpoint primero (RED). Ruta: delegada.
 - [ ] **U3 — Configuración, seed y preflight.** Slice de config, script `seed:superadmin`, chequeo de preflight «existe un `ADMIN` activo», `generate-docker-env.sh` y los `.example`. Ruta: delegada.
 - [ ] **U4 — Auth de Supabase y SMTP.** `supabase/config.toml` (`site_url`, confirmaciones, SMTP de Resend por variable) y la misma configuración en el proyecto remoto. Ruta: delegada; depende de que el owner tenga un dominio verificado en Resend.
@@ -63,4 +64,4 @@ _Pendiente._
 
 ## Próximo paso
 
-U1 — esquema de identidad con pgTAP en rojo.
+U2 — autorización en la API con la matriz rol × endpoint en rojo.
