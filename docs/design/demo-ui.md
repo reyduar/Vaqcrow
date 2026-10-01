@@ -4,18 +4,18 @@ Este documento convierte el plan de la demo en un sistema visual y de interacci�
 
 > **Fuente de alcance:** [Plan de la demo](../planning/DEMO.md). Esta especificación desarrolla su historia vertical, sus límites de confianza y su sistema visual; el alcance de superficie de producto ya no se limita a seis pantallas (ver sección 1 y sección 4).
 
-> **Estado de Google Stitch MCP — conectado.** Stitch está configurado como servidor MCP con alcance de proyecto en `.mcp.json` (Claude Code), autenticado mediante `X-Goog-Api-Key` interpolado desde `STITCH_API_KEY`. El proyecto real `VaqcrowWebApp` (ID `5439082704079758723`) ya existe en Stitch y tiene un ledger canónico de 19 flujos de producto completos en escritorio, cada uno con variante Light y Dark (38 pantallas canónicas), más 6 generaciones de marca/logo. Para el flujo 19 están visibles las dos pantallas canónicas —Light `9184aabe0b3a4262b51893198c3c045e` y Dark `3d81c0bf51d64d90be76c9c82deff6fa`— y una pantalla Light duplicada adicional (`1c94354c1625445988a50ecc2a77b4b3`), excluida del ledger y pendiente de ocultarse, eliminarse o reconciliarse. Las dos instancias históricas ocultas ajenas a Vaqcrow también se excluyen, por separado, de ese conteo. Este documento ya no describe una configuración pendiente: describe el inventario canónico, verificado mediante `mcp__stitch__list_screens`, y el trabajo pendiente sobre el estado visible del proyecto (ver sección 11.9).
+> **Fuente de verdad visual — el template de Claude Design (2026-10-01).** La referencia visual y de sistema de diseño es el template de Claude Design, en `docs/design/template/`, compartido en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. Reemplaza al proyecto de Google Stitch, retirado ese mismo día (ver §11 y §12). El directorio del template está fuera del repositorio a propósito: `docs/design/template/` está en `.gitignore` y no se versiona ningún archivo del template. El detalle —ubicación, compartición, inventario de 14 pantallas y gate de revisión por pantalla— está en «El template de Claude Design (fuente de verdad visual)», más abajo. Lo que el diseño busca está en [[docs/design/claude-design-brief|el brief de Claude Design]] y su [[docs/design/claude-design-continuation-pack|pack de continuación]].
 
-> **Identidad aprobada, archivo fuente pendiente.** La marca usa un isotipo geométrico/angular de cabeza de toro. La referencia visual provista está aprobada, pero este documento no afirma que exista un SVG o PNG versionado en el repositorio. Debe incorporarse un archivo fuente autorizado antes de implementarlo y antes de generar en Stitch si la herramienta exige un asset.
+> **Identidad aprobada, archivo fuente pendiente.** La marca usa un isotipo geométrico/angular de cabeza de toro. La referencia visual provista está aprobada, pero este documento no afirma que exista un SVG o PNG versionado en el repositorio. Debe incorporarse un archivo fuente autorizado antes de implementarlo y antes de generar con la herramienta de diseño si exige un asset.
 
 ## Ruta rápida de uso
 
 1. Confirmar únicamente los TBD operativos reales de la sección 15; tema e identidad visual ya están decididos.
 2. Incorporar el SVG/PNG fuente autorizado del isotipo si la generación requiere un archivo y siempre antes de implementación.
-3. Partir del inventario real ya existente en el proyecto Stitch `VaqcrowWebApp` (sección 11.6): 19 flujos × Light/Dark en escritorio, ya generados.
-4. Generar las variantes MOBILE faltantes para los 19 flujos (0 de las 38 pantallas canónicas tienen hoy contraparte móvil) y resolver las anomalías señaladas en la sección 11.9 (pantallas "Identical", pantalla "Updated", duplicado Light visible del flujo 19 y dos instancias históricas ocultas ajenas al proyecto).
-5. Mapear cada flujo aprobado a una ruta Next.js (sección 4) y aplicar el gate de la sección 11.5 antes de dar por cerrada una pantalla.
-6. Mantener el ledger de la sección 11.6 como fuente de verdad de IDs reales; no reintroducir marcadores `<PLACEHOLDER>`.
+3. Partir del template de Claude Design ya existente en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)»): 14 piezas `.dc.html`, cada una con ambos temas.
+4. Cerrar las pantallas que faltan a partir de las piezas hermanas, siguiendo el [[docs/design/claude-design-continuation-pack|pack de continuación]] (§2 y §4).
+5. Mapear cada flujo aprobado a una ruta Next.js (sección 4) y aplicar el gate de revisión por pantalla antes de dar por cerrada una pieza.
+6. Identificar cada pieza por su nombre de archivo (`Vaqcrow X.dc.html`); no reintroducir marcadores `<PLACEHOLDER>`.
 7. Extender las especificaciones detalladas de la sección 8 —hoy limitadas a la narrativa original de 6 pantallas— a las áreas nuevas (marketplace, admin, billetera, etc.) y validar el recorrido ampliado con accesibilidad, estados reales y evidencia Playwright.
 
 ## Resumen de decisiones
@@ -24,7 +24,7 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 
 | Tema | Decisión |
 |---|---|
-| Alcance | Producto completo: marketplace con múltiples PyMEs, registro y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración, página Acerca de Vaqcrow y la historia vertical original de una PyME sintética. El inventario real ya cubre 19 flujos de producto en Stitch (`VaqcrowWebApp`). |
+| Alcance | Producto completo: marketplace con múltiples PyMEs, registro y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración, página Acerca de Vaqcrow y la historia vertical original de una PyME sintética. El inventario de producto (19 flujos) está especificado en el [[docs/design/claude-design-brief|brief de Claude Design]] y el template vive en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo). |
 | Idioma de interfaz | Español neutral, apropiado para personas usuarias de Argentina y sin coloquialismos. |
 | Estilo | Fintech moderna y confiable: data-forward, precisa, sobria, con superficies limpias, jerarquía fuerte, densidad controlada y microinteracciones discretas. |
 | Color | Morado `#8A05BE` como acento intencional; paletas clara y oscura exactas, sin reemplazos. |
@@ -36,8 +36,38 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 | Componentes y estilo | [HeroUI](https://www.heroui.com/) aporta primitivas accesibles; [Tailwind CSS](https://tailwindcss.com/) centraliza tema y tokens, sin constantes visuales locales por feature; [React Icons](https://react-icons.github.io/react-icons/icons/io5/) `io5` es el set de iconos elegido y nunca comunica significado crítico sin texto y semántica accesible. |
 | Datos y formularios | [Axios](https://www.axios.com/) es transporte HTTP detrás de puertos/adaptadores; [SWR](https://swr.vercel.app/) orquesta estado de servidor y revalidación mediante fetchers de aplicación/adaptador; [React Hook Form](https://react-hook-form.com/) gestiona estado de formulario en navegador, sin decidir reglas de negocio. |
 | Estado y pruebas | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) conserva solo estado de workflow cliente entre rutas, sin duplicar SWR ni estado autoritativo del backend; [Playwright](https://playwright.dev/) cubre smoke/E2E determinísticos con fixtures o dobles locales. |
-| Stitch | [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) (ID `5439082704079758723`) es la referencia visual y de sistema de diseño; el HTML generado nunca es implementación autoritativa de producción. |
+| Template de Claude Design | El template en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo) es la referencia visual y de sistema de diseño; su HTML generado nunca es implementación autoritativa de producción. |
 | Autenticación | La demo mantiene identidad sintética. [Auth.js v5](https://authjs.dev/) queda planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134) como límite futuro de autenticación/sesión, dependiente de #14 y fuera del camino crítico acotado. |
+
+---
+
+## El template de Claude Design (fuente de verdad visual)
+
+> [!info] Reemplaza a Google Stitch (2026-10-01)
+> La referencia visual y de sistema de diseño es el **template de Claude Design**, en `docs/design/template/`. Reemplaza al proyecto de Google Stitch, retirado ese mismo día (ver §11 y §12). Las reglas de confianza y las decisiones de producto de este documento no cambian: cambia la herramienta con la que se materializa el diseño.
+
+- **En disco:** `docs/design/template/`.
+- **Enlace de compartición:** <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>
+- **Qué busca el diseño:** el [[docs/design/claude-design-brief|brief de diseño para Claude Design]] y su [[docs/design/claude-design-continuation-pack|pack de continuación]] son la autoridad; este documento no los repite.
+
+**Inventario (14 pantallas).** El template tiene 14 piezas `.dc.html`, una por pantalla, **cada una con los dos temas en el mismo archivo**: `Vaqcrow Landing`, `Vaqcrow Landing export`, `Vaqcrow Portafolio`, `Vaqcrow Explorar PyMEs`, `Vaqcrow Detalle PyME`, `Vaqcrow Informes`, `Vaqcrow Sistema`, `Vaqcrow Admin`, `Vaqcrow Ayuda`, `Vaqcrow Onboarding`, `Vaqcrow Onboarding PyME`, `Vaqcrow Guia emprendedores`, `Vaqcrow Guia de inversion` y `Vaqcrow Acerca de`, más `support.js` (runtime compartido) y los directorios `assets/`, `uploads/` y `screenshots/`. Qué flujo cubre cada pieza y qué pantallas faltan está en el [[docs/design/claude-design-continuation-pack|pack de continuación]] §1–§2.
+
+**Fuera del repositorio.** `docs/design/template/` está en `.gitignore` a propósito: no se versiona ningún archivo del template. La razón está medida y registrada en [[odd/tasks/template-stays-out-of-the-repo|El template de Claude Design queda fuera del repositorio]]: pesa 25 MB, el 78 % de su texto es un artefacto de build que nada del build lee, y el review gate lo rechaza como candidato único. El costo declarado es que el template no tiene respaldo del repositorio; se mitiga porque es regenerable desde el brief y el pack, ambos versionados.
+
+**Gate de revisión por pantalla** (adaptado del gate que este documento aplicaba al proyecto de Stitch). No se da por cerrada una pieza hasta que cumple:
+
+- [ ] Jerarquía, layout y acción primaria coinciden con la especificación (sección 8 y las fichas del brief).
+- [ ] `TESTNET`, `SIMULADO` y el disclosure contextual son visibles sin interacción oculta.
+- [ ] No existe copy de dinero real, aprobación autónoma ni retorno garantizado.
+- [ ] Los estados vacío, carga, error, deshabilitado, éxito y pendiente están definidos, aunque la pieza muestre solo el estado principal.
+- [ ] Componentes reutilizan tokens, radios, tipografía e iconografía aprobados (secciones 5 y 7).
+- [ ] La pieza es una pantalla completa con los **dos temas** en el mismo archivo; no es un swatch, anotación ni fragmento de su contraparte.
+- [ ] Claro y oscuro conservan contenido, prioridad, estados, isotipo y semántica; solo cambian tokens y tratamientos previstos.
+- [ ] El isotipo respeta variante, zona de seguridad y tamaño mínimo; sin asset fuente, la salida queda bloqueada para aprobación de marca (sección 5.2).
+- [ ] Contraste previsto y orden de lectura son revisables; cualquier duda se registra para validación en código (sección 6).
+- [ ] La pieza y su revisión quedan identificadas por nombre de archivo, con decisión y desviaciones registradas.
+
+El [[docs/design/claude-design-continuation-pack|pack de continuación]] §5 reúne los chequeos automatizables sobre las piezas nuevas (disclosures, ambos temas, runtime `support.js`, iconografía del set y ausencia de otra librería de estilo).
 
 ---
 
@@ -70,7 +100,7 @@ Al abrir la experiencia, una persona debe entender:
 - Autenticación y perfiles de producción (login real, recuperación de contraseña y sesión persistente): la demo conserva identidad sintética; Auth.js v5 se planifica por separado en [#134](https://github.com/reyduar/Vaqcrow/issues/134), fuera del camino crítico salvo promoción explícita de alcance.
 - Soroban, salvo que exista como extensión posterior independiente del diseño base.
 
-El marketplace con múltiples PyMEs, filtros avanzados y el panel de administración **ya no están fuera de alcance**: están diseñados en Stitch (sección 4, sección 11.6) y son parte del producto completo descrito en el Objetivo. Persisten fuera de alcance únicamente los puntos listados arriba.
+El marketplace con múltiples PyMEs, filtros avanzados y el panel de administración **ya no están fuera de alcance**: están diseñados en el template de Claude Design (sección 4; ver «El template de Claude Design (fuente de verdad visual)») y son parte del producto completo descrito en el Objetivo. Persisten fuera de alcance únicamente los puntos listados arriba.
 
 ## 2. Reglas de confianza no negociables
 
@@ -122,11 +152,11 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 
 ## 4. Arquitectura de información y mapa de pantallas
 
-> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real en Stitch (proyecto `VaqcrowWebApp`, sección 11.6) ya cubre 19 flujos de producto que constituyen el producto completo. Las seis rutas originales se conservan como alias/heredadas donde el mapeo es directo (marcado abajo) y siguen siendo el recorrido guiado detallado en la sección 8; el resto son rutas nuevas propuestas.
+> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real de producto (19 flujos, especificado en el [[docs/design/claude-design-brief|brief de Claude Design]] y en el mapa de la sección 4) constituye el producto completo. Las seis rutas originales se conservan como alias/heredadas donde el mapeo es directo (marcado abajo) y siguen siendo el recorrido guiado detallado en la sección 8; el resto son rutas nuevas propuestas.
 
 ### Mapa completo (19 flujos reales, agrupados por área)
 
-| # | Flujo Stitch | Ruta Next.js propuesta | Actor principal | Resultado de la etapa |
+| # | Flujo | Ruta Next.js propuesta | Actor principal | Resultado de la etapa |
 |---:|---|---|---|---|
 | **Onboarding y acceso** | | | | |
 | 1 | Onboarding | `/onboarding` | Persona nueva | Entiende la propuesta de valor y crea/activa su cuenta. |
@@ -155,9 +185,9 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | **Institucional** | | | | |
 | 19 | Acerca de Vaqcrow | `/acerca-de` | Visitante | Consulta la misión, visión, pilares de valor y presentación del creador del proyecto. |
 
-`/demo/transacciones/[intentId]` (estado asíncrono de transacción) se conserva como patrón de estado compartido —reutilizado desde Billetera, Portafolio y Tokenización— sin ser todavía un flujo propio en el inventario Stitch; no se agrega una ruta por cada estado interno: wallet, XDR, aprobación y distribución siguen usando paneles, diálogos o drawers dentro de estas pantallas, con URL/estado recuperable cuando corresponda.
+`/demo/transacciones/[intentId]` (estado asíncrono de transacción) se conserva como patrón de estado compartido —reutilizado desde Billetera, Portafolio y Tokenización— sin ser todavía un flujo propio en el inventario de producto; no se agrega una ruta por cada estado interno: wallet, XDR, aprobación y distribución siguen usando paneles, diálogos o drawers dentro de estas pantallas, con URL/estado recuperable cuando corresponda.
 
-Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas heredadas (la historia vertical original); los 13 flujos restantes están diseñados en Stitch pero no tienen todavía su ficha de especificación equivalente (ver nota al inicio de la sección 8 y sección 11.9).
+Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas heredadas (la historia vertical original); los 13 flujos restantes están diseñados en el template de Claude Design pero no tienen todavía su ficha de especificación equivalente (ver nota al inicio de la sección 8 y el [[docs/design/claude-design-continuation-pack|pack de continuación]] §2).
 
 ### Navegación global
 
@@ -169,7 +199,7 @@ Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas 
 
 ### Flujo de usuario
 
-> El diagrama siguiente describe únicamente la historia vertical original (las seis rutas heredadas, sección 8). Los 13 flujos nuevos (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow) todavía no tienen su propio diagrama de estados; es un pendiente de la sección 11.9.
+> El diagrama siguiente describe únicamente la historia vertical original (las seis rutas heredadas, sección 8). Los 13 flujos nuevos (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow) todavía no tienen su propio diagrama de estados; es un pendiente de especificación (sección 8).
 
 ```mermaid
 flowchart TD
@@ -237,7 +267,7 @@ La identidad aprobada usa una **cabeza de toro geométrica/angular**, simétrica
 - No deformar, rotar, recortar, agregar sombras/contornos, rellenar con gradientes, recolorear según éxito/riesgo/error ni usarlo como textura repetida.
 - No extender el fondo degradado de la imagen de referencia a heroes, tarjetas, gráficos o canvas de la aplicación.
 
-**Dependencia de asset:** la elección visual no está abierta. Sí permanece pendiente incorporar y versionar el SVG fuente autorizado —y un PNG de respaldo si hace falta— con procedencia y licencia confirmadas. No asumir una ruta de archivo ni inventar un asset. Si Stitch necesita upload o referencia de archivo, detener esa generación hasta disponer del fuente; la implementación también lo requiere.
+**Dependencia de asset:** la elección visual no está abierta. Sí permanece pendiente incorporar y versionar el SVG fuente autorizado —y un PNG de respaldo si hace falta— con procedencia y licencia confirmadas. No asumir una ruta de archivo ni inventar un asset. Si la herramienta de diseño necesita subir o referenciar un archivo, detener esa generación hasta disponer del fuente; la implementación también lo requiere.
 
 ### 5.3 Paleta central exacta
 
@@ -317,7 +347,7 @@ Nombres compatibles con variables CSS y extensiones de Tailwind:
 }
 ```
 
-Estos valores de apoyo quedan definidos para producir estados consistentes en Stitch. Son decisiones de diseño, **no una afirmación de contraste medido**: implementación debe medir cada pareja `surface`/`text`/`icon` contra WCAG 2.2 AA y ajustar únicamente tokens de apoyo si alguna combinación falla. Ningún estado depende solo del color; siempre combina icono, título y texto.
+Estos valores de apoyo quedan definidos para producir estados consistentes en el template de Claude Design. Son decisiones de diseño, **no una afirmación de contraste medido**: implementación debe medir cada pareja `surface`/`text`/`icon` contra WCAG 2.2 AA y ajustar únicamente tokens de apoyo si alguna combinación falla. Ningún estado depende solo del color; siempre combina icono, título y texto.
 
 | Estado | Claro: superficie / texto e icono | Oscuro: superficie / texto e icono |
 |---|---|---|
@@ -338,7 +368,7 @@ Tokens funcionales adicionales:
 
 ### 5.5 Tipografía
 
-**Decisión recomendada:** una sola familia, **Inter**, mediante entrega web compatible con Next.js, sujeta a confirmar disponibilidad y condiciones aplicables antes de implementar. Una familia reduce carga, latencia y discrepancias entre Stitch y código.
+**Decisión recomendada:** una sola familia, **Inter**, mediante entrega web compatible con Next.js, sujeta a confirmar disponibilidad y condiciones aplicables antes de implementar. Una familia reduce carga, latencia y discrepancias entre el template y el código.
 
 | Rol | Escritorio | Móvil | Peso / interlineado |
 |---|---:|---:|---|
@@ -475,7 +505,7 @@ HeroUI es la base de primitivas accesibles; se compone con tokens centralizados 
 
 ## 8. Especificaciones de pantallas
 
-> **Cobertura parcial.** Las seis fichas siguientes especifican en detalle únicamente la historia vertical original (una sola PyME, sección 4 — rutas heredadas). Los 13 flujos restantes del inventario real —incluidas las áreas de marketplace, portafolio, billetera, informes, soporte, administración y Acerca de Vaqcrow— están diseñados en Stitch pero **no tienen todavía** contenido/estados/criterios de aceptación equivalentes en este documento. Escribir esas fichas es un trabajo de seguimiento independiente y más amplio; ver la lista de "Actualizaciones pendientes en Stitch" al final de la sección 11.9.
+> **Cobertura parcial.** Las seis fichas siguientes especifican en detalle únicamente la historia vertical original (una sola PyME, sección 4 — rutas heredadas). Los 13 flujos restantes del inventario real —incluidas las áreas de marketplace, portafolio, billetera, informes, soporte, administración y Acerca de Vaqcrow— están diseñados en el template de Claude Design pero **no tienen todavía** contenido/estados/criterios de aceptación equivalentes en este documento. Escribir esas fichas es un trabajo de seguimiento independiente y más amplio; ver el [[docs/design/claude-design-continuation-pack|pack de continuación]] §2.
 
 ### Pantalla 1 — Oportunidad y límites de la demo
 
@@ -857,7 +887,10 @@ Estructura: **qué ocurrió + qué se conservó + qué puede hacer la persona**.
 | `Pago real` | `Transacción real en Testnet con activo sin valor económico` |
 | `Retorno` como certeza | `Distribución calculada para este período simulado` |
 
-## 11. Plan de ejecución con Google Stitch MCP
+## 11. Plan de ejecución con Google Stitch MCP (retirado)
+
+> [!warning] Retirado (2026-10-01)
+> Este apartado y §12 describen la ejecución del diseño con Google Stitch MCP: el estado del servidor MCP, el proyecto `VaqcrowWebApp`, su ledger de pantallas, la matriz de generación, los prompts y el mapeo a Next.js. Stitch dejó de ser la fuente de verdad de diseño ese mismo día y el template de Claude Design («El template de Claude Design (fuente de verdad visual)», arriba) ocupa su lugar. **Se conserva como registro histórico**; sus IDs y su ledger ya no rigen, y las referencias a este apartado en §13–§16 son históricas.
 
 ### 11.1 Estado y prerrequisitos
 
@@ -1077,7 +1110,10 @@ Lista única de seguimiento para el trabajo pendiente sobre el proyecto real `Va
 - **Especificaciones de pantalla faltantes.** La sección 8 solo detalla contenido/estados/criterios para las seis rutas heredadas. Los 13 flujos nuevos —incluido Acerca de Vaqcrow— necesitan su propia ficha de especificación; es un trabajo de seguimiento independiente.
 - **Diagrama de flujo de usuario incompleto.** El diagrama Mermaid de la sección 4 describe solo la historia vertical original; los 13 flujos nuevos no tienen todavía un diagrama de estados equivalente.
 
-## 12. Prompts listos para copiar y pegar
+## 12. Prompts listos para copiar y pegar (retirado)
+
+> [!warning] Retirado (2026-10-01)
+> Estos prompts eran para Google Stitch y se retiran junto con §11. No se reescriben como prompts de Claude Design; el set vigente vive en el [[docs/design/claude-design-brief|brief de Claude Design]] §10 y en el [[docs/design/claude-design-continuation-pack|pack de continuación]] §4.
 
 > **Alcance de esta sección.** Los Prompts 1–6 corresponden únicamente a las seis pantallas de la historia vertical heredada (sección 8), ya generadas en `DESKTOP` (ledger 11.6, filas 1–2, 6, 9–10, 17). Todavía no existen prompts equivalentes para los 13 flujos nuevos del inventario real (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow); escribirlos es parte del pendiente de la sección 11.9. Prompt 7 (edición móvil) sí aplica hoy a los 19 flujos reales, porque es el prompt vigente para cerrar el pendiente de MOBILE señalado en 11.3/11.9.
 
@@ -1257,11 +1293,11 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 - [ ] Errores se asocian a campos y reciben foco adecuado.
 - [ ] Estado no depende de color y los gráficos tienen alternativa textual/tabular.
 
-### 13.4 De Stitch a Next.js
+### 13.4 Del template a Next.js
 
 - [ ] Project/screen IDs, imagen, HTML de referencia, variante y desviaciones están registrados.
 - [ ] El ledger registra los 38 entregables DESKTOP canónicos y los 38 MOBILE pendientes (76 en total, sección 11.3) sin IDs inventados; el duplicado Light visible del flujo 19 permanece identificado fuera del ledger hasta su reconciliación.
-- [ ] El HTML de Stitch se trata como referencia, no como fuente autoritativa ni artefacto de producción.
+- [ ] El HTML generado del template se trata como referencia, no como fuente autoritativa ni artefacto de producción.
 - [ ] El diseño se implementa en Next.js con primitivas accesibles de HeroUI, tema/tokens centralizados de Tailwind CSS e iconos React Icons `io5` acompañados por texto cuando el significado es crítico.
 - [ ] No se copian valores visuales dispersos ni se crean constantes de estilo locales por feature.
 - [ ] Los estados se conectan al dominio/API, Freighter y Horizon; no se falsifica confirmación.
@@ -1288,13 +1324,16 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 | D-03 | Inter como sistema de una familia. | Consistencia y jerarquía con menor complejidad; disponibilidad/condiciones deben verificarse. | Recomendación |
 | D-04 | Un gráfico de ventas con tabla equivalente. | Es la única visualización necesaria para explicar faltante y anomalía. | Aceptada en este diseño |
 | D-05 | Reutilizar la pantalla de estado para fondeo y distribución. | Ambos comparten la misma máquina asíncrona sin mezclar su identidad. | Aceptada en este diseño |
-| D-06 | Stitch completa por flujo DESKTOP LIGHT/DARK primero y luego MOBILE LIGHT/DARK, con gate por entregable y por par. | Reduce drift sin degradar la matriz obligatoria de 76 entregables (19 flujos × device × tema). | Aceptada en este diseño; DESKTOP completado (38/38), MOBILE pendiente (0/38). |
-| D-07 | HTML de Stitch es referencia visual. | La implementación autoritativa pertenece a Next.js y al sistema de componentes revisado. | No negociable |
-| D-08 | Colores semánticos de apoyo explícitos por tema, con parejas surface/text/icon. | Permite que Stitch produzca estados consistentes; la implementación aún debe medir WCAG AA. | Aceptada en este diseño |
+| D-06 | El template de Claude Design se completa por flujo con ambos temas y luego móvil, con gate por entregable y por par. | Reduce drift sin degradar la matriz obligatoria de entregables (flujo × device × tema). | Retirada la ejecución en Stitch; rige el template de Claude Design (2026-10-01). |
+| D-07 | El HTML generado del template es referencia visual. | La implementación autoritativa pertenece a Next.js y al sistema de componentes revisado. | No negociable |
+| D-08 | Colores semánticos de apoyo explícitos por tema, con parejas surface/text/icon. | Permite que el template produzca estados consistentes; la implementación aún debe medir WCAG AA. | Aceptada en este diseño |
 | D-09 | Cabeza de toro geométrica/angular como isotipo aprobado, con variantes monocromas morada y blanca. | Integra la referencia provista sin convertir su gradiente en lenguaje general ni inventar un archivo del repositorio. | Aceptada; asset fuente pendiente |
-| D-10 | El producto completo es la aplicación real diseñada en el proyecto Stitch `VaqcrowWebApp` (19 flujos): marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y Acerca de Vaqcrow; la historia vertical original queda como recorrido guiado dentro de ese producto. | El usuario construyó manualmente el proyecto Stitch real, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
-| D-11 | HeroUI + Tailwind CSS + React Icons `io5` forman la base de implementación visual. | Separa primitivas accesibles, tokens centralizados e iconografía consistente sin convertir Stitch o constantes locales en fuentes de producción. | Aceptada; reemplaza la decisión abierta sobre iconos |
+| D-10 | El producto completo (19 flujos) es la aplicación real descrita por el [[docs/design/claude-design-brief|brief]] y el template de Claude Design: marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y Acerca de Vaqcrow; la historia vertical original queda como recorrido guiado dentro de ese producto. | El owner construyó manualmente el diseño real del producto, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
+| D-11 | HeroUI + Tailwind CSS + React Icons `io5` forman la base de implementación visual. | Separa primitivas accesibles, tokens centralizados e iconografía consistente sin convertir el template o constantes locales en fuentes de producción. | Aceptada; reemplaza la decisión abierta sobre iconos |
 | D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; Auth.js v5 queda en #134 fuera de la demo. | Evita fuentes de verdad paralelas y conserva backend e identidad sintética como límites autoritativos del alcance actual. | Aceptada para handoff; Auth.js aún no implementado |
+
+> [!warning] Retirado (2026-10-01)
+> Las decisiones D-06, D-07, D-08, D-10 y D-11 se tomaron cuando la ejecución del diseño vivía en Google Stitch y su ledger; esa ejecución quedó retirada (ver §11) y la referencia visual es el template de Claude Design. Se conservan como registro, con su redacción ajustada al nuevo medio.
 
 ## 15. Preguntas de diseño abiertas
 
@@ -1303,7 +1342,7 @@ Solo bloquean la generación o implementación indicada en la tercera columna. T
 | Prioridad | Pregunta / TBD | Decisión necesaria antes de |
 |---|---|---|
 | P0 | ¿Cuál es el activo de prueba, precisión, cuentas públicas y monto del guion? | Generar contenido final de pantallas 4–6. |
-| P0 | ¿En qué ruta versionada se incorporará el SVG fuente autorizado del isotipo y se necesita PNG de respaldo? | Generación si Stitch exige asset e implementación de marca. |
+| P0 | ¿En qué ruta versionada se incorporará el SVG fuente autorizado del isotipo y se necesita PNG de respaldo? | Generación si la herramienta de diseño exige un asset e implementación de marca. |
 | P1 | ¿Inter está disponible y aprobada en el canal de entrega elegido? ¿Cuál es el fallback? | Implementar tipografía en Next.js. |
 | P1 | ¿Qué explorador Testnet y formato de URL se configurará? | Implementar enlaces de pantallas 5–6. |
 | P1 | ¿Qué librería de gráficos ya existe o se elige para el único gráfico accesible? | Implementar pantalla 2/6. |
@@ -1316,26 +1355,23 @@ Solo bloquean la generación o implementación indicada en la tercera columna. T
 - La demo utiliza pagos clásicos en Stellar Testnet; Soroban no condiciona este diseño.
 - El proveedor/modelo LLM, el activo Testnet y el hosting siguen siendo decisiones técnicas externas a este documento.
 - El repositorio implementará una aplicación Next.js, pero las rutas propuestas deben confrontarse con la estructura real antes de escribir código.
-- Stitch MCP ya está conectado y puede crear proyecto, generar/editar pantallas, producir variantes y recuperar mediante `get_screen` las URLs disponibles; las tools y su esquema se vuelven a confirmar en el runtime antes de ejecutar.
+- El template de Claude Design ya existe en `docs/design/template/`; el [[docs/design/claude-design-brief|brief]] y el [[docs/design/claude-design-continuation-pack|pack de continuación]] están versionados en el repositorio.
 - La identidad del isotipo y los temas claro/oscuro están resueltos; solo quedan pendientes el archivo fuente y decisiones operativas no visuales listadas arriba.
 
 ## 16. Definición de terminado
 
 Los estados siguientes son independientes. No usar “terminado” si solo se completó uno.
 
-### A. Diseñado en Stitch
+### A. Diseñado con el template de Claude Design
 
-- [x] Servidor Stitch MCP conectado y herramientas verificadas.
-- [x] Un proyecto creado con ID registrado (`VaqcrowWebApp`, `5439082704079758723`).
-- [x] 38 entregables DESKTOP canónicos generados y registrados: 19 flujos × LIGHT/DARK (ledger 11.6).
-- [ ] 38 entregables MOBILE generados y registrados: 19 flujos × LIGHT/DARK (0/38 hoy — sección 11.9).
-- [ ] Anomalías señaladas por Stitch resueltas: sufijos "- Identical" (filas 7.2, 8.2) y "- Updated" (fila 10.1) revisados y, si corresponde, regenerados.
-- [ ] El duplicado Light visible del flujo 19 (`1c94354c1625445988a50ecc2a77b4b3`) se oculta, elimina o reconcilia sin sustituir los IDs canónicos Light/Dark.
-- [ ] Las dos instancias históricas ocultas "Ariel Duarte - Professional Landing" permanecen fuera del inventario actual y se eliminan definitivamente cuando la herramienta lo permita.
-- [ ] Correcciones aplicadas con `edit_screens`; comparaciones limitadas con `generate_variants` cuando estuvieron justificadas.
-- [x] Cada DARK es una pantalla completa vinculada conceptualmente a su base LIGHT; no se aceptan swatches o anotaciones como variantes.
-- [ ] URLs de imagen/HTML disponibles fueron capturadas sin secretos.
-- [x] El ledger no contiene placeholders para salidas realmente generadas.
+> [!warning] Retirado (2026-10-01)
+> Esta etapa se llamaba «Diseñado en Stitch» y verificaba el servidor Stitch MCP, el proyecto `VaqcrowWebApp`, su ledger de 38 pantallas de escritorio, las variantes móviles y las anomalías de nomenclatura. Ese material quedó retirado y se conserva como registro histórico en §11; la etapa vigente se apoya en el template.
+
+- [x] Template en disco (`docs/design/template/`) con 14 piezas `.dc.html`, cada una con ambos temas (ver «El template de Claude Design (fuente de verdad visual)»).
+- [ ] Las pantallas que faltan, cerradas según el [[docs/design/claude-design-continuation-pack|pack de continuación]] §2 y §4.
+- [ ] Cada pieza supera el gate de revisión por pantalla.
+- [ ] Claro y oscuro conservan contenido, jerarquía y semántica en la misma pieza; no se aceptan swatches ni anotaciones como variantes.
+- [ ] Sin secretos, PII ni datos reales en el material del template.
 
 > Completar esta etapa **no** significa que el diseño esté aprobado ni implementado.
 
@@ -1363,11 +1399,14 @@ Los estados siguientes son independientes. No usar “terminado” si solo se co
 - [ ] WCAG 2.2 AA se mide en ambos temas para texto, controles, foco y parejas semánticas; los ajustes quedan documentados.
 - [ ] Playwright produce evidencia del recorrido de 5–7 minutos, fallbacks esenciales y comprobaciones temáticas/responsivas definidas en QA.
 - [ ] No hay secretos, seeds, PII, fondos reales ni claims de producción.
-- [ ] El HTML generado por Stitch permanece como referencia y no reemplaza revisión de código.
+- [ ] El HTML generado del template permanece como referencia y no reemplaza revisión de código.
 
-**Estado actual de la definición de terminado:** documento de diseño actualizado con el inventario canónico y su diferencia frente al estado visible de Stitch. Fase `Diseñado en Stitch` está **parcialmente completa** (38/76 entregables canónicos: 100 % de DESKTOP, 0 % de MOBILE, más las anomalías, la reconciliación del duplicado Light visible del flujo 19 y la limpieza separada de instancias históricas pendientes en 11.9). Fases `Aprobado` e `Implementado y verificado en Next.js` permanecen pendientes.
+**Estado actual de la definición de terminado:** el documento de diseño apunta al template de Claude Design. La etapa `Diseñado con el template de Claude Design` está **parcialmente completa**: el template existe en disco con 14 piezas y ambos temas, y quedan pendientes las pantallas que faltan y el gate por pantalla (ver «El template de Claude Design (fuente de verdad visual)»). La etapa original `Diseñado en Stitch` quedó retirada (ver §11). Las fases `Aprobado` e `Implementado y verificado en Next.js` permanecen pendientes.
 
-## 17. Referencias de Stitch
+## 17. Referencias de Google Stitch (retirado)
+
+> [!warning] Retirado (2026-10-01)
+> Estas referencias eran del proyecto de Google Stitch y su MCP y se conservan como registro histórico. El template de Claude Design vive en `docs/design/template/`; su enlace de compartición y su inventario están en «El template de Claude Design (fuente de verdad visual)».
 
 - Proyecto real: [VaqcrowWebApp](https://stitch.withgoogle.com/projects/5439082704079758723), ID `5439082704079758723`.
 - Setup oficial de Stitch MCP: <https://stitch.withgoogle.com/docs/mcp/setup>
