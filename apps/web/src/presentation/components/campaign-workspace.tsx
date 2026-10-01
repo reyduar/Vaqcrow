@@ -163,7 +163,7 @@ export function CampaignWorkspace({
   if (review?.attempted && !isReviewSigning && !reviewError) setReview(null);
 
   const walletStatus = (
-    <p aria-live="polite" className="text-sm">
+    <p aria-live="polite" className="m-0 text-sm">
       {publicKey ? `Wallet conectada: ${publicKey}` : "Wallet no conectada"}
     </p>
   );
@@ -176,7 +176,7 @@ export function CampaignWorkspace({
 
   const renderErrorBanner = (banner: CampaignVaultError | undefined) =>
     banner ? (
-      <p role="alert" className="text-sm text-trust-critical">
+      <p role="alert" className="m-0 text-sm text-trust-critical">
         {banner.message}
       </p>
     ) : null;
@@ -202,9 +202,13 @@ export function CampaignWorkspace({
     };
 
     return (
-      <section aria-label="Abrir bóveda de campaña" lang="es" className="flex max-w-xl flex-col gap-4">
-        <h3 className="text-lg font-semibold">Abrir bóveda de campaña</h3>
-        <p className="text-sm">
+      <section
+        aria-label="Abrir bóveda de campaña"
+        lang="es"
+        className="flex max-w-2xl flex-col gap-4 rounded-card border border-border p-6"
+      >
+        <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Abrir bóveda de campaña</h3>
+        <p className="m-0 text-sm">
           Vaqcrow crea la cuenta de la PyME a partir de la clave pública que declarás acá y abre la bóveda del
           contrato sobre esa cuenta. La PyME no firma nada en este paso: sólo conecta su wallet para declarar la
           clave que ya tiene.
@@ -239,10 +243,16 @@ export function CampaignWorkspace({
 
   if (!campaign) {
     return (
-      <section aria-label="Bóveda de campaña" lang="es" className="flex flex-col gap-4">
+      <section
+        aria-label="Bóveda de campaña"
+        lang="es"
+        className="flex max-w-2xl flex-col gap-4 rounded-card border border-border p-6"
+      >
         {walletStatus}
         {connectButton}
-        <p aria-live="polite">Cargando la campaña…</p>
+        <p aria-live="polite" className="m-0">
+          Cargando la campaña…
+        </p>
         {renderErrorBanner(error)}
       </section>
     );
@@ -293,8 +303,12 @@ export function CampaignWorkspace({
   };
 
   return (
-    <section aria-label="Bóveda de campaña" lang="es" className="flex max-w-xl flex-col gap-4">
-      <h3 className="text-lg font-semibold">Bóveda de campaña</h3>
+    <section
+      aria-label="Bóveda de campaña"
+      lang="es"
+      className="flex max-w-3xl flex-col gap-5 rounded-card border border-border p-6"
+    >
+      <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Bóveda de campaña</h3>
       <div className="flex gap-2">
         <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
         <Badge
@@ -308,23 +322,23 @@ export function CampaignWorkspace({
       {walletStatus}
       {connectButton}
 
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
-        <dt>Meta</dt>
-        <dd>{formatStroopsAsXlm(campaign.goalStroops)} XLM</dd>
-        <dt>Total aportado</dt>
-        <dd>{formatStroopsAsXlm(campaign.totalStroops)} XLM</dd>
-        <dt>Fecha límite</dt>
-        <dd>{campaign.deadline}</dd>
+      <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
+        <dt className="text-text-secondary">Meta</dt>
+        <dd className="m-0">{formatStroopsAsXlm(campaign.goalStroops)} XLM</dd>
+        <dt className="text-text-secondary">Total aportado</dt>
+        <dd className="m-0">{formatStroopsAsXlm(campaign.totalStroops)} XLM</dd>
+        <dt className="text-text-secondary">Fecha límite</dt>
+        <dd className="m-0">{campaign.deadline}</dd>
         {campaign.investorContributionStroops === undefined || campaign.investorContributionStroops === null ? null : (
           <>
-            <dt>Tu aporte</dt>
-            <dd>{formatStroopsAsXlm(campaign.investorContributionStroops)} XLM</dd>
+            <dt className="text-text-secondary">Tu aporte</dt>
+            <dd className="m-0">{formatStroopsAsXlm(campaign.investorContributionStroops)} XLM</dd>
           </>
         )}
         {campaign.explorerUrl ? (
           <>
-            <dt>Explorador Testnet</dt>
-            <dd>
+            <dt className="text-text-secondary">Explorador Testnet</dt>
+            <dd className="m-0">
               <a className="underline" href={campaign.explorerUrl} rel="noreferrer noopener" target="_blank">
                 Ver el contrato en el explorador
               </a>
@@ -357,7 +371,7 @@ export function CampaignWorkspace({
           </Button>
         </form>
       ) : (
-        <p className="text-sm">
+        <p className="m-0 text-sm">
           La bóveda ya no acepta aportes: el contrato rechaza cualquier aporte fuera del estado de fondeo.
         </p>
       )}
