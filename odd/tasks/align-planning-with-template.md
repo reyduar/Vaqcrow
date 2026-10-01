@@ -92,7 +92,7 @@ Recorded in each Feature issue ("Not designed in the template"), not decided her
 
 ## Not reconciled
 
-- #30 ("Integrate the complete vertical demo journey") is still open and unchanged while #438 retires the journey routes; how the two relate is undecided (noted in the #30 entry of `demo-tasks-list.md`).
+- #30 ("Integrate the complete vertical demo journey") is closed (verified with `gh` on 2026-10-01); #438 retires its routes after rehousing the engine, without reopening it. The writer first recorded it as open; corrected in a follow-up commit.
 - The first trust disclosure in `DEMO.md` §12 (and `disclosures.ts`, `demo-ui.md` §2/§11) calls identity synthetic; with real auth it needs a coordinated rewrite across the four canonical surfaces when #369/#378 are implemented. Flagged in `DEMO.md` §12, not edited.
 
 ## Next step
