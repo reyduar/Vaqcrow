@@ -320,4 +320,5 @@ application cannot be reused — a rehearsal needs a fresh request.
 No code, test, config or `.env` file was touched; `LLM_TIMEOUT_MS` was not changed
 here (it is already set on the hosted service).
 
-- Work-unit commit: hash recorded in the follow-up commit.
+- Work-unit commit: **`ccedb3d`** — `docs(planning): correct the seven-minute claim with the measured AI latency`
+  (3 files: the two planning docs and this log). This follow-up commit inserts the hash.
