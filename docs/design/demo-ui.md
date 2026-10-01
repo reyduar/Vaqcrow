@@ -2,6 +2,10 @@
 
 Este documento convierte el plan de la demo en un sistema visual y de interacción ejecutable para una única demostración de 5–7 minutos. Prioriza comprensión, trazabilidad y confianza: cada persona debe distinguir en todo momento qué es simulado, qué ocurre realmente en Stellar Testnet y qué decisión conserva control humano.
 
+> [!info] El template de Claude Design prevalece sobre el brief escrito (2026-10-01)
+> Decisión del owner (2026-10-01): el **template de Claude Design** (`docs/design/template/`, 14 pantallas, compartido en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>) es la **fuente de verdad del lenguaje visual**, adoptado tal como está. El [[docs/design/claude-design-brief|brief de diseño]] y este documento siguen siendo valiosos como **intención y fundamento**, pero donde contradicen al template, **prevalece el template**.
+> El conflicto está **acotado**: la paleta central (§5.3) y los valores de estado (§5.4) del template son idénticos a los de este documento. Solo discrepan la **tipografía** (§5.5), el **ancho de contenedor** (§5.6), el **gloss decorativo** (§5.1), el **conjunto extra de tokens** (§5.4) y el **tono de éxito** (§5.4). Las reglas de confianza de §2 no son estética: **siguen prevaleciendo sobre el template**.
+
 > **Fuente de alcance:** [Plan de la demo](../planning/DEMO.md). Esta especificación desarrolla su historia vertical, sus límites de confianza y su sistema visual; el alcance de superficie de producto ya no se limita a seis pantallas (ver sección 1 y sección 4).
 
 > **Fuente de verdad visual — el template de Claude Design (2026-10-01).** La referencia visual y de sistema de diseño es el template de Claude Design, en `docs/design/template/`, compartido en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. Reemplaza al proyecto de Google Stitch, retirado ese mismo día (ver §11 y §12). El directorio del template está fuera del repositorio a propósito: `docs/design/template/` está en `.gitignore` y no se versiona ningún archivo del template. El detalle —ubicación, compartición, inventario de 14 pantallas y gate de revisión por pantalla— está en «El template de Claude Design (fuente de verdad visual)», más abajo. Lo que el diseño busca está en [[docs/design/claude-design-brief|el brief de Claude Design]] y su [[docs/design/claude-design-continuation-pack|pack de continuación]].
@@ -36,7 +40,7 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 | Componentes y estilo | [HeroUI](https://www.heroui.com/) aporta primitivas accesibles; [Tailwind CSS](https://tailwindcss.com/) centraliza tema y tokens, sin constantes visuales locales por feature; [React Icons](https://react-icons.github.io/react-icons/icons/io5/) `io5` es el set de iconos elegido y nunca comunica significado crítico sin texto y semántica accesible. |
 | Datos y formularios | [Axios](https://www.axios.com/) es transporte HTTP detrás de puertos/adaptadores; [SWR](https://swr.vercel.app/) orquesta estado de servidor y revalidación mediante fetchers de aplicación/adaptador; [React Hook Form](https://react-hook-form.com/) gestiona estado de formulario en navegador, sin decidir reglas de negocio. |
 | Estado y pruebas | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) conserva solo estado de workflow cliente entre rutas, sin duplicar SWR ni estado autoritativo del backend; [Playwright](https://playwright.dev/) cubre smoke/E2E determinísticos con fixtures o dobles locales. |
-| Template de Claude Design | El template en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo) es la referencia visual y de sistema de diseño; su HTML generado nunca es implementación autoritativa de producción. |
+| Template de Claude Design | El template en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo) es la referencia visual y de sistema de diseño, **y prevalece sobre el brief escrito donde difieran** (2026-10-01); su HTML generado nunca es implementación autoritativa de producción. |
 | Autenticación | La demo mantiene identidad sintética. [Auth.js v5](https://authjs.dev/) queda planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134) como límite futuro de autenticación/sesión, dependiente de #14 y fuera del camino crítico acotado. |
 
 ---
@@ -248,6 +252,13 @@ flowchart TD
 - Ocultar disclaimers en tooltips, modales iniciales o texto de baja legibilidad.
 - Usar plantillas de dashboard genéricas con KPIs ornamentales, navegación innecesaria o tarjetas sin función en la historia vertical.
 
+> [!warning] Reconciliación con el template (2026-10-01)
+> Una prohibición **puramente estética** que el template viola queda **superada** por la decisión de fuente de verdad; una **regla de confianza o accesibilidad no**. Aplicado a la lista de arriba:
+> - **Se mantienen** (son reglas, no gusto): estética de casino/cripto especulativa y neón; ocultar disclaimers; morado aplicado a estados que necesitan semántica propia; `glassmorphism` que reduzca contraste; animación ornamental; fotos de dinero/riqueza y flechas siempre ascendentes. §2 sigue prevaleciendo.
+> - **Superada** (estética): la prohibición absoluta de «gradientes intensos» y «sombras pesadas». El template adopta **esferas 3D moradas con degradados radiales y sombras apiladas** como gloss decorativo —verificado en `docs/design/template/Vaqcrow Acerca de.dc.html` (6 instancias; p. ej. líneas 69–70)— más píldoras de eyebrow con `--accent-tint`. El motivo de confianza detrás de la prohibición (no parecer una oferta especulativa) sigue vigente y **acota** el recurso; el template lo emplea como decoración puntual, no como lenguaje general.
+> - **Precisión sobre «monedas flotantes»:** la prohibición apuntaba a **imágenes de dinero** (monedas, billetes) como señal de riqueza. Las esferas abstractas del template no son monedas ni dinero: no la reactivan.
+> - **Precisión sobre el degradado:** §5.2 prohíbe extender el **fondo degradado de la imagen de referencia del isotipo** al producto; eso no prohíbe el gloss decorativo del template.
+
 ### 5.2 Isotipo y reglas de marca
 
 La identidad aprobada usa una **cabeza de toro geométrica/angular**, simétrica y de lectura inmediata. La referencia provista muestra el isotipo blanco, centrado sobre un fondo morado con gradiente; ese gradiente pertenece a la presentación de la referencia y **no** se adopta como fondo general del producto.
@@ -366,9 +377,36 @@ Tokens funcionales adicionales:
 | Red/demo | `--color-env-testnet`, `--color-data-simulated`; pueden usar el acento si la densidad se mantiene baja |
 | Datos | `--color-chart-primary`, `--color-chart-anomaly`, `--color-chart-missing`, `--color-chart-grid` |
 
+#### Tokens del template que este documento no definía
+
+El template define un **superconjunto** de tokens con nombres propios. El template es **su autoridad**; esta tabla los registra para que la implementación los reutilice en lugar de inventar equivalentes. Cada valor es el del `:root` / `[data-theme="dark"]` del archivo citado.
+
+| Token del template | Claro | Oscuro | Rol | Fuente verificada |
+|---|---|---|---|---|
+| `--accent-hover` | `#7304A0` | `#9B1FD0` | Fondo hover del acento. | `docs/design/template/Vaqcrow Sistema.dc.html` (líneas 15–16) |
+| `--accent-text` | `#8A05BE` | `#D9A6F2` | Acento para texto/enlace. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--accent-tint` | `#F4E6FA` | `#2C1737` | Fondo de píldoras `TESTNET` / eyebrow. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--on-accent` | `#FFFFFF` | `#FFFFFF` | Texto/ícono sobre el acento. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--logo` | `#8A05BE` | `#FFFFFF` | Color del isotipo por tema. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--control` | `#8A8A8A` | `#7A7A7A` | Borde de controles. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--raised` | `#FFFFFF` | `#272727` | Superficie elevada; equivale a `--color-bg-surface-raised`. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--stripe` | `rgba(17,17,17,.06)` | `rgba(255,255,255,.06)` | Rayado sutil (zebra/listas). | `docs/design/template/Vaqcrow Landing.dc.html` (15–16) |
+| `--skel` | `#ECECEC` | `#2A2A2A` | Bloque de skeleton. | `docs/design/template/Vaqcrow Explorar PyMEs.dc.html` (15–16) |
+| `--chart` | `#1D4E89` | `#A9CCFF` | Serie de datos; equivale a `--color-chart-primary`. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--grid` | `rgba(17,17,17,.10)` | `rgba(255,255,255,.10)` | Línea de grilla; equivale a `--color-chart-grid`. | `Vaqcrow Sistema.dc.html` (15–16) |
+| `--shadow` | `0 24px 48px -12px rgba(17,17,17,.22),0 0 0 1px rgba(17,17,17,.08)` | `0 24px 48px -12px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.10)` | Única elevación del sistema (diálogo/drawer). | `Vaqcrow Sistema.dc.html` (15–16) |
+
+> [!note] Tono de éxito: el template lo tiene; la regla de confianza lo acota
+> El template sí usa un tono de éxito —`--ok-s`/`--ok-t`, chips «Confirmado» y «Confirmada»— (`Vaqcrow Sistema.dc.html`, líneas 118 y 206), y este documento ya define `--color-status-success-*`. La decisión de fuente de verdad **adopta** ese tono, pero no relaja §2: el verde se reserva para resultados **realmente confirmados en el ledger**, nunca para `Enviado`/`Pendiente` (§2, «Pendiente no es confirmado»), y nunca informa por sí solo —siempre acompaña icono, título y texto.
+
 ### 5.5 Tipografía
 
-**Decisión recomendada:** una sola familia, **Inter**, mediante entrega web compatible con Next.js, sujeta a confirmar disponibilidad y condiciones aplicables antes de implementar. Una familia reduce carga, latencia y discrepancias entre el template y el código.
+**Decisión (2026-10-01):** **Geist** como única familia sans, con **Geist Mono** reservada para hashes e identificadores. Es lo que carga el template y el template es la autoridad: `docs/design/template/Vaqcrow Sistema.dc.html` línea 12 carga `family=Geist:wght@400;500;600;650;700&family=Geist+Mono:wght@400;500`, y la raíz monta `font-family:'Geist',system-ui,sans-serif` (misma pieza, línea 27). Geist Mono se usa para hashes, contratos e identificadores (p. ej. `Vaqcrow Sistema.dc.html`, líneas 100, 211, 320, 380).
+
+> [!note] La recomendación previa de Inter queda superada
+> `Inter` era la recomendación de este documento y del [[docs/design/claude-design-brief|brief de diseño]] §4.2, sujeta a confirmar licencia y entrega web. El template la reemplaza por Geist y, por la decisión de fuente de verdad, **Geist prevalece**. Se conserva el razonamiento original —una sola familia reduce carga, latencia y discrepancias entre el template y el código— como **fundamento**, no como recomendación vigente.
+
+La escala siguiente coincide con la del template (`Vaqcrow Sistema.dc.html`, líneas 484–494), que además monta cifras tabulares en la raíz (`font-feature-settings:'tnum' 1`, línea 27):
 
 | Rol | Escritorio | Móvil | Peso / interlineado |
 |---|---:|---:|---|
@@ -384,17 +422,20 @@ Tokens funcionales adicionales:
 
 - Máximo recomendado: 68–76 caracteres por línea de lectura.
 - Usar números tabulares para montos, porcentajes, fechas parciales y hashes abreviados.
+- Geist Mono para hashes, contratos e identificadores; nunca en texto de lectura.
 - No usar mayúsculas sostenidas salvo badges cortos como `SIMULADO` y `TESTNET`.
 
 ### 5.6 Espaciado, grilla y geometría
 
-- Escala base de 4 px: `4, 8, 12, 16, 24, 32, 48, 64, 96`.
-- Contenedor de escritorio: máximo 1200 px; 12 columnas; gutter 24 px; margen mínimo 32 px.
+Los valores de geometría están tomados del template (`docs/design/template/Vaqcrow Sistema.dc.html`, sección «03 · Espacio, geometría y elevación»); donde este documento y el template difieran, prevalece el template.
+
+- Escala base de 4 px: `4, 8, 12, 16, 24, 32, 48, 64, 96` (`Vaqcrow Sistema.dc.html`, línea 495 y también 150–152).
+- Contenedor de escritorio: **máximo 1264 px** con padding lateral de **32 px** (encabezado línea 30, `main` línea 57, pie línea 417). **Actualizado desde 1200 px el 2026-10-01**: es el ancho que usa el template. Se mantienen 12 columnas, gutter 24 px y margen mínimo 32 px.
 - Tablet: 8 columnas; gutter 20 px; margen 24 px.
 - Móvil: 4 columnas; gutter 16 px; margen 16 px.
-- Radios: control 10 px, tarjeta 16 px, panel destacado 24 px, badge tipo píldora 999 px.
-- Bordes: 1 px para límites y estados; 2 px para foco o selección.
-- Sombras: una sombra sutil solo en diálogo/drawer o superficie elevada; las tarjetas normales usan borde o diferencia de fondo.
+- Radios: control 10 px, tarjeta 16 px, panel destacado 24 px, badge tipo píldora 999 px (`Vaqcrow Sistema.dc.html`, líneas 157–160).
+- Bordes: 1 px para límites y estados; 2 px para foco o selección (`Vaqcrow Sistema.dc.html`, líneas 163–164).
+- Sombras: **un solo nivel de elevación**, reservado a diálogo/drawer —`box-shadow:var(--shadow)`, «la única sombra del sistema» (`Vaqcrow Sistema.dc.html`, línea 171). Las tarjetas normales usan borde o diferencia de fondo, sin sombra (líneas 168–170).
 - Áreas táctiles: mínimo 44 × 44 px.
 
 ### 5.7 Iconografía, datos, imágenes y movimiento
@@ -1113,7 +1154,7 @@ Lista única de seguimiento para el trabajo pendiente sobre el proyecto real `Va
 ## 12. Prompts listos para copiar y pegar (retirado)
 
 > [!warning] Retirado (2026-10-01)
-> Estos prompts eran para Google Stitch y se retiran junto con §11. No se reescriben como prompts de Claude Design; el set vigente vive en el [[docs/design/claude-design-brief|brief de Claude Design]] §10 y en el [[docs/design/claude-design-continuation-pack|pack de continuación]] §4.
+> Estos prompts eran para Google Stitch y se retiran junto con §11. No se reescriben como prompts de Claude Design; el set vigente vive en el [[docs/design/claude-design-brief|brief de Claude Design]] §10 y en el [[docs/design/claude-design-continuation-pack|pack de continuación]] §4. Además, los valores de estilo que estos prompts fijan (Inter, contenedor de 1200 px) quedan **superados** por la decisión de fuente de verdad del 2026-10-01 (§5.5, §5.6); se conservan solo como registro histórico.
 
 > **Alcance de esta sección.** Los Prompts 1–6 corresponden únicamente a las seis pantallas de la historia vertical heredada (sección 8), ya generadas en `DESKTOP` (ledger 11.6, filas 1–2, 6, 9–10, 17). Todavía no existen prompts equivalentes para los 13 flujos nuevos del inventario real (marketplace, admin, billetera, informes, ayuda, guías, notificaciones, onboarding y Acerca de Vaqcrow); escribirlos es parte del pendiente de la sección 11.9. Prompt 7 (edición móvil) sí aplica hoy a los 19 flujos reales, porque es el prompt vigente para cerrar el pendiente de MOBILE señalado en 11.3/11.9.
 
@@ -1321,7 +1362,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 |---|---|---|---|
 | D-01 | Seis pantallas con estados internos como historia vertical de referencia. | Cubre el recorrido narrativo completo de una PyME sin bloquear el resto del producto. | Superada por D-10: dejó de ser el límite del alcance, sigue vigente como recorrido guiado dentro del producto completo (sección 8). |
 | D-02 | Temas claro y oscuro obligatorios, con selector `Claro` / `Oscuro` / `Sistema`; claro es solo el fallback estable de demo. | La experiencia debe diseñarse, generarse, aprobarse, implementarse y probarse íntegramente en ambos temas. | Aceptada en este diseño |
-| D-03 | Inter como sistema de una familia. | Consistencia y jerarquía con menor complejidad; disponibilidad/condiciones deben verificarse. | Recomendación |
+| D-03 | Inter como sistema de una familia. | Consistencia y jerarquía con menor complejidad; disponibilidad/condiciones deben verificarse. | Superada (2026-10-01): el template usa **Geist + Geist Mono** y prevalece por la decisión de fuente de verdad; ver §5.5. |
 | D-04 | Un gráfico de ventas con tabla equivalente. | Es la única visualización necesaria para explicar faltante y anomalía. | Aceptada en este diseño |
 | D-05 | Reutilizar la pantalla de estado para fondeo y distribución. | Ambos comparten la misma máquina asíncrona sin mezclar su identidad. | Aceptada en este diseño |
 | D-06 | El template de Claude Design se completa por flujo con ambos temas y luego móvil, con gate por entregable y por par. | Reduce drift sin degradar la matriz obligatoria de entregables (flujo × device × tema). | Retirada la ejecución en Stitch; rige el template de Claude Design (2026-10-01). |
@@ -1343,7 +1384,7 @@ Solo bloquean la generación o implementación indicada en la tercera columna. T
 |---|---|---|
 | P0 | ¿Cuál es el activo de prueba, precisión, cuentas públicas y monto del guion? | Generar contenido final de pantallas 4–6. |
 | P0 | ¿En qué ruta versionada se incorporará el SVG fuente autorizado del isotipo y se necesita PNG de respaldo? | Generación si la herramienta de diseño exige un asset e implementación de marca. |
-| P1 | ¿Inter está disponible y aprobada en el canal de entrega elegido? ¿Cuál es el fallback? | Implementar tipografía en Next.js. |
+| P1 | ¿Cómo se entrega **Geist + Geist Mono** en Next.js y cuál es el fallback si falla la carga? (Inter quedó superada; ver §5.5.) | Implementar tipografía en Next.js. |
 | P1 | ¿Qué explorador Testnet y formato de URL se configurará? | Implementar enlaces de pantallas 5–6. |
 | P1 | ¿Qué librería de gráficos ya existe o se elige para el único gráfico accesible? | Implementar pantalla 2/6. |
 | P2 | ¿Se usa fotografía sintética, ilustración geométrica o ninguna imagen? | Refinar identidad de pantalla 1. |
