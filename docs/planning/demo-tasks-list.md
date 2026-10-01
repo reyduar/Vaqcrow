@@ -6,12 +6,16 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 **Incorporado después del inventario (2026-09-22).** El 2026-09-22 se agregaron **21 unidades nuevas** —1 Epic, 5 Features y 15 Tasks— para **custodiar el fondeo en un contrato de Stellar**. **No forman parte del inventario de 109 ítems**, y su Epic no lleva rama. Al 2026-09-25 las 21 unidades ya estaban en el Project #4 (21/21 presentes entre #235 y #260, verificado contra el tablero) y al 2026-09-29 las 21 están cerradas y en `Done`. Reemplazan el camino de fondeo de [#24](https://github.com/reyduar/Vaqcrow/issues/24), que sigue cerrado y no se reescribe. Detalle, decisiones y avisos en [Custodia del fondeo por contrato de campaña](#^custodia-por-contrato).
 
-> [!warning] El corpus de planificación es anterior al template de diseño (2026-10-01)
-> Observación del owner (2026-10-01), no un hallazgo verificado: los issues de diseño se escribieron desde la concepción previa al template (`docs/design/demo-ui.md` / Stitch) y no contemplan la forma en que el template concibe el producto. Las funciones se ven razonablemente alineadas con el MVP, pero las pantallas se construyeron por defecto —para satisfacer el recorrido y sus tests— y no derivadas del diseño del template. Esta lista describe comportamiento, no la intención visual del template; revisar esa brecha es trabajo abierto.
+**Incorporado el 2026-10-01: hoja de ruta alineada al template.** Ese día se agregaron **74 unidades nuevas** —6 Epics ([#368](#^issue-368), [#373](#^issue-373), [#374](#^issue-374), [#375](#^issue-375), [#376](#^issue-376) y [#377](#^issue-377)), 17 Features y 51 Tasks, #368–#441— para que la app sea un producto con roles (PYME, INVERSOR, ADMIN) con la forma exacta del template de Claude Design, no un único recorrido guiado. **No forman parte del inventario de 109 ítems** y las 74 están abiertas en `Backlog` (verificado con `gh` el 2026-10-01). La Feature [#438](#^issue-438) cuelga del Epic existente [#10](#^issue-10) y bloquea a [#33](#^issue-33). [#31](#^issue-31) y [#32](#^issue-32) no cambian. Detalle en [Hoja de ruta alineada al template](#^roadmap-template).
+
+> [!info] Resuelto el 2026-10-01: el corpus de planificación ahora contempla el template
+> Observación del owner (2026-10-01), antes registrada aquí como pregunta abierta: los issues de diseño se escribieron desde la concepción previa al template (`docs/design/demo-ui.md` / Stitch) y no contemplaban la forma en que el template concibe el producto. Los issues [#368](#^issue-368)–[#441](#^issue-441) la resuelven: parten del handoff `docs/design/design_handoff_vaqcrow/` como fuente visual y de comportamiento, y lo que el template no diseña queda como pregunta abierta en cada Feature en lugar de inventarse. Los issues anteriores a esa fecha siguen describiendo comportamiento del motor y del recorrido guiado, no la intención visual del template.
 
 ## Comenzar aquí
 
-> **Estado al 2026-09-29: la siguiente unidad es la Feature [#30 — Integrar el recorrido vertical completo de la demo](#^issue-30) (Ola 6, `Critical`).** Sus cuatro bloqueadores nativos —[#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28)— están cerrados (verificado con `gh`), por lo que ya no está bloqueada; sigue en `Backlog` en el Project #4. En el tablero solo [#32](#^issue-32) y su Task [#101](#^issue-101) figuran `Ready`. Quedan abiertas [#30](#^issue-30)–[#34](#^issue-34) con sus Tasks [#95](#^issue-95)–[#109](#^issue-109), más los Epics [#9](#^issue-9) y [#10](#^issue-10).
+> **Estado al 2026-10-01: la siguiente unidad del camino alineado al template es la Feature [#369 — Establecer Supabase Auth, roles, RLS y autorización de la API](#^issue-369) (Ola 10), que no tiene bloqueos y desbloquea [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386) y [#398](#^issue-398).** El orden completo —#369 → #378/#382/#386/#394 → #398 → #402/#406 → #410 → #414/#390 → #418/#422/#434 → #426 → #430 → #438 → #33 → #34— está en [Hoja de ruta alineada al template](#^roadmap-template). [#30](#^issue-30) está cerrada (verificado con `gh` el 2026-10-01); su recorrido de seis pasos lo retira [#438](#^issue-438) una vez reubicado su motor. Las Features [#31](#^issue-31)–[#34](#^issue-34) siguen abiertas sin cambios, salvo que [#33](#^issue-33) quedó bloqueada también por [#438](#^issue-438).
+>
+> **Estado al 2026-09-29 (histórico): la siguiente unidad era la Feature [#30 — Integrar el recorrido vertical completo de la demo](#^issue-30) (Ola 6, `Critical`).** Sus cuatro bloqueadores nativos —[#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28)— están cerrados (verificado con `gh`), por lo que ya no está bloqueada; sigue en `Backlog` en el Project #4. En el tablero solo [#32](#^issue-32) y su Task [#101](#^issue-101) figuran `Ready`. Quedan abiertas [#30](#^issue-30)–[#34](#^issue-34) con sus Tasks [#95](#^issue-95)–[#109](#^issue-109), más los Epics [#9](#^issue-9) y [#10](#^issue-10).
 >
 > **Entregadas en `main`: [#19](#^issue-19), [#62](#^issue-62), [#63](#^issue-63) y [#64](#^issue-64), respaldadas por la cadena de PRs [#166](https://github.com/reyduar/Vaqcrow/pull/166)–[#175](https://github.com/reyduar/Vaqcrow/pull/175) y por la evidencia de evaluación/aprobación humana; y la Feature [#15](#^issue-15) con sus Tasks [#47](#^issue-47), [#48](#^issue-48) y [#49](#^issue-49), respaldadas por los PRs [#176](https://github.com/reyduar/Vaqcrow/pull/176), [#178](https://github.com/reyduar/Vaqcrow/pull/178) y [#179](https://github.com/reyduar/Vaqcrow/pull/179) y por la evidencia de pruebas determinísticas y gates de CI; y la Feature [#14](#^issue-14) con sus Tasks [#44](#^issue-44), [#45](#^issue-45) y [#46](#^issue-46), respaldadas por los PRs [#183](https://github.com/reyduar/Vaqcrow/pull/183), [#184](https://github.com/reyduar/Vaqcrow/pull/184) y [#187](https://github.com/reyduar/Vaqcrow/pull/187) y por la [evidencia de configuración tipada y límites de secretos](./typed-configuration-and-secret-boundaries-evidence.md); y la Feature [#23](#^issue-23) con sus Tasks [#74](#^issue-74), [#75](#^issue-75) y [#76](#^issue-76), respaldadas por los PRs [#191](https://github.com/reyduar/Vaqcrow/pull/191), [#192](https://github.com/reyduar/Vaqcrow/pull/192), [#193](https://github.com/reyduar/Vaqcrow/pull/193) y [#194](https://github.com/reyduar/Vaqcrow/pull/194) y por la [evidencia de integración de Stellar y Freighter](./stellar-and-freighter-integration-evidence.md); y la Feature [#24](#^issue-24) con sus Tasks [#77](#^issue-77), [#78](#^issue-78) y [#79](#^issue-79), respaldadas por los PRs [#199](https://github.com/reyduar/Vaqcrow/pull/199), [#200](https://github.com/reyduar/Vaqcrow/pull/200), [#201](https://github.com/reyduar/Vaqcrow/pull/201), [#202](https://github.com/reyduar/Vaqcrow/pull/202) y [#203](https://github.com/reyduar/Vaqcrow/pull/203) y por la [evidencia de intención de fondeo](./funding-intent-submission-and-xdr-verification-evidence.md); y la Feature [#20](#^issue-20) con sus Tasks [#65](#^issue-65), [#66](#^issue-66) y [#67](#^issue-67), respaldadas por los PRs [#214](https://github.com/reyduar/Vaqcrow/pull/214), [#216](https://github.com/reyduar/Vaqcrow/pull/216) y [#217](https://github.com/reyduar/Vaqcrow/pull/217), integradas a `main` por el tracker [#215](https://github.com/reyduar/Vaqcrow/pull/215), y por la [evidencia de esquema y guardrails de IA](./ai-assessment-schema-and-guardrails-evidence.md); y la Feature [#21](#^issue-21) con sus Tasks [#68](#^issue-68), [#69](#^issue-69) y [#70](#^issue-70), respaldadas por los PRs [#219](https://github.com/reyduar/Vaqcrow/pull/219), [#221](https://github.com/reyduar/Vaqcrow/pull/221) y [#222](https://github.com/reyduar/Vaqcrow/pull/222), integradas a `main` por el tracker [#220](https://github.com/reyduar/Vaqcrow/pull/220), y por la [evidencia del adaptador LLM reemplazable](./replaceable-llm-adapter-evidence.md); y la Feature [#240](#^issue-240) con sus Tasks [#258](#^issue-258), [#259](#^issue-259) y [#260](#^issue-260), respaldadas por el [PR #294](https://github.com/reyduar/Vaqcrow/pull/294) y por la [evidencia de avisos de confianza y custodia por contrato](./trust-disclosures-and-contract-custody-evidence.md); y, desde entonces, la Feature [#238](#^issue-238) (toolchain de contratos; PRs [#262](https://github.com/reyduar/Vaqcrow/pull/262) y [#263](https://github.com/reyduar/Vaqcrow/pull/263); [evidencia](./soroban-toolchain-and-reproducible-deployment-evidence.md)), la Feature [#236](#^issue-236) (contrato de bóveda; PRs [#264](https://github.com/reyduar/Vaqcrow/pull/264), [#265](https://github.com/reyduar/Vaqcrow/pull/265) y [#266](https://github.com/reyduar/Vaqcrow/pull/266); [evidencia](./campaign-vault-contract-evidence.md)), la Feature [#239](#^issue-239) (persistencia de campaña; PRs [#267](https://github.com/reyduar/Vaqcrow/pull/267)–[#270](https://github.com/reyduar/Vaqcrow/pull/270), [#276](https://github.com/reyduar/Vaqcrow/pull/276) y [#277](https://github.com/reyduar/Vaqcrow/pull/277); [evidencia](./campaign-persistence-and-reconciliation-evidence.md)), la Feature [#237](#^issue-237) (recorrido de la bóveda en la web; PRs [#278](https://github.com/reyduar/Vaqcrow/pull/278)–[#285](https://github.com/reyduar/Vaqcrow/pull/285) y [#293](https://github.com/reyduar/Vaqcrow/pull/293); [evidencia](./campaign-vault-web-journey-evidence.md)), la Feature [#26](#^issue-26) (feed mensual de ventas; PRs [#332](https://github.com/reyduar/Vaqcrow/pull/332)–[#334](https://github.com/reyduar/Vaqcrow/pull/334); [evidencia](./monthly-sales-feed-evidence.md)), la Feature [#22](#^issue-22) (derivación de fallos de IA; PRs [#335](https://github.com/reyduar/Vaqcrow/pull/335)–[#340](https://github.com/reyduar/Vaqcrow/pull/340); [evidencia](./ai-failure-routing-evidence.md)), la Feature [#27](#^issue-27) (revenue share determinístico; PRs [#341](https://github.com/reyduar/Vaqcrow/pull/341)–[#343](https://github.com/reyduar/Vaqcrow/pull/343); [evidencia](./revenue-share-calculation-evidence.md)), la Feature [#28](#^issue-28) (distribución en Testnet; PRs [#345](https://github.com/reyduar/Vaqcrow/pull/345)–[#347](https://github.com/reyduar/Vaqcrow/pull/347); [evidencia](./testnet-revenue-share-distribution-evidence.md)) y la Feature [#29](#^issue-29) (dashboard de evidencia; PRs [#349](https://github.com/reyduar/Vaqcrow/pull/349)–[#351](https://github.com/reyduar/Vaqcrow/pull/351); [evidencia](./evidence-dashboard-evidence.md)). Los PRs de sincronización de la hoja de ruta [#344](https://github.com/reyduar/Vaqcrow/pull/344) y [#348](https://github.com/reyduar/Vaqcrow/pull/348) solo tocan documentación.**
 >
@@ -25,6 +29,8 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 2. Entre unidades simultáneamente listas, ejecutar `Critical` antes que `High`, y `High` antes que `Medium`.
 3. Si la prioridad coincide, preferir la unidad que desbloquea más dependientes directos.
 4. Si todavía hay empate, usar el número de issue ascendente para obtener un orden determinístico.
+
+5. El camino alineado al template (Olas 10–19) sigue el mismo criterio: el orden sugerido respeta el grafo de bloqueos nativos y, entre unidades listas, el número ascendente. [#33](#^issue-33) y [#34](#^issue-34) —Olas 8 y 9 por su numeración— se ejecutan **después** de la Ola 19, porque [#33](#^issue-33) ahora está bloqueada por [#438](#^issue-438).
 
 Las olas no son barreras globales: una unidad puede comenzar en cuanto se completen **sus** prerrequisitos, aunque continúe trabajo independiente de una ola anterior. Las Tasks de un Feature no se programan hasta que hayan finalizado los Features que lo bloquean. Dentro de cada Feature, la secuencia habitual es implementación → pruebas → evidencia.
 
@@ -50,7 +56,13 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | [~~#7 Fondeo y confirmación en Stellar~~](#^issue-7) | #23–#25 |
 | [~~#8 Cálculo y distribución de revenue share~~](#^issue-8) | #26–#28 |
 | [#9 Integración, resiliencia y evidencia](#^issue-9) | #29–#31 |
-| [#10 Entrega y presentación de la demo](#^issue-10) | #32–#34 |
+| [#10 Entrega y presentación de la demo](#^issue-10) | #32–#34 y [#438](#^issue-438) |
+| [#368 Identidad y acceso](#^issue-368) | [#369](#^issue-369), [#378](#^issue-378) |
+| [#373 Sitio público](#^issue-373) | [#394](#^issue-394), [#418](#^issue-418) |
+| [#374 Alta de PyMEs y campaña](#^issue-374) | [#398](#^issue-398), [#402](#^issue-402), [#406](#^issue-406), [#434](#^issue-434) |
+| [#375 Consola de administración](#^issue-375) | [#386](#^issue-386), [#390](#^issue-390), [#410](#^issue-410) |
+| [#376 Marketplace y área del inversor](#^issue-376) | [#414](#^issue-414), [#422](#^issue-422), [#426](#^issue-426), [#430](#^issue-430) |
+| [#377 Notificaciones](#^issue-377) | [#382](#^issue-382) |
 
 ### Olas ejecutables
 
@@ -79,14 +91,33 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 | 6 | [~~#29 Exponer dashboard de evidencia~~](#^issue-29) | [~~#92 Implementar~~](#^issue-92) → [~~#93 Probar~~](#^issue-93) → [~~#94 Documentar~~](#^issue-94) |
 | 7 | [#31 Agregar resiliencia y telemetría](#^issue-31) | [#98 Implementar](#^issue-98) → [#99 Probar](#^issue-99) → [#100 Documentar](#^issue-100) |
 | 7 | [#32 Preparar entornos de despliegue](#^issue-32) | [#101 Implementar](#^issue-101) → [#102 Probar](#^issue-102) → [#103 Documentar](#^issue-103) |
-| 8 | [#33 Ensayar y empaquetar evidencia](#^issue-33) | [#104 Implementar](#^issue-104) → [#105 Probar](#^issue-105) → [#106 Documentar](#^issue-106) |
-| 9 | [#34 Congelar build y presentación](#^issue-34) | [#107 Implementar](#^issue-107) → [#108 Probar](#^issue-108) → [#109 Documentar](#^issue-109) |
+| 8 (tras la Ola 19) | [#33 Ensayar y empaquetar evidencia](#^issue-33), bloqueada también por [#438](#^issue-438) | [#104 Implementar](#^issue-104) → [#105 Probar](#^issue-105) → [#106 Documentar](#^issue-106) |
+| 9 (tras la #33) | [#34 Congelar build y presentación](#^issue-34) | [#107 Implementar](#^issue-107) → [#108 Probar](#^issue-108) → [#109 Documentar](#^issue-109) |
+| 10 | [#369 Supabase Auth, roles, RLS y autorización](#^issue-369) | [#370 Implementar](#^issue-370) → [#371 Probar](#^issue-371) → [#372 Documentar](#^issue-372) |
+| 11 | [#378 Cuentas, ingreso y shell por rol](#^issue-378) | [#379 Implementar](#^issue-379) → [#380 Probar](#^issue-380) → [#381 Documentar](#^issue-381) |
+| 11 | [#382 Notificaciones in-app y Resend](#^issue-382) | [#383 Implementar](#^issue-383) → [#384 Probar](#^issue-384) → [#385 Documentar](#^issue-385) |
+| 11 | [#386 Login de admin, shell y cola de PyMEs](#^issue-386) | [#387 Implementar](#^issue-387) → [#388 Probar](#^issue-388) → [#389 Documentar](#^issue-389) |
+| 11 | [#394 Acerca de, guías y ayuda](#^issue-394) | [#395 Implementar](#^issue-395) → [#396 Probar](#^issue-396) → [#397 Documentar](#^issue-397) |
+| 12 | [#398 KYC simulado, registro y carga de documentos](#^issue-398) | [#399 Implementar](#^issue-399) → [#400 Probar](#^issue-400) → [#401 Documentar](#^issue-401) |
+| 13 | [#402 Completitud con IA y envío a revisión](#^issue-402) | [#403 Implementar](#^issue-403) → [#404 Probar](#^issue-404) → [#405 Documentar](#^issue-405) |
+| 13 | [#406 Wallet Freighter de la PyME](#^issue-406) | [#407 Implementar](#^issue-407) → [#408 Probar](#^issue-408) → [#409 Documentar](#^issue-409) |
+| 14 | [#410 Revisión y aprobación: despliegue y publicación de la bóveda](#^issue-410) | [#411 Implementar](#^issue-411) → [#412 Probar](#^issue-412) → [#413 Documentar](#^issue-413) |
+| 15 | [#414 Explorar PyMEs y API de listado](#^issue-414) | [#415 Implementar](#^issue-415) → [#416 Probar](#^issue-416) → [#417 Documentar](#^issue-417) |
+| 15 | [#390 Usuarios, invitaciones y auditoría](#^issue-390) | [#391 Implementar](#^issue-391) → [#392 Probar](#^issue-392) → [#393 Documentar](#^issue-393) |
+| 16 | [#418 Landing pública](#^issue-418) | [#419 Implementar](#^issue-419) → [#420 Probar](#^issue-420) → [#421 Documentar](#^issue-421) |
+| 16 | [#422 Detalle de campaña y aportes](#^issue-422) | [#423 Implementar](#^issue-423) → [#424 Probar](#^issue-424) → [#425 Documentar](#^issue-425) |
+| 16 | [#434 Mi campaña de la PyME](#^issue-434) | [#435 Implementar](#^issue-435) → [#436 Probar](#^issue-436) → [#437 Documentar](#^issue-437) |
+| 17 | [#426 Portafolio del inversor](#^issue-426) | [#427 Implementar](#^issue-427) → [#428 Probar](#^issue-428) → [#429 Documentar](#^issue-429) |
+| 18 | [#430 Informes del inversor](#^issue-430) | [#431 Implementar](#^issue-431) → [#432 Probar](#^issue-432) → [#433 Documentar](#^issue-433) |
+| 19 | [#438 Retiro de las rutas del recorrido guiado](#^issue-438) | [#439 Implementar](#^issue-439) → [#440 Probar](#^issue-440) → [#441 Documentar](#^issue-441) |
+
+Las Olas 10–19 (hoja de ruta alineada al template, incorporada el 2026-10-01) se numeran por dependencia, no por cronología: se ejecutan antes que las Olas 8 y 9.
 
 ### Trabajo transversal fuera del camino crítico de la demo
 
 | Issue | Alcance | Ubicación en la hoja de ruta |
 |---|---|---|
-| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Done` (issue cerrado el 17/09/2026), pero fuera de las olas y del camino crítico acotado: sus criterios de aceptación siguen sin marcar y no hay implementación de Auth.js en `main` (verificado el 2026-09-29: ninguna referencia a `next-auth`, `authjs` ni `@auth/*` en `apps/`, `packages/` ni `package.json`), hasta una promoción explícita de alcance. |
+| [#134 — Establecer límites de autenticación y sesión con Auth.js](https://github.com/reyduar/Vaqcrow/issues/134) | Auth.js v5 como límite futuro de autenticación/sesión, dependiente de #14; autorización y decisiones permanecen en backend. | Presente en Project #4 con workflow `Done` (issue cerrado el 17/09/2026), pero fuera de las olas y del camino crítico acotado: sus criterios de aceptación siguen sin marcar y no hay implementación de Auth.js en `main` (verificado el 2026-09-29: ninguna referencia a `next-auth`, `authjs` ni `@auth/*` en `apps/`, `packages/` ni `package.json`), hasta una promoción explícita de alcance. **Superseded el 2026-10-01** por el Epic [#368](#^issue-368) (Supabase Auth con roles y RLS). |
 | [~~#189 — Enforzar lint y typecheck sobre el directorio `tests/` de la raíz~~](https://github.com/reyduar/Vaqcrow/issues/189) | Cerrar el hueco de gate por el que `tests/**` se ejecuta en cada pull request pero nunca se lintea ni se typechequea. No viene de `DEMO.md`. | Presente en Project #4 con workflow `Done`; cerrado el 28/09/2026 como `COMPLETED` por el PR [#330](https://github.com/reyduar/Vaqcrow/pull/330). Resolución: un proyecto raíz (`tsconfig.tests.json`) con `lint:tests` y `typecheck:tests` cubre `tests/**` (excluyendo los fixtures inválidos a propósito) y `pnpm run verify` ejecuta ambos. Estaba fuera de las olas; hallado al cerrar [#14](#^issue-14) y registrado como limitación aceptada en la evidencia de [#15](#^issue-15). |
 | [~~#196 — Resolver las políticas RLS de `application_review` y `human_decision`~~](https://github.com/reyduar/Vaqcrow/issues/196) | Resolver por decisión explícita las dos tablas que hoy tienen RLS habilitada y **cero políticas**, o registrar que `service_role` es la única vía de acceso del alcance acotado. No viene de `DEMO.md`. | **Posterior al inventario**, abierto el 20/09/2026; hoy en `Done`, cerrado el 28/09/2026 como `COMPLETED` por el PR [#331](https://github.com/reyduar/Vaqcrow/pull/331). Resolución: se eligió la opción 2 —las políticas RLS que expresan identidad→fila se **difieren** hasta que exista un modelo de identidad, y `service_role` sigue siendo la única vía de acceso—, registrada en `docs/architecture/identity-and-rls-boundaries.md`. Fuera de las olas y del camino crítico; hallado al auditar [#13](#^issue-13). |
 
@@ -182,7 +213,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Epic: Demo delivery and presentation`
 - **GitHub y estado:** [issue #10](https://github.com/reyduar/Vaqcrow/issues/10) · Tipo `Epic` · Área `infra` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#32](#^issue-32), [#33](#^issue-33) y [#34](#^issue-34).
+- **Jerarquía y bloqueos:** sin padre y sin bloqueos nativos; contiene [#32](#^issue-32), [#33](#^issue-33), [#34](#^issue-34) y, desde el 2026-10-01, [#438](#^issue-438).
 - **Objetivo:** preparar despliegues independientes, runbook, ensayo y paquete final de evidencia.
 - **Orden:** agrupa la entrega final; no constituye una unidad ejecutable.
 
@@ -1152,6 +1183,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **Jerarquía y bloqueos:** padre [#9](#^issue-9); bloqueada nativamente por [#16](#^issue-16), [#20](#^issue-20), [#24](#^issue-24) y [#28](#^issue-28) — las cuatro están cerradas (verificado con `gh` el 2026-09-29), así que está desbloqueada; sigue en `Backlog` en el Project #4.
 - **Objetivo:** conectar el único recorrido sintético desde solicitud, IA y aprobación hasta fondeo, confirmación y distribución.
 - **Orden:** tiene prioridad `Critical` y desbloquea [#31](#^issue-31) y [#32](#^issue-32).
+- **Nota (2026-10-01):** la hoja de ruta alineada al template retira las rutas del recorrido guiado en [#438](#^issue-438). Esta Feature ya está cerrada (verificado con `gh`): el retiro no reabre su alcance, solo reubica su motor en las pantallas por rol.
 
 **Rama propuesta.** `Vaqcrow#30_Feat_Integrate_the_complete_vertical_demo_journey` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
@@ -1346,8 +1378,8 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 
 - **Título original:** `Feature: Rehearse the demo and package evidence`
 - **GitHub y estado:** [issue #33](https://github.com/reyduar/Vaqcrow/issues/33) · Tipo `Feature` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
-- **Jerarquía y bloqueos:** padre [#10](#^issue-10); bloqueada nativamente por [#31](#^issue-31) y [#32](#^issue-32).
-- **Objetivo:** ejecutar tres ensayos internos de menos de siete minutos y congelar el paquete de evidencia de respaldo.
+- **Jerarquía y bloqueos:** padre [#10](#^issue-10); bloqueada nativamente por [#31](#^issue-31), [#32](#^issue-32) y [#438](#^issue-438) (esta última agregada el 2026-10-01).
+- **Objetivo:** ejecutar tres ensayos internos de los workflows por rol (PyME, admin e inversor) sobre las pantallas del template y congelar el paquete de evidencia de respaldo. No hay un presupuesto de tiempo del recorrido: ese objetivo se eliminó el 2026-10-01 (el owner nunca lo propuso).
 - **Orden:** reúne resiliencia y despliegue, y desbloquea [#34](#^issue-34).
 
 **Rama propuesta.** `Vaqcrow#33_Feat_Rehearse_the_demo_and_package_evidence` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
@@ -1448,7 +1480,7 @@ Convención: `Vaqcrow#<número>_Feat_<título original normalizado>` para Featur
 - **GitHub y estado:** [issue #134](https://github.com/reyduar/Vaqcrow/issues/134) · Tipo `Task` · Área `Security` · Prioridad `High` · Workflow `Done` verificado en el Project canónico `Vaqcrow-TFM` #4 (issue cerrado el 17/09/2026 como `COMPLETED`, con sus criterios de aceptación aún sin marcar; reverificado el 2026-09-29: **sin implementación de Auth.js en `main`** —ninguna referencia a `next-auth`, `authjs` ni `@auth/*` en `apps/`, `packages/` ni `package.json`—, por lo que este documento no declara entregada esa capa).
 - **Jerarquía y bloqueos:** sin padre; el cuerpo declara dependencia de [#14](#^issue-14). No se fabrica una relación jerárquica ni una ola.
 - **Objetivo:** establecer [Auth.js v5 / NextAuth](https://authjs.dev/) en el límite server-side de Next.js para autenticación y sesión; el backend conserva autorización, permisos, comandos y decisiones de dominio, y un adaptador server-only conserva registros de autenticación.
-- **Límite de alcance:** deja sin efecto la dirección opcional de Supabase Auth como autoridad de identidad/sesión para este alcance futuro. Supabase puede seguir como PostgreSQL/Storage, sin autoridad paralela. La demo actual conserva identidad sintética y #134 permanece fuera de su camino crítico salvo cambio de alcance explícito.
+- **Límite de alcance:** deja sin efecto la dirección opcional de Supabase Auth como autoridad de identidad/sesión para este alcance futuro. Supabase puede seguir como PostgreSQL/Storage, sin autoridad paralela. La demo actual conserva identidad sintética y #134 permanece fuera de su camino crítico salvo cambio de alcance explícito. **Superseded el 2026-10-01:** el Epic [#368](#^issue-368) y la Feature [#369](#^issue-369) reemplazan este límite por Supabase Auth (email y contraseña) con roles PYME / INVERSOR / ADMIN y RLS; Auth.js v5 deja de ser la dirección.
 - **Requisitos técnicos confirmados:** configuración y secretos dependen de #14; pruebas usan dobles locales de proveedor/persistencia; antes de instalar Auth.js o dependencias de autenticación se aplica el gate compartido de skills/MCP y se registra el soporte usado o `none`.
 - **Orden:** está inventariado porque pertenece al Project #4, pero no altera las olas ni bloquea el recorrido de dos semanas.
 
@@ -1745,6 +1777,988 @@ Estas 21 unidades **no forman parte del inventario de 109 ítems** verificado el
 - **Orden:** cierra [#240](#^issue-240).
 
 **Rama e implementación.** Entregada como work unit sobre la rama de integración `Vaqcrow#240_Feat_Reconcile_trust_disclosures_with_contract_custody`, mergeada vía [PR #294](https://github.com/reyduar/Vaqcrow/pull/294). Evidencia de cierre con la revisión afirmación por afirmación contra `contracts/campaign-vault/src/lib.rs` (13/13 afirmaciones respaldadas) y el mapeo de los cinco criterios de aceptación.
+
+## Hoja de ruta alineada al template — incorporado el 2026-10-01
+
+^roadmap-template
+
+Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://github.com/reyduar/Vaqcrow/issues/368)–[#441](https://github.com/reyduar/Vaqcrow/issues/441)— **no forman parte del inventario de 109 ítems** ni de la custodia por contrato. Se crearon el 2026-10-01 a partir de las decisiones del owner de ese día y del handoff del template de Claude Design (`docs/design/design_handoff_vaqcrow/`): la app pasa a ser un producto con roles (PYME, INVERSOR, ADMIN) con la forma exacta del template, y deja de ser un único recorrido guiado. Las 74 están abiertas, en el Project #4 con workflow `Backlog` (las 74 verificadas con `gh` el 2026-10-01) y con sus relaciones padre/`blocked by` nativas verificadas contra GitHub el 2026-10-01.
+
+**Qué cambia.** Autenticación real con Supabase Auth (reemplaza [#134](#^issue-134)), KYC de inversor simulado y aprobado automáticamente en el primer aporte, carga real de documentos y fotos a Supabase Storage con IA en dos pasos, notificaciones in-app y por Resend, y una consola de administración. **Siempre no custodial:** Vaqcrow nunca custodia claves ni recibe o mueve dinero de terceros; la aprobación del admin dispara el despliegue de la bóveda firmado por la plataforma, con la cuenta de la PyME como destino inmutable. La cuenta «administrada» custodial se evaluó y el owner la **rechazó**; no se reabre. Ver [[docs/planning/DEMO|DEMO.md]] y la sección «Documentación alineada y decisiones cerradas» de `CLAUDE.md`.
+
+**Qué reutiliza.** El motor entregado (`POST`/`GET /sme-requests`, evaluaciones, decisiones, `/campaigns`, distribuciones, ventas mensuales, la bóveda y la fábrica Soroban y los componentes de `apps/web/src/presentation`) no se reabre. Faltan hoy: autenticación, roles, almacenamiento de archivos, notificaciones y un endpoint de listado de campañas.
+
+**Regla del template.** Las pantallas del template son la fuente visual y de comportamiento. Lo que el template no diseña **no se inventa**: cada Feature lo registra como pregunta abierta en su issue y el owner decide antes de implementar. Los títulos de las preguntas abiertas se resumen debajo, pero la fuente es el issue.
+
+**Nombres de rama.** Se aplica la convención vigente, con el título original en inglés. Los Epics no llevan rama.
+
+**Orden sugerido (grafo de dependencias).** [#369](#^issue-369) → ([#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386), [#394](#^issue-394)) → [#398](#^issue-398) → ([#402](#^issue-402), [#406](#^issue-406)) → [#410](#^issue-410) → ([#414](#^issue-414), [#390](#^issue-390)) → ([#418](#^issue-418), [#422](#^issue-422), [#434](#^issue-434)) → [#426](#^issue-426) → [#430](#^issue-430) → [#438](#^issue-438) → [#33](#^issue-33) → [#34](#^issue-34). Dentro de cada Feature: implementación → pruebas → evidencia.
+
+### #368 — Identidad y acceso
+
+^issue-368
+
+- **Título original:** `Epic: Identity and access`
+- **GitHub y estado:** [issue #368](https://github.com/reyduar/Vaqcrow/issues/368) · Tipo `Epic` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#369](#^issue-369) y [#378](#^issue-378).
+- **Objetivo:** Reemplazar la sesión de demostración por autenticación real (Supabase Auth, email y contraseña), los roles PYME / INVERSOR / ADMIN, RLS por rol, autorización de la API y las superficies de cuenta e ingreso del template.
+- **Nota:** Reemplaza el límite de Auth.js v5 planificado en [#134](#^issue-134) y el enunciado «sin autenticación real» de `DEMO.md`.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #369 — Establecer Supabase Auth, roles, RLS y autorización de la API
+
+^issue-369
+
+- **Título original:** `Feature: Establish Supabase Auth, roles, RLS and API authorization`
+- **GitHub y estado:** [issue #369](https://github.com/reyduar/Vaqcrow/issues/369) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#368](#^issue-368); sin bloqueos nativos.
+- **Objetivo:** Introducir autenticación real con Supabase Auth (email y contraseña), los roles `PYME`, `INVERSOR` y `ADMIN`, RLS por rol, autorización en cada endpoint de `apps/api`, el super admin sembrado («Admin Vaqcrow», `vaqcrow.admin`; email y contraseña desde variables de entorno, nunca versionados) y un almacén append-only de registro de auditoría con su puerto.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Si el email de confirmación y el restablecimiento de contraseña son obligatorios para cuentas PyME/INVERSOR: el template no tiene pantalla de ingreso, expiración de sesión, restablecimiento ni verificación de email.
+  - El runbook operativo del seed del super admin (dónde viven las variables por perfil).
+- **Orden:** Primer paso del camino nuevo; bloquea a [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386) y [#398](#^issue-398). Reutiliza el motor existente (`/sme-requests`, evaluaciones, decisiones, `/campaigns`, distribuciones, ventas) en lugar de reabrir su alcance.
+
+**Rama propuesta.** `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #370 — Implementar Supabase Auth, roles, RLS y la autorización de la API
+
+^issue-370
+
+- **Título original:** `Task: Implement Supabase Auth, roles, RLS and API authorization`
+- **GitHub y estado:** [issue #370](https://github.com/reyduar/Vaqcrow/issues/370) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#369](#^issue-369); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#371](#^issue-371).
+
+**Rama propuesta.** `Vaqcrow#370_Task_Implement_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de implementación revisable.
+
+### #371 — Probar Supabase Auth, roles, RLS y la autorización de la API
+
+^issue-371
+
+- **Título original:** `Task: Test Supabase Auth, roles, RLS and API authorization`
+- **GitHub y estado:** [issue #371](https://github.com/reyduar/Vaqcrow/issues/371) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#369](#^issue-369); bloqueada nativamente por [#370](#^issue-370).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#372](#^issue-372).
+
+**Rama propuesta.** `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de pruebas revisable.
+
+### #372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API
+
+^issue-372
+
+- **Título original:** `Task: Document evidence for Supabase Auth, roles, RLS and API authorization`
+- **GitHub y estado:** [issue #372](https://github.com/reyduar/Vaqcrow/issues/372) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#369](#^issue-369); bloqueada nativamente por [#371](#^issue-371).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#369](#^issue-369).
+
+**Rama propuesta.** `Vaqcrow#372_Task_Document_evidence_for_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de documentación revisable.
+
+### #378 — Crear cuentas, ingresar y shell según el rol
+
+^issue-378
+
+- **Título original:** `Feature: Provide account creation, sign-in and a role-aware shell`
+- **GitHub y estado:** [issue #378](https://github.com/reyduar/Vaqcrow/issues/378) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#368](#^issue-368); bloqueada nativamente por [#369](#^issue-369).
+- **Objetivo:** Permitir crear una cuenta INVERSOR o PYME, ingresar y navegar un encabezado que se adapta al rol de la sesión, siguiendo el Onboarding y el menú de avatar del template.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Una página pública «Ingresar»: el template solo tiene un menú de sesión de demostración; no diseña su layout, errores, restablecimiento ni verificación de email.
+  - El copy «Sin autenticación real: es una cuenta de demostración» deja de ser verdadero; no hay reemplazo diseñado.
+  - De dónde sale el nombre que muestra el avatar si la cuenta solo recoge email, contraseña y rol.
+- **Orden:** Desbloquea [#398](#^issue-398) y es prerrequisito de [#422](#^issue-422).
+
+**Rama propuesta.** `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #379 — Implementar la creación de cuentas, el ingreso y el shell según el rol
+
+^issue-379
+
+- **Título original:** `Task: Implement account creation, sign-in and the role-aware shell`
+- **GitHub y estado:** [issue #379](https://github.com/reyduar/Vaqcrow/issues/379) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#378](#^issue-378), que requiere [#369](#^issue-369); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#380](#^issue-380).
+
+**Rama propuesta.** `Vaqcrow#379_Task_Implement_account_creation_sign_in_and_the_role_aware_shell` es una unidad de implementación revisable.
+
+### #380 — Probar la creación de cuentas, el ingreso y el shell según el rol
+
+^issue-380
+
+- **Título original:** `Task: Test account creation, sign-in and the role-aware shell`
+- **GitHub y estado:** [issue #380](https://github.com/reyduar/Vaqcrow/issues/380) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#378](#^issue-378), que requiere [#369](#^issue-369); bloqueada nativamente por [#379](#^issue-379).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#381](#^issue-381).
+
+**Rama propuesta.** `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell` es una unidad de pruebas revisable.
+
+### #381 — Documentar evidencia de la creación de cuentas, el ingreso y el shell según el rol
+
+^issue-381
+
+- **Título original:** `Task: Document evidence for account creation, sign-in and the role-aware shell`
+- **GitHub y estado:** [issue #381](https://github.com/reyduar/Vaqcrow/issues/381) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#378](#^issue-378), que requiere [#369](#^issue-369); bloqueada nativamente por [#380](#^issue-380).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#378](#^issue-378).
+
+**Rama propuesta.** `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_role_aware_shell` es una unidad de documentación revisable.
+
+### #373 — Sitio público
+
+^issue-373
+
+- **Título original:** `Epic: Public site`
+- **GitHub y estado:** [issue #373](https://github.com/reyduar/Vaqcrow/issues/373) · Tipo `Epic` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#418](#^issue-418) y [#394](#^issue-394).
+- **Objetivo:** Entregar las páginas públicas, sin cuenta, del template: landing, Acerca de, guías y centro de ayuda.
+- **Nota:** Explorar PyMEs, Guía de inversión y Ayuda son públicas sin onboarding (decisión del owner que prevalece sobre el bloqueo por cuenta del template).
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #394 — Acerca de, guías y centro de ayuda
+
+^issue-394
+
+- **Título original:** `Feature: Publish the About page, guides and help center`
+- **GitHub y estado:** [issue #394](https://github.com/reyduar/Vaqcrow/issues/394) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#373](#^issue-373); sin bloqueos nativos.
+- **Objetivo:** Entregar Acerca de, la Guía de inversión, la Guía para emprendedores y el centro de ayuda como páginas públicas, siguiendo el template. El asistente RAG de Ayuda queda como «Próximamente».
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
+  - El destino de «Escribir al equipo», «Hablemos» y la página «Términos» del pie.
+  - El comportamiento del asistente RAG más allá del placeholder.
+- **Orden:** Sin dependencias; puede avanzar en paralelo desde el inicio.
+
+**Rama propuesta.** `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #395 — Implementar Acerca de, las guías y el centro de ayuda
+
+^issue-395
+
+- **Título original:** `Task: Implement the About page, guides and help center`
+- **GitHub y estado:** [issue #395](https://github.com/reyduar/Vaqcrow/issues/395) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#394](#^issue-394); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#396](#^issue-396).
+
+**Rama propuesta.** `Vaqcrow#395_Task_Implement_the_About_page_guides_and_help_center` es una unidad de implementación revisable.
+
+### #396 — Probar Acerca de, las guías y el centro de ayuda
+
+^issue-396
+
+- **Título original:** `Task: Test the About page, guides and help center`
+- **GitHub y estado:** [issue #396](https://github.com/reyduar/Vaqcrow/issues/396) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#394](#^issue-394); bloqueada nativamente por [#395](#^issue-395).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#397](#^issue-397).
+
+**Rama propuesta.** `Vaqcrow#396_Task_Test_the_About_page_guides_and_help_center` es una unidad de pruebas revisable.
+
+### #397 — Documentar evidencia de Acerca de, las guías y el centro de ayuda
+
+^issue-397
+
+- **Título original:** `Task: Document evidence for the About page, guides and help center`
+- **GitHub y estado:** [issue #397](https://github.com/reyduar/Vaqcrow/issues/397) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#394](#^issue-394); bloqueada nativamente por [#396](#^issue-396).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#394](#^issue-394).
+
+**Rama propuesta.** `Vaqcrow#397_Task_Document_evidence_for_the_About_page_guides_and_help_center` es una unidad de documentación revisable.
+
+### #418 — Landing pública
+
+^issue-418
+
+- **Título original:** `Feature: Build the public landing page`
+- **GitHub y estado:** [issue #418](https://github.com/reyduar/Vaqcrow/issues/418) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#373](#^issue-373); sin bloqueos nativos.
+- **Objetivo:** Entregar la landing pública con la campaña destacada, PyMEs en campaña, las secciones explicativas y el placeholder del asistente «Ayuda».
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Cómo se elige la campaña destacada (el template solo tiene la prop `featured`).
+  - El bloque «Recorré la demo completa… Empezar el recorrido» refiere al recorrido de seis pasos que se retira: si se mantiene y adónde apunta el CTA.
+  - El comportamiento del asistente más allá de «Próximamente».
+- **Orden:** Sin bloqueo nativo; dependencia blanda de [#414](#^issue-414) para mostrar campañas reales.
+
+**Rama propuesta.** `Vaqcrow#418_Feat_Build_the_public_landing_page` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #419 — Implementar la landing pública
+
+^issue-419
+
+- **Título original:** `Task: Implement the public landing page`
+- **GitHub y estado:** [issue #419](https://github.com/reyduar/Vaqcrow/issues/419) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#418](#^issue-418); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#420](#^issue-420).
+
+**Rama propuesta.** `Vaqcrow#419_Task_Implement_the_public_landing_page` es una unidad de implementación revisable.
+
+### #420 — Probar la landing pública
+
+^issue-420
+
+- **Título original:** `Task: Test the public landing page`
+- **GitHub y estado:** [issue #420](https://github.com/reyduar/Vaqcrow/issues/420) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#418](#^issue-418); bloqueada nativamente por [#419](#^issue-419).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#421](#^issue-421).
+
+**Rama propuesta.** `Vaqcrow#420_Task_Test_the_public_landing_page` es una unidad de pruebas revisable.
+
+### #421 — Documentar evidencia de la landing pública
+
+^issue-421
+
+- **Título original:** `Task: Document evidence for the public landing page`
+- **GitHub y estado:** [issue #421](https://github.com/reyduar/Vaqcrow/issues/421) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#418](#^issue-418); bloqueada nativamente por [#420](#^issue-420).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#418](#^issue-418).
+
+**Rama propuesta.** `Vaqcrow#421_Task_Document_evidence_for_the_public_landing_page` es una unidad de documentación revisable.
+
+### #374 — Alta de PyMEs y campaña
+
+^issue-374
+
+- **Título original:** `Epic: PyME onboarding and campaign`
+- **GitHub y estado:** [issue #374](https://github.com/reyduar/Vaqcrow/issues/374) · Tipo `Epic` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#398](#^issue-398), [#402](#^issue-402), [#406](#^issue-406) y [#434](#^issue-434).
+- **Objetivo:** Llevar a la PyME desde la creación de cuenta hasta su campaña: KYC simulado, registro y carga de documentos, chequeo de completitud con IA, wallet Freighter y el panel «Mi campaña».
+- **Nota:** La PyME entrega su clave pública antes de la revisión; Vaqcrow nunca custodia claves ni fondos.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #398 — KYC simulado, registro de la PyME y carga de documentos
+
+^issue-398
+
+- **Título original:** `Feature: Guide PyMEs through simulated KYC, registration and document upload`
+- **GitHub y estado:** [issue #398](https://github.com/reyduar/Vaqcrow/issues/398) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#378](#^issue-378) y [#369](#^issue-369).
+- **Objetivo:** Entregar el wizard de tres pasos (KYC simulado → Registro de la PyME → Revisión) y la carga real de documentos y fotos a un bucket privado de Supabase Storage (RLS por propietario, 10 MB, PDF/JPG/PNG).
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - La UI de fotos (1 a 4: selector, vista previa, orden) y los slots de documentos requeridos; progreso, tipo incorrecto, exceso de tamaño y fallo de carga.
+  - Guardar borrador y retomar; editar tras el envío o reenviar tras «Requiere cambios».
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
+  - Si el banner «Demo: usá datos sintéticos…» y «Completar con datos de ejemplo» se mantienen frente a la carga real.
+- **Orden:** Desbloquea [#402](#^issue-402) y [#406](#^issue-406).
+
+**Rama propuesta.** `Vaqcrow#398_Feat_Guide_PyMEs_through_simulated_KYC_registration_and_document_upload` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #399 — Implementar el wizard de alta de la PyME y la carga de documentos
+
+^issue-399
+
+- **Título original:** `Task: Implement the PyME onboarding wizard and document upload`
+- **GitHub y estado:** [issue #399](https://github.com/reyduar/Vaqcrow/issues/399) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#398](#^issue-398), que requiere [#378](#^issue-378) y [#369](#^issue-369); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#400](#^issue-400).
+
+**Rama propuesta.** `Vaqcrow#399_Task_Implement_the_PyME_onboarding_wizard_and_document_upload` es una unidad de implementación revisable.
+
+### #400 — Probar el wizard de alta de la PyME y la carga de documentos
+
+^issue-400
+
+- **Título original:** `Task: Test the PyME onboarding wizard and document upload`
+- **GitHub y estado:** [issue #400](https://github.com/reyduar/Vaqcrow/issues/400) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#398](#^issue-398), que requiere [#378](#^issue-378) y [#369](#^issue-369); bloqueada nativamente por [#399](#^issue-399).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#401](#^issue-401).
+
+**Rama propuesta.** `Vaqcrow#400_Task_Test_the_PyME_onboarding_wizard_and_document_upload` es una unidad de pruebas revisable.
+
+### #401 — Documentar evidencia del wizard de alta de la PyME y la carga de documentos
+
+^issue-401
+
+- **Título original:** `Task: Document evidence for the PyME onboarding wizard and document upload`
+- **GitHub y estado:** [issue #401](https://github.com/reyduar/Vaqcrow/issues/401) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#398](#^issue-398), que requiere [#378](#^issue-378) y [#369](#^issue-369); bloqueada nativamente por [#400](#^issue-400).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#398](#^issue-398).
+
+**Rama propuesta.** `Vaqcrow#401_Task_Document_evidence_for_the_PyME_onboarding_wizard_and_document_upload` es una unidad de documentación revisable.
+
+### #402 — Chequeo de completitud con IA y envío a revisión humana
+
+^issue-402
+
+- **Título original:** `Feature: Run the AI completeness check and submit to human review`
+- **GitHub y estado:** [issue #402](https://github.com/reyduar/Vaqcrow/issues/402) · Tipo `Feature` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#398](#^issue-398) y [#382](#^issue-382).
+- **Objetivo:** Agregar la IA en dos pasos (chequeo de completitud y luego evaluación de riesgo) y el envío de una solicitud completa a revisión humana, notificando al admin. El contenido subido es no confiable y la IA es solo asesora.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Cómo ve la PyME el resultado de completitud (el paso 3 del template solo muestra «En proceso»).
+  - Si un resultado incompleto bloquea el envío o solo advierte, y si la PyME ve la banda de riesgo.
+  - Estados de carga, fallo y reintento de la IA y cómo el modelo lee documentos y fotos (decisión técnica a confirmar).
+- **Orden:** Requiere [#398](#^issue-398) y [#382](#^issue-382); es prerrequisito de [#410](#^issue-410).
+
+**Rama propuesta.** `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #403 — Implementar el chequeo de completitud con IA y el envío a revisión humana
+
+^issue-403
+
+- **Título original:** `Task: Implement the AI completeness check and submission to human review`
+- **GitHub y estado:** [issue #403](https://github.com/reyduar/Vaqcrow/issues/403) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#402](#^issue-402), que requiere [#398](#^issue-398) y [#382](#^issue-382); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#404](#^issue-404).
+
+**Rama propuesta.** `Vaqcrow#403_Task_Implement_the_AI_completeness_check_and_submission_to_human_review` es una unidad de implementación revisable.
+
+### #404 — Probar el chequeo de completitud con IA y el envío a revisión humana
+
+^issue-404
+
+- **Título original:** `Task: Test the AI completeness check and submission to human review`
+- **GitHub y estado:** [issue #404](https://github.com/reyduar/Vaqcrow/issues/404) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#402](#^issue-402), que requiere [#398](#^issue-398) y [#382](#^issue-382); bloqueada nativamente por [#403](#^issue-403).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#405](#^issue-405).
+
+**Rama propuesta.** `Vaqcrow#404_Task_Test_the_AI_completeness_check_and_submission_to_human_review` es una unidad de pruebas revisable.
+
+### #405 — Documentar evidencia del chequeo de completitud con IA y el envío a revisión humana
+
+^issue-405
+
+- **Título original:** `Task: Document evidence for the AI completeness check and submission to human review`
+- **GitHub y estado:** [issue #405](https://github.com/reyduar/Vaqcrow/issues/405) · Tipo `Task` · Área `ai` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#402](#^issue-402), que requiere [#398](#^issue-398) y [#382](#^issue-382); bloqueada nativamente por [#404](#^issue-404).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#402](#^issue-402).
+
+**Rama propuesta.** `Vaqcrow#405_Task_Document_evidence_for_the_AI_completeness_check_and_submission_to_human_review` es una unidad de documentación revisable.
+
+### #406 — Wallet Freighter de la PyME antes de la revisión
+
+^issue-406
+
+- **Título original:** `Feature: Connect the PyME Freighter wallet before review`
+- **GitHub y estado:** [issue #406](https://github.com/reyduar/Vaqcrow/issues/406) · Tipo `Feature` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#398](#^issue-398).
+- **Objetivo:** Permitir que la PyME conecte o cree una wallet Freighter y entregue su clave pública antes de que la solicitud llegue a revisión del admin, y entregar el adaptador de Freighter y la tarjeta de wallet reutilizables. Vaqcrow nunca recibe ni guarda claves.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Estados de Freighter no instalado (con guía para crear la wallet), conexión rechazada, red equivocada y cuenta de Testnet sin fondos.
+  - Cómo cambia o reemplaza la clave antes de la aprobación y qué muestra la revisión del admin sobre ella.
+  - En qué paso del wizard va la conexión (el template solo la ubica en los próximos pasos de cuenta creada).
+- **Orden:** Requerida por [#410](#^issue-410), [#422](#^issue-422) y [#434](#^issue-434).
+
+**Rama propuesta.** `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #407 — Implementar la conexión de la wallet Freighter de la PyME
+
+^issue-407
+
+- **Título original:** `Task: Implement the PyME Freighter wallet connection`
+- **GitHub y estado:** [issue #407](https://github.com/reyduar/Vaqcrow/issues/407) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#408](#^issue-408).
+
+**Rama propuesta.** `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` es una unidad de implementación revisable.
+
+### #408 — Probar la conexión de la wallet Freighter de la PyME
+
+^issue-408
+
+- **Título original:** `Task: Test the PyME Freighter wallet connection`
+- **GitHub y estado:** [issue #408](https://github.com/reyduar/Vaqcrow/issues/408) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); bloqueada nativamente por [#407](#^issue-407).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#409](#^issue-409).
+
+**Rama propuesta.** `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` es una unidad de pruebas revisable.
+
+### #409 — Documentar evidencia de la conexión de la wallet Freighter de la PyME
+
+^issue-409
+
+- **Título original:** `Task: Document evidence for the PyME Freighter wallet connection`
+- **GitHub y estado:** [issue #409](https://github.com/reyduar/Vaqcrow/issues/409) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); bloqueada nativamente por [#408](#^issue-408).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#406](#^issue-406).
+
+**Rama propuesta.** `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection` es una unidad de documentación revisable.
+
+### #434 — Mi campaña de la PyME
+
+^issue-434
+
+- **Título original:** `Feature: Deliver the PyME Mi campaña dashboard`
+- **GitHub y estado:** [issue #434](https://github.com/reyduar/Vaqcrow/issues/434) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#410](#^issue-410) y [#406](#^issue-406).
+- **Objetivo:** Entregar Mi campaña: bóvedas vigentes e históricas, wallet, ventas declaradas, distribuciones, declaración mensual de ventas y el flujo de revisar y firmar cada distribución. El dinero se muestra en ARS con su equivalente en XLM y la PyME puede cargar fondos en su propia wallet.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - La entrada de la declaración mensual tras el fondeo y sus reglas de validación/anomalía.
+  - La pantalla o modal «Revisar y firmar» de una distribución.
+  - Bóvedas históricas y cómo se lista una PyME con varias campañas.
+  - La convención de doble visualización ARS + XLM.
+  - Cargar fondos en la wallet de la PyME para pagar distribuciones (pedido del owner, no diseñado).
+  - Vistas de la PyME para En revisión, Requiere cambios, Rechazada y el estado vacío previo a la bóveda.
+- **Orden:** Requiere [#410](#^issue-410) y [#406](#^issue-406).
+
+**Rama propuesta.** `Vaqcrow#434_Feat_Deliver_the_PyME_Mi_campaña_dashboard` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #435 — Implementar el panel Mi campaña de la PyME
+
+^issue-435
+
+- **Título original:** `Task: Implement the PyME Mi campaña dashboard`
+- **GitHub y estado:** [issue #435](https://github.com/reyduar/Vaqcrow/issues/435) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#434](#^issue-434), que requiere [#410](#^issue-410) y [#406](#^issue-406); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#436](#^issue-436).
+
+**Rama propuesta.** `Vaqcrow#435_Task_Implement_the_PyME_Mi_campaña_dashboard` es una unidad de implementación revisable.
+
+### #436 — Probar el panel Mi campaña de la PyME
+
+^issue-436
+
+- **Título original:** `Task: Test the PyME Mi campaña dashboard`
+- **GitHub y estado:** [issue #436](https://github.com/reyduar/Vaqcrow/issues/436) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#434](#^issue-434), que requiere [#410](#^issue-410) y [#406](#^issue-406); bloqueada nativamente por [#435](#^issue-435).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#437](#^issue-437).
+
+**Rama propuesta.** `Vaqcrow#436_Task_Test_the_PyME_Mi_campaña_dashboard` es una unidad de pruebas revisable.
+
+### #437 — Documentar evidencia del panel Mi campaña de la PyME
+
+^issue-437
+
+- **Título original:** `Task: Document evidence for the PyME Mi campaña dashboard`
+- **GitHub y estado:** [issue #437](https://github.com/reyduar/Vaqcrow/issues/437) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#434](#^issue-434), que requiere [#410](#^issue-410) y [#406](#^issue-406); bloqueada nativamente por [#436](#^issue-436).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#434](#^issue-434).
+
+**Rama propuesta.** `Vaqcrow#437_Task_Document_evidence_for_the_PyME_Mi_campaña_dashboard` es una unidad de documentación revisable.
+
+### #375 — Consola de administración
+
+^issue-375
+
+- **Título original:** `Epic: Admin console`
+- **GitHub y estado:** [issue #375](https://github.com/reyduar/Vaqcrow/issues/375) · Tipo `Epic` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#386](#^issue-386), [#390](#^issue-390) y [#410](#^issue-410).
+- **Objetivo:** Entregar la consola `/admin`: login sin alta pública, cola de PyMEs, revisión con aprobación humana que dispara el despliegue de la bóveda, usuarios, invitaciones y auditoría.
+- **Nota:** No hay registro público de administradores: el super admin se siembra y los demás se invitan.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #386 — Login de admin, shell y cola de PyMEs
+
+^issue-386
+
+- **Título original:** `Feature: Provide the admin login, shell and PyMEs queue`
+- **GitHub y estado:** [issue #386](https://github.com/reyduar/Vaqcrow/issues/386) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#375](#^issue-375); bloqueada nativamente por [#369](#^issue-369).
+- **Objetivo:** Entregar la entrada de la consola: login en `/admin`, el shell y la cola de PyMEs con KPIs como filtros, búsqueda y tabla.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Estados de carga, vacío y error de la tabla, y paginación/orden más allá de las cinco filas de muestra.
+  - Qué ve alguien que no es admin al abrir `/admin` y el comportamiento de expiración de sesión.
+  - La línea de rol del chip de usuario: el template muestra «M. Pereyra · Operadora · compliance»; el super admin es «Admin Vaqcrow» y no se recoge cargo.
+- **Orden:** Desbloquea [#390](#^issue-390) y [#410](#^issue-410).
+
+**Rama propuesta.** `Vaqcrow#386_Feat_Provide_the_admin_login_shell_and_PyMEs_queue` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #387 — Implementar el login de admin, el shell de la consola y la cola de PyMEs
+
+^issue-387
+
+- **Título original:** `Task: Implement the admin login, shell and PyMEs queue`
+- **GitHub y estado:** [issue #387](https://github.com/reyduar/Vaqcrow/issues/387) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#386](#^issue-386), que requiere [#369](#^issue-369); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#388](#^issue-388).
+
+**Rama propuesta.** `Vaqcrow#387_Task_Implement_the_admin_login_shell_and_PyMEs_queue` es una unidad de implementación revisable.
+
+### #388 — Probar el login de admin, el shell de la consola y la cola de PyMEs
+
+^issue-388
+
+- **Título original:** `Task: Test the admin login, shell and PyMEs queue`
+- **GitHub y estado:** [issue #388](https://github.com/reyduar/Vaqcrow/issues/388) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#386](#^issue-386), que requiere [#369](#^issue-369); bloqueada nativamente por [#387](#^issue-387).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#389](#^issue-389).
+
+**Rama propuesta.** `Vaqcrow#388_Task_Test_the_admin_login_shell_and_PyMEs_queue` es una unidad de pruebas revisable.
+
+### #389 — Documentar evidencia del login de admin, el shell de la consola y la cola de PyMEs
+
+^issue-389
+
+- **Título original:** `Task: Document evidence for the admin login, shell and PyMEs queue`
+- **GitHub y estado:** [issue #389](https://github.com/reyduar/Vaqcrow/issues/389) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#386](#^issue-386), que requiere [#369](#^issue-369); bloqueada nativamente por [#388](#^issue-388).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#386](#^issue-386).
+
+**Rama propuesta.** `Vaqcrow#389_Task_Document_evidence_for_the_admin_login_shell_and_PyMEs_queue` es una unidad de documentación revisable.
+
+### #390 — Usuarios, roles, invitaciones de operadores y registro de auditoría
+
+^issue-390
+
+- **Título original:** `Feature: Manage users, roles, operator invitations and the audit log`
+- **GitHub y estado:** [issue #390](https://github.com/reyduar/Vaqcrow/issues/390) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#375](#^issue-375); bloqueada nativamente por [#386](#^issue-386).
+- **Objetivo:** Entregar Admin > Usuarios: tabla de usuarios con roles y activación, «Invitar operador» y el registro de auditoría. Los administradores adicionales se crean solo por invitación.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - El formulario o modal de «Invitar operador», los estados de invitación («Invitado»), reenvío/revocación y la pantalla donde el operador fija su contraseña.
+  - El control de cambio de rol: el subtítulo habla de confirmación y auditoría pero el template no muestra el control.
+  - Una columna o insignia del estado de KYC del inversor (el owner quiere que el admin la vea; el template no la tiene).
+  - Búsqueda, filtro y paginación de usuarios y auditoría.
+- **Orden:** Puede arrancar en cuanto cierra [#386](#^issue-386); se ordena después de [#410](#^issue-410) solo por conveniencia de la ola.
+
+**Rama propuesta.** `Vaqcrow#390_Feat_Manage_users_roles_operator_invitations_and_the_audit_log` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #391 — Implementar los usuarios, los roles, las invitaciones de operadores y el registro de auditoría
+
+^issue-391
+
+- **Título original:** `Task: Implement users, roles, operator invitations and the audit log`
+- **GitHub y estado:** [issue #391](https://github.com/reyduar/Vaqcrow/issues/391) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#390](#^issue-390), que requiere [#386](#^issue-386); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#392](#^issue-392).
+
+**Rama propuesta.** `Vaqcrow#391_Task_Implement_users_roles_operator_invitations_and_the_audit_log` es una unidad de implementación revisable.
+
+### #392 — Probar los usuarios, los roles, las invitaciones de operadores y el registro de auditoría
+
+^issue-392
+
+- **Título original:** `Task: Test users, roles, operator invitations and the audit log`
+- **GitHub y estado:** [issue #392](https://github.com/reyduar/Vaqcrow/issues/392) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#390](#^issue-390), que requiere [#386](#^issue-386); bloqueada nativamente por [#391](#^issue-391).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#393](#^issue-393).
+
+**Rama propuesta.** `Vaqcrow#392_Task_Test_users_roles_operator_invitations_and_the_audit_log` es una unidad de pruebas revisable.
+
+### #393 — Documentar evidencia de los usuarios, los roles, las invitaciones de operadores y el registro de auditoría
+
+^issue-393
+
+- **Título original:** `Task: Document evidence for users, roles, operator invitations and the audit log`
+- **GitHub y estado:** [issue #393](https://github.com/reyduar/Vaqcrow/issues/393) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#390](#^issue-390), que requiere [#386](#^issue-386); bloqueada nativamente por [#392](#^issue-392).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#390](#^issue-390).
+
+**Rama propuesta.** `Vaqcrow#393_Task_Document_evidence_for_users_roles_operator_invitations_and_the_audit_log` es una unidad de documentación revisable.
+
+### #410 — Revisar y aprobar para desplegar y publicar la bóveda
+
+^issue-410
+
+- **Título original:** `Feature: Review applications and approve to deploy and publish the vault`
+- **GitHub y estado:** [issue #410](https://github.com/reyduar/Vaqcrow/issues/410) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#375](#^issue-375); bloqueada nativamente por [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386).
+- **Objetivo:** Entregar la vista de revisión del admin (chequeos por documento, recomendación de IA y decisión humana) y hacer que la aprobación dispare el despliegue de la bóveda firmado por la plataforma (`POST /campaigns`, con la cuenta de la PyME como destino inmutable) y la publicación de la PyME en el marketplace.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Un visor de documentos y fotos: el template solo lista nombres.
+  - Cómo se comunica «Pedir» a la PyME y la vista de «Requiere cambios» y «Rechazada» del lado de la PyME.
+  - Progreso y fallo del despliegue en la vista de revisión y un «Ver detalle» de solo lectura.
+  - Qué controla «Límite aprobado» sobre la bóveda y quién define los términos de la campaña (plazo, aporte mínimo).
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
+- **Orden:** Requiere [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386); desbloquea [#414](#^issue-414) y [#434](#^issue-434).
+
+**Rama propuesta.** `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #411 — Implementar la revisión de solicitudes y el despliegue de la bóveda al aprobar
+
+^issue-411
+
+- **Título original:** `Task: Implement application review and vault deployment on approval`
+- **GitHub y estado:** [issue #411](https://github.com/reyduar/Vaqcrow/issues/411) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#410](#^issue-410), que requiere [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#412](#^issue-412).
+
+**Rama propuesta.** `Vaqcrow#411_Task_Implement_application_review_and_vault_deployment_on_approval` es una unidad de implementación revisable.
+
+### #412 — Probar la revisión de solicitudes y el despliegue de la bóveda al aprobar
+
+^issue-412
+
+- **Título original:** `Task: Test application review and vault deployment on approval`
+- **GitHub y estado:** [issue #412](https://github.com/reyduar/Vaqcrow/issues/412) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#410](#^issue-410), que requiere [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386); bloqueada nativamente por [#411](#^issue-411).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#413](#^issue-413).
+
+**Rama propuesta.** `Vaqcrow#412_Task_Test_application_review_and_vault_deployment_on_approval` es una unidad de pruebas revisable.
+
+### #413 — Documentar evidencia de la revisión de solicitudes y el despliegue de la bóveda al aprobar
+
+^issue-413
+
+- **Título original:** `Task: Document evidence for application review and vault deployment on approval`
+- **GitHub y estado:** [issue #413](https://github.com/reyduar/Vaqcrow/issues/413) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#410](#^issue-410), que requiere [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386); bloqueada nativamente por [#412](#^issue-412).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#410](#^issue-410).
+
+**Rama propuesta.** `Vaqcrow#413_Task_Document_evidence_for_application_review_and_vault_deployment_on_approval` es una unidad de documentación revisable.
+
+### #376 — Marketplace y área del inversor
+
+^issue-376
+
+- **Título original:** `Epic: Marketplace and investor area`
+- **GitHub y estado:** [issue #376](https://github.com/reyduar/Vaqcrow/issues/376) · Tipo `Epic` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#414](#^issue-414), [#422](#^issue-422), [#426](#^issue-426) y [#430](#^issue-430).
+- **Objetivo:** Entregar Explorar PyMEs, el detalle de campaña con aporte, Mi portafolio e Informes, junto con la API de listado de campañas que hoy falta.
+- **Nota:** Explorar es público; el detalle exige cuenta; «Aportar» sin wallet redirige a Mi portafolio para conectar Freighter.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #414 — Explorar PyMEs y API de listado de campañas
+
+^issue-414
+
+- **Título original:** `Feature: Explore PyMEs marketplace and campaign listing API`
+- **GitHub y estado:** [issue #414](https://github.com/reyduar/Vaqcrow/issues/414) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#376](#^issue-376); bloqueada nativamente por [#410](#^issue-410).
+- **Objetivo:** Entregar el marketplace público Explorar PyMEs y el endpoint de listado de campañas que hoy falta y que lo alimenta.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Si los favoritos persisten (el template los guarda en estado de componente) y dónde, dado que se navega sin cuenta.
+  - Imágenes de las tarjetas: el template usa fotos de stock rotuladas «Imagen representativa»; las fotos de la PyME viven en un bucket privado.
+  - Paginación o scroll infinito para muchas campañas.
+- **Orden:** Requiere [#410](#^issue-410); desbloquea [#422](#^issue-422).
+
+**Rama propuesta.** `Vaqcrow#414_Feat_Explore_PyMEs_marketplace_and_campaign_listing_API` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #415 — Implementar el marketplace Explorar PyMEs y la API de listado de campañas
+
+^issue-415
+
+- **Título original:** `Task: Implement the Explorar PyMEs marketplace and campaign listing API`
+- **GitHub y estado:** [issue #415](https://github.com/reyduar/Vaqcrow/issues/415) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#414](#^issue-414), que requiere [#410](#^issue-410); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#416](#^issue-416).
+
+**Rama propuesta.** `Vaqcrow#415_Task_Implement_the_Explorar_PyMEs_marketplace_and_campaign_listing_API` es una unidad de implementación revisable.
+
+### #416 — Probar el marketplace Explorar PyMEs y la API de listado de campañas
+
+^issue-416
+
+- **Título original:** `Task: Test the Explorar PyMEs marketplace and campaign listing API`
+- **GitHub y estado:** [issue #416](https://github.com/reyduar/Vaqcrow/issues/416) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#414](#^issue-414), que requiere [#410](#^issue-410); bloqueada nativamente por [#415](#^issue-415).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#417](#^issue-417).
+
+**Rama propuesta.** `Vaqcrow#416_Task_Test_the_Explorar_PyMEs_marketplace_and_campaign_listing_API` es una unidad de pruebas revisable.
+
+### #417 — Documentar evidencia del marketplace Explorar PyMEs y la API de listado de campañas
+
+^issue-417
+
+- **Título original:** `Task: Document evidence for the Explorar PyMEs marketplace and campaign listing API`
+- **GitHub y estado:** [issue #417](https://github.com/reyduar/Vaqcrow/issues/417) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#414](#^issue-414), que requiere [#410](#^issue-410); bloqueada nativamente por [#416](#^issue-416).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#414](#^issue-414).
+
+**Rama propuesta.** `Vaqcrow#417_Task_Document_evidence_for_the_Explorar_PyMEs_marketplace_and_campaign_listing_API` es una unidad de documentación revisable.
+
+### #422 — Detalle de campaña y aportes
+
+^issue-422
+
+- **Título original:** `Feature: Show campaign detail and handle contributions`
+- **GitHub y estado:** [issue #422](https://github.com/reyduar/Vaqcrow/issues/422) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#376](#^issue-376); bloqueada nativamente por [#378](#^issue-378), [#406](#^issue-406) y [#414](#^issue-414).
+- **Objetivo:** Entregar el detalle de campaña y el flujo de aporte: bloqueo por cuenta, modal «Revisión antes de firmar», redirección a Mi portafolio cuando no hay wallet y KYC simulado del inversor, aprobado automáticamente en el primer aporte.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Estados «Meta alcanzada», «Reembolso disponible» y campaña cerrada/vencida (el template solo diseña «Fondeo abierto»).
+  - Dónde aparece el KYC simulado del inversor en el primer aporte: el template no tiene UI de KYC de inversor.
+  - Quién fija el plazo y el aporte mínimo, en conflicto con la guía de emprendedores.
+  - Errores dentro del modal (saldo insuficiente, red equivocada, rechazo de Freighter) y una acción «Retirar» en el detalle.
+- **Orden:** Requiere [#378](#^issue-378), [#406](#^issue-406) y [#414](#^issue-414); desbloquea [#426](#^issue-426).
+
+**Rama propuesta.** `Vaqcrow#422_Feat_Show_campaign_detail_and_handle_contributions` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #423 — Implementar el detalle de campaña y los aportes
+
+^issue-423
+
+- **Título original:** `Task: Implement campaign detail and contributions`
+- **GitHub y estado:** [issue #423](https://github.com/reyduar/Vaqcrow/issues/423) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#422](#^issue-422), que requiere [#378](#^issue-378), [#406](#^issue-406) y [#414](#^issue-414); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#424](#^issue-424).
+
+**Rama propuesta.** `Vaqcrow#423_Task_Implement_campaign_detail_and_contributions` es una unidad de implementación revisable.
+
+### #424 — Probar el detalle de campaña y los aportes
+
+^issue-424
+
+- **Título original:** `Task: Test campaign detail and contributions`
+- **GitHub y estado:** [issue #424](https://github.com/reyduar/Vaqcrow/issues/424) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#422](#^issue-422), que requiere [#378](#^issue-378), [#406](#^issue-406) y [#414](#^issue-414); bloqueada nativamente por [#423](#^issue-423).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#425](#^issue-425).
+
+**Rama propuesta.** `Vaqcrow#424_Task_Test_campaign_detail_and_contributions` es una unidad de pruebas revisable.
+
+### #425 — Documentar evidencia del detalle de campaña y los aportes
+
+^issue-425
+
+- **Título original:** `Task: Document evidence for campaign detail and contributions`
+- **GitHub y estado:** [issue #425](https://github.com/reyduar/Vaqcrow/issues/425) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#422](#^issue-422), que requiere [#378](#^issue-378), [#406](#^issue-406) y [#414](#^issue-414); bloqueada nativamente por [#424](#^issue-424).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#422](#^issue-422).
+
+**Rama propuesta.** `Vaqcrow#425_Task_Document_evidence_for_campaign_detail_and_contributions` es una unidad de documentación revisable.
+
+### #426 — Portafolio del inversor
+
+^issue-426
+
+- **Título original:** `Feature: Deliver the investor portfolio`
+- **GitHub y estado:** [issue #426](https://github.com/reyduar/Vaqcrow/issues/426) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#376](#^issue-376); bloqueada nativamente por [#422](#^issue-422).
+- **Objetivo:** Entregar Mi portafolio: tarjeta de wallet, totales, posiciones con estado, retiro y distribuciones recibidas.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Una acción «Reembolsar» y el estado «Reembolso disponible»: quién dispara la transacción y dónde.
+  - La confirmación del retiro, el portafolio vacío y los estados sin wallet o desconectada.
+  - Errores de conexión de Freighter y cómo obtener fondos de Testnet.
+  - Un historial por transacción y el destino del enlace al explorador.
+- **Orden:** Requiere [#422](#^issue-422); desbloquea [#430](#^issue-430).
+
+**Rama propuesta.** `Vaqcrow#426_Feat_Deliver_the_investor_portfolio` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #427 — Implementar el portafolio del inversor (Mi portafolio)
+
+^issue-427
+
+- **Título original:** `Task: Implement the investor portfolio (Mi portafolio)`
+- **GitHub y estado:** [issue #427](https://github.com/reyduar/Vaqcrow/issues/427) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#426](#^issue-426), que requiere [#422](#^issue-422); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#428](#^issue-428).
+
+**Rama propuesta.** `Vaqcrow#427_Task_Implement_the_investor_portfolio_Mi_portafolio` es una unidad de implementación revisable.
+
+### #428 — Probar el portafolio del inversor (Mi portafolio)
+
+^issue-428
+
+- **Título original:** `Task: Test the investor portfolio (Mi portafolio)`
+- **GitHub y estado:** [issue #428](https://github.com/reyduar/Vaqcrow/issues/428) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#426](#^issue-426), que requiere [#422](#^issue-422); bloqueada nativamente por [#427](#^issue-427).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#429](#^issue-429).
+
+**Rama propuesta.** `Vaqcrow#428_Task_Test_the_investor_portfolio_Mi_portafolio` es una unidad de pruebas revisable.
+
+### #429 — Documentar evidencia del portafolio del inversor (Mi portafolio)
+
+^issue-429
+
+- **Título original:** `Task: Document evidence for the investor portfolio (Mi portafolio)`
+- **GitHub y estado:** [issue #429](https://github.com/reyduar/Vaqcrow/issues/429) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#426](#^issue-426), que requiere [#422](#^issue-422); bloqueada nativamente por [#428](#^issue-428).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#426](#^issue-426).
+
+**Rama propuesta.** `Vaqcrow#429_Task_Document_evidence_for_the_investor_portfolio_Mi_portafolio` es una unidad de documentación revisable.
+
+### #430 — Informes del inversor
+
+^issue-430
+
+- **Título original:** `Feature: Deliver investor reports`
+- **GitHub y estado:** [issue #430](https://github.com/reyduar/Vaqcrow/issues/430) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#376](#^issue-376); bloqueada nativamente por [#426](#^issue-426).
+- **Objetivo:** Entregar Informes para inversores: selección de período, KPIs, gráfico de distribuciones mensuales, ventas declaradas por PyME y últimas distribuciones, con la exportación deshabilitada como en el template.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Informes para PYME o ADMIN (el template los reserva a inversores).
+  - Una exportación funcional, rangos personalizados y cómo se generan los períodos (el template fija 2026).
+- **Orden:** Requiere [#426](#^issue-426).
+
+**Rama propuesta.** `Vaqcrow#430_Feat_Deliver_investor_reports` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #431 — Implementar los informes del inversor (Informes)
+
+^issue-431
+
+- **Título original:** `Task: Implement investor reports (Informes)`
+- **GitHub y estado:** [issue #431](https://github.com/reyduar/Vaqcrow/issues/431) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#430](#^issue-430), que requiere [#426](#^issue-426); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#432](#^issue-432).
+
+**Rama propuesta.** `Vaqcrow#431_Task_Implement_investor_reports_Informes` es una unidad de implementación revisable.
+
+### #432 — Probar los informes del inversor (Informes)
+
+^issue-432
+
+- **Título original:** `Task: Test investor reports (Informes)`
+- **GitHub y estado:** [issue #432](https://github.com/reyduar/Vaqcrow/issues/432) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#430](#^issue-430), que requiere [#426](#^issue-426); bloqueada nativamente por [#431](#^issue-431).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#433](#^issue-433).
+
+**Rama propuesta.** `Vaqcrow#432_Task_Test_investor_reports_Informes` es una unidad de pruebas revisable.
+
+### #433 — Documentar evidencia de los informes del inversor (Informes)
+
+^issue-433
+
+- **Título original:** `Task: Document evidence for investor reports (Informes)`
+- **GitHub y estado:** [issue #433](https://github.com/reyduar/Vaqcrow/issues/433) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#430](#^issue-430), que requiere [#426](#^issue-426); bloqueada nativamente por [#432](#^issue-432).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#430](#^issue-430).
+
+**Rama propuesta.** `Vaqcrow#433_Task_Document_evidence_for_investor_reports_Informes` es una unidad de documentación revisable.
+
+### #377 — Notificaciones
+
+^issue-377
+
+- **Título original:** `Epic: Notifications`
+- **GitHub y estado:** [issue #377](https://github.com/reyduar/Vaqcrow/issues/377) · Tipo `Epic` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre; Features hijas [#382](#^issue-382).
+- **Objetivo:** Entregar la campana de notificaciones in-app para los tres roles y el email mediante Resend detrás de un puerto y adaptador.
+- **Nota:** Las pruebas del PR usan un doble; el catálogo de eventos lo define el owner.
+
+**Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
+
+### #382 — Notificaciones in-app y email con Resend
+
+^issue-382
+
+- **Título original:** `Feature: Deliver in-app notifications and Resend email`
+- **GitHub y estado:** [issue #382](https://github.com/reyduar/Vaqcrow/issues/382) · Tipo `Feature` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#377](#^issue-377); bloqueada nativamente por [#369](#^issue-369).
+- **Objetivo:** Entregar la campana de notificaciones in-app para ADMIN, PYME e INVERSOR y el email mediante Resend detrás de un puerto y adaptador, con el catálogo de eventos definido por el owner. Las pruebas del PR usan un doble; ningún PR llama a Resend.
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - Dónde va la campana en el encabezado público de PyME e INVERSOR: el template solo la tiene en el shell de Admin.
+  - Copy de las notificaciones de PyME e inversor y las plantillas de email (asunto, cuerpo, remitente, idioma).
+  - Preferencias, baja, agrupación y una página completa de notificaciones (el template solo tiene el modal).
+- **Orden:** Requerida por [#402](#^issue-402) (el envío a revisión notifica al admin).
+
+**Rama propuesta.** `Vaqcrow#382_Feat_Deliver_in_app_notifications_and_Resend_email` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #383 — Implementar las notificaciones in-app y el email con Resend
+
+^issue-383
+
+- **Título original:** `Task: Implement in-app notifications and Resend email`
+- **GitHub y estado:** [issue #383](https://github.com/reyduar/Vaqcrow/issues/383) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#382](#^issue-382), que requiere [#369](#^issue-369); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#384](#^issue-384).
+
+**Rama propuesta.** `Vaqcrow#383_Task_Implement_in_app_notifications_and_Resend_email` es una unidad de implementación revisable.
+
+### #384 — Probar las notificaciones in-app y el email con Resend
+
+^issue-384
+
+- **Título original:** `Task: Test in-app notifications and Resend email`
+- **GitHub y estado:** [issue #384](https://github.com/reyduar/Vaqcrow/issues/384) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#382](#^issue-382), que requiere [#369](#^issue-369); bloqueada nativamente por [#383](#^issue-383).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#385](#^issue-385).
+
+**Rama propuesta.** `Vaqcrow#384_Task_Test_in_app_notifications_and_Resend_email` es una unidad de pruebas revisable.
+
+### #385 — Documentar evidencia de las notificaciones in-app y el email con Resend
+
+^issue-385
+
+- **Título original:** `Task: Document evidence for in-app notifications and Resend email`
+- **GitHub y estado:** [issue #385](https://github.com/reyduar/Vaqcrow/issues/385) · Tipo `Task` · Área `backend` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#382](#^issue-382), que requiere [#369](#^issue-369); bloqueada nativamente por [#384](#^issue-384).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#382](#^issue-382).
+
+**Rama propuesta.** `Vaqcrow#385_Task_Document_evidence_for_in_app_notifications_and_Resend_email` es una unidad de documentación revisable.
+
+### Feature hija del Epic existente #10
+
+La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de un Epic nuevo.
+
+### #438 — Retirar las rutas del recorrido guiado de seis pasos
+
+^issue-438
+
+- **Título original:** `Feature: Retire the scripted six-step demo journey routes`
+- **GitHub y estado:** [issue #438](https://github.com/reyduar/Vaqcrow/issues/438) · Tipo `Feature` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#10](#^issue-10); bloqueada nativamente por [#434](#^issue-434), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#398](#^issue-398).
+- **Objetivo:** Retirar las rutas del recorrido guiado de seis pasos una vez que su motor está alojado en las Features por rol. Hijo del Epic existente [#10](#^issue-10).
+- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
+  - El bloque de la landing «Recorré la demo completa…»: se elimina, se reescribe para los workflows por rol o se apunta a otra parte.
+  - Dónde vive la vista de evidencia de Testnet (hashes, enlaces al explorador) del recorrido en la estructura nueva.
+- **Orden:** Requiere [#398](#^issue-398), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#434](#^issue-434); bloquea [#33](#^issue-33).
+
+**Rama propuesta.** `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+
+### #439 — Implementar el retiro de las rutas del recorrido guiado de seis pasos
+
+^issue-439
+
+- **Título original:** `Task: Implement the retirement of the scripted six-step demo journey`
+- **GitHub y estado:** [issue #439](https://github.com/reyduar/Vaqcrow/issues/439) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#438](#^issue-438), que requiere [#434](#^issue-434), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#398](#^issue-398); sin bloqueos nativos propios.
+- **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
+- **Orden:** inicia el Feature y desbloquea [#440](#^issue-440).
+
+**Rama propuesta.** `Vaqcrow#439_Task_Implement_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de implementación revisable.
+
+### #440 — Probar el retiro de las rutas del recorrido guiado de seis pasos
+
+^issue-440
+
+- **Título original:** `Task: Test the retirement of the scripted six-step demo journey`
+- **GitHub y estado:** [issue #440](https://github.com/reyduar/Vaqcrow/issues/440) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#438](#^issue-438), que requiere [#434](#^issue-434), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#398](#^issue-398); bloqueada nativamente por [#439](#^issue-439).
+- **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
+- **Orden:** valida la implementación y desbloquea [#441](#^issue-441).
+
+**Rama propuesta.** `Vaqcrow#440_Task_Test_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de pruebas revisable.
+
+### #441 — Documentar evidencia del retiro de las rutas del recorrido guiado de seis pasos
+
+^issue-441
+
+- **Título original:** `Task: Document evidence for the retirement of the scripted six-step demo journey`
+- **GitHub y estado:** [issue #441](https://github.com/reyduar/Vaqcrow/issues/441) · Tipo `Task` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** padre [#438](#^issue-438), que requiere [#434](#^issue-434), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#398](#^issue-398); bloqueada nativamente por [#440](#^issue-440).
+- **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
+- **Orden:** cierra [#438](#^issue-438).
+
+**Rama propuesta.** `Vaqcrow#441_Task_Document_evidence_for_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de documentación revisable.
 
 ## Discrepancias y exclusiones
 
