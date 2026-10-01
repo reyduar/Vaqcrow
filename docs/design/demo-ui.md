@@ -1,6 +1,6 @@
 # Vaqcrow — Diseño de experiencia para la demo en Stellar Testnet
 
-Este documento convierte el plan de la demo en un sistema visual y de interacción ejecutable para una única demostración de 5–7 minutos. Prioriza comprensión, trazabilidad y confianza: cada persona debe distinguir en todo momento qué es simulado, qué ocurre realmente en Stellar Testnet y qué decisión conserva control humano.
+Este documento convierte el plan de la demo en un sistema visual y de interacción ejecutable para la demostración del producto por roles (PyME, inversor y administrador), sin objetivo de duración. El handoff del template vive en `docs/design/design_handoff_vaqcrow/` (`README.md`, `brief/`, `screens/`) y es la fuente visual y de comportamiento de ese producto; lo que no diseña se registra como pregunta abierta en su issue (Epics #368–#377), no se inventa. Prioriza comprensión, trazabilidad y confianza: cada persona debe distinguir en todo momento qué es simulado, qué ocurre realmente en Stellar Testnet y qué decisión conserva control humano.
 
 > [!info] El template de Claude Design prevalece sobre el brief escrito (2026-10-01)
 > Decisión del owner (2026-10-01): el **template de Claude Design** (`docs/design/template/`, 14 pantallas, compartido en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>) es la **fuente de verdad del lenguaje visual**, adoptado tal como está. El [[docs/design/claude-design-brief|brief de diseño]] y este documento siguen siendo valiosos como **intención y fundamento**, pero donde contradicen al template, **prevalece el template**.
@@ -41,7 +41,7 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 | Datos y formularios | [Axios](https://www.axios.com/) es transporte HTTP detrás de puertos/adaptadores; [SWR](https://swr.vercel.app/) orquesta estado de servidor y revalidación mediante fetchers de aplicación/adaptador; [React Hook Form](https://react-hook-form.com/) gestiona estado de formulario en navegador, sin decidir reglas de negocio. |
 | Estado y pruebas | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) conserva solo estado de workflow cliente entre rutas, sin duplicar SWR ni estado autoritativo del backend; [Playwright](https://playwright.dev/) cubre smoke/E2E determinísticos con fixtures o dobles locales. |
 | Template de Claude Design | El template en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo) es la referencia visual y de sistema de diseño, **y prevalece sobre el brief escrito donde difieran** (2026-10-01); su HTML generado nunca es implementación autoritativa de producción. |
-| Autenticación | La demo mantiene identidad sintética. [Auth.js v5](https://authjs.dev/) queda planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134) como límite futuro de autenticación/sesión, dependiente de #14 y fuera del camino crítico acotado. |
+| Autenticación | Hoy la sesión es de demostración. La autenticación real con **Supabase Auth** (email y contraseña, roles `PYME` / `INVERSOR` / `ADMIN`, RLS por rol) está planificada en [#369](https://github.com/reyduar/Vaqcrow/issues/369) y **reemplaza** el Auth.js v5 de [#134](https://github.com/reyduar/Vaqcrow/issues/134) (decisión del owner, 2026-10-01). |
 
 ---
 
@@ -101,7 +101,7 @@ Al abrir la experiencia, una persona debe entender:
 - Operación con dinero real o Stellar Public Network.
 - Afirmaciones regulatorias, legales, de solvencia o rentabilidad.
 - Aprobación autónoma por IA.
-- Autenticación y perfiles de producción (login real, recuperación de contraseña y sesión persistente): la demo conserva identidad sintética; Auth.js v5 se planifica por separado en [#134](https://github.com/reyduar/Vaqcrow/issues/134), fuera del camino crítico salvo promoción explícita de alcance.
+- Recuperación de contraseña, verificación de email y expiración de sesión: el template no los diseña y son preguntas abiertas de [#369](https://github.com/reyduar/Vaqcrow/issues/369) y [#378](https://github.com/reyduar/Vaqcrow/issues/378). El login real con Supabase Auth ya forma parte del alcance planificado; la sesión de demostración de hoy lo precede.
 - Soroban, salvo que exista como extensión posterior independiente del diseño base.
 
 El marketplace con múltiples PyMEs, filtros avanzados y el panel de administración **ya no están fuera de alcance**: están diseñados en el template de Claude Design (sección 4; ver «El template de Claude Design (fuente de verdad visual)») y son parte del producto completo descrito en el Objetivo. Persisten fuera de alcance únicamente los puntos listados arriba.
@@ -1314,7 +1314,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 
 ### 13.2 Corrección UX y confianza
 
-- [ ] Se completa un solo recorrido en 5–7 minutos.
+- [ ] Se completan los tres workflows por rol (PyME, administrador e inversor); no hay objetivo de duración.
 - [ ] `SIMULADO` acompaña identidad, KYC, ventas, documentos, conversión y evidencia de respaldo.
 - [ ] `TESTNET` es persistente y aparece en toda revisión, firma, estado y enlace.
 - [ ] IA, decisión humana, cálculo determinístico y movimiento de fondos están separados.
@@ -1371,7 +1371,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 | D-09 | Cabeza de toro geométrica/angular como isotipo aprobado, con variantes monocromas morada y blanca. | Integra la referencia provista sin convertir su gradiente en lenguaje general ni inventar un archivo del repositorio. | Aceptada; asset fuente pendiente |
 | D-10 | El producto completo (19 flujos) es la aplicación real descrita por el [[docs/design/claude-design-brief|brief]] y el template de Claude Design: marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y Acerca de Vaqcrow; la historia vertical original queda como recorrido guiado dentro de ese producto. | El owner construyó manualmente el diseño real del producto, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
 | D-11 | HeroUI + Tailwind CSS + React Icons `io5` forman la base de implementación visual. | Separa primitivas accesibles, tokens centralizados e iconografía consistente sin convertir el template o constantes locales en fuentes de producción. | Aceptada; reemplaza la decisión abierta sobre iconos |
-| D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; Auth.js v5 queda en #134 fuera de la demo. | Evita fuentes de verdad paralelas y conserva backend e identidad sintética como límites autoritativos del alcance actual. | Aceptada para handoff; Auth.js aún no implementado |
+| D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; la autenticación pasa a Supabase Auth (#369) y Auth.js v5 (#134) queda superseded. | Evita fuentes de verdad paralelas y conserva al backend (con RLS) como límite autoritativo de identidad y permisos. | Aceptada para handoff; Supabase Auth aún no implementado |
 
 > [!warning] Retirado (2026-10-01)
 > Las decisiones D-06, D-07, D-08, D-10 y D-11 se tomaron cuando la ejecución del diseño vivía en Google Stitch y su ledger; esa ejecución quedó retirada (ver §11) y la referencia visual es el template de Claude Design. Se conservan como registro, con su redacción ajustada al nuevo medio.
@@ -1438,7 +1438,7 @@ Los estados siguientes son independientes. No usar “terminado” si solo se co
 - [ ] Fondeo y distribución pasan por `submitted` y llegan a estado terminal verificado.
 - [ ] Hashes y enlaces del explorador Testnet son correctos.
 - [ ] WCAG 2.2 AA se mide en ambos temas para texto, controles, foco y parejas semánticas; los ajustes quedan documentados.
-- [ ] Playwright produce evidencia del recorrido de 5–7 minutos, fallbacks esenciales y comprobaciones temáticas/responsivas definidas en QA.
+- [ ] Playwright produce evidencia de los workflows por rol, fallbacks esenciales y comprobaciones temáticas/responsivas definidas en QA.
 - [ ] No hay secretos, seeds, PII, fondos reales ni claims de producción.
 - [ ] El HTML generado del template permanece como referencia y no reemplaza revisión de código.
 
