@@ -12,7 +12,7 @@ status: draft
 # Corrida hosteada y cronometrada de la demo — preflight y runbook
 
 > [!info] Objetivo
-> Dejar listo, y poder comprobar antes de empezar, el entorno de una corrida del recorrido completo de la demo (solicitud → evaluación de IA → aprobación humana → fondeo en la bóveda → ventas mensuales → obligación determinística → distribución en Testnet → evidencia) en **siete minutos o menos**. Es la Task T6 de [#95](https://github.com/reyduar/Vaqcrow/issues/95) (Feature #30). No reemplaza a [[docs/guides/freighter-and-testnet-walkthrough|la guía de Freighter y Testnet]], que explica el recorrido paso a paso.
+> Dejar listo, y poder comprobar antes de empezar, el entorno de una corrida del recorrido completo de la demo (solicitud → evaluación de IA → aprobación humana → fondeo en la bóveda → ventas mensuales → obligación determinística → distribución en Testnet → evidencia) sin objetivo de duración (el objetivo de tiempo que tenía este runbook se retiró el 2026-10-01 porque el owner nunca lo propuso). Es la Task T6 de [#95](https://github.com/reyduar/Vaqcrow/issues/95) (Feature #30). No reemplaza a [[docs/guides/freighter-and-testnet-walkthrough|la guía de Freighter y Testnet]], que explica el recorrido paso a paso.
 
 > [!warning] Sólo Testnet, sólo simulación
 > Identidad, KYC/KYB, historial de ventas y conversión ARS ↔ activo son **simulados**; Stellar corre en **Testnet** y el XLM no tiene valor económico; la IA es solo asesora. Nada de esto describe un producto en producción.
