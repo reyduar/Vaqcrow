@@ -43,32 +43,32 @@ export function EvidenceTimeline({ entries, className }: EvidenceTimelineProps) 
       lang="es"
       className={`flex flex-col gap-4 ${className ?? ""}`.trim()}
     >
-      <ol className="m-0 flex list-none flex-col gap-4 p-0">
+      <ol className="m-0 flex list-none flex-col gap-6 p-0">
         {entries.map((entry) => (
           <li
             key={entry.id}
             data-state={entry.state}
-            className="flex flex-col gap-3 rounded-2xl border border-border p-4"
+            className="flex flex-col gap-4 rounded-card border border-border p-6"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="m-0 text-base font-semibold">{entry.title}</h3>
+              <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">{entry.title}</h3>
               {entry.badges.map((badge) => (
                 <Badge key={badge.label} variant={badge.variant} label={badge.label} lang="es" />
               ))}
             </div>
 
-            <p className="text-sm">{entry.description}</p>
+            <p className="m-0 text-sm">{entry.description}</p>
 
-            <p className="text-sm" data-state={entry.state}>
+            <p className="m-0 text-sm" data-state={entry.state}>
               <span className="font-medium">Estado: </span>
               {STATE_LABEL[entry.state]}
             </p>
 
             {entry.facts.length > 0 ? (
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+              <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
                 {entry.facts.map((fact) => (
                   <Fragment key={fact.label}>
-                    <dt className="text-muted">{fact.label}</dt>
+                    <dt className="text-text-secondary">{fact.label}</dt>
                     <dd className="m-0">{fact.value}</dd>
                   </Fragment>
                 ))}
@@ -85,7 +85,7 @@ export function EvidenceTimeline({ entries, className }: EvidenceTimelineProps) 
                     {...(hash.explorerUrl === undefined ? {} : { explorerUrl: hash.explorerUrl })}
                   />
                 ))}
-                <p className="text-xs text-muted">{microcopy.hashTechnicalOnly}</p>
+                <p className="m-0 text-xs text-text-secondary">{microcopy.hashTechnicalOnly}</p>
               </div>
             ) : null}
 

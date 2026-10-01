@@ -141,7 +141,7 @@ export function EvidenceWorkspace({
 
   if (!sources) {
     return (
-      <p aria-live="polite" lang="es" className="text-sm">
+      <p aria-live="polite" lang="es" className="m-0 text-sm text-text-secondary">
         Cargando la evidencia…
       </p>
     );
