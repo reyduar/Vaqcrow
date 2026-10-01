@@ -184,7 +184,66 @@ graph TB
     HORIZON -->|"cuenta de la PyME"| VAULT
 ```
 
-La persona usuaria firma con Freighter en su navegador; la plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME con `STELLAR_PLATFORM_SECRET_KEY`, cuyo único punto de uso es `platform-signer.ts`. La cadena es la fuente de verdad del dinero y Supabase es su espejo. Es una demo en **Testnet**: identidad, KYC/KYB y ventas son simulados y los activos no tienen valor económico.
+La persona usuaria firma con Freighter en su navegador; la plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME con `STELLAR_PLATFORM_SECRET_KEY`, cuyo único punto de uso es `platform-signer.ts`. La cadena es la fuente de verdad del dinero y Supabase es su espejo. Es una demo en **Testnet**: hoy la identidad, KYC/KYB y ventas son simulados y los activos no tienen valor económico.
+
+### Arquitectura objetivo por roles (planificada)
+
+Hacia dónde va el producto con la forma del template ([Hoja de ruta](#hoja-de-ruta-producto-por-roles-alineado-al-template)). Las flechas continuas ya existen en `main`; las punteadas son planificadas e indican el issue que las entrega.
+
+```mermaid
+graph LR
+    subgraph NAV["Navegador"]
+        PYME["PyME<br/>Freighter"]
+        INV["Inversor<br/>Freighter"]
+        ADMIN["Admin<br/>sin wallet"]
+    end
+
+    subgraph WEB["apps/web — Next.js"]
+        PUBLIC["Público<br/>Landing · Explorar PyMEs · Acerca de · Ayuda · Guías"]
+        PYMEAREA["Área PyME<br/>Onboarding PyME · Mi campaña"]
+        INVAREA["Área inversor<br/>Detalle PyME · Mi portafolio · Informes"]
+        ADMINAREA["/admin<br/>PyMEs · Revisión · Usuarios"]
+    end
+
+    subgraph SB["Supabase"]
+        AUTH["Auth<br/>roles PYME · INVERSOR · ADMIN"]
+        DB[("PostgreSQL + RLS<br/>auditoría · notificaciones")]
+        STORAGE["Storage privado<br/>documentos y fotos"]
+    end
+
+    API["apps/api — Fastify<br/>autorización por rol · IA consultiva en 2 pasos<br/>decisión humana · cálculo de distribución<br/>platform-signer: solo factory.deploy / CreateAccount"]
+
+    subgraph EXT["Servicios externos"]
+        LLM["Proveedor LLM"]
+        RESEND["Resend — email"]
+    end
+
+    subgraph ST["Stellar Testnet"]
+        FACTORY["Fábrica de bóvedas"]
+        VAULT["Bóveda de campaña"]
+        PYMEACC["Cuenta de la PyME"]
+        INVACC["Cuentas de inversores"]
+    end
+
+    NAV --> PUBLIC
+    PYME -.->|"#398 #434"| PYMEAREA
+    INV -.->|"#422 #426"| INVAREA
+    ADMIN -.->|"#386 #410"| ADMINAREA
+    WEB -.->|"sesión #378"| AUTH
+    WEB -->|"HTTPS + txs firmadas en Freighter"| API
+    AUTH -.->|"identidad verificada #369"| API
+    API --> DB
+    API -.->|"documentos no confiables #398 #402"| STORAGE
+    API --> LLM
+    API -.->|"notificaciones #382"| RESEND
+    API -->|"deploy firmado por la plataforma<br/>disparado por la aprobación del admin #410"| FACTORY
+    FACTORY -->|"destino inmutable"| VAULT
+    VAULT -->|"meta alcanzada: liquida"| PYMEACC
+    VAULT -->|"vencida: reembolso"| INVACC
+    PYMEACC -->|"revenue share firmado por la PyME"| INVACC
+```
+
+Vaqcrow **nunca** custodia claves ni recibe o mueve dinero de terceros: la clave de plataforma solo despliega la bóveda (y crea la cuenta de la PyME en Testnet) cuando un admin aprueba; los aportes los custodia el contrato y cada pago lo firma su dueño en Freighter. La conversión ARS ↔ activo sigue simulada.
 
 ## Stack previsto para la demo
 

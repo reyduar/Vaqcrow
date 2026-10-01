@@ -229,7 +229,7 @@ flowchart LR
     SIM --> FUNDING[Fondeo/ARS simulado]
 
     API --> DB[(Supabase PostgreSQL)]
-    API --> STORAGE[Supabase Storage privado<br/>documentos y fotos de la PyME]
+    API -.->|planificado #398| STORAGE[Supabase Storage privado<br/>documentos y fotos de la PyME]
     WORKER --> DB
 
     STELLARPKG --> RPC[Soroban RPC]
@@ -241,7 +241,7 @@ flowchart LR
     VAULT --> TESTNET
 ```
 
-Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. Los bloques Supabase Auth y notificaciones corresponden a los Epics #368 y #377, no a capacidades ya implementadas. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
+Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. Los bloques Supabase Auth, Storage y notificaciones corresponden a los Epics #368, #374 y #377, no a capacidades ya implementadas. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
 
 ### CI/CD con GitHub Actions
 
