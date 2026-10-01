@@ -193,11 +193,12 @@ Cheapest-first, one work unit per slice. Slices 1–5 are shipped.
 - [x] Slice 2 — Foundation in `globals.css` + `layout.tsx` — commit `8bca5dd8d631b360921a3d171000ef4161f9aaa6`
 - [x] Slice 3 — Primitives — commit `4c383dd80d4bf673883c9244e423b0f8d57af483`
 - [x] Slice 4 — Shell — commit `29e633ecb5cf05819d5cdb021b6e74db3ef31d2b`
-- [x] Slice 5 — Per-screen (four work units, cheapest first)
+- [x] Slice 5 — Per-screen (five work units, cheapest first)
   - `/request` + `/approval` (and the shared shell container) — commit `dc06cbf0136d65b5ca5178d64c68fa111bd3ed01`
   - `/ai-assessment` + `/distribution` — commit `8f0fb3aa055bc14f93cda910db1feec3457bb3b5`
   - `/funding` — commit `dedbe40a05a598f261b0ba8c4d4e0d4c48107d94`
   - `/evidence` — commit `cc6d3357c0c7daf4189b1c24466d7bea78edcc8f`
+  - screen-header type-scale cleanup — commit `1795dcbc7425ab86d965e8f66f3b75c846778544`
 
 ### Slice 5 decision — `/` stays a redirect to `/request`
 
@@ -227,6 +228,29 @@ Slice 2 accent strategy, recorded here because the slice had to decide it: HeroU
 `--accent` with the brand purple (`--color-brand-accent`). Everything HeroUI derives from it (`--accent-hover`, `--accent-soft`, `--focus`, the `--color-accent*`
 aliases) recomputes, so Button, Radio, Chip, ProgressBar and the other accent-driven primitives take the brand colour system-wide. HeroUI's reserved `--color-*`
 aliases are **not** redeclared, so the decision documented in `globals.css` stands.
+
+## What is still open
+
+The honest remainder after the slices — what they did **not** settle, recorded as open work rather than defects.
+
+- **The owner's observation (2026-10-01).** The design-related issues were written from the earlier
+  design (`demo-ui.md` / the Stitch conception) and were never thought through in the way the template
+  conceives the product. The **functions** look reasonably aligned with the MVP, but the **screens were
+  built by default** — to satisfy the journey and its tests — rather than derived from the template's
+  design. This is recorded as the owner's read, not as a verified finding. The open question for the next
+  working session is how the app *should* look against the template versus how it looks now, and how far
+  the planning corpus (the issues and `docs/planning/demo-tasks-list.md`) still describes the
+  pre-template conception. The five slices aligned the surface to the template's tokens and primitives;
+  that is not proof it matches the design.
+- **The isotipo asset.** `demo-ui.md` §5.2 approves the geometric bull-head mark, but no authorized,
+  versioned source file exists in the repository (there is no `apps/web/public/`), so the header ships the
+  wordmark alone and the template's `assets/vaqcrow-isotipo.png` is not referenced. The block lifts when an
+  authorized, versioned source file is incorporated.
+- **The mobile variants.** `demo-ui.md` requires a light/dark desktop pair and then a light/dark mobile
+  pair per route; the mobile pair is not built.
+- **Template screens the demo has no route for.** The landing, wallet and marketplace surfaces are a
+  product-scope decision, not a styling one; building them means new routes, navigation and data
+  (see Out of scope).
 
 ## Out of scope (unless the owner expands it)
 
@@ -266,6 +290,13 @@ now matches the template — the per-slice checks above carry that.
 - `dedbe40a05a598f261b0ba8c4d4e0d4c48107d94` — `feat(web): align the fondeo screen with the template` (Slice 5).
 - `cc6d3357c0c7daf4189b1c24466d7bea78edcc8f` — `feat(web): align the evidencia screen with the template` (Slice 5).
 - `1795dcbc7425ab86d965e8f66f3b75c846778544` — `refactor(web): use the framework type scale for the slice-5 screen headers` (Slice 5 cleanup).
+
+### Documentation pass (2026-10-01)
+
+- `cab3354c530eca91eb5642b568d8198a6c440fae` — `docs(readme): record the template as the design source of truth and the adaptation as delivered` (`README.md`).
+- `052a85243ddf39a3ddd8d998eca60a97b98a13d2` — `docs: record the Claude Design template as a settled decision` (`CLAUDE.md`, `AGENTS.md`).
+- `e0d219bc77ca0e41c79e9d4fa530bf88d2b54dc7` — `docs(planning): flag that the design issues predate the template` (`docs/planning/demo-tasks-list.md`).
+- This document lands in the last commit of the documentation pass; its own hash is recorded in the change report.
 
 ## Sources
 
