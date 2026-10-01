@@ -92,7 +92,8 @@ Chequea, cada uno con ✔/✖ y un motivo corto:
 4. Soroban RPC sano (`getHealth`) y con la passphrase de Testnet (`getNetwork`).
 5. La instancia del contrato de la fábrica existe (`getLedgerEntries`).
 6. Cuenta de plataforma (clave pública derivada localmente de `STELLAR_PLATFORM_SECRET_KEY`, o `--platform G…`), cuenta de la PyME y cuentas de inversores: existen en Horizon y superan el piso de XLM.
-7. El esquema remoto tiene las tablas del recorrido (`application_review`, `sme_request`, `application_assessment`, `human_decision`, `campaign`, `campaign_contribution`, `revenue_share_distribution`) y que `revenue_share_distribution` expone `campaign_id` y `period`.
+7. El esquema remoto tiene las tablas del recorrido (`application_review`, `sme_request`, `application_assessment`, `human_decision`, `campaign`, `campaign_contribution`, `revenue_share_distribution`, más `profile` y `audit_log` de la identidad) y que `revenue_share_distribution` expone `campaign_id` y `period`.
+8. Existe un perfil `ADMIN` activo (sembrado con `pnpm --filter @vaqcrow/api seed:superadmin:cloud`; ver `docs/architecture/environments.md` §13). El preflight no lee ni exige `VAQCROW_SUPERADMIN_PASSWORD`.
 
 > [!tip] Cuándo correrlo
 > Una vez al preparar el ensayo y otra vez justo antes de la corrida cronometrada, con la API ya caliente (ver §4).
