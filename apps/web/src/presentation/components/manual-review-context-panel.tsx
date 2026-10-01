@@ -62,30 +62,34 @@ export function ManualReviewContextPanel({ context }: ManualReviewContextPanelPr
   const isSimulated = providerProvenance?.source === "simulated";
 
   return (
-    <section aria-label="Revisión manual" lang="es" className="flex flex-col gap-4">
+    <section
+      aria-label="Revisión manual"
+      lang="es"
+      className="flex flex-col gap-5 rounded-card border border-border p-6"
+    >
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="text-lg font-semibold">Revisión manual</h3>
+        <h3 className="m-0 text-lg font-bold">Revisión manual</h3>
         {isSimulated ? <Badge variant="simulado" label="SIMULADO" lang="es" /> : null}
       </header>
 
-      <p className="text-sm">
+      <p className="m-0 text-sm">
         La evaluación de IA no produjo un resultado para esta solicitud. No hay una sugerencia del
         modelo que mostrar: una persona debe revisar la evidencia y decidir.
       </p>
 
-      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
-        <dt>Motivo del fallo</dt>
-        <dd>{FAILURE_LABEL[context.failureCode]}</dd>
-        <dt>Estado de la solicitud</dt>
-        <dd>{STATE_LABEL[context.applicationState]}</dd>
-        <dt>Registrado</dt>
-        <dd>{context.recordedAt}</dd>
-        <dt>Procedencia</dt>
-        <dd>
+      <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
+        <dt className="text-text-secondary">Motivo del fallo</dt>
+        <dd className="m-0">{FAILURE_LABEL[context.failureCode]}</dd>
+        <dt className="text-text-secondary">Estado de la solicitud</dt>
+        <dd className="m-0">{STATE_LABEL[context.applicationState]}</dd>
+        <dt className="text-text-secondary">Registrado</dt>
+        <dd className="m-0">{context.recordedAt}</dd>
+        <dt className="text-text-secondary">Procedencia</dt>
+        <dd className="m-0">
           {providerProvenance ? (
             <span className="flex flex-wrap items-center gap-2">
               <span>{providerProvenance.model}</span>
-              <span className="text-sm text-muted">
+              <span className="text-sm text-text-secondary">
                 {`prompt ${providerProvenance.promptVersion} · ${providerProvenance.generatedAt}`}
               </span>
             </span>
@@ -97,14 +101,17 @@ export function ManualReviewContextPanel({ context }: ManualReviewContextPanelPr
 
       <div className="flex flex-col gap-1">
         <h4 className="font-medium">Evidencia evaluada</h4>
-        <p className="text-sm text-muted">Serie sintética de la demo; no verificada contra fuentes externas.</p>
-        <ul aria-label="Períodos evaluados" className="flex flex-col gap-2">
+        <p className="m-0 text-sm text-text-secondary">Serie sintética de la demo; no verificada contra fuentes externas.</p>
+        <ul aria-label="Períodos evaluados" className="m-0 flex list-none flex-col gap-2 p-0">
           {context.evidence.periods.map((period) => (
-            <li key={period.evidenceRef} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <li
+              key={period.evidenceRef}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-border p-3"
+            >
               <code>{period.evidenceRef}</code>
               <span>{period.period}</span>
               <span>{PERIOD_STATUS_LABEL[period.status]}</span>
-              <span className="text-sm text-muted">
+              <span className="text-sm text-text-secondary">
                 {period.amountArs === null ? "Sin dato declarado" : currency.format(period.amountArs)}
               </span>
             </li>
@@ -115,7 +122,7 @@ export function ManualReviewContextPanel({ context }: ManualReviewContextPanelPr
       <div className="flex flex-col gap-1">
         <h4 className="font-medium">Hallazgos</h4>
         {context.evidence.findings.length === 0 ? (
-          <p className="text-sm text-muted">No se registraron hallazgos.</p>
+          <p className="m-0 text-sm text-text-secondary">No se registraron hallazgos.</p>
         ) : (
           <ul aria-label="Hallazgos" className="list-disc pl-5">
             {context.evidence.findings.map((finding, index) => (

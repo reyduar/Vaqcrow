@@ -28,6 +28,10 @@ Out (explicit boundary):
   the receipt. This is a new change with its own review.
 - The Stitch prompt block of `demo-ui.md` §11/§12 keeps the original brief; whether it should also be
   reconciled is a separate decision, recorded in the evidence document's next steps.
+
+  > [!info] Superseded (2026-10-01)
+  > Resolved: the Stitch prompt block of `demo-ui.md` §11/§12 was retired on 2026-10-01, when Google
+  > Stitch ceased to be the design source of truth. Kept as the record of that follow-up.
 - `microcopy.kycStatusLabel` (dead copy, finding F5) stays untouched.
 
 ## Hygiene performed before this change

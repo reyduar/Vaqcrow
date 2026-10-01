@@ -83,16 +83,16 @@ export function HumanDecisionForm({ defaultActor, onSubmit, error, isSubmitting 
       lang="es"
       noValidate
       aria-label="Decisión humana"
-      className="flex max-w-xl flex-col gap-4"
+      className="flex flex-col gap-4 rounded-card border border-border p-6"
       onSubmit={handleSubmit}
     >
-      <h3 className="text-lg font-semibold">Decisión humana</h3>
-      <p className="text-sm">
+      <h3 className="m-0 text-lg font-bold">Decisión humana</h3>
+      <p className="m-0 text-sm">
         La decisión la registra una persona. La IA no aprueba ni define el límite: si aprobás, el límite lo fijás vos.
       </p>
 
-      <fieldset className="flex flex-col gap-2" aria-describedby={describedBy("outcome")}>
-        <legend className="font-medium">Decisión</legend>
+      <fieldset className="m-0 flex flex-col gap-2 border-0 p-0" aria-describedby={describedBy("outcome")}>
+        <legend className="p-0 font-medium">Decisión</legend>
         {OUTCOMES.map((option) => (
           <label key={option.value} className="flex items-center gap-2">
             <input

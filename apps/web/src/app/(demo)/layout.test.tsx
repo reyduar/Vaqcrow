@@ -40,7 +40,7 @@ describe("DemoLayout", () => {
       </DemoLayout>
     );
 
-    expect(screen.getByRole("heading", { name: "Request" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Solicitud" })).toBeInTheDocument();
     expect(screen.getByText("Step body content")).toBeInTheDocument();
   });
 

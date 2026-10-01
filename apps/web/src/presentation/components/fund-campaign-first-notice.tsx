@@ -7,7 +7,11 @@ import { demoStepHref } from "@/application/navigation/demo-steps";
  */
 export function FundCampaignFirstNotice({ action = "continuar" }: { readonly action?: string }) {
   return (
-    <p role="status" lang="es" className="text-sm">
+    <p
+      role="status"
+      lang="es"
+      className="m-0 rounded-card border border-border p-4 text-sm text-text-secondary"
+    >
       {`Todavía no hay una campaña fondeada: primero hay que fondear la campaña para poder ${action}. `}
       <Link href={demoStepHref("funding")} className="underline">
         Ir al fondeo

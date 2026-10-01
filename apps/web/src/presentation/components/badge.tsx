@@ -7,12 +7,19 @@ import type { IconType } from "react-icons";
  * keeping the project's own `--color-trust-*` Tailwind tokens as the visual
  * source of truth via `className`. Every instance renders visible text —
  * `label` is required — so meaning never lives only in an icon or a color.
- * `BadgeTone` deliberately has no "success" member: a transaction in
- * "Enviada"/"Pendiente de confirmación" must never be able to read as
- * success at the type level, not only by convention. HeroUI's own `Chip`
- * `color` vocabulary DOES include `"success"` (see `@heroui/styles`
- * `chipVariants`), so `TONE_TO_CHIP_COLOR` below is written to never select
- * it, regardless of what HeroUI itself supports.
+ *
+ * Slice 3 fidelity pass (template `Vaqcrow Sistema.dc.html` §04 "Badges",
+ * lines 199–207): the pill is 24 px high, 10 px inline padding, radius 999,
+ * 12 px / 600 type. The signature chips use the template's own treatments —
+ * `DEMO` is outlined, `SIMULADO` a dashed outline, `TESTNET` an accent tint —
+ * while risk/transaction/evidence/fallback keep a semantic tone.
+ *
+ * The `success` tone is adopted from the template (`--ok-s`/`--ok-t`,
+ * "Confirmada"), but `demo-ui.md` §2 bounds it: green is reserved for
+ * outcomes **actually confirmed in the ledger**, never for
+ * `Enviado`/`Pendiente de confirmación`, and never the only signal. That is
+ * why `DEFAULT_TONE` still resolves every variant to a non-success tone, and
+ * a caller must opt into `success` explicitly for a confirmed ledger result.
  */
 export type BadgeVariant =
   | "simulado"
@@ -23,7 +30,7 @@ export type BadgeVariant =
   | "evidence"
   | "fallback";
 
-export type BadgeTone = "neutral" | "info" | "caution" | "critical";
+export type BadgeTone = "neutral" | "info" | "caution" | "critical" | "success";
 
 export interface BadgeProps {
   readonly variant: BadgeVariant;
@@ -45,26 +52,47 @@ const DEFAULT_TONE: Readonly<Record<BadgeVariant, BadgeTone>> = {
   evidence: "neutral"
 };
 
+/**
+ * Semantic tone → the template's solid surface/text pair
+ * (`Vaqcrow Sistema.dc.html` lines 15–16, `demo-ui.md` §5.4). `neutral` keeps
+ * the template's outlined treatment (border + secondary text, no fill).
+ */
 const TONE_CLASSES: Readonly<Record<BadgeTone, string>> = {
-  neutral: "bg-trust-neutral/10 text-trust-neutral border-trust-neutral/30",
-  info: "bg-trust-info/10 text-trust-info border-trust-info/30",
-  caution: "bg-trust-caution/10 text-trust-caution border-trust-caution/30",
-  critical: "bg-trust-critical/10 text-trust-critical border-trust-critical/30"
+  neutral: "border-border bg-transparent text-text-secondary",
+  info: "border-transparent bg-trust-info-surface text-trust-info",
+  caution: "border-transparent bg-trust-caution-surface text-trust-caution",
+  critical: "border-transparent bg-trust-critical-surface text-trust-critical",
+  success: "border-transparent bg-trust-success-surface text-trust-success"
 };
 
 /**
- * `BadgeTone` → HeroUI `Chip` `color`. Deliberately never maps to HeroUI's
- * own `"success"` color — see module doc above.
+ * Variant-specific treatments that a tone cannot express, straight from the
+ * template's badge row (`Vaqcrow Sistema.dc.html` lines 199–201, 207).
  */
-const TONE_TO_CHIP_COLOR: Readonly<Record<BadgeTone, "default" | "accent" | "warning" | "danger">> = {
+const VARIANT_CLASSES: Partial<Readonly<Record<BadgeVariant, string>>> = {
+  demo: "border-text-primary bg-transparent text-text-primary tracking-[0.06em]",
+  simulado: "border-dashed border-text-secondary bg-transparent text-text-primary tracking-[0.04em]",
+  testnet: "border-transparent bg-brand-accent-tint text-brand-accent-text tracking-[0.04em]"
+};
+
+/**
+ * `BadgeTone` → HeroUI `Chip` `color`. The project's own `TONE_CLASSES` are
+ * what actually render (utilities outrank HeroUI's components layer); this
+ * mapping only keeps HeroUI's own derived states coherent.
+ */
+const TONE_TO_CHIP_COLOR: Readonly<
+  Record<BadgeTone, "default" | "accent" | "warning" | "danger" | "success">
+> = {
   neutral: "default",
   info: "accent",
   caution: "warning",
-  critical: "danger"
+  critical: "danger",
+  success: "success"
 };
 
 export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
   const resolvedTone = tone ?? DEFAULT_TONE[variant];
+  const visualClasses = VARIANT_CLASSES[variant] ?? TONE_CLASSES[resolvedTone];
 
   return (
     <Chip
@@ -74,9 +102,9 @@ export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
       data-variant={variant}
       data-tone={resolvedTone}
       lang={lang}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[resolvedTone]}`}
+      className={`inline-flex h-6 items-center gap-1 rounded-pill border px-2.5 text-xs font-semibold ${visualClasses}`}
     >
-      {Icon ? <Icon aria-hidden="true" focusable="false" /> : null}
+      {Icon ? <Icon aria-hidden="true" focusable="false" className="text-[14px]" /> : null}
       {label}
     </Chip>
   );

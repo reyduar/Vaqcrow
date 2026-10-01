@@ -71,8 +71,10 @@ export function HashDisplay({ label, value, explorerUrl, className }: HashDispla
   return (
     <div className={`flex flex-col gap-2 ${className ?? ""}`.trim()}>
       <span className="text-sm font-medium">{label}</span>
-      <div className="flex flex-wrap items-center gap-2">
-        <span title={value} className="font-mono text-sm break-all">
+      {/* Hash + copy surface from `Vaqcrow Sistema.dc.html` line 210: a
+          bordered `--surface` box at the control radius, Geist Mono value. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-control border border-border bg-page-surface px-3.5 py-2">
+        <span title={value} className="min-w-0 flex-1 font-mono text-[13px] break-all">
           <span aria-hidden={isTruncated ? "true" : undefined}>{truncated}</span>
           {isTruncated ? <span className="sr-only">{value}</span> : null}
         </span>

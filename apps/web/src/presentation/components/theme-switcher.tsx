@@ -103,24 +103,34 @@ export function ThemeSwitcher() {
   }, [choice, systemTheme]);
 
   return (
-    <RadioGroup
-      aria-label="Tema"
-      name={THEME_STORAGE_KEY}
-      orientation="horizontal"
-      value={choice}
-      onChange={(next) => writeChoice(next as ThemeChoice)}
-      className="text-sm"
-    >
-      {CHOICES.map((option) => (
-        <Radio key={option.value} value={option.value}>
-          <Radio.Content>
-            <Radio.Control>
-              <Radio.Indicator />
-            </Radio.Control>
-            {option.label}
-          </Radio.Content>
-        </Radio>
-      ))}
-    </RadioGroup>
+    // Container from `Vaqcrow Sistema.dc.html` line 47: 3 px padding, 2 px
+    // gap, a 1 px `--border` at the control radius over `--surface`.
+    //
+    // Deviation, recorded: the template draws the three choices as pressed
+    // buttons; the app keeps a real `radiogroup` (its selected state is a
+    // shape, not only a fill) because `demo-ui.md` §5.8 requires the selected
+    // state to be perceivable without colour and this control is already
+    // specified and tested as a radiogroup. Only the shell is restyled here.
+    <div className="inline-flex rounded-control border border-border bg-page-surface p-[3px]">
+      <RadioGroup
+        aria-label="Tema"
+        name={THEME_STORAGE_KEY}
+        orientation="horizontal"
+        value={choice}
+        onChange={(next) => writeChoice(next as ThemeChoice)}
+        className="gap-1 text-[13px]"
+      >
+        {CHOICES.map((option) => (
+          <Radio key={option.value} value={option.value}>
+            <Radio.Content>
+              <Radio.Control>
+                <Radio.Indicator />
+              </Radio.Control>
+              {option.label}
+            </Radio.Content>
+          </Radio>
+        ))}
+      </RadioGroup>
+    </div>
   );
 }

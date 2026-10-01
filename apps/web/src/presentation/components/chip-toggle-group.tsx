@@ -58,7 +58,7 @@ export function ChipToggleGroup({
         {...(onChange ? { onSelectionChange: (keys: Iterable<Key>) => onChange(Array.from(keys, String)) } : {})}
       >
         {options.map((option) => (
-          <ToggleButton key={option.value} id={option.value}>
+          <ToggleButton key={option.value} id={option.value} className="rounded-pill">
             {({ isSelected }) => (
               <>
                 {isSelected ? <IoCheckmarkOutline aria-hidden="true" focusable="false" /> : null}

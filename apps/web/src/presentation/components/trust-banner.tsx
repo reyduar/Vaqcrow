@@ -58,6 +58,28 @@ const STATUS_BY_VARIANT: Readonly<Record<TrustBannerVariant, "accent" | "warning
   error: "danger"
 };
 
+/**
+ * Per-variant surface from `Vaqcrow Sistema.dc.html` §05 (lines 271–286):
+ * simulation is a dashed `--control` outline, testnet an `--accent-tint`
+ * fill, fallback an `--info-s` fill, error an `--err-s` fill — all at the
+ * card radius (16 px). The classes are utilities, so they outrank HeroUI's
+ * own `Alert` status colours.
+ */
+const SURFACE_BY_VARIANT: Readonly<Record<TrustBannerVariant, string>> = {
+  simulation: "rounded-card border border-dashed border-control bg-transparent text-text-primary",
+  testnet: "rounded-card border-transparent bg-brand-accent-tint text-text-primary",
+  fallback: "rounded-card border-transparent bg-trust-info-surface text-trust-info",
+  error: "rounded-card border-transparent bg-trust-critical-surface text-trust-critical"
+};
+
+/** Icon colour per variant; testnet reads its accent from the accent-text token. */
+const ICON_CLASS_BY_VARIANT: Readonly<Record<TrustBannerVariant, string>> = {
+  simulation: "text-text-secondary",
+  testnet: "text-brand-accent-text",
+  fallback: "text-trust-info",
+  error: "text-trust-critical"
+};
+
 export function TrustBanner({ variant, title, body, badge, link, lang }: TrustBannerProps) {
   const Icon = ICON_BY_VARIANT[variant];
 
@@ -67,16 +89,17 @@ export function TrustBanner({ variant, title, body, badge, link, lang }: TrustBa
       role={ROLE_BY_VARIANT[variant]}
       lang={lang}
       data-variant={variant}
+      className={SURFACE_BY_VARIANT[variant]}
     >
-      <Alert.Indicator>
+      <Alert.Indicator className={ICON_CLASS_BY_VARIANT[variant]}>
         <Icon aria-hidden="true" focusable="false" />
       </Alert.Indicator>
       <Alert.Content>
         <header className="flex items-center gap-2">
-          <Alert.Title>{title}</Alert.Title>
+          <Alert.Title className="font-semibold">{title}</Alert.Title>
           {badge ? <Badge {...badge} /> : null}
         </header>
-        <Alert.Description>{body}</Alert.Description>
+        <Alert.Description className="text-inherit">{body}</Alert.Description>
         {link ? <a href={link.href}>{link.label}</a> : null}
       </Alert.Content>
     </Alert.Root>

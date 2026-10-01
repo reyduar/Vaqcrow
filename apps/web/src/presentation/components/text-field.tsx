@@ -82,21 +82,28 @@ export function TextField({
       fullWidth={fullWidth}
       {...(className ? { className } : {})}
     >
-      <Label>{label}</Label>
+      {/* Field shell from `Vaqcrow Sistema.dc.html` §04 "Campos" (lines 220–238):
+          14 px / 600 label, a 44 px control at the control radius with the
+          `--control` border, and 12 px secondary helper/error text. */}
+      <Label className="text-sm font-semibold text-text-primary">{label}</Label>
       {hasSuffix ? (
-        <InputGroup fullWidth={fullWidth}>
-          <InputGroup.Input {...inputProps} />
-          <InputGroup.Suffix id={unitId} className="gap-2">
+        <InputGroup fullWidth={fullWidth} className="h-11 rounded-control border-control bg-canvas">
+          <InputGroup.Input {...inputProps} className="h-11 rounded-control border-control bg-canvas" />
+          <InputGroup.Suffix id={unitId} className="gap-2 text-text-secondary">
             {unit ? <span>{unit}</span> : null}
             {simuladoLabel ? <Badge variant="simulado" label={simuladoLabel} lang="es" /> : null}
           </InputGroup.Suffix>
         </InputGroup>
       ) : (
-        <Input {...inputProps} fullWidth={fullWidth} />
+        <Input
+          {...inputProps}
+          fullWidth={fullWidth}
+          className="h-11 rounded-control border-control bg-canvas"
+        />
       )}
       {/* The helper carries format instructions, which matter most while the
           field is in error, so it stays next to the error instead of yielding. */}
-      {helperText ? <Description>{helperText}</Description> : null}
+      {helperText ? <Description className="text-xs text-text-secondary">{helperText}</Description> : null}
       {error ? (
         // HeroUI's `FieldError` (like `Button`) filters "role" out of the DOM
         // props it forwards to react-aria-components' own `FieldError`, whose
@@ -106,7 +113,7 @@ export function TextField({
         // wrapping element instead; the id `FieldError` generates (and that
         // the input's `aria-describedby` points at) stays on the inner node.
         <span role="alert">
-          <FieldError>{error}</FieldError>
+          <FieldError className="text-xs text-trust-critical">{error}</FieldError>
         </span>
       ) : null}
     </HeroTextField>

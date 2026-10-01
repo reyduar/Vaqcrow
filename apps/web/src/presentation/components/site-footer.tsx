@@ -25,10 +25,11 @@ import { CanonicalDisclosure } from "./canonical-disclosure";
  *   `microcopy.testnetBadge`, and neither string is hardcoded here. The row is
  *   omitted entirely when the caller supplies neither.
  * - **Tokens.** `--border` → HeroUI `border-border`; `--surface` → HeroUI
- *   `bg-surface`; `--text2` → `text-text-secondary`. The template's `--control`,
- *   `--raised`, `--accent-*`, `--logo` and `--ok-*`/`--warn-*`/`--err-*` do not
- *   exist here and are not used. The template's bold lead sentence is owned by
- *   the canonical disclosure's own title; it is never split or retyped.
+ *   `bg-surface`; `--text2` → `text-text-secondary`. The template's other
+ *   tokens (`--control`, `--raised`, `--accent-*`, `--logo`, the status
+ *   surfaces) exist as app tokens since Slice 2/3 but are not needed by this
+ *   footer. The template's bold lead sentence is owned by the canonical
+ *   disclosure's own title; it is never split or retyped.
  */
 export interface SiteFooterProps {
   /** Left legal line, e.g. "Vaqcrow · 2026". */
@@ -43,10 +44,15 @@ export function SiteFooter({ copyright, environment, className }: SiteFooterProp
 
   return (
     <footer className={`border-t border-border bg-surface ${className ?? ""}`.trim()}>
-      <div className="mx-auto flex max-w-[1264px] flex-col gap-5 px-8 py-8">
+      {/* Template footer geometry (`Vaqcrow Sistema.dc.html` lines 416–428):
+          48 px vertical padding, 32 px lateral, and a bordered legal row. The
+          template's own nav links are omitted on purpose — the seven-page MVP
+          has no routes for them, and dead links would be invented product
+          scope (see the plan's Out of scope). */}
+      <div className="mx-auto flex max-w-[1264px] flex-col gap-5 px-8 py-12">
         <CanonicalDisclosure id="no-production" />
         {hasLegalRow ? (
-          <div className="flex flex-wrap justify-between gap-4 text-xs text-text-secondary">
+          <div className="flex flex-wrap justify-between gap-4 border-t border-border pt-6 text-xs text-text-secondary">
             {copyright ? <span>{copyright}</span> : null}
             {environment ? <span>{environment}</span> : null}
           </div>

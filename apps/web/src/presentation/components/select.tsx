@@ -62,8 +62,9 @@ export function Select({
       {...(defaultValue !== undefined ? { defaultValue } : {})}
       {...(onChange ? { onChange: (key: Key | Key[] | null) => onChange(key === null ? null : String(key)) } : {})}
     >
-      <Label>{label}</Label>
-      <HeroSelect.Trigger>
+      {/* Field shell from `Vaqcrow Sistema.dc.html` §04 "Campos". */}
+      <Label className="text-sm font-semibold text-text-primary">{label}</Label>
+      <HeroSelect.Trigger className="h-11 rounded-control border-control bg-canvas">
         <HeroSelect.Value />
         <HeroSelect.Indicator />
       </HeroSelect.Trigger>
@@ -77,8 +78,8 @@ export function Select({
           ))}
         </ListBox>
       </HeroSelect.Popover>
-      {helperText ? <Description>{helperText}</Description> : null}
-      {error ? <FieldError>{error}</FieldError> : null}
+      {helperText ? <Description className="text-xs text-text-secondary">{helperText}</Description> : null}
+      {error ? <FieldError className="text-xs text-trust-critical">{error}</FieldError> : null}
     </HeroSelect>
   );
 }

@@ -68,7 +68,14 @@ export function AccountMenu({ name, subtitle, avatarSrc, items }: AccountMenuPro
   );
 
   if (!hasItems) {
-    return <div className="inline-flex items-center gap-2">{identity}</div>;
+    // Template header control (`Vaqcrow Sistema.dc.html` line 52): 44 px high,
+    // control radius, `--control` border. Non-interactive identity here, so it
+    // is a plain group rather than a button.
+    return (
+      <div className="inline-flex h-11 items-center gap-2 rounded-control border border-control px-3.5">
+        {identity}
+      </div>
+    );
   }
 
   return (
@@ -76,7 +83,7 @@ export function AccountMenu({ name, subtitle, avatarSrc, items }: AccountMenuPro
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex h-11 items-center gap-2 rounded-control border border-control px-3.5 text-left outline-none transition-colors hover:bg-page-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         {...(isOpen ? { "aria-controls": menuId } : {})}
@@ -90,7 +97,7 @@ export function AccountMenu({ name, subtitle, avatarSrc, items }: AccountMenuPro
           id={menuId}
           role="menu"
           aria-label={`Cuenta de ${name}`}
-          className="absolute right-0 top-full z-10 mt-2 min-w-48 rounded-lg border border-border bg-surface p-1 shadow-lg"
+          className="absolute right-0 top-full z-10 mt-2 min-w-48 rounded-control border border-border bg-surface p-1 shadow"
         >
           {items.map((item) => {
             const className =

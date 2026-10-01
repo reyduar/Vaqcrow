@@ -42,12 +42,17 @@ describe("TransactionStatusList", () => {
     expect(sentItem.className).not.toMatch(/success/);
   });
 
-  it("uses no non-existent success token on any element", () => {
+  it("uses the success tone only for the ledger-confirmed state, never for a pending one", () => {
     const { container } = render(<TransactionStatusList items={PROGRESSION} />);
 
-    for (const element of container.querySelectorAll("*")) {
-      expect(element.getAttribute("class") ?? "").not.toMatch(/success|positive|\b(?:text|bg|border)-ok\b/);
-    }
+    const sentItem = screen.getAllByRole("listitem")[1]!;
+    expect(sentItem.className).not.toMatch(/trust-success/);
+
+    const confirmedItem = screen.getAllByRole("listitem")[2]!;
+    expect(confirmedItem.className).toMatch(/trust-success/);
+
+    // Success is adopted (Slice 3) but bounded: exactly one surface may carry it.
+    expect(container.querySelectorAll(".bg-trust-success-surface")).toHaveLength(1);
   });
 
   it("keeps every text run on the page foreground so it meets AA over the tint", () => {
@@ -79,6 +84,8 @@ describe("TransactionStatusList", () => {
     const icon = confirmedItem.querySelector("svg");
     expect(icon).not.toBeNull();
     expect(icon).toHaveAttribute("aria-hidden", "true");
+    // The positive read is the success tone plus the text, never colour alone.
+    expect(icon?.getAttribute("class") ?? "").toMatch(/text-trust-success/);
   });
 
   it("renders the failed state as a failure, never as success", () => {

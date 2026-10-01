@@ -42,23 +42,23 @@ export function DistributionCalculation({
   className
 }: DistributionCalculationProps) {
   return (
-    <div className={`flex flex-col gap-2 ${className ?? ""}`.trim()}>
+    <div className={`flex flex-col gap-2 rounded-card border border-border p-6 ${className ?? ""}`.trim()}>
       <table className="w-full border-collapse text-sm">
         <caption className="mb-2 flex flex-wrap items-center justify-between gap-2 text-left">
-          <span className="font-semibold">{heading}</span>
-          <span className="font-mono text-xs text-muted">{ruleId}</span>
+          <span className="font-bold">{heading}</span>
+          <span className="font-mono text-xs text-text-secondary">{ruleId}</span>
         </caption>
         <tbody>
           {inputs.map((row) => (
             <tr key={row.label} className="border-b border-border">
-              <th scope="row" className="py-2 text-left font-normal text-muted">
+              <th scope="row" className="py-2 text-left font-normal text-text-secondary">
                 {row.label}
               </th>
               <td className="py-2 text-right">{row.value}</td>
             </tr>
           ))}
           <tr className="border-b border-border">
-            <th scope="row" className="py-2 text-left font-normal text-muted">
+            <th scope="row" className="py-2 text-left font-normal text-text-secondary">
               Redondeo
             </th>
             <td className="py-2 text-right">{rounding}</td>
@@ -71,7 +71,7 @@ export function DistributionCalculation({
           </tr>
         </tbody>
       </table>
-      <p className="text-xs text-muted">{microcopy.deterministicCalculation}</p>
+      <p className="m-0 text-xs text-text-secondary">{microcopy.deterministicCalculation}</p>
     </div>
   );
 }

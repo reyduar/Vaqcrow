@@ -4,6 +4,14 @@ Iteration log for the request: turn `docs/design/demo-ui.md` into a self-contain
 Design can consume to generate a **new template** in a modern fintech style, covering the project's
 real scope.
 
+> [!info] Superseded (2026-10-01)
+> Google Stitch was retired as the design source of truth. `demo-ui.md` is no longer the source of truth
+> nor the live Stitch record: the Claude Design template (`docs/design/template/`) is the visual source
+> of truth, and `demo-ui.md`'s Stitch plan (§11/§12) is now a retired record. The statements below about
+> a document "written around Google Stitch" and staying "the source and the Stitch record" are the
+> record of how the brief was written on 2026-09-25; they are kept verbatim. See
+> `odd/tasks/design-source-of-truth-claude-design.md`.
+
 ## Objective
 
 Produce one document with everything a design tool needs and nothing it has to guess: the product

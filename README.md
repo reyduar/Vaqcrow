@@ -10,14 +10,15 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Estado actual
 
-- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado, `packages/ai`, el workspace Rust `contracts/` (`campaign-vault` y `campaign-factory`) y migraciones Supabase para evaluación, decisiones humanas y persistencia de campañas.
-- **Evaluación y aprobación humana:** implementadas en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La integración credential-gated contra Supabase registró 15/15 tests pasando el 19/09/2026.
+- **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado, `packages/ai`, el workspace Rust `contracts/` (`campaign-vault` y `campaign-factory`) y migraciones Supabase para solicitud de PyME, evaluación, decisiones humanas, distribución de revenue share y persistencia de campañas.
+- **Evaluación y aprobación humana:** implementadas en `main`: contratos, transición de dominio, RPC atómica, API, pantallas web, auditoría inmutable e idempotencia. La suite de integración contra Supabase corre por separado, con credenciales, y no forma parte de `pnpm run test`.
+- **Recorrido vertical completo:** implementado y probado en `main`. La solicitud de PyME (`POST /sme-requests`), la evaluación ligada a la solicitud, la decisión humana, el fondeo no custodial en la bóveda de campaña, la confirmación asíncrona, las ventas mensuales, el cálculo determinístico de la obligación `RS-2026-01` y la distribución en Testnet quedan encadenados por los identificadores que cada paso produce; la Feature #30 se cerró el 01/10/2026. El walk end-to-end en navegador es `apps/web/e2e/full-journey.spec.ts`.
 - **IA real:** la evaluación usa el proveedor `opencode-go` detrás de un adaptador reemplazable en `packages/ai`; sigue siendo asesora y no aprueba ni calcula obligaciones.
 - **Stellar y custodia:** Freighter y Stellar Testnet están implementados, y el fondeo se custodia en un contrato Soroban (una bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso permissionless al vencer). La plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME; la persona usuaria firma aportes, retiros y reembolsos con Freighter.
-- **Pruebas:** 125 archivos de test unitarios y de componentes seleccionados por `pnpm run test` (Vitest + Testing Library), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
-- **Límites actuales:** no hay autenticación y `apps/api` todavía no expone el endpoint de solicitudes SME; el cálculo de la obligación de revenue share, la distribución en Testnet y la integración vertical del journey (Días 9–14 del plan) siguen pendientes.
-- **Stitch:** el proyecto `VaqcrowWebApp` tiene 18 flujos de pantalla de escritorio, cada uno con variantes Light y Dark ya generadas. El inventario documentado —36 variantes de escritorio— está en [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md). Stitch es referencia visual y de prototipado, no una implementación autoritativa.
-- **Pendiente en diseño:** generar las variantes móviles, resolver algunas correcciones de pantallas y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
+- **Pruebas:** 190 archivos de test unitarios y de componentes seleccionados por `pnpm run test` (Vitest + Testing Library), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
+- **Límites actuales:** no hay autenticación. La latencia del proveedor de IA en la ruta hosteada vuelve inalcanzable el presupuesto de siete minutos tal como se midió, y el recorrido completo nunca se cronometró de punta a punta (ver [Qué demuestra la demo](#qué-demuestra-la-demo)).
+- **Diseño (fuente de verdad):** el template de **Claude Design** en `docs/design/template/` —14 pantallas `.dc.html`, cada una con los dos temas en el mismo archivo— reemplazó al proyecto de Google Stitch el 01/10/2026. Se comparte en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. El directorio está fuera del repositorio a propósito (`.gitignore`) y su HTML generado nunca es implementación autoritativa de producción; el detalle está en [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md).
+- **Pendiente en diseño:** completar las pantallas que faltan del template, cerrar el gate de revisión por pantalla, generar las variantes móviles y ampliar las fichas detalladas de los flujos que todavía no tienen especificación equivalente.
 
 ## Aviso de confianza
 
@@ -25,7 +26,7 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Qué demuestra la demo
 
-La historia vertical prevista sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
+La historia vertical implementada sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
 
 1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
 2. Una IA real analiza la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
@@ -34,7 +35,7 @@ La historia vertical prevista sigue un único caso sintético —**Panadería Ho
 5. La bóveda custodia los aportes: el contrato liquida de forma atómica a la PyME al alcanzar el objetivo y habilita el reembolso permissionless si vence el plazo; la API envía la invocación firmada al Soroban RPC y refleja el estado observado en la cadena.
 6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución, que sigue el camino clásico de pagos en Testnet, con sus estados y hashes.
 
-El objetivo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina.
+El objetivo de la demo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina. **El presupuesto de siete minutos no se cumple tal como se midió el 01/10/2026:** en la ruta hosteada, una evaluación real del proveedor de IA —el segundo de los seis pasos— tardó **93,79 s**, y dos sondas agotaron el timeout a los **30,69 s** y **120,56 s**; eso es entre un **22 % y un 29 %** del presupuesto total consumido en un solo paso, con una latencia impredecible. La integración está entregada y probada de forma determinística, pero el recorrido completo **nunca se cronometró de punta a punta**.
 
 ## Real versus simulado
 
@@ -246,8 +247,8 @@ pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_
 
 - **Setup local:** ver [Cómo ejecutar el proyecto](#cómo-ejecutar-el-proyecto) y [Perfiles de entorno](./docs/architecture/environments.md) — cubre `.env.cloud`/`.env.docker`, `pnpm env:docker:up` y el flujo de migraciones.
 - **Estado actual:** `pnpm verify` ejecuta lint, typecheck, pruebas, build y verificación de boundaries entre workspaces. Las pruebas usan fixtures y dobles locales, sin depender de Testnet, Horizon ni del proveedor LLM.
-- **CI:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) corre en cada pull request con `pnpm install --frozen-lockfile`: un job ejecuta `pnpm verify` y otro el journey de Playwright. Ningún job usa servicios externos vivos ni requiere secretos del repositorio.
-- **Playwright:** cubre el journey crítico de la demo —shell guiado de seis pasos y decisión humana— contra un doble local en `apps/web/e2e/`, con navegador Chromium, un solo worker y sin reintentos. Comandos: `pnpm run test:e2e:install` (instala Chromium, una vez) y `pnpm run test:e2e`.
+- **CI:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) corre en cada pull request con `pnpm install --frozen-lockfile`: un job ejecuta `pnpm verify`, otro el journey de Playwright y un tercero compila, prueba y despliega los contratos Rust en una red local. Ningún job usa servicios externos vivos ni requiere secretos del repositorio.
+- **Playwright:** cubre el recorrido crítico de la demo —de la solicitud de la PyME a la evidencia, incluidos el shell guiado de seis pasos y la decisión humana— contra un doble local en `apps/web/e2e/`, con navegador Chromium, un solo worker y sin reintentos. El walk completo del recorrido vertical es `apps/web/e2e/full-journey.spec.ts`. Comandos: `pnpm run test:e2e:install` (instala Chromium, una vez) y `pnpm run test:e2e`.
 - **Gates verificados por tests:** `tests/testing-and-ci-gates.test.ts` comprueba de forma determinística el workflow de CI (instalación congelada, sin secretos ni endpoints externos), la determinación de Playwright y el doble local, y ejercita el rechazo del guard de hosts externos.
 - **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
 - **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
@@ -311,12 +312,21 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 - [Arquitectura del monorepo](./docs/architecture/monorepo.md) — decisión, árbol propuesto, dependencias, despliegue, testing y límites de crecimiento.
 - [Plan de la demo](./docs/planning/DEMO.md) — historia de dos semanas, arquitectura, pruebas, demo y límites.
 - [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
-- [Diseño UI/UX y runbook de Google Stitch](./docs/design/demo-ui.md) — inventario visual, flujos, estados, accesibilidad y pendientes de diseño.
+- [Evidencia del recorrido vertical completo](./docs/planning/complete-vertical-demo-journey-evidence.md) — criterios de aceptación, verificación y límites de la Feature #30.
+- [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md) — template de Claude Design, flujos, estados, accesibilidad y pendientes de diseño.
 - [Storybook y los dos temas](./docs/guides/storybook.md) — taller de componentes, temas claro/oscuro y qué está cubierto.
 
 ## Próximo paso
 
-El monorepo, el shell de demo, la IA real, la persistencia, el slice de evaluación/aprobación humana, la bóveda de campaña en Testnet y los gates de CI ya están implementados. El grueso pendiente son los Días 9–14 del [plan de la demo](./docs/planning/DEMO.md): ventas y cálculo determinístico de la obligación, distribución en Testnet, integración vertical del journey, resiliencia y evidencias, ensayo con público interno, y freeze y presentación final. El avance por unidad se sigue en el tablero **Vaqcrow-TFM**, que es la fuente de verdad del estado.
+El monorepo, el shell de demo, la IA real, la persistencia, el slice de evaluación/aprobación humana, la bóveda de campaña en Testnet, el recorrido vertical completo y los gates de CI ya están implementados; la Feature #30 se cerró el 01/10/2026. Lo que sigue abierto, según los límites vigentes del [documento de evidencia](./docs/planning/complete-vertical-demo-journey-evidence.md):
+
+- **Corrida cronometrada de punta a punta.** El recorrido completo por navegador contra producción no se ejecutó, así que no hay un tiempo de punta a punta medido; la latencia del proveedor de IA vuelve inalcanzable el presupuesto de siete minutos tal como se midió.
+- **Prueba en vivo contra Testnet.** La suite `e2e-live` sigue necesitando credenciales del operador y Testnet, y no se corrió.
+- **Reset de Testnet del 16/12/2026.** Invalida las direcciones de contrato: obliga a redesplegar la fábrica y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`; el procedimiento está documentado y todavía no se ejercitó.
+- **Bordes conocidos:** `contributions_incomplete` tras un retiro total, un id de campaña malformado que responde `503`, el feed de ventas en memoria que se pierde al reiniciar la API y `scripts/` fuera de ESLint.
+- **Diseño:** completar las pantallas del template, cerrar el gate de revisión por pantalla y generar las variantes móviles.
+
+El avance por unidad se sigue en el tablero **Vaqcrow-TFM**, que es la fuente de verdad del estado.
 
 ## Licencia
 

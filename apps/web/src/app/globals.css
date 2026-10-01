@@ -26,14 +26,36 @@
  * own page-level tokens below use a `page-` prefix precisely to stay clear of
  * that reserved set.
  */
-@theme {
+/*
+ * `static` forces Tailwind to emit every token below even when no generated
+ * utility uses it yet. Without it Tailwind drops the unused variables, and the
+ * new template vocabulary (consumed by components in later slices) would have
+ * no light-side default for the dark block below to override.
+ */
+@theme static {
   --color-trust-neutral: #475569;
-  --color-trust-info: #2563eb;
-  --color-trust-caution: #b45309;
-  --color-trust-critical: #b91c1c;
+  --color-trust-info: #1d4e89;
+  --color-trust-caution: #7a4b00;
+  --color-trust-critical: #a12622;
 
-  --color-chart-primary: #2563eb;
-  --color-chart-anomaly: #b91c1c;
+  /*
+   * Status surface/text pairs, adopted from the template's own status tokens
+   * (`Vaqcrow Sistema.dc.html` line 15: `--info-s/--info-t`, `--warn-s/--warn-t`,
+   * `--err-s/--err-t`, `--ok-s/--ok-t`; `docs/design/demo-ui.md` §5.4). The
+   * text values already match the `--color-trust-*` tones above, so only the
+   * solid surfaces and the adopted success pair are new. The success tone is
+   * bounded by `demo-ui.md` §2: green is reserved for outcomes actually
+   * confirmed in the ledger, never for `Enviado`/`Pendiente`, and never the
+   * only signal (it always travels with icon, title and text).
+   */
+  --color-trust-info-surface: #eaf2ff;
+  --color-trust-caution-surface: #fff4d6;
+  --color-trust-critical-surface: #fdecec;
+  --color-trust-success: #176b3a;
+  --color-trust-success-surface: #e8f5ec;
+
+  --color-chart-primary: #1d4e89;
+  --color-chart-anomaly: #a12622;
   --color-chart-missing: #94a3b8;
   --color-chart-grid: #e2e8f0;
 
@@ -45,6 +67,80 @@
   --color-page-border: rgba(17, 17, 17, 0.16);
   --color-focus-ring: #8a05be;
   --color-brand-accent: #8a05be;
+
+  /*
+   * Template token vocabulary (`docs/design/demo-ui.md` §5.4; values from the
+   * template's own `:root` / `[data-theme="dark"]` blocks). The accent family
+   * keeps the app's `brand-accent` prefix so it never shadows HeroUI's
+   * reserved `--color-accent*` names (see the header comment); the other names
+   * do not exist in `@heroui/styles` and are safe as-is.
+   */
+  --color-brand-accent-hover: #7304a0;
+  --color-brand-accent-tint: #f4e6fa;
+  --color-brand-accent-text: #8a05be;
+  --color-on-accent: #ffffff;
+  --color-logo: #8a05be;
+  --color-control: #8a8a8a;
+  --color-raised: #ffffff;
+  --color-stripe: rgba(17, 17, 17, 0.06);
+  --color-skel: #ececec;
+  --color-chart: #1d4e89;
+  --color-grid: rgba(17, 17, 17, 0.1);
+
+  /*
+   * Type families: Geist + Geist Mono (`demo-ui.md` §5.5). Overriding
+   * Tailwind's `--font-sans` / `--font-mono` makes the body inherit Geist and
+   * every `font-mono` utility resolve to Geist Mono; the explicit system stack
+   * is the fallback.
+   */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Radius scale (`demo-ui.md` §5.6): control 10, card 16, panel 24, pill 999. */
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+  --radius-pill: 999px;
+
+  /*
+   * The demo's only elevation (`demo-ui.md` §5.6): one shadow, reserved for
+   * dialogs and drawers. Cards use a border or a surface difference, never a
+   * shadow. Overrides Tailwind's default `--shadow` on purpose.
+   */
+  --shadow: 0 24px 48px -12px rgba(17, 17, 17, 0.22), 0 0 0 1px rgba(17, 17, 17, 0.08);
+}
+
+/*
+ * Geometry (`demo-ui.md` §5.6, template «03 · Espacio, geometría y elevación»):
+ * - 4 px base spacing scale: 4, 8, 12, 16, 24, 32, 48, 64, 96. Tailwind already
+ *   produces exactly this from `--spacing: 0.25rem` (steps 1, 2, 3, 4, 6, 8,
+ *   12, 16, 24), so the scale is documented here rather than re-declared.
+ * - Desktop container: max-width 1264 px with 32 px lateral padding
+ *   (`max-w-[1264px] px-8`, as the navbar and footer already use).
+ * - Borders: 1 px for limits and states; 2 px for focus or selection.
+ * - One elevation only: `--shadow`, reserved for dialogs/drawers.
+ */
+
+/*
+ * Accent strategy (Slice 2 of `odd/tasks/adapt-the-mvp-to-the-claude-design-template.md`).
+ *
+ * HeroUI's default `--accent` is blue, so its primitives (Button, Radio, Chip,
+ * ProgressBar, ToggleButton, …) rendered blue while the brand is purple. The
+ * minimal fix is a single override of HeroUI's *source* variable `--accent`;
+ * everything HeroUI derives from it (`--accent-hover`, `--accent-soft`,
+ * `--focus`, and the `--color-accent*` aliases) recomputes from the brand
+ * purple, so those primitives adopt it system-wide instead of case by case.
+ *
+ * This does NOT overturn the decision documented at the top of this file. That
+ * decision reserves HeroUI's `--color-*` aliases (`themes/shared/theme.css`),
+ * and none of them is redeclared here. `--accent` is a plain source variable in
+ * `themes/default/variables.css`, documented by `@heroui/styles` itself as its
+ * theming input, so overriding it is the supported customisation rather than a
+ * redefinition of a reserved name. The app keeps its own `--color-brand-accent`;
+ * the two are now the same purple.
+ */
+:root {
+  --accent: var(--color-brand-accent);
 }
 
 /*
@@ -78,6 +174,13 @@
   --color-trust-caution: #ffd27a;
   --color-trust-critical: #ffb3ae;
 
+  /* Template status surfaces, dark values (`Vaqcrow Sistema.dc.html` line 16). */
+  --color-trust-info-surface: #172e4d;
+  --color-trust-caution-surface: #422f0a;
+  --color-trust-critical-surface: #451f22;
+  --color-trust-success: #8de5ae;
+  --color-trust-success-surface: #163a27;
+
   --color-chart-primary: #a9ccff;
   --color-chart-anomaly: #ffb3ae;
   --color-chart-missing: #7a7a7a;
@@ -89,11 +192,27 @@
   --color-text-secondary: #a0a0a0;
   --color-page-border: rgba(255, 255, 255, 0.14);
   --color-focus-ring: #d9a6f2;
+
+  /* Template token vocabulary, dark values (`demo-ui.md` §5.4). `--color-on-accent`
+     is #ffffff in both themes, so it is only declared in `@theme`. */
+  --color-brand-accent-hover: #9b1fd0;
+  --color-brand-accent-tint: #2c1737;
+  --color-brand-accent-text: #d9a6f2;
+  --color-logo: #ffffff;
+  --color-control: #7a7a7a;
+  --color-raised: #272727;
+  --color-stripe: rgba(255, 255, 255, 0.06);
+  --color-skel: #2a2a2a;
+  --color-chart: #a9ccff;
+  --color-grid: rgba(255, 255, 255, 0.1);
+
+  --shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 body {
   background-color: var(--color-canvas);
   color: var(--color-text-primary);
+  font-family: var(--font-sans);
 }
 
 /*

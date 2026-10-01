@@ -25,7 +25,12 @@ Performed before touching `apps/web/package.json`, `pnpm-lock.yaml`, or adding a
   `engram`, `github`, `supabase`, `vercel`, `stitch`. Applicable support: **`context7`** — used to
   fetch authoritative Playwright documentation (`/microsoft/playwright`) for `webServer`
   multi-server configuration, `reuseExistingServer`, `baseURL`, project/browser scoping and CI
-  retry semantics, before writing `playwright.config.ts`.
+     retry semantics, before writing `playwright.config.ts`.
+
+  > [!info] Retirado (2026-10-01)
+  > The `stitch` MCP server was inspected here because it was connected at the time; Google Stitch
+  > ceased to be the design source of truth on 2026-10-01 and this `stitch` entry is now a historical
+  > mention, not a design dependency.
 - **Not used / explicitly out of scope:** the `playwright` MCP server (`@playwright/mcp`) is not
   connected and adding it is Phase 4 local-tooling work in `deploy-planning.md` ("Sin issue —
   configuración local de entorno, no scope funcional de la demo"). Discovery does not authorize

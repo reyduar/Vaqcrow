@@ -1,10 +1,18 @@
 # Vaqcrow — Brief de diseño para Claude Design
 
+> [!warning] El template de Claude Design es la fuente de verdad; este brief es su input (2026-10-01)
+> Este documento es el **input** que produjo el template de Claude Design (`docs/design/template/`), no la autoridad vigente. Decisión del owner (2026-10-01): **donde este brief y el template difieran, prevalece el template**. El texto de abajo se conserva íntegro como registro de la intención; leerlo con esa precedencia en mente. Casos concretos ya conocidos:
+> - **Tipografía:** el brief §4.2 recomienda `Inter`; el template usa **Geist + Geist Mono** (`docs/design/template/Vaqcrow Sistema.dc.html`, línea 12).
+> - **Contenedor:** el brief §4.3 especifica 1200 px; el template usa **1264 px con padding lateral de 32 px** (`Vaqcrow Sistema.dc.html`, líneas 30, 57 y 417).
+> - **Gloss decorativo:** el brief §3.4 prohíbe «gradientes intensos», «sombras pesadas» y «monedas flotantes»; el template usa **esferas 3D moradas con degradados radiales y sombras apiladas** (`Vaqcrow Acerca de.dc.html`). Las reglas de confianza de §6 siguen prevaleciendo sobre el template.
+> El detalle acotado y la reconciliación por regla están en [[docs/design/demo-ui.md|demo-ui.md]].
+
 > **Qué es este documento.** El brief autocontenido para generar un **template nuevo** de Vaqcrow con
 > estética fintech moderna, consumible por Claude Design (o cualquier herramienta de diseño asistido).
-> Deriva de [`demo-ui.md`](./demo-ui.md), que sigue siendo la fuente de verdad del sistema actual y el
-> registro histórico del proyecto de Stitch; este documento no lo reemplaza. A diferencia de ese,
-> **cubre los 19 flujos del producto** (no solo las 6 pantallas de la demo) y no depende de Stitch.
+> Deriva de [`demo-ui.md`](./demo-ui.md), que documenta el sistema actual y conserva el registro
+> histórico del proyecto de Google Stitch (retirado el 2026-10-01). Desde esa fecha la fuente de verdad
+> visual es el **template de Claude Design** (`docs/design/template/`), no Stitch. A diferencia de
+> `demo-ui.md`, este brief **cubre los 19 flujos del producto** (no solo las 6 pantallas de la demo).
 
 > [!info] Cómo leerlo
 > §2 da contexto de producto, §3 la dirección estética, §4 el sistema a generar, §5 las **19 vistas**,
@@ -245,7 +253,7 @@ El inventario completo con estados críticos está en [`demo-ui.md` §7](./demo-
 
 En código existen hoy **7 páginas**: `/` y las 6 rutas de la demo (`/request`, `/ai-assessment`,
 `/approval`, `/funding`, `/distribution`, `/evidence`). No coinciden 1:1 con los 6 flujos heredados del
-mapa de Stitch: la implementación resolvió un recorrido de 6 pasos —solicitud → evaluación de IA →
+mapa de flujos de `demo-ui.md`: la implementación resolvió un recorrido de 6 pasos —solicitud → evaluación de IA →
 aprobación humana → fondeo por bóveda → distribución → evidencia— y las fichas de diseño con rutas
 `/demo/*` son anteriores. El template nuevo debe **unificar esa nomenclatura** (ver §12, pregunta 2).
 

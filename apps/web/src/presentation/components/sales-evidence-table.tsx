@@ -38,42 +38,59 @@ const STATUS_TONE: Readonly<Record<SalesPeriodStatus, BadgeTone>> = {
 
 export function SalesEvidenceTable() {
   return (
-    <table lang="es">
-      <caption>Ventas mensuales sintéticas — Panadería Horizonte SRL</caption>
-      <thead>
-        <tr>
-          <th scope="col">Período</th>
-          <th scope="col">Ventas</th>
-          <th scope="col">Procedencia</th>
-          <th scope="col">Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {panaderiaHorizonte.sales.map((period) => (
-          <tr key={period.period}>
-            <th scope="row">{period.label}</th>
-            <td>
-              {period.status === "missing" ? (
-                <span>Dato faltante</span>
-              ) : (
-                <SyntheticValue
-                  value={currencyFormatter.format(period.amountArs ?? 0)}
-                  simuladoLabel={period.simuladoLabel}
-                />
-              )}
-            </td>
-            <td>{period.provenance}</td>
-            <td>
-              <Badge
-                variant={STATUS_BADGE_VARIANT[period.status]}
-                tone={STATUS_TONE[period.status]}
-                label={STATUS_LABEL[period.status]}
-              />
-              {period.note ? <p>{period.note}</p> : null}
-            </td>
+    <div className="overflow-x-auto">
+      {/* Template table treatment (`Vaqcrow Informes.dc.html` "Últimas
+          distribuciones"): a caption at the section-heading weight, a muted
+          uppercase header row and a 1 px `--border` rule per row. */}
+      <table lang="es" className="w-full border-collapse text-sm">
+        <caption className="mb-3 text-left text-base font-bold">
+          Ventas mensuales sintéticas — Panadería Horizonte SRL
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+              Período
+            </th>
+            <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+              Ventas
+            </th>
+            <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+              Procedencia
+            </th>
+            <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+              Estado
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {panaderiaHorizonte.sales.map((period) => (
+            <tr key={period.period}>
+              <th scope="row" className="border-b border-border py-2.5 text-left font-medium">
+                {period.label}
+              </th>
+              <td className="border-b border-border py-2.5">
+                {period.status === "missing" ? (
+                  <span>Dato faltante</span>
+                ) : (
+                  <SyntheticValue
+                    value={currencyFormatter.format(period.amountArs ?? 0)}
+                    simuladoLabel={period.simuladoLabel}
+                  />
+                )}
+              </td>
+              <td className="border-b border-border py-2.5 text-text-secondary">{period.provenance}</td>
+              <td className="border-b border-border py-2.5">
+                <Badge
+                  variant={STATUS_BADGE_VARIANT[period.status]}
+                  tone={STATUS_TONE[period.status]}
+                  label={STATUS_LABEL[period.status]}
+                />
+                {period.note ? <p className="m-0 mt-1 text-xs text-text-secondary">{period.note}</p> : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

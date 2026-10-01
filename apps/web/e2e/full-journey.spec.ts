@@ -69,7 +69,7 @@ function ddValueFor(page: Page, label: string) {
   return page.getByText(label, { exact: true }).locator("xpath=following-sibling::dd[1]");
 }
 
-const stepNav = (page: Page) => page.getByRole("navigation", { name: "Demo step navigation" });
+const stepNav = (page: Page) => page.getByRole("navigation", { name: "Navegación de pasos" });
 
 /** The journey identifiers the URL currently carries, exactly as `journey-params.ts` names them. */
 function journeyParam(page: Page, name: "application" | "campaign" | "distribution"): string | null {
@@ -149,14 +149,14 @@ test("walks the request, assessment, approval, funding, sales record, distributi
   expect(journeyParam(page, "application")).toBe(REQUEST_APPLICATION_ID);
 
   // 2. AI assessment: it consumes the request's applicationId and records the advisory assessment.
-  await stepNav(page).getByRole("link", { name: "AI Assessment" }).click();
+  await stepNav(page).getByRole("link", { name: "Evaluación de IA" }).click();
   await expect(page).toHaveURL(new RegExp(`/ai-assessment\\?application=${REQUEST_APPLICATION_ID}$`));
   await page.getByRole("button", { name: "Consultar evaluación de IA" }).click();
   await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
   await expect(page.getByRole("status").filter({ hasText: "pasó a revisión humana" })).toBeVisible();
 
   // 3. Approval: the same application carries the persisted assessment into the human decision.
-  await stepNav(page).getByRole("link", { name: "Approval" }).click();
+  await stepNav(page).getByRole("link", { name: "Aprobación" }).click();
   await expect(page).toHaveURL(new RegExp(`/approval\\?application=${REQUEST_APPLICATION_ID}$`));
   await expect(page.getByRole("region", { name: "Evaluación de IA" })).toContainText("asm_stub_001");
   await page.getByRole("radio", { name: "Aprobar" }).check();
@@ -168,7 +168,7 @@ test("walks the request, assessment, approval, funding, sales record, distributi
   ).toContainText("Decisión humana registrada");
 
   // 4. Funding: the SME opens the vault for the same application; the app records the campaign id.
-  await stepNav(page).getByRole("link", { name: "Funding" }).click();
+  await stepNav(page).getByRole("link", { name: "Fondeo" }).click();
   await expect(page).toHaveURL(new RegExp(`/funding\\?application=${REQUEST_APPLICATION_ID}$`));
   await connectAs(page, SME_ACCOUNT_OK);
   await page.getByLabel("Meta (XLM)").fill("20");
@@ -203,7 +203,7 @@ test("walks the request, assessment, approval, funding, sales record, distributi
 
   // 7. Distribution: the SME signs the server-derived distribution for the journey's
   //    campaign; the derivation's period is the one the feed just recorded.
-  await stepNav(page).getByRole("link", { name: "Distribution" }).click();
+  await stepNav(page).getByRole("link", { name: "Distribución" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/distribution\\?application=${REQUEST_APPLICATION_ID}&campaign=${OPENED_CAMPAIGN_ID}$`)
   );
@@ -223,7 +223,7 @@ test("walks the request, assessment, approval, funding, sales record, distributi
 
   // 8. Evidence: the recap reads back the decision, the campaign and the distribution
   //    by the ids the journey produced, and names the request it all belongs to.
-  await stepNav(page).getByRole("link", { name: "Evidence" }).click();
+  await stepNav(page).getByRole("link", { name: "Evidencia" }).click();
   await expect(page).toHaveURL(/\/evidence\?/);
   const timeline = page.getByRole("region", { name: "Evidencia de la ejecución" });
   await expect(timeline).toBeVisible();

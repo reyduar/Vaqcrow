@@ -182,7 +182,7 @@ Para el bootstrap de la demo quedan explícitamente fuera de alcance:
 - usar Soroban como camino base antes de que los pagos clásicos funcionen y exista una justificación independiente;
 - crear una aplicación administrativa separada solo por el nombre del rol;
 - permitir que la IA apruebe, calcule obligaciones, firme o transfiera fondos;
-- tratar Stitch o su HTML generado como implementación autoritativa;
+- tratar el HTML generado del template de diseño como implementación autoritativa;
 - afirmar que existe producción, infraestructura desplegada o una integración de proveedor que aún está TBD.
 
 Estas exclusiones no impiden reevaluaciones futuras. Cualquier ampliación debe preservar el dominio independiente de frameworks, los contratos, la trazabilidad, la no custodia y la validación específica para Argentina.
@@ -211,4 +211,4 @@ Con autorización explícita, el siguiente paso es bootstrapear el workspace mí
 - [README](../../README.md) — estado y resumen ejecutivo.
 - [Plan de la demo](../planning/DEMO.md) — alcance de dos semanas, journey, tecnologías, pruebas y límites.
 - [Plan del producto real](../planning/product.md) — arquitectura de producción, Argentina, riesgos y decisiones abiertas.
-- [Diseño UI/UX y runbook de Google Stitch](../design/demo-ui.md) — inventario visual real y pendientes de diseño.
+- [Diseño UI/UX](../design/demo-ui.md) — sistema visual, inventario, estados y pendientes de diseño; la referencia visual vigente es el template de Claude Design (`docs/design/template/`).

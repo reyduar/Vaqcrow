@@ -34,17 +34,19 @@ export interface KpiTileProps {
 export function KpiTile({ label, value, note, icon: Icon, simuladoLabel, className }: KpiTileProps) {
   return (
     <dl
-      className={`m-0 flex flex-col gap-2 rounded-2xl border border-border p-[18px] ${className ?? ""}`.trim()}
+      className={`m-0 flex flex-col gap-2 rounded-card border border-border p-[18px] ${className ?? ""}`.trim()}
     >
       <div className="flex items-center justify-between gap-2">
-        <dt className="text-sm font-medium text-muted">{label}</dt>
-        {Icon ? <Icon aria-hidden="true" focusable="false" className="h-5 w-5 text-muted" /> : null}
+        <dt className="text-xs text-text-secondary">{label}</dt>
+        {Icon ? <Icon aria-hidden="true" focusable="false" className="h-5 w-5 text-text-secondary" /> : null}
       </div>
       <dd className="m-0 flex items-baseline gap-2">
-        <span className="text-2xl leading-tight font-bold tracking-tight tabular-nums">{value}</span>
+        {/* Template stat value: 30 px / 700 with tabular figures (`Vaqcrow
+            Sistema.dc.html` line 260). */}
+        <span className="text-3xl leading-tight font-bold tracking-tight tabular-nums">{value}</span>
         {simuladoLabel ? <Badge variant="simulado" label={simuladoLabel} lang="es" /> : null}
       </dd>
-      {note ? <dd className="m-0 text-sm text-muted">{note}</dd> : null}
+      {note ? <dd className="m-0 text-sm text-text-secondary">{note}</dd> : null}
     </dl>
   );
 }

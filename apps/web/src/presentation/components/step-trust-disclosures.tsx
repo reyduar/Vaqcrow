@@ -20,12 +20,14 @@ export function StepTrustDisclosures({ step }: StepTrustDisclosuresProps) {
   const spec = stepDisclosures[step];
 
   return (
-    <section aria-label="Trust disclosures" lang="es">
+    <section aria-label="Trust disclosures" lang="es" className="flex flex-col gap-3">
       {spec.canonical.map((id) => (
         <CanonicalDisclosure key={id} id={id} />
       ))}
       {spec.notes.map((note) => (
-        <p key={note}>{note}</p>
+        <p key={note} className="m-0 text-sm text-text-secondary">
+          {note}
+        </p>
       ))}
     </section>
   );

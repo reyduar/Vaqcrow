@@ -46,15 +46,15 @@ function renderDemoAt(initialSlug: string) {
 /** Asserts the shell chrome (heading, position text, aria-current) for one step. */
 function expectStepChrome(position: number, label: string) {
   expect(screen.getByRole("heading", { name: label })).toBeInTheDocument();
-  expect(screen.getByText(`Step ${position} of 6: ${label}`)).toBeInTheDocument();
-  expect(screen.getByText(`Step ${position} of 6: ${label}`).closest("[aria-current]")).toHaveAttribute(
+  expect(screen.getByText(`Paso ${position} de 6: ${label}`)).toBeInTheDocument();
+  expect(screen.getByText(`Paso ${position} de 6: ${label}`).closest("[aria-current]")).toHaveAttribute(
     "aria-current",
     "step"
   );
 }
 
 function stepNav() {
-  return screen.getByRole("navigation", { name: "Demo step navigation" });
+  return screen.getByRole("navigation", { name: "Navegación de pasos" });
 }
 
 /** Clicks the step-nav link that leads to `label`, driving the harness's real navigation. */

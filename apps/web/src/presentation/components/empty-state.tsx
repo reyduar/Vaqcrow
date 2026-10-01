@@ -29,7 +29,7 @@ export function EmptyState({ title, body, action, icon: Icon, className }: Empty
     <div
       className={`flex flex-col items-center gap-3 p-8 text-center ${className ?? ""}`.trim()}
     >
-      {Icon ? <Icon aria-hidden="true" focusable="false" className="h-10 w-10 text-muted" /> : null}
+      {Icon ? <Icon aria-hidden="true" focusable="false" className="h-10 w-10 text-text-secondary" /> : null}
       <p className="text-lg font-semibold text-text-primary">{title}</p>
       <p className="text-sm text-text-secondary">{body}</p>
       {action ? (

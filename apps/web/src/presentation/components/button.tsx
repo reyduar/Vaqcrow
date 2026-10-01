@@ -38,6 +38,23 @@ const VARIANT_TO_HEROUI: Readonly<Record<ButtonVariant, "primary" | "secondary" 
   destructive: "danger"
 };
 
+/**
+ * Variant treatments from `Vaqcrow Sistema.dc.html` §04 "Botones" (lines
+ * 185–188): 44 px high, control radius (10 px), 15 px / 600 type, padding
+ * 18 px (14 px for the ghost) and the template's own hover. The classes below
+ * sit in Tailwind's utilities layer, so they win over HeroUI's component
+ * defaults without forking its stylesheet.
+ */
+const VARIANT_CLASSES: Readonly<Record<ButtonVariant, string>> = {
+  primary:
+    "h-11 px-[18px] rounded-control bg-brand-accent text-on-accent hover:bg-brand-accent-hover",
+  secondary:
+    "h-11 px-[18px] rounded-control border border-control bg-transparent text-text-primary hover:bg-page-surface",
+  ghost: "h-11 px-[14px] rounded-control bg-transparent text-text-primary hover:bg-page-surface",
+  destructive:
+    "h-11 px-[18px] rounded-control border border-trust-critical bg-transparent text-trust-critical hover:bg-trust-critical-surface"
+};
+
 export function Button({
   variant = "primary",
   type = "button",
@@ -61,7 +78,7 @@ export function Button({
         isDisabled={isDisabled || isLoading}
         isPending={isLoading}
         fullWidth={fullWidth}
-        {...(className ? { className } : {})}
+        className={`text-[15px] font-semibold ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ""}`}
         {...(showReason ? { "aria-describedby": reasonId } : {})}
         {...(onPress ? { onPress } : {})}
         // HeroUI's Button filters "aria-busy" out of the DOM props it forwards
