@@ -103,6 +103,9 @@ Settled decisions — do not relitigate without new evidence:
 - **The canonical Testnet Horizon/RPC endpoints are defaults, not required variables.** Both `STELLAR_HORIZON_URL` and `STELLAR_RPC_URL` are optional, falling back to `https://horizon-testnet.stellar.org` and `https://soroban-testnet.stellar.org`.
 - **The platform-key ↔ factory-`owner` correspondence is retired (proven 2026-09-25).** `POST /campaigns` deployed a vault on the hosted deployment; never describe it as unproven.
 - **The 2026-12-16 Testnet reset invalidates the contract addresses**, so the factory is redeployed and `STELLAR_CAMPAIGN_FACTORY_ID` re-pointed after that date.
+- **The Claude Design template is the visual source of truth (owner, 2026-10-01).** `docs/design/template/` (14 `.dc.html` screens) prevails over the written brief wherever they conflict; where the difference is a trust or accessibility **rule** rather than taste, `docs/design/demo-ui.md` §2 still prevails. Google Stitch is retired. The template directory is deliberately gitignored rather than versioned — the measured decision is in [`odd/tasks/template-stays-out-of-the-repo.md`](odd/tasks/template-stays-out-of-the-repo.md).
+
+The owner's observation (2026-10-01), recorded as an open question rather than a verified finding: the design-related issues were written from the pre-template conception and do not contemplate the template's design, so the planning corpus — the issues and `docs/planning/demo-tasks-list.md` — describes behaviour, not the template's visual intent. Reviewing how the app *should* look against the template, rather than against the issues alone, is open work; the five adaptation slices aligned the surface to the template's tokens and primitives, which is not the same as proving it matches the design.
 
 ## Workflow
 
