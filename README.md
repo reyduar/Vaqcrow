@@ -16,9 +16,25 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 - **IA real:** la evaluación usa el proveedor `opencode-go` detrás de un adaptador reemplazable en `packages/ai`; sigue siendo asesora y no aprueba ni calcula obligaciones.
 - **Stellar y custodia:** Freighter y Stellar Testnet están implementados, y el fondeo se custodia en un contrato Soroban (una bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso permissionless al vencer). La plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME; la persona usuaria firma aportes, retiros y reembolsos con Freighter.
 - **Pruebas:** 190 archivos de test unitarios y de componentes seleccionados por `pnpm run test` (Vitest + Testing Library), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
-- **Límites actuales:** no hay autenticación. La latencia del proveedor de IA en la ruta hosteada vuelve inalcanzable el presupuesto de siete minutos tal como se midió, y el recorrido completo nunca se cronometró de punta a punta (ver [Qué demuestra la demo](#qué-demuestra-la-demo)).
+- **Límites actuales:** no hay autenticación real (la sesión es de demostración; la autenticación real con roles está planificada, ver [Hoja de ruta: producto por roles](#hoja-de-ruta-producto-por-roles-alineado-al-template)). La latencia del proveedor de IA en la ruta hosteada es alta e impredecible —93,79 s en la medición del 01/10/2026— y el recorrido completo nunca se cronometró de punta a punta (ver [Qué demuestra la demo](#qué-demuestra-la-demo)).
 - **Diseño (fuente de verdad):** el template de **Claude Design** en `docs/design/template/` —14 pantallas `.dc.html`, cada una con los dos temas en el mismo archivo— reemplazó al proyecto de Google Stitch el 01/10/2026. Se comparte en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. El directorio está fuera del repositorio a propósito (`.gitignore`) y su HTML generado nunca es implementación autoritativa de producción; el detalle está en [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md). La adaptación del MVP al template se entregó en cinco slices implementados y mergeados en `main`: copy en español neutral, Geist y Geist Mono vía `next/font/google`, el vocabulario de tokens, las escalas, el espaciado y la elevación en `apps/web/src/app/globals.css`, el acento de HeroUI resolviendo al morado de marca con un único override de `--accent`, las primitivas, el shell y las siete rutas. No se agregó, quitó ni renombró ninguna ruta: `/` sigue redirigiendo a `/request`.
-- **Pendiente en diseño:** las pantallas del template que la demo no tiene como ruta —landing, billetera y marketplace— son una decisión de **alcance de producto**, no de estilos; el **isotipo** sigue sin archivo fuente autorizado versionado, así que el header muestra solo la marca tipográfica; y faltan las **variantes móviles** por ruta.
+- **Handoff del template:** el handoff de diseño vive en `docs/design/design_handoff_vaqcrow/` (`README.md`, `brief/`, `screens/`) y es la fuente visual y de comportamiento del producto por roles planificado: lo que el template no diseña se registra como pregunta abierta en su issue y no se inventa.
+- **Pendiente en diseño:** las pantallas del template que la app no tiene como ruta —landing, billetera, marketplace, área de PyME e inversor y consola de administración— dejaron de ser una decisión abierta: el owner decidió el 2026-10-01 construirlas y los Epics [#368](https://github.com/reyduar/Vaqcrow/issues/368)–[#377](https://github.com/reyduar/Vaqcrow/issues/377) las planifican; el **isotipo** sigue sin archivo fuente autorizado versionado, así que el header muestra solo la marca tipográfica; y faltan las **variantes móviles** por ruta.
+
+## Hoja de ruta: producto por roles alineado al template
+
+Decisión del owner (2026-10-01): la app deja de ser un único recorrido guiado y pasa a ser un **producto por roles con la forma exacta del template de Claude Design** (handoff en `docs/design/design_handoff_vaqcrow/`). Lo que existe hoy en `main` es el recorrido de seis pasos y el motor que lo sostiene; lo siguiente está **planificado y sin implementar**:
+
+| Epic | Alcance planificado |
+|---|---|
+| [#368 Identidad y acceso](https://github.com/reyduar/Vaqcrow/issues/368) | Supabase Auth (email y contraseña), roles `PYME` / `INVERSOR` / `ADMIN`, RLS por rol y autorización de la API; reemplaza el Auth.js v5 planificado en #134 |
+| [#373 Sitio público](https://github.com/reyduar/Vaqcrow/issues/373) | Landing, Acerca de, Guía de inversión, Guía para emprendedores y Ayuda (asistente RAG «Próximamente») |
+| [#374 Alta de PyMEs y campaña](https://github.com/reyduar/Vaqcrow/issues/374) | Registro de la PyME, KYC simulado, carga real de documentos y fotos a Supabase Storage, IA en dos pasos (completitud y riesgo), Freighter de la PyME y «Mi campaña» |
+| [#375 Consola de administración](https://github.com/reyduar/Vaqcrow/issues/375) | `/admin` sin alta pública, cola de PyMEs, revisión con aprobación humana que dispara el despliegue de la bóveda, usuarios, invitaciones y auditoría |
+| [#376 Marketplace y área del inversor](https://github.com/reyduar/Vaqcrow/issues/376) | Explorar PyMEs, detalle y aporte, Mi portafolio e Informes |
+| [#377 Notificaciones](https://github.com/reyduar/Vaqcrow/issues/377) | Campana in-app para los tres roles y email por Resend detrás de un puerto |
+
+La Feature [#438](https://github.com/reyduar/Vaqcrow/issues/438) retira las rutas del recorrido guiado cuando el motor ya está alojado en las Features por rol. Siempre **no custodial**: Vaqcrow nunca custodia claves ni recibe o mueve dinero de terceros; el KYC del inversor es simulado y se aprueba solo en el primer aporte. El orden y las dependencias están en [la hoja de ruta ejecutable](./docs/planning/demo-tasks-list.md#^roadmap-template).
 
 ## Aviso de confianza
 
@@ -26,7 +42,7 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 ## Qué demuestra la demo
 
-La historia vertical implementada sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
+La historia vertical implementada hoy (que el producto por roles reutilizará como motor) sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
 
 1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
 2. Una IA real analiza la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
@@ -35,19 +51,21 @@ La historia vertical implementada sigue un único caso sintético —**Panaderí
 5. La bóveda custodia los aportes: el contrato liquida de forma atómica a la PyME al alcanzar el objetivo y habilita el reembolso permissionless si vence el plazo; la API envía la invocación firmada al Soroban RPC y refleja el estado observado en la cadena.
 6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución, que sigue el camino clásico de pagos en Testnet, con sus estados y hashes.
 
-El objetivo de la demo es completar este recorrido en 5–7 minutos sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina. **El presupuesto de siete minutos no se cumple tal como se midió el 01/10/2026:** en la ruta hosteada, una evaluación real del proveedor de IA —el segundo de los seis pasos— tardó **93,79 s**, y dos sondas agotaron el timeout a los **30,69 s** y **120,56 s**; eso es entre un **22 % y un 29 %** del presupuesto total consumido en un solo paso, con una latencia impredecible. La integración está entregada y probada de forma determinística, pero el recorrido completo **nunca se cronometró de punta a punta**.
+El objetivo de la demo es mostrar este recorrido sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina. No hay un objetivo de duración. **Latencia medida el 01/10/2026:** en la ruta hosteada, una evaluación real del proveedor de IA —el segundo de los seis pasos— tardó **93,79 s**, y dos sondas agotaron el timeout a los **30,69 s** y **120,56 s**: la latencia es alta e impredecible. La integración está entregada y probada de forma determinística, pero el recorrido completo **nunca se cronometró de punta a punta**.
 
 ## Real versus simulado
 
 | Capacidad | Demo prevista |
 |---|---|
-| Empresa, identidad y perfiles | Datos sintéticos, rotulados `SIMULADO` |
-| KYC/KYB | Simulado detrás de un adaptador reemplazable |
+| Empresa y perfiles | Datos sintéticos, rotulados `SIMULADO`; cuentas y roles reales con Supabase Auth, planificado (#369) |
+| Documentos y fotos de la PyME | Carga real a un bucket privado de Supabase Storage, planificada (#398); contenido no confiable |
+| KYC/KYB (PyME e inversor) | Simulado detrás de un adaptador reemplazable; el del inversor se aprueba solo en el primer aporte |
 | Historial y feed mensual de ventas | Simulados, reproducibles y con una anomalía/faltante intencionales |
 | Evaluación de riesgo por IA | Real con el proveedor `opencode-go` detrás de un adaptador reemplazable |
 | Decisión de financiamiento | Real y humana sobre el caso sintético |
 | Entrada/cotización ARS | Simulada; el corredor de producción continúa sin resolver |
-| Wallet y firma | Reales con Freighter, de forma no custodial |
+| Wallet y firma | Reales con Freighter, de forma no custodial (PyME e inversor) |
+| Notificaciones | Campana in-app y email por Resend, planificados (#382); las pruebas usan un doble |
 | Fondeo y distribución | Transacciones reales en Stellar Testnet, sin valor económico |
 | Confirmación | Real y asíncrona: Soroban RPC para la bóveda y Horizon para cuentas, pagos y distribución |
 | Cálculo de revenue share | Real, determinístico y ajeno al LLM |
@@ -174,10 +192,11 @@ La persona usuaria firma con Freighter en su navegador; la plataforma firma `fac
 |---|---|
 | Web | Next.js + React para la interfaz y un BFF limitado a necesidades de presentación |
 | API | Node.js + TypeScript + Fastify para comandos, dominio, verificación XDR y coordinación |
-| Persistencia | PostgreSQL gestionado mediante Supabase; Auth y Storage solo si el alcance de la demo lo requiere |
+| Persistencia | PostgreSQL gestionado mediante Supabase; Auth (email y contraseña, roles y RLS) y Storage privado para documentos y fotos de la PyME, planificados (#369, #398) |
+| Notificaciones | Resend detrás de un puerto y adaptador, planificado (#382) |
 | Stellar | Stellar SDK, Freighter, Horizon y Testnet para firma no custodial, envío y confirmación; **contratos de Stellar (Rust) para la custodia del fondeo** |
 | IA | Proveedor LLM `opencode-go`, detrás de un adaptador reemplazable y con salida estructurada |
-| Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el journey crítico en navegador |
+| Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el recorrido crítico en navegador |
 | Workspace y CI | pnpm, Turborepo; GitHub Actions con lockfile congelado y gates de pull request |
 
 El **fondeo se custodia en un contrato de Stellar** (Rust + `soroban-sdk`): cada campaña abre su propia bóveda, el contrato liquida a la PyME apenas se alcanza el objetivo y reembolsa a los inversores si vence la fecha sin alcanzarlo. Se evaluó **Claimable Balance (CAP-23)** como alternativa sin contrato y **se descartó**, porque no puede expresar "objetivo alcanzado" on-chain. Detalle en `docs/planning/stellar-blockchain-requirements.md`.
@@ -310,7 +329,8 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 ## Documentación
 
 - [Arquitectura del monorepo](./docs/architecture/monorepo.md) — decisión, árbol propuesto, dependencias, despliegue, testing y límites de crecimiento.
-- [Plan de la demo](./docs/planning/DEMO.md) — historia de dos semanas, arquitectura, pruebas, demo y límites.
+- [Plan de la demo](./docs/planning/DEMO.md) — producto por roles, arquitectura, pruebas, guion de presentación y límites.
+- [Hoja de ruta ejecutable](./docs/planning/demo-tasks-list.md) — Epics, Features y Tasks, incluida la hoja de ruta alineada al template (#368–#441).
 - [Plan del producto real](./docs/planning/product.md) — validación para Argentina, riesgos regulatorios y ruta hacia producción.
 - [Evidencia del recorrido vertical completo](./docs/planning/complete-vertical-demo-journey-evidence.md) — criterios de aceptación, verificación y límites de la Feature #30.
 - [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md) — template de Claude Design, flujos, estados, accesibilidad y pendientes de diseño.
@@ -320,11 +340,12 @@ La creación y organización del Project, sus issues, labels, campos y dependenc
 
 El monorepo, el shell de demo, la IA real, la persistencia, el slice de evaluación/aprobación humana, la bóveda de campaña en Testnet, el recorrido vertical completo y los gates de CI ya están implementados; la Feature #30 se cerró el 01/10/2026. Lo que sigue abierto, según los límites vigentes del [documento de evidencia](./docs/planning/complete-vertical-demo-journey-evidence.md):
 
-- **Corrida cronometrada de punta a punta.** El recorrido completo por navegador contra producción no se ejecutó, así que no hay un tiempo de punta a punta medido; la latencia del proveedor de IA vuelve inalcanzable el presupuesto de siete minutos tal como se midió.
+- **Corrida cronometrada de punta a punta.** El recorrido completo por navegador contra producción no se ejecutó, así que no hay un tiempo de punta a punta medido; la latencia del proveedor de IA medida es alta e impredecible. No hay un objetivo de duración.
+- **Producto por roles.** Autenticación real, carga de documentos, consola de administración, marketplace, áreas de PyME e inversor y notificaciones, planificados en los Epics #368–#377.
 - **Prueba en vivo contra Testnet.** La suite `e2e-live` sigue necesitando credenciales del operador y Testnet, y no se corrió.
 - **Reset de Testnet del 16/12/2026.** Invalida las direcciones de contrato: obliga a redesplegar la fábrica y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`; el procedimiento está documentado y todavía no se ejercitó.
 - **Bordes conocidos:** `contributions_incomplete` tras un retiro total, un id de campaña malformado que responde `503`, el feed de ventas en memoria que se pierde al reiniciar la API y `scripts/` fuera de ESLint.
-- **Diseño:** completar las pantallas del template, cerrar el gate de revisión por pantalla y generar las variantes móviles.
+- **Diseño:** construir las pantallas del template que faltan como parte de los Epics #368–#377, cerrar el gate de revisión por pantalla y generar las variantes móviles.
 
 El avance por unidad se sigue en el tablero **Vaqcrow-TFM**, que es la fuente de verdad del estado.
 
