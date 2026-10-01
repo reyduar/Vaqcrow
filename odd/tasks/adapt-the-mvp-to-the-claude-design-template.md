@@ -187,13 +187,30 @@ disclosures asserted.
 
 ## Implementation status
 
-Cheapest-first, one work unit per slice. Slices 1–2 are shipped; 3–5 remain.
+Cheapest-first, one work unit per slice. Slices 1–4 are shipped; 5 remains.
 
 - [x] Slice 1 — Spanish copy pass — commit `beda484a2799998a6219303efe2503e32eeb1b2f`
 - [x] Slice 2 — Foundation in `globals.css` + `layout.tsx` — commit `8bca5dd8d631b360921a3d171000ef4161f9aaa6`
-- [ ] Slice 3 — Primitives
-- [ ] Slice 4 — Shell
+- [x] Slice 3 — Primitives — commit `4c383dd80d4bf673883c9244e423b0f8d57af483`
+- [x] Slice 4 — Shell — commit `29e633ecb5cf05819d5cdb021b6e74db3ef31d2b`
 - [ ] Slice 5 — Per-screen
+
+### Slice 3 success tone (decision applied, bounded)
+
+The template's green success tone (`--ok-s`/`--ok-t`, a "Confirmada" chip) is **adopted** as `--color-trust-success` /
+`--color-trust-success-surface`, plus the template's solid status surfaces (`--color-trust-*-surface`). `BadgeTone` gains a
+`success` member, but **no `BadgeVariant` defaults to it**: a caller must select it explicitly for a ledger-confirmed result,
+so `Enviado`/`Pendiente de confirmación` can never render green (`demo-ui.md` §2, "Pendiente no es confirmado").
+`TransactionStatusList`'s `confirmed` state (label "Confirmada en el ledger") takes it; its `sent` state stays caution. The
+tone always travels with icon, title and text, never colour alone.
+
+### Isotipo — blocked, recorded (Slice 4)
+
+`demo-ui.md` §5.2 approves a geometric bull-head isotipo whose **source asset does not exist in the repository** (there is no
+`apps/web/public/`, and the only copy lives inside the git-ignored template folder). The shell therefore ships the wordmark
+alone, with no symbol: no asset was invented, downloaded or generated, and the template's `assets/vaqcrow-isotipo.png` is not
+referenced. The block lifts when an authorized, versioned source file is incorporated; until then the header's brand link
+renders only `Vaqcrow` (`demo-navbar.tsx`).
 
 Slice 2 accent strategy, recorded here because the slice had to decide it: HeroUI's default accent is blue, so the app overrides HeroUI's **source** variable
 `--accent` with the brand purple (`--color-brand-accent`). Everything HeroUI derives from it (`--accent-hover`, `--accent-soft`, `--focus`, the `--color-accent*`
@@ -231,6 +248,8 @@ now matches the template — the per-slice checks above carry that.
 - This document lands in the third commit of the change; its own hash is recorded in the change report.
 - `beda484a2799998a6219303efe2503e32eeb1b2f` — `fix(web): translate demo chrome copy to neutral Spanish` (Slice 1).
 - `8bca5dd8d631b360921a3d171000ef4161f9aaa6` — `feat(web): load Geist and align the token foundation with the template` (Slice 2).
+- `4c383dd80d4bf673883c9244e423b0f8d57af483` — `feat(web): align the demo primitives with the Claude Design template` (Slice 3).
+- `29e633ecb5cf05819d5cdb021b6e74db3ef31d2b` — `feat(web): align the demo shell with the Claude Design template` (Slice 4).
 
 ## Sources
 
