@@ -58,7 +58,11 @@ function FindingItem({
   const labelledBy = item.periodLabel ? `${titleId} ${periodId}` : titleId;
 
   return (
-    <li aria-labelledby={labelledBy} data-kind={item.kind} className="flex flex-col gap-1">
+    <li
+      aria-labelledby={labelledBy}
+      data-kind={item.kind}
+      className="flex flex-col gap-1.5 rounded-control border border-border p-4"
+    >
       <p>
         <strong id={titleId}>{KIND_TITLE[item.kind]}</strong>
         {item.periodLabel ? (
@@ -107,11 +111,17 @@ function FindingItem({
 
 export function EvidenceReviewPanel({ findings, simuladoLabel }: EvidenceReviewPanelProps) {
   return (
-    <section lang="es" aria-label="Revisión de evidencia" aria-live="polite">
+    <section
+      lang="es"
+      aria-label="Revisión de evidencia"
+      aria-live="polite"
+      className="flex flex-col gap-4 rounded-card border border-border p-6"
+    >
+      <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Revisión de evidencia</h3>
       {findings.length === 0 ? (
         <p>Sin hallazgos para revisar.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {findings.map((item, index) => (
             <FindingItem
               key={`${item.kind}-${item.periodLabel ?? "request"}-${index}`}

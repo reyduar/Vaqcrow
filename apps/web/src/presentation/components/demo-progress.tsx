@@ -9,7 +9,16 @@ export interface DemoProgressProps {
 export function DemoProgress({ step, position, total }: DemoProgressProps) {
   return (
     <nav aria-label="Progreso de la demo">
-      <p aria-current="step">
+      {/*
+        Template page-header eyebrow (`Vaqcrow Portafolio.dc.html` / `Vaqcrow
+        Informes.dc.html` above the `<h1>`): small, uppercase, `--text2`. The
+        step copy itself is unchanged — the text carries the meaning, the
+        casing and weight only style it.
+      */}
+      <p
+        aria-current="step"
+        className="m-0 text-xs font-semibold tracking-[0.08em] text-text-secondary uppercase"
+      >
         Paso {position} de {total}: {step.label}
       </p>
     </nav>

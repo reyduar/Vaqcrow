@@ -69,33 +69,44 @@ function HumanDecisionForApplication({
   const assessment = usePersistedAssessment(assessmentGateway, applicationId);
 
   return (
-    <div lang="es" className="grid gap-6 md:grid-cols-2">
+    <div lang="es" className="grid items-start gap-6 lg:grid-cols-[7fr_5fr]">
       {manualReview.status === "present" ? (
         <ManualReviewContextPanel context={manualReview.context} />
       ) : manualReview.status === "unavailable" ? (
-        <section role="alert" aria-label="Revisión manual no disponible" className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold">Revisión manual no disponible</h3>
-          <p>
+        <section
+          role="alert"
+          aria-label="Revisión manual no disponible"
+          className="flex flex-col gap-2 rounded-card border border-border p-6"
+        >
+          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Revisión manual no disponible</h3>
+          <p className="m-0">
             No se pudo cargar el contexto de revisión manual persistido. Vuelva a intentar; no se
             muestra ninguna recomendación para esta solicitud.
           </p>
         </section>
       ) : manualReview.status === "loading" || assessment.status === "loading" ? (
-        <p aria-live="polite" className="text-sm text-muted">
+        <p aria-live="polite" className="text-sm text-text-secondary">
           Cargando la evaluación registrada…
         </p>
       ) : assessment.status === "present" ? (
         <AiAssessmentPanel assessment={assessment.view} />
       ) : assessment.status === "unavailable" ? (
-        <section role="alert" aria-label="Evaluación de IA no disponible" className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold">Evaluación de IA no disponible</h3>
-          <p>No se pudo cargar la evaluación de IA registrada. Vuelva a intentar; no se muestra ninguna recomendación.</p>
+        <section
+          role="alert"
+          aria-label="Evaluación de IA no disponible"
+          className="flex flex-col gap-2 rounded-card border border-border p-6"
+        >
+          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Evaluación de IA no disponible</h3>
+          <p className="m-0">No se pudo cargar la evaluación de IA registrada. Vuelva a intentar; no se muestra ninguna recomendación.</p>
         </section>
       ) : (
-        <section aria-label="Sin evaluación de IA registrada" className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold">Sin evaluación de IA</h3>
-          <p>Todavía no hay ninguna evaluación de IA registrada para esta solicitud.</p>
-          <p className="text-sm text-muted">La IA solo asesora: la decisión es de la persona y puede tomarse sin ella.</p>
+        <section
+          aria-label="Sin evaluación de IA registrada"
+          className="flex flex-col gap-2 rounded-card border border-border p-6"
+        >
+          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Sin evaluación de IA</h3>
+          <p className="m-0">Todavía no hay ninguna evaluación de IA registrada para esta solicitud.</p>
+          <p className="m-0 text-sm text-text-secondary">La IA solo asesora: la decisión es de la persona y puede tomarse sin ella.</p>
         </section>
       )}
 

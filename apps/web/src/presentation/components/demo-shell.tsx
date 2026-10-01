@@ -44,7 +44,7 @@ export function DemoShell({ children }: DemoShellProps) {
   }));
 
   return (
-    <div>
+    <div className="flex min-h-screen flex-col bg-canvas">
       <DemoNavbar
         items={navItems}
         actions={
@@ -58,14 +58,29 @@ export function DemoShell({ children }: DemoShellProps) {
           </>
         }
       />
+      {/*
+        Template page geometry (`Vaqcrow Portafolio.dc.html` / `Vaqcrow
+        Informes.dc.html` `<main>`): the desktop container is max-width 1264 px
+        with 32 px lateral padding, the page title is 30 px / 700 / -0.02em
+        (`<h1 style="margin:0;font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-0.02em">`)
+        and the step progress reads as its eyebrow. Every route renders inside
+        this `<main>`, so all seven pages share the shell's container instead of
+        running edge to edge.
+      */}
       {demoStep ? (
-        <>
-          <h1>{demoStep.step.label}</h1>
-          <DemoProgress step={demoStep.step} position={demoStep.position} total={demoStep.total} />
-        </>
-      ) : null}
-      {children}
-      {demoStep ? <DemoStepNav previous={demoStep.previous} next={demoStep.next} /> : null}
+        <main className="mx-auto flex w-full max-w-[1264px] flex-1 flex-col gap-6 px-8 py-10">
+          <header className="flex flex-col gap-1.5">
+            <DemoProgress step={demoStep.step} position={demoStep.position} total={demoStep.total} />
+            <h1 className="m-0 text-[30px] leading-[1.2] font-bold tracking-[-0.02em]">
+              {demoStep.step.label}
+            </h1>
+          </header>
+          {children}
+          <DemoStepNav previous={demoStep.previous} next={demoStep.next} />
+        </main>
+      ) : (
+        <main className="mx-auto w-full max-w-[1264px] flex-1 px-8 py-10">{children}</main>
+      )}
       <SiteFooter copyright={DEMO_FOOTER_COPYRIGHT} environment={microcopy.testnetBadge} />
     </div>
   );
