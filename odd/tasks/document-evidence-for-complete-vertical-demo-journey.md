@@ -189,6 +189,11 @@ asserting they are right.
   integration is delivered and proven deterministically, but the ≤7-minute budget
   was never measured in a hosted run (T6 prepared the preflight and the runbook;
   the timed run itself did not execute). Recorded, not smoothed.
+  > [!info] Superseded (2026-10-01)
+  > The budget was measured — the provider latency against the hosted environment —
+  > and the criterion is now stated as **not achievable as measured**; see the
+  > Correction section below. The timed full journey itself still has no end-to-end
+  > measurement.
 - Provenance discipline: `pnpm run verify` exit 0 and `playwright test` 31 passed
   are attributed to the delegated writer of #96, with the parent's independent
   re-runs of `pnpm run test:boundaries` (143 passed) and `e2e/full-journey.spec.ts`
@@ -254,3 +259,65 @@ asserting they are right.
   (1 file, +140). This log is recorded in the follow-up commit.
 - Readback: every concrete claim in the document was resolved against the
   repository, the task logs or `gh` before it was written; the sweep is clean.
+
+## Correction — 2026-10-01 (the provider latency is measured)
+
+The evidence document claimed the ≤7-minute criterion had **never been measured**.
+That was true when written and false as of 2026-10-01, when the provider's latency
+was measured against the hosted environment. The three stale-claim items of the
+sweep do not cover it — it is this document's own claim — so it was corrected here.
+A "never measured" statement in a document whose purpose is traceability is exactly
+the defect class the Feature already fixed twice.
+
+### The measurement
+
+Measured on 2026-10-01 against `https://api-production-c07f.up.railway.app`, via the
+**non-persisting** `POST /assessments` probe (that route runs only the provider: it
+has no repository dependency and writes nothing):
+
+- Probe at the then-effective default timeout → `504 {"code":"timeout"}` after **30.69 s**.
+- Probe after raising the timeout → **200 OK** after **93.79 s** (a real, complete
+  assessment: risk band, reasons with evidence references, an anomaly, missing-data items).
+- Second probe after raising the timeout → `504 {"code":"timeout"}` after **120.56 s**.
+- The successful assessment's own `metadata.model` names `glm-5.3-flash`.
+
+The provider is **healthy**: it returns a complete assessment; the problem is
+latency, not availability or credentials. `LLM_TIMEOUT_MS` was **unset** on the
+hosted API service, so the code default of **30 s** applied and every assessment
+failed; it is now **120000**, the code's maximum
+(`apps/api/src/application/config/llm-config.ts`: default 30_000, min 1_000, max
+120_000). The latency therefore cannot be fixed by raising the timeout further. The
+assessment is the **second of six** journey steps: 93.79 s is about **22 %** of a
+420 s budget, and exceeding 120 s is about **29 %** or more, in one step. The
+criterion is therefore stated as **not achievable as measured** on the hosted
+provider path — not as "failing", and not as a PASS.
+
+### Decision — no model change
+
+The configured model is already the **flash** tier. A heavier model was considered
+and **deliberately not adopted**: a flash-tier model already taking 93.79 s means
+the model's weight is not the cause. Recorded as a decision, not an open question.
+The operator's first rehearsal attempt (application
+`9054287c-b474-4a5e-b814-6a0a54afd123`) failed at that step for exactly this
+reason; the failure is recorded durably as a sanitized handoff, and by design a new
+`handoffId` against a durable record returns `409 correlation_conflict`, so that
+application cannot be reused — a rehearsal needs a fresh request.
+
+### Files corrected (Spanish, corpus conventions)
+
+- `docs/planning/complete-vertical-demo-journey-evidence.md` — the #95-5 criterion
+  row's status reason; a new §5 latency row; §2 "Reproducción local" (the hosted
+  runs are now the preflight **and** the latency probe); §7 limits (the browser run
+  stays limit 2, a new AI-latency limit 3 carries the numbers, the former 3–7 become
+  4–8); the criteria-summary sentence; §7.1 (three → four claims, item 4 added); and
+  the "Próximo paso" paragraph.
+- `docs/planning/demo-run-preflight.md` — §4 gains an Obsidian `> [!warning]`
+  callout: the hosted assessment takes on the order of one to two minutes and can
+  exceed the timeout; `LLM_TIMEOUT_MS=120000` is set on the hosted service (the
+  code's maximum); and a failed assessment **burns the application**, so the
+  operator must start a fresh request rather than retrying the same one.
+
+No code, test, config or `.env` file was touched; `LLM_TIMEOUT_MS` was not changed
+here (it is already set on the hosted service).
+
+- Work-unit commit: hash recorded in the follow-up commit.
