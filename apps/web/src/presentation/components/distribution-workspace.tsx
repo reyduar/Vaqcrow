@@ -352,68 +352,75 @@ export function DistributionWorkspace({
   if (campaignId === null) return <FundCampaignFirstNotice action="preparar la distribución" />;
 
   return (
-    <section aria-label="Distribución de ingresos" lang="es" className="flex max-w-xl flex-col gap-4">
-      <h3 className="text-lg font-semibold">Distribución de ingresos</h3>
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
-        <Badge variant="simulado" label="SIMULADO" lang="es" />
-      </div>
-      <p className="text-sm">
-        El servicio calcula la distribución a partir de la campaña y de las ventas simuladas de la
-        PyME, arma la transacción y declara en qué red debe firmarse. Revise el cálculo y fírmela en
-        su wallet; Vaqcrow nunca recibe sus claves ni mueve los fondos.
-      </p>
-
-      {/* The id the page read from `?distribution=`, shown so a reload keeps the
-          reference visible; nothing is read back from it in this unit. */}
-      {distributionId ? (
-        <p className="text-sm">
-          Referencia de la distribución:{" "}
-          <span className="font-mono text-xs break-all">{distributionId}</span>
+    <section aria-label="Distribución de ingresos" lang="es" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 rounded-card border border-border p-6">
+        <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Distribución de ingresos</h3>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
+          <Badge variant="simulado" label="SIMULADO" lang="es" />
+        </div>
+        <p className="m-0 text-sm">
+          El servicio calcula la distribución a partir de la campaña y de las ventas simuladas de la
+          PyME, arma la transacción y declara en qué red debe firmarse. Revise el cálculo y fírmela en
+          su wallet; Vaqcrow nunca recibe sus claves ni mueve los fondos.
         </p>
-      ) : null}
 
-      <p aria-live="polite" className="text-sm">
-        {publicKey ? `Wallet conectada: ${publicKey}` : "Wallet no conectada"}
-      </p>
-      {publicKey ? null : (
-        <Button type="button" onPress={() => void connect()} isDisabled={isConnecting}>
-          {isConnecting ? "Conectando…" : "Conectar wallet"}
-        </Button>
-      )}
+        {/* The id the page read from `?distribution=`, shown so a reload keeps the
+            reference visible; nothing is read back from it in this unit. */}
+        {distributionId ? (
+          <p className="m-0 text-sm">
+            Referencia de la distribución:{" "}
+            <span className="font-mono text-xs break-all">{distributionId}</span>
+          </p>
+        ) : null}
+
+        <p aria-live="polite" className="m-0 text-sm">
+          {publicKey ? `Wallet conectada: ${publicKey}` : "Wallet no conectada"}
+        </p>
+        {publicKey ? null : (
+          <Button type="button" onPress={() => void connect()} isDisabled={isConnecting}>
+            {isConnecting ? "Conectando…" : "Conectar wallet"}
+          </Button>
+        )}
+      </div>
 
       {prepared ? (
         <DistributionDerivation derivation={prepared.derivation} recipients={prepared.recipients} />
       ) : null}
 
       {bannerError ? (
-        <p role="alert" className="text-sm text-trust-critical">
+        <p role="alert" className="m-0 text-sm text-trust-critical">
           {bannerError.message}
         </p>
       ) : null}
 
-      <Button type="button" onPress={() => void prepare()} isDisabled={isPreparing || isSubmitting}>
-        {isPreparing ? "Preparando…" : "Preparar distribución"}
-      </Button>
-
-      {prepared && !isReviewOpen ? (
-        <Button
-          type="button"
-          variant="secondary"
-          onPress={() => {
-            setReviewAttempted(false);
-            setFailure(undefined);
-            setIsReviewOpen(true);
-          }}
-        >
-          Revisar y firmar
+      <div className="flex flex-wrap gap-3">
+        <Button type="button" onPress={() => void prepare()} isDisabled={isPreparing || isSubmitting}>
+          {isPreparing ? "Preparando…" : "Preparar distribución"}
         </Button>
-      ) : null}
+
+        {prepared && !isReviewOpen ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onPress={() => {
+              setReviewAttempted(false);
+              setFailure(undefined);
+              setIsReviewOpen(true);
+            }}
+          >
+            Revisar y firmar
+          </Button>
+        ) : null}
+      </div>
 
       {snapshot ? (
-        <section aria-label="Estado de la distribución" className="flex flex-col gap-3">
+        <section
+          aria-label="Estado de la distribución"
+          className="flex flex-col gap-3 rounded-card border border-border p-6"
+        >
           {applied === false ? (
-            <p className="text-sm">
+            <p className="m-0 text-sm">
               La distribución ya estaba registrada; se muestra el registro existente sin
               duplicarlo.
             </p>
@@ -422,7 +429,7 @@ export function DistributionWorkspace({
             items={statusItems(snapshot)}
             subtitle="Distribución de ingresos · Stellar Testnet"
           />
-          <p>
+          <p className="m-0">
             {/* The API supplies the link because the browser holds no opinion about
                 the network (`D1`); composing it here would mean the web knowing where
                 a Testnet hash opens. */}

@@ -6,6 +6,7 @@ import { createAssessmentGateway } from "@/infrastructure/assessment/default-gat
 import { useJourneyStore } from "@/state/journey-store-provider";
 import { useAssessment } from "@/state/use-assessment";
 import { AiAssessmentPanel } from "./ai-assessment-panel";
+import { Button } from "./button";
 import { StartWithRequestNotice } from "./start-with-request-notice";
 import { TrustBanner } from "./trust-banner";
 
@@ -49,36 +50,35 @@ export function AssessmentWorkspace({ gateway = defaultGateway }: { readonly gat
   const { state, request } = useAssessment(gateway, applicationId);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {applicationId === null ? (
         <StartWithRequestNotice action="consultar la evaluación" />
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <button
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-border p-6">
+          <Button
             type="button"
-            className="rounded border px-3 py-2"
-            disabled={state.status === "loading"}
-            onClick={() => {
+            isDisabled={state.status === "loading"}
+            onPress={() => {
               void request();
             }}
           >
             Consultar evaluación de IA
-          </button>
-          <span className="text-sm text-muted">
+          </Button>
+          <span className="text-sm text-text-secondary">
             La evaluación se pide al backend; la evidencia la toma el servidor de la solicitud enviada.
           </span>
         </div>
       )}
 
       {state.status === "loading" ? (
-        <p role="status" className="text-sm text-muted">
+        <p role="status" className="m-0 text-sm text-text-secondary">
           Consultando al modelo…
         </p>
       ) : null}
 
       {state.status === "recorded" ? (
         <>
-          <p role="status" className="text-sm">
+          <p role="status" className="m-0 text-sm">
             La evaluación quedó registrada y la solicitud pasó a revisión humana.
           </p>
           <AiAssessmentPanel assessment={state.view} />
@@ -86,19 +86,19 @@ export function AssessmentWorkspace({ gateway = defaultGateway }: { readonly gat
       ) : null}
 
       {state.status === "manual_review" ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="m-0 text-sm">
           {`${FAILURE_COPY[state.failureCode] ?? FAILURE_COPY["unavailable"]} La solicitud pasó a revisión humana sin una evaluación de IA: no hay ninguna evaluación que mostrar.`}
         </p>
       ) : null}
 
       {state.status === "no_sales_evidence" ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="m-0 text-sm">
           La solicitud no tiene historial de ventas, así que no se evaluó nada. La solicitud sigue esperando la evaluación.
         </p>
       ) : null}
 
       {state.status === "failed" && state.code !== "no_application" ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="m-0 text-sm">
           {`${FAILURE_COPY[state.code] ?? FAILURE_COPY["unavailable"]} No hay evaluación que mostrar.`}
         </p>
       ) : null}
@@ -118,7 +118,7 @@ export function AssessmentWorkspace({ gateway = defaultGateway }: { readonly gat
       />
 
       {applicationId !== null && state.status === "idle" ? (
-        <p className="text-sm text-muted">Todavía no se consultó ninguna evaluación.</p>
+        <p className="m-0 text-sm text-text-secondary">Todavía no se consultó ninguna evaluación.</p>
       ) : null}
     </div>
   );
