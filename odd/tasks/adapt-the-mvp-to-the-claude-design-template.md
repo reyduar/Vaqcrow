@@ -185,6 +185,21 @@ legacy routes; the brief §5.3 for the wider product).
 (solicitud → IA → aprobación → fondeo → distribución → evidencia), in both themes, with the trust
 disclosures asserted.
 
+## Implementation status
+
+Cheapest-first, one work unit per slice. Slices 1–2 are shipped; 3–5 remain.
+
+- [x] Slice 1 — Spanish copy pass — commit `beda484a2799998a6219303efe2503e32eeb1b2f`
+- [x] Slice 2 — Foundation in `globals.css` + `layout.tsx` — commit `8bca5dd8d631b360921a3d171000ef4161f9aaa6`
+- [ ] Slice 3 — Primitives
+- [ ] Slice 4 — Shell
+- [ ] Slice 5 — Per-screen
+
+Slice 2 accent strategy, recorded here because the slice had to decide it: HeroUI's default accent is blue, so the app overrides HeroUI's **source** variable
+`--accent` with the brand purple (`--color-brand-accent`). Everything HeroUI derives from it (`--accent-hover`, `--accent-soft`, `--focus`, the `--color-accent*`
+aliases) recomputes, so Button, Radio, Chip, ProgressBar and the other accent-driven primitives take the brand colour system-wide. HeroUI's reserved `--color-*`
+aliases are **not** redeclared, so the decision documented in `globals.css` stands.
+
 ## Out of scope (unless the owner expands it)
 
 Building the template screens the demo has **no route for** — the landing, the wallet/marketplace
@@ -214,6 +229,8 @@ now matches the template — the per-slice checks above carry that.
 - `dedd025b091e2018582ec2ee925e45fed620bb99` — `docs(design): make the Claude Design template win over the written brief in demo-ui` (`docs/design/demo-ui.md`).
 - `37a6bc52fbcfabf6e17eb813a0cdb89b53c78150` — `docs(design): annotate the Claude Design brief with the template's precedence` (`docs/design/claude-design-brief.md`).
 - This document lands in the third commit of the change; its own hash is recorded in the change report.
+- `beda484a2799998a6219303efe2503e32eeb1b2f` — `fix(web): translate demo chrome copy to neutral Spanish` (Slice 1).
+- `8bca5dd8d631b360921a3d171000ef4161f9aaa6` — `feat(web): load Geist and align the token foundation with the template` (Slice 2).
 
 ## Sources
 
