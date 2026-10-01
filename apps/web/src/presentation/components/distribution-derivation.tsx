@@ -38,7 +38,7 @@ export function DistributionDerivation({ derivation, recipients }: DistributionD
       lang="es"
       className="flex flex-col gap-4 rounded-card border border-border p-6"
     >
-      <h4 className="m-0 flex flex-wrap items-center gap-2 text-base font-bold tracking-[-0.01em]">
+      <h4 className="m-0 flex flex-wrap items-center gap-2 text-base font-bold">
         Cálculo de la distribución <Badge variant="simulado" label="SIMULADO" lang="es" />
       </h4>
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">

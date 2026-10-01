@@ -354,7 +354,7 @@ export function DistributionWorkspace({
   return (
     <section aria-label="Distribución de ingresos" lang="es" className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 rounded-card border border-border p-6">
-        <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Distribución de ingresos</h3>
+        <h3 className="m-0 text-lg font-bold">Distribución de ingresos</h3>
         <div className="flex flex-wrap gap-2">
           <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
           <Badge variant="simulado" label="SIMULADO" lang="es" />

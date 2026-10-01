@@ -43,7 +43,7 @@ export function SalesEvidenceTable() {
           distribuciones"): a caption at the section-heading weight, a muted
           uppercase header row and a 1 px `--border` rule per row. */}
       <table lang="es" className="w-full border-collapse text-sm">
-        <caption className="mb-3 text-left text-base font-bold tracking-[-0.01em]">
+        <caption className="mb-3 text-left text-base font-bold">
           Ventas mensuales sintéticas — Panadería Horizonte SRL
         </caption>
         <thead>

@@ -78,7 +78,7 @@ function HumanDecisionForApplication({
           aria-label="Revisión manual no disponible"
           className="flex flex-col gap-2 rounded-card border border-border p-6"
         >
-          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Revisión manual no disponible</h3>
+          <h3 className="m-0 text-lg font-bold">Revisión manual no disponible</h3>
           <p className="m-0">
             No se pudo cargar el contexto de revisión manual persistido. Vuelva a intentar; no se
             muestra ninguna recomendación para esta solicitud.
@@ -96,7 +96,7 @@ function HumanDecisionForApplication({
           aria-label="Evaluación de IA no disponible"
           className="flex flex-col gap-2 rounded-card border border-border p-6"
         >
-          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Evaluación de IA no disponible</h3>
+          <h3 className="m-0 text-lg font-bold">Evaluación de IA no disponible</h3>
           <p className="m-0">No se pudo cargar la evaluación de IA registrada. Vuelva a intentar; no se muestra ninguna recomendación.</p>
         </section>
       ) : (
@@ -104,7 +104,7 @@ function HumanDecisionForApplication({
           aria-label="Sin evaluación de IA registrada"
           className="flex flex-col gap-2 rounded-card border border-border p-6"
         >
-          <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Sin evaluación de IA</h3>
+          <h3 className="m-0 text-lg font-bold">Sin evaluación de IA</h3>
           <p className="m-0">Todavía no hay ninguna evaluación de IA registrada para esta solicitud.</p>
           <p className="m-0 text-sm text-text-secondary">La IA solo asesora: la decisión es de la persona y puede tomarse sin ella.</p>
         </section>

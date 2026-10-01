@@ -17,7 +17,7 @@ export function DemoProgress({ step, position, total }: DemoProgressProps) {
       */}
       <p
         aria-current="step"
-        className="m-0 text-xs font-semibold tracking-[0.08em] text-text-secondary uppercase"
+        className="m-0 text-xs font-semibold text-text-secondary uppercase"
       >
         Paso {position} de {total}: {step.label}
       </p>

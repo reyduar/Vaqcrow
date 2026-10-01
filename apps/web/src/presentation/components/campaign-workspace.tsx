@@ -207,7 +207,7 @@ export function CampaignWorkspace({
         lang="es"
         className="flex max-w-2xl flex-col gap-4 rounded-card border border-border p-6"
       >
-        <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Abrir bóveda de campaña</h3>
+        <h3 className="m-0 text-lg font-bold">Abrir bóveda de campaña</h3>
         <p className="m-0 text-sm">
           Vaqcrow crea la cuenta de la PyME a partir de la clave pública que declarás acá y abre la bóveda del
           contrato sobre esa cuenta. La PyME no firma nada en este paso: sólo conecta su wallet para declarar la
@@ -308,7 +308,7 @@ export function CampaignWorkspace({
       lang="es"
       className="flex max-w-3xl flex-col gap-5 rounded-card border border-border p-6"
     >
-      <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Bóveda de campaña</h3>
+      <h3 className="m-0 text-lg font-bold">Bóveda de campaña</h3>
       <div className="flex gap-2">
         <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
         <Badge

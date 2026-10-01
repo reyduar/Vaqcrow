@@ -86,7 +86,7 @@ export function HumanDecisionForm({ defaultActor, onSubmit, error, isSubmitting 
       className="flex flex-col gap-4 rounded-card border border-border p-6"
       onSubmit={handleSubmit}
     >
-      <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Decisión humana</h3>
+      <h3 className="m-0 text-lg font-bold">Decisión humana</h3>
       <p className="m-0 text-sm">
         La decisión la registra una persona. La IA no aprueba ni define el límite: si aprobás, el límite lo fijás vos.
       </p>

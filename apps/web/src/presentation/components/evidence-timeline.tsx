@@ -51,7 +51,7 @@ export function EvidenceTimeline({ entries, className }: EvidenceTimelineProps) 
             className="flex flex-col gap-4 rounded-card border border-border p-6"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">{entry.title}</h3>
+              <h3 className="m-0 text-lg font-bold">{entry.title}</h3>
               {entry.badges.map((badge) => (
                 <Badge key={badge.label} variant={badge.variant} label={badge.label} lang="es" />
               ))}

@@ -45,7 +45,7 @@ export function DistributionCalculation({
     <div className={`flex flex-col gap-2 rounded-card border border-border p-6 ${className ?? ""}`.trim()}>
       <table className="w-full border-collapse text-sm">
         <caption className="mb-2 flex flex-wrap items-center justify-between gap-2 text-left">
-          <span className="font-bold tracking-[-0.01em]">{heading}</span>
+          <span className="font-bold">{heading}</span>
           <span className="font-mono text-xs text-text-secondary">{ruleId}</span>
         </caption>
         <tbody>

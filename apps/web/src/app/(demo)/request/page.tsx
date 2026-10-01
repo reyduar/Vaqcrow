@@ -18,7 +18,7 @@ export default function RequestPage() {
         lang="es"
         className="flex flex-col gap-6"
       >
-        <h2 className="m-0 text-xl font-bold tracking-[-0.02em]">Solicitud y evidencia de la PyME</h2>
+        <h2 className="m-0 text-xl font-bold">Solicitud y evidencia de la PyME</h2>
 
         <dl className="m-0 grid gap-4 rounded-card border border-border p-6 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">

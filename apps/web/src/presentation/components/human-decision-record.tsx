@@ -29,7 +29,7 @@ export function HumanDecisionRecordView({ recorded }: HumanDecisionRecordViewPro
       className="flex flex-col gap-3 rounded-card border border-border p-6"
     >
       <header className="flex flex-wrap items-center gap-2">
-        <p role="status" className="m-0 text-lg font-bold tracking-[-0.01em]">
+        <p role="status" className="m-0 text-lg font-bold">
           Decisión humana registrada
         </p>
         <Badge variant="simulado" label="SIMULADO" lang="es" />

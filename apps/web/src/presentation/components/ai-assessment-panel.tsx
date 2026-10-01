@@ -87,7 +87,7 @@ export function AiAssessmentPanel({ assessment }: AiAssessmentPanelProps) {
       className="flex flex-col gap-5 rounded-card border border-border p-6"
     >
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Evaluación de IA</h3>
+        <h3 className="m-0 text-lg font-bold">Evaluación de IA</h3>
         {isSimulated ? (
           <Badge variant="simulado" label="SIMULADO" lang="es" />
         ) : (
@@ -126,7 +126,7 @@ export function AiAssessmentPanel({ assessment }: AiAssessmentPanelProps) {
         </div>
         <div className="flex flex-col gap-1.5 rounded-control border border-border p-4">
           <dt className="text-xs font-medium text-text-secondary">Recomendación</dt>
-          <dd className="m-0 text-[15px] font-semibold">{RECOMMENDATION_LABEL[assessment.recommendedAction]}</dd>
+          <dd className="m-0 text-base font-semibold">{RECOMMENDATION_LABEL[assessment.recommendedAction]}</dd>
         </div>
       </dl>
 

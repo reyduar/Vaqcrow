@@ -117,7 +117,7 @@ export function EvidenceReviewPanel({ findings, simuladoLabel }: EvidenceReviewP
       aria-live="polite"
       className="flex flex-col gap-4 rounded-card border border-border p-6"
     >
-      <h3 className="m-0 text-lg font-bold tracking-[-0.01em]">Revisión de evidencia</h3>
+      <h3 className="m-0 text-lg font-bold">Revisión de evidencia</h3>
       {findings.length === 0 ? (
         <p>Sin hallazgos para revisar.</p>
       ) : (
