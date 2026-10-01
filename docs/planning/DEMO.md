@@ -119,7 +119,7 @@ Esta es la selección planificada para implementación; la tabla no afirma que t
 | [SWR](https://swr.vercel.app/) | Estado de servidor, caché y revalidación mediante fetchers de aplicación/adaptador | Evita lógica de fetching dispersa y conserva una fuente de verdad para datos remotos |
 | [React Hook Form](https://react-hook-form.com/) | Estado y presentación de formularios en navegador | Reduce complejidad de interacción sin sustituir validación o decisiones autoritativas del backend |
 | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) | Estado de workflow cliente entre rutas | Conserva continuidad de UI sin duplicar estado de SWR ni estado autoritativo del backend |
-| [`VaqcrowWebApp`](https://stitch.withgoogle.com/projects/5439082704079758723) · Stitch ID `5439082704079758723` | Referencia visual y del sistema de diseño | Orienta la implementación revisada en Next.js; el HTML generado nunca es fuente autoritativa de producción |
+| Template de Claude Design (`docs/design/template/`) | Referencia visual y del sistema de diseño | Orienta la implementación revisada en Next.js; el HTML generado nunca es fuente autoritativa de producción |
 | Node.js + Fastify | Servidor HTTP/API de larga ejecución, desplegable por separado; orquesta dominio, verifica XDR y coordina solicitudes de IA | Mantiene un límite backend explícito con bajo costo de implementación y buen soporte TypeScript |
 | GitHub Actions | CI/CD para pull requests, previews y ramas `main`/demo | Automatiza gates reproducibles sin fijar un proveedor de hosting |
 | Vitest | Pruebas unitarias, de dominio y funcionales de la API | Ofrece feedback rápido y una configuración coherente con TypeScript |

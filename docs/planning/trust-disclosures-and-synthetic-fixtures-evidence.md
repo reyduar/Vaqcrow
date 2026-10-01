@@ -130,6 +130,9 @@ $ rg -n '#53|#54|#55|pendiente|por construir|TODO' docs/design/demo-ui.md docs/p
 
 No se encontraron referencias desactualizadas a las Tasks de la Feature #17 en `docs/design/demo-ui.md` ni en `docs/planning/DEMO.md`; las coincidencias de "pendiente" que existen en `demo-ui.md` corresponden a la lista de seguimiento de assets de marca (§11.9) y a la variante MOBILE de Stitch en backlog, ambas ajenas a #53/#54/#55.
 
+> [!warning] Retirado (2026-10-01)
+> La mención a la «variante MOBILE de Stitch» es histórica: Stitch dejó de ser la fuente de verdad de diseño y su apartado §11.9 quedó retirado (ver `demo-ui.md` §11 y §12). Se conserva la oración original como registro del barrido de esa fecha.
+
 ```sh
 $ rg -n '#53|#54|#55|Backlog' docs/planning/demo-tasks-list.md
 ```

@@ -17,6 +17,9 @@ Antes de instalar HeroUI, Tailwind CSS o React Icons en `apps/web/package.json`,
 
 - **Archivo leído**: `.mcp.json` en la raíz del repositorio, que declara los servidores MCP conectados a este proyecto:
   - `stitch` (`https://stitch.googleapis.com/mcp`) — herramienta de diseño de UI de Google Stitch. Ya está referenciada en el issue #53 únicamente como **referencia visual** (`VaqcrowWebApp`, proyecto Stitch ID `5439082704079758723`), explícitamente no autoritativa para producción. No expone documentación de instalación de HeroUI, Tailwind CSS ni React Icons.
+
+> [!warning] Retirado (2026-10-01)
+> El servidor MCP `stitch` y el proyecto `VaqcrowWebApp` ya no son la referencia visual de diseño: Stitch quedó retirado y la referencia es el template de Claude Design (`docs/design/template/`). `.mcp.json` todavía declara el servidor `stitch`; retirarlo es una decisión pendiente del owner. Se conserva el registro del chequeo de esa fecha.
   - `supabase` (`https://mcp.supabase.com/mcp`) — base de datos/backend de Supabase. Sin relación con librerías de UI de frontend.
 - Se revisaron también las instrucciones de servidores MCP inyectadas en el contexto de la sesión (`context7`, entre otras): aunque su descripción general menciona documentación de librerías de terceros, **no está declarado en `.mcp.json` de este proyecto** y no expuso ninguna herramienta invocable en esta sesión. No fue usado porque no está conectado a este repositorio.
 - **Conclusión**: `none` de los servidores MCP conectados a este repositorio es aplicable a HeroUI, Tailwind CSS o React Icons.

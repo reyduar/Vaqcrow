@@ -193,3 +193,6 @@ Con #240 mergeado, el camino de custodia por contrato queda cerrado en `main`: e
 1. Mergear la PR del issue #295 (sincronización del roadmap y follow-ups), que además cierra `R3-PRESIGN-NOT-PINNED`, `R3-CANON-DUP-NO-GUARD`, `R3-DENYLIST-GARANTIA` y F2.
 2. Considerar la limpieza de `microcopy.kycStatusLabel` (F5) en un cambio de copia aparte.
 3. Evaluar si el bloque de prompts de Stitch de `demo-ui.md` §11/§12 conserva el brief original del fondeo clásico a propósito o también debe reconciliarse con la bóveda.
+
+> [!warning] Retirado (2026-10-01)
+> Este follow-up quedó resuelto: el bloque de prompts de Google Stitch de `demo-ui.md` §11/§12 fue retirado el 2026-10-01, cuando Stitch dejó de ser la fuente de verdad de diseño. Se conserva el ítem original como registro.
