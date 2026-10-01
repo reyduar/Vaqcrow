@@ -18,7 +18,7 @@ import type {
   LedgerPort,
   LedgerResult
 } from "../../../application/ports/ledger-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 import type { FundingIntentRouteDependencies } from "./funding-intent.route.js";
 
 const INTENT_ID = "123e4567-e89b-42d3-a456-426614174000";
@@ -183,7 +183,7 @@ describe("POST /funding-intents", () => {
   });
 
   it("returns 200 with the prepared intent, encoding stroops as a decimal string", async () => {
-    app = buildApp({ fundingIntent: deps() });
+    app = buildAppAs("ADMIN", { fundingIntent: deps() });
 
     const response = await app.inject({ method: "POST", url: "/funding-intents", payload: prepareBody });
 
@@ -205,7 +205,7 @@ describe("POST /funding-intents", () => {
   ];
 
   it.each(invalidPrepareBodies)("rejects %s with 400 invalid_request", async (_description, payload) => {
-    app = buildApp({ fundingIntent: deps() });
+    app = buildAppAs("ADMIN", { fundingIntent: deps() });
 
     const response = await app.inject({ method: "POST", url: "/funding-intents", payload });
 
@@ -215,7 +215,7 @@ describe("POST /funding-intents", () => {
 
   it("does not reach the ledger for a rejected body", async () => {
     const ledger = ledgerReturning({ ok: true, value: account });
-    app = buildApp({ fundingIntent: deps({ ledger }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ ledger }) });
 
     await app.inject({
       method: "POST",
@@ -227,7 +227,7 @@ describe("POST /funding-intents", () => {
   });
 
   it("maps an unfunded source account to 404 account_not_found", async () => {
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({ ledger: ledgerReturning({ ok: false, error: { code: "not_found" } }) })
     });
 
@@ -238,7 +238,7 @@ describe("POST /funding-intents", () => {
   });
 
   it("maps an unavailable ledger to 503 unavailable", async () => {
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({ ledger: ledgerReturning({ ok: false, error: { code: "unavailable" } }) })
     });
 
@@ -249,7 +249,7 @@ describe("POST /funding-intents", () => {
   });
 
   it("maps an unbuildable envelope to 400 invalid_request", async () => {
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({ xdr: xdrDouble({ build: { ok: false, error: { code: "invalid_input" } } }) })
     });
 
@@ -260,7 +260,7 @@ describe("POST /funding-intents", () => {
   });
 
   it("sets the correlation ID header", async () => {
-    app = buildApp({ fundingIntent: deps() });
+    app = buildAppAs("ADMIN", { fundingIntent: deps() });
 
     const response = await app.inject({ method: "POST", url: "/funding-intents", payload: prepareBody });
 
@@ -277,7 +277,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
   });
 
   it("returns 202 with applied=true for a first submission", async () => {
-    app = buildApp({ fundingIntent: deps() });
+    app = buildAppAs("ADMIN", { fundingIntent: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -290,7 +290,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
   });
 
   it("returns 200 with applied=false for an exact replay", async () => {
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({
         repository: repositoryDouble({
           submit: { ok: true, value: { record: snapshot, applied: false } }
@@ -312,7 +312,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
     const repository = repositoryDouble({
       submit: { ok: true, value: { record: { ...snapshot, applicationId: APPLICATION_ID }, applied: true } }
     });
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -327,7 +327,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
 
   it("forwards the verified hash, the signed XDR and a generated correlation ID", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -344,7 +344,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
 
   it("verifies the envelope against the declared terms", async () => {
     const xdr = xdrDouble();
-    app = buildApp({ fundingIntent: deps({ xdr }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ xdr }) });
 
     await app.inject({
       method: "POST",
@@ -380,7 +380,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
 
   it.each(driftedBodies)("rejects %s with 400 invalid_request", async (_description, payload) => {
     const repository = repositoryDouble();
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -395,7 +395,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
 
   it("rejects a malformed intent ID in the path with 400 invalid_request", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -417,7 +417,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
     ["an unsupported operation", { code: "unsupported_operation", reason: "operation_type" } as const]
   ])("returns 422 xdr_rejected for %s without leaking the port's reason", async (_description, error) => {
     const repository = repositoryDouble();
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({ xdr: xdrDouble({ verify: { ok: false, error } }), repository })
     });
 
@@ -443,7 +443,7 @@ describe("POST /funding-intents/:intentId/submission", () => {
     ["an unavailable store", { code: "unavailable" } as const, 503, { code: "unavailable" }],
     ["a missing record", { code: "not_found" } as const, 503, { code: "unavailable" }]
   ])("maps %s to its status", async (_description, error, status, body) => {
-    app = buildApp({
+    app = buildAppAs("ADMIN", {
       fundingIntent: deps({ repository: repositoryDouble({ submit: { ok: false, error } }) })
     });
 
@@ -467,7 +467,7 @@ describe("GET /funding-intents/:intentId", () => {
   });
 
   it("returns 200 with the persisted intent", async () => {
-    app = buildApp({ fundingIntent: deps() });
+    app = buildAppAs("ADMIN", { fundingIntent: deps() });
 
     const response = await app.inject({ method: "GET", url: `/funding-intents/${INTENT_ID}` });
 
@@ -478,7 +478,7 @@ describe("GET /funding-intents/:intentId", () => {
 
   it("looks the intent up by the path ID", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     await app.inject({ method: "GET", url: `/funding-intents/${INTENT_ID}` });
 
@@ -500,7 +500,7 @@ describe("GET /funding-intents/:intentId", () => {
       { code: "unavailable" }
     ]
   ])("maps %s to its status", async (_description, findById, status, body) => {
-    app = buildApp({ fundingIntent: deps({ repository: repositoryDouble({ findById }) }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository: repositoryDouble({ findById }) }) });
 
     const response = await app.inject({ method: "GET", url: `/funding-intents/${INTENT_ID}` });
 
@@ -510,7 +510,7 @@ describe("GET /funding-intents/:intentId", () => {
 
   it("rejects a malformed intent ID with 400 invalid_request", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ fundingIntent: deps({ repository }) });
+    app = buildAppAs("ADMIN", { fundingIntent: deps({ repository }) });
 
     const response = await app.inject({ method: "GET", url: "/funding-intents/not-an-id" });
 
@@ -522,7 +522,7 @@ describe("GET /funding-intents/:intentId", () => {
 
 describe("funding intent route registration", () => {
   it("is absent when the funding-intent dependency group is not supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("ADMIN");
 
     const response = await app.inject({
       method: "POST",

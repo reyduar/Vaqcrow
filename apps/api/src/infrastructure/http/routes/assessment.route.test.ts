@@ -1,6 +1,6 @@
 import { createSimulatedAssessmentProvider } from "@vaqcrow/ai";
 import { describe, expect, it } from "vitest";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 
 /**
  * The HTTP surface of a real assessment (Task #228).
@@ -35,7 +35,7 @@ const VALID_OUTPUT = {
 const FIXED_NOW = "2026-09-22T12:00:00.000Z";
 
 function appWith(output: unknown, failWith?: "timeout" | "provider_unavailable") {
-  return buildApp({
+  return buildAppAs("ADMIN", {
     assessment: {
       provider: createSimulatedAssessmentProvider({
         output,
@@ -70,7 +70,7 @@ describe("POST /assessments", () => {
 
   it("refuses a body whose key set drifted, before the provider is called", async () => {
     let called = false;
-    const app = buildApp({
+    const app = buildAppAs("ADMIN", {
       assessment: {
         provider: {
           assess: async () => {
@@ -179,7 +179,7 @@ describe("POST /assessments", () => {
   });
 
   it("is not registered when no provider is supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("ADMIN");
 
     const response = await app.inject({
       method: "POST",

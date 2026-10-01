@@ -10,6 +10,8 @@ import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simu
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
+import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
+import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
@@ -108,7 +110,14 @@ const assessmentProvider = createOpenCodeGoProvider({
   timeoutMs: config.llm.timeoutMs
 });
 
+// Identity and audit (Task #370). The audit log is wired here so its first
+// callers (#410, #390) only have to consume the port; no route appends yet.
+const auth = { port: new SupabaseAuth(supabase) };
+const auditLog = new SupabaseAuditLog(supabase);
+void auditLog; // not consumed by any route yet
+
 const app = buildApp({
+  auth,
   applicationReviewRepository,
   revenueShareDistribution,
   assessment: {

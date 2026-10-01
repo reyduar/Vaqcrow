@@ -6,7 +6,7 @@ import type {
   ApplicationReviewRepositoryPort,
   ApplicationReviewRepositoryResult
 } from "../../../application/ports/application-review-repository-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 
 /**
  * The read surface of the manual-review context (Feature #22, Task #71).
@@ -78,7 +78,7 @@ describe("GET /application-reviews/:applicationId/manual-review", () => {
 
   it("returns the persisted manual-review context for the application", async () => {
     const { repository } = repositoryDouble({ ok: true, value: CONTEXT });
-    app = buildApp({ applicationReviewRepository: repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: repository });
 
     const response = await app.inject({ method: "GET", url: URL });
 
@@ -90,7 +90,7 @@ describe("GET /application-reviews/:applicationId/manual-review", () => {
 
   it("reports not_found truthfully when no handoff exists for the application", async () => {
     const { repository } = repositoryDouble({ ok: false, error: { code: "not_found" } });
-    app = buildApp({ applicationReviewRepository: repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: repository });
 
     const response = await app.inject({ method: "GET", url: URL });
 
@@ -100,7 +100,7 @@ describe("GET /application-reviews/:applicationId/manual-review", () => {
 
   it("maps a repository failure to a sanitized 503 unavailable", async () => {
     const { repository } = repositoryDouble({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ applicationReviewRepository: repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: repository });
 
     const response = await app.inject({ method: "GET", url: URL });
 
@@ -110,7 +110,7 @@ describe("GET /application-reviews/:applicationId/manual-review", () => {
 
   it("rejects an invalid application id with 400 before reading the repository", async () => {
     const { repository, readManualReviewContext } = repositoryDouble({ ok: true, value: CONTEXT });
-    app = buildApp({ applicationReviewRepository: repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: repository });
 
     const response = await app.inject({
       method: "GET",
@@ -123,7 +123,7 @@ describe("GET /application-reviews/:applicationId/manual-review", () => {
   });
 
   it("is not registered when no application review repository is supplied", async () => {
-    app = buildApp();
+    app = buildAppAs("ADMIN");
 
     const response = await app.inject({ method: "GET", url: URL });
 

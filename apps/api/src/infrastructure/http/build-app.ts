@@ -3,6 +3,8 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import { registerAuthorizationHook } from "./authorization-hook.js";
+import type { AuthorizationDependencies } from "./authorization-hook.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
 import type { ApplicationAssessmentRouteDependencies } from "./routes/application-assessment.route.js";
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
@@ -39,6 +41,13 @@ export function buildApp(dependencies: {
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly smeRequest?: SmeRequestRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
+  /**
+   * Required in production (`index.ts` wires the Supabase adapter). When omitted,
+   * every non-public route still denies with 401.
+   */
+  readonly auth?: AuthorizationDependencies;
+  /** Registration observer, used by the policy coverage test. */
+  readonly observeRoutes?: (route: { method: string; url: string }) => void;
 } = {}): FastifyInstance {
   assertRandomUUIDAvailable();
 
@@ -53,6 +62,7 @@ export function buildApp(dependencies: {
     void app.register(cors, {
       origin: allowedOrigins,
       methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["authorization", "content-type", "x-correlation-id"],
       exposedHeaders: ["x-correlation-id"],
       credentials: false
     });
@@ -61,6 +71,15 @@ export function buildApp(dependencies: {
     reply.header("x-correlation-id", request.id);
     done();
   });
+  registerAuthorizationHook(app, dependencies.auth);
+  const observeRoutes = dependencies.observeRoutes;
+  if (observeRoutes) {
+    app.addHook("onRoute", (route) => {
+      for (const method of [route.method].flat()) {
+        observeRoutes({ method, url: route.url });
+      }
+    });
+  }
   registerHealthRoute(app);
   if (dependencies.applicationReviewRepository) {
     registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);

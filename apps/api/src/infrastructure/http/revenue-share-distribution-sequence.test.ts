@@ -32,7 +32,7 @@ import type {
 import { SupabaseRevenueShareDistributionRepository } from "../adapters/supabase-revenue-share-distribution-repository.js";
 import { ConfirmationScheduler } from "../scheduling/confirmation-scheduler.js";
 import type { ConfirmationPolicy } from "../scheduling/confirmation-policy.js";
-import { buildApp } from "./build-app.js";
+import { buildAppAs } from "./test-support/auth.js";
 
 /**
  * The revenue-share distribution vertical observed end to end, with a double
@@ -518,7 +518,7 @@ function harness(): Harness {
     }
   );
 
-  const app = buildApp({
+  const app = buildAppAs("PYME", {
     revenueShareDistribution: {
       ledger,
       xdr,

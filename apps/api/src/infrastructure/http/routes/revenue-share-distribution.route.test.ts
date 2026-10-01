@@ -22,7 +22,7 @@ import type {
   LedgerPort,
   LedgerResult
 } from "../../../application/ports/ledger-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 import type { RevenueShareDistributionRouteDependencies } from "./revenue-share-distribution.route.js";
 
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
@@ -239,7 +239,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("returns 200 with the prepared distribution, encoding recipient amounts as decimal strings", async () => {
-    app = buildApp({ revenueShareDistribution: deps() });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -256,7 +256,7 @@ describe("POST /revenue-share-distributions", () => {
 
   it("reads the sequence from the ledger and sets a 15-minute lifetime", async () => {
     const xdr = xdrDouble();
-    app = buildApp({ revenueShareDistribution: deps({ xdr }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ xdr }) });
 
     await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
 
@@ -272,7 +272,7 @@ describe("POST /revenue-share-distributions", () => {
 
   it("derives the recipients from the case and never reads them from the body", async () => {
     const derive = vi.fn().mockResolvedValue(derived);
-    app = buildApp({ revenueShareDistribution: deps({ derive }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ derive }) });
 
     await app.inject({ method: "POST", url: "/revenue-share-distributions", payload: prepareBody });
 
@@ -301,7 +301,7 @@ describe("POST /revenue-share-distributions", () => {
 
   it.each(invalidPrepareBodies)("rejects %s with 400 invalid_request", async (_description, payload) => {
     const derive = vi.fn().mockResolvedValue(derived);
-    app = buildApp({ revenueShareDistribution: deps({ derive }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ derive }) });
 
     const response = await app.inject({
       method: "POST",
@@ -329,7 +329,7 @@ describe("POST /revenue-share-distributions", () => {
   ];
 
   it.each(derivationStatuses)("maps a failed derivation (%s) to %i derivation_failed with its reason", async (reason, status) => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         derive: vi.fn().mockResolvedValue({ ok: false, error: { code: reason } })
       })
@@ -343,7 +343,7 @@ describe("POST /revenue-share-distributions", () => {
 
   it("maps an already distributed campaign and period to 409 already_distributed at prepare", async () => {
     const xdr = xdrDouble();
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         xdr,
         repository: repositoryDouble({ findActiveByCampaignPeriod: { ok: true, value: snapshot } })
@@ -358,7 +358,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("maps an unavailable derivation to 503 unavailable", async () => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         derive: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
       })
@@ -372,7 +372,7 @@ describe("POST /revenue-share-distributions", () => {
 
   it("does not reach the ledger for a rejected body", async () => {
     const ledger = ledgerReturning({ ok: true, value: account });
-    app = buildApp({ revenueShareDistribution: deps({ ledger }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ ledger }) });
 
     await app.inject({
       method: "POST",
@@ -384,7 +384,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("maps an unfunded source account to 404 account_not_found", async () => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         ledger: ledgerReturning({ ok: false, error: { code: "not_found" } })
       })
@@ -401,7 +401,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("maps an unavailable ledger to 503 unavailable", async () => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         ledger: ledgerReturning({ ok: false, error: { code: "unavailable" } })
       })
@@ -418,7 +418,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("maps an unbuildable envelope to 400 invalid_request", async () => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         xdr: xdrDouble({ build: { ok: false, error: { code: "invalid_input" } } })
       })
@@ -435,7 +435,7 @@ describe("POST /revenue-share-distributions", () => {
   });
 
   it("sets the correlation ID header", async () => {
-    app = buildApp({ revenueShareDistribution: deps() });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -456,7 +456,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
   });
 
   it("returns 202 with applied=true for a first submission", async () => {
-    app = buildApp({ revenueShareDistribution: deps() });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -469,7 +469,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
   });
 
   it("returns 200 with applied=false for an exact replay", async () => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         repository: repositoryDouble({
           submit: { ok: true, value: { record: snapshot, applied: false } }
@@ -489,7 +489,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("forwards the case links to the repository", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -509,7 +509,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("re-derives the distribution from the case before verifying the envelope", async () => {
     const derive = vi.fn().mockResolvedValue(derived);
-    app = buildApp({ revenueShareDistribution: deps({ derive }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ derive }) });
 
     await app.inject({
       method: "POST",
@@ -538,7 +538,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
         derivation
       }
     });
-    app = buildApp({ revenueShareDistribution: deps({ repository, xdr, derive }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository, xdr, derive }) });
 
     const response = await app.inject({
       method: "POST",
@@ -554,7 +554,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("maps a failed derivation at submit to its status and reason", async () => {
     const repository = repositoryDouble();
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         repository,
         derive: vi.fn().mockResolvedValue({ ok: false, error: { code: "campaign_not_settled" } })
@@ -574,7 +574,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("forwards the verified hash, the signed XDR and a generated correlation ID", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -599,7 +599,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
       ]
     };
     const repository = repositoryDouble();
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         xdr: xdrDouble({ verify: { ok: true, value: verifiedElsewhere } }),
         repository
@@ -619,7 +619,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("verifies the envelope against the declared terms", async () => {
     const xdr = xdrDouble();
-    app = buildApp({ revenueShareDistribution: deps({ xdr }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ xdr }) });
 
     await app.inject({
       method: "POST",
@@ -652,7 +652,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it.each(driftedBodies)("rejects %s with 400 invalid_request", async (_description, payload) => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -667,7 +667,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
   it("rejects a malformed distribution ID in the path with 400 invalid_request", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "POST",
@@ -689,7 +689,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
     ["an unsupported operation", { code: "unsupported_operation", reason: "operation_type" } as const]
   ])("returns 422 xdr_rejected for %s without leaking the port's reason", async (_description, error) => {
     const repository = repositoryDouble();
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({
         xdr: xdrDouble({ verify: { ok: false, error } }),
         repository
@@ -724,7 +724,7 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
     ["an unavailable store", { code: "unavailable" } as const, 503, { code: "unavailable" }],
     ["a missing record", { code: "not_found" } as const, 503, { code: "unavailable" }]
   ])("maps %s to its status", async (_description, error, status, body) => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({ repository: repositoryDouble({ submit: { ok: false, error } }) })
     });
 
@@ -748,7 +748,7 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
   });
 
   it("returns 200 with the persisted distribution and an explorer URL", async () => {
-    app = buildApp({ revenueShareDistribution: deps() });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps() });
 
     const response = await app.inject({
       method: "GET",
@@ -762,7 +762,7 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
 
   it("looks the distribution up by the path ID", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     await app.inject({ method: "GET", url: `/revenue-share-distributions/${DISTRIBUTION_ID}` });
 
@@ -784,7 +784,7 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
       { code: "unavailable" }
     ]
   ])("maps %s to its status", async (_description, findById, status, body) => {
-    app = buildApp({
+    app = buildAppAs("PYME", {
       revenueShareDistribution: deps({ repository: repositoryDouble({ findById }) })
     });
 
@@ -799,7 +799,7 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
 
   it("rejects a malformed distribution ID with 400 invalid_request", async () => {
     const repository = repositoryDouble();
-    app = buildApp({ revenueShareDistribution: deps({ repository }) });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
 
     const response = await app.inject({
       method: "GET",
@@ -814,7 +814,7 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
 
 describe("revenue-share distribution route registration", () => {
   it("is absent when the dependency group is not supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("PYME");
 
     const response = await app.inject({
       method: "POST",
