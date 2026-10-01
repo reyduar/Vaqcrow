@@ -26,11 +26,10 @@ import { Badge } from "./badge";
  *   purple brand (`#8a05be`), which is the app's `--color-brand-accent`.
  *   HeroUI's own `--color-accent` is blue and would read as a different brand,
  *   so the active underline uses `border-brand-accent` and never
- *   `border-accent`. `--control`, `--raised`, `--accent-tint`,
- *   `--accent-text`, `--on-accent`, `--logo` and `--ok-*`/`--warn-*`/`--err-*`
- *   do not exist here: the header maps onto `--color-canvas`, HeroUI's
- *   `border-border`, `--color-text-primary`/`--color-text-secondary` and
- *   `--color-focus-ring`.
+ *   `border-accent`. The template vocabulary the header needs now exists as
+ *   tokens (`--color-control`, `--color-raised`, `--color-brand-accent-tint`,
+ *   `--color-brand-accent-text`, `--color-on-accent`; Slice 2), and the badge
+ *   chips carry their own template treatments through `Badge` (Slice 3).
  * - **Collapse without a colour-only signal.** The narrow-screen disclosure is
  *   a real button with `aria-expanded`/`aria-controls` and real state — not a
  *   bare `hidden md:flex`. The responsiveness keys off a container query
@@ -76,7 +75,7 @@ export function DemoNavbar({
     <header
       className={`sticky top-0 z-10 border-b border-border bg-canvas ${className ?? ""}`.trim()}
     >
-      <div className="@container mx-auto max-w-[1264px] px-8 py-2.5">
+      <div className="@container mx-auto max-w-[1264px] px-8 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-3">
             <Link
