@@ -77,11 +77,11 @@ Recorded in each Feature issue ("Not designed in the template"), not decided her
 - #382: bell placement for PYME/INVERSOR; copy for PyME and investor events and email templates; preferences and a notifications page.
 - #386: queue loading/empty/error states; what a non-admin sees at `/admin`; user-chip role line.
 - #390: invitation form and states; role-change control; investor KYC column; search and pagination.
-- #394: guide copy conflicting with platform-signed deployment; destinations of contact links and Términos; RAG behavior.
-- #398: photo UI and document slots; drafts and resubmission; step-3 copy conflict; demo banner vs real upload.
+- #394: destinations of contact links and Términos; RAG behavior.
+- #398: photo UI and document slots; drafts and resubmission; demo banner vs real upload.
 - #402: how the PyME sees completeness; whether it blocks submission; AI states and how files are read.
 - #406: Freighter edge states; changing the key before approval; where the connect step sits.
-- #410: document viewer; "Pedir" communication; deployment progress/failure states; what "Límite aprobado" controls and who sets campaign terms; copy conflict.
+- #410: document viewer; "Pedir" communication; deployment progress/failure states; what "Límite aprobado" controls and who sets campaign terms.
 - #414: favorites persistence; card images from a private bucket; pagination.
 - #418: featured campaign selection; the "Recorré la demo completa" block; assistant behavior.
 - #422: detail states beyond "Fondeo abierto"; where investor KYC appears; who sets deadline and minimum; error states and "Retirar".
@@ -98,3 +98,9 @@ Recorded in each Feature issue ("Not designed in the template"), not decided her
 ## Next step
 
 Review the branch; push and PR are the owner's decisions. First implementation unit after merge: #369.
+
+## Follow-up (2026-10-01)
+
+- Owner resolved the vault copy conflict: admin approval triggers the platform-signed deployment; the PyME never opens nor signs the vault. Moved from open question to a "Vault deployment (decided)" section in #394, #398 and #410, and marked resolved in `demo-tasks-list.md`.
+- Owner confirmed the writer-added dependencies #422←#406, #426←#422, #430←#426.
+- Owner decided the design handoff stays out of the repository (consistent with `odd/tasks/template-stays-out-of-the-repo.md`).

@@ -1930,7 +1930,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Jerarquía y bloqueos:** padre [#373](#^issue-373); sin bloqueos nativos.
 - **Objetivo:** Entregar Acerca de, la Guía de inversión, la Guía para emprendedores y el centro de ayuda como páginas públicas, siguiendo el template. El asistente RAG de Ayuda queda como «Próximamente».
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
-  - Conflicto de copy: las guías del template dicen que tras la aprobación la PyME «define los términos de la campaña y abre una bóveda» y «lo firmás con Freighter»; la decisión del owner es que la plataforma firma `factory.deploy` al aprobar el admin, con la cuenta de la PyME como destino inmutable.
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
   - El destino de «Escribir al equipo», «Hablemos» y la página «Términos» del pie.
   - El comportamiento del asistente RAG más allá del placeholder.
 - **Orden:** Sin dependencias; puede avanzar en paralelo desde el inicio.
@@ -2048,7 +2048,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
   - La UI de fotos (1 a 4: selector, vista previa, orden) y los slots de documentos requeridos; progreso, tipo incorrecto, exceso de tamaño y fallo de carga.
   - Guardar borrador y retomar; editar tras el envío o reenviar tras «Requiere cambios».
-  - Conflicto de copy: el paso 3 dice «Si se aprueba, abrís la bóveda en Testnet y firmás con Freighter», contrario a la decisión del owner.
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
   - Si el banner «Demo: usá datos sintéticos…» y «Completar con datos de ejemplo» se mantienen frente a la carga real.
 - **Orden:** Desbloquea [#402](#^issue-402) y [#406](#^issue-406).
 
@@ -2379,7 +2379,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
   - Cómo se comunica «Pedir» a la PyME y la vista de «Requiere cambios» y «Rechazada» del lado de la PyME.
   - Progreso y fallo del despliegue en la vista de revisión y un «Ver detalle» de solo lectura.
   - Qué controla «Límite aprobado» sobre la bóveda y quién define los términos de la campaña (plazo, aporte mínimo).
-  - Conflicto de copy: el template dice que la PyME abre y firma la bóveda.
+  - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
 - **Orden:** Requiere [#406](#^issue-406), [#402](#^issue-402) y [#386](#^issue-386); desbloquea [#414](#^issue-414) y [#434](#^issue-434).
 
 **Rama propuesta.** `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
