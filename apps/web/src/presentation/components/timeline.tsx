@@ -12,10 +12,9 @@ import { IoCheckmarkOutline } from "react-icons/io5";
  * task's scope; this decision is recorded rather than left implicit.
  *
  * Colour choice: `done`/`current` reuse the existing `--color-trust-*`
- * tokens (`trust-neutral`/`trust-info`) rather than introducing a "success"
- * green — the codebase's established rule (Feature #17/#310) is that no
- * `BadgeTone` has a `success` member, so nothing here reads as a financial
- * success signal; `done` is instead conveyed by its checkmark icon plus the
+ * tokens (`trust-neutral`/`trust-info`) rather than the adopted success tone —
+ * a demo step completing is not a ledger-confirmed financial outcome, so it
+ * must not read as one. `done` is conveyed by its checkmark icon plus the
  * visible "Completado" text, never colour alone.
  */
 export type TimelineStepState = "done" | "current" | "pending";
@@ -44,9 +43,9 @@ const DOT_CLASS: Readonly<Record<TimelineStepState, string>> = {
 };
 
 const LABEL_CLASS: Readonly<Record<TimelineStepState, string>> = {
-  done: "text-sm font-medium",
-  current: "text-sm font-bold",
-  pending: "text-sm font-medium text-muted"
+  done: "text-[15px] font-medium",
+  current: "text-[15px] font-bold",
+  pending: "text-[15px] font-medium text-text-secondary"
 };
 
 export function Timeline({ steps, className }: TimelineProps) {
@@ -74,7 +73,7 @@ export function Timeline({ steps, className }: TimelineProps) {
             </div>
             <div className="pt-0.5 pb-3">
               <div className={LABEL_CLASS[step.state]}>{step.label}</div>
-              <div className="text-xs text-muted">{STATE_LABEL[step.state]}</div>
+              <div className="text-xs text-text-secondary">{STATE_LABEL[step.state]}</div>
               {step.description ? <p className="m-0 mt-1 text-sm text-muted">{step.description}</p> : null}
             </div>
           </li>

@@ -23,7 +23,7 @@ export function ErrorState({ title, message, onRetry, retryLabel = "Reintentar",
   return (
     <div
       role="alert"
-      className={`flex flex-col items-start gap-3 rounded-2xl border border-trust-critical/30 bg-trust-critical/10 p-6 text-trust-critical ${className ?? ""}`.trim()}
+      className={`flex flex-col items-start gap-3 rounded-card bg-trust-critical-surface p-6 text-trust-critical ${className ?? ""}`.trim()}
     >
       <p className="text-base font-semibold">{title}</p>
       {message ? <p className="text-sm">{message}</p> : null}

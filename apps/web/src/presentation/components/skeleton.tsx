@@ -24,9 +24,9 @@ export interface SkeletonProps {
 }
 
 const SHAPE_CLASS: Readonly<Record<SkeletonShape, string>> = {
-  line: "h-3 w-full rounded-lg",
-  block: "h-24 w-full rounded-lg",
-  card: "h-40 w-full rounded-xl"
+  line: "h-3 w-full rounded-control bg-skel",
+  block: "h-24 w-full rounded-control bg-skel",
+  card: "h-40 w-full rounded-card bg-skel"
 };
 
 /**

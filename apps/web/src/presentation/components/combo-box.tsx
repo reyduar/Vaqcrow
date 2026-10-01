@@ -71,8 +71,9 @@ export function ComboBox({
         ? { onSelectionChange: (key: Key | null) => onChange(key === null ? null : String(key)) }
         : {})}
     >
-      <Label>{label}</Label>
-      <HeroComboBox.InputGroup>
+      {/* Field shell from `Vaqcrow Sistema.dc.html` §04 "Campos". */}
+      <Label className="text-sm font-semibold text-text-primary">{label}</Label>
+      <HeroComboBox.InputGroup className="h-11 rounded-control border-control bg-canvas">
         <Input {...(placeholder ? { placeholder } : {})} />
         <HeroComboBox.Trigger />
       </HeroComboBox.InputGroup>
@@ -86,8 +87,8 @@ export function ComboBox({
           ))}
         </ListBox>
       </HeroComboBox.Popover>
-      {helperText ? <Description>{helperText}</Description> : null}
-      {error ? <FieldError>{error}</FieldError> : null}
+      {helperText ? <Description className="text-xs text-text-secondary">{helperText}</Description> : null}
+      {error ? <FieldError className="text-xs text-trust-critical">{error}</FieldError> : null}
     </HeroComboBox>
   );
 }

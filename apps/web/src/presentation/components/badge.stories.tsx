@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { IoCheckmarkCircleOutline } from "react-icons/io5";
 import { Badge, type BadgeProps } from "./badge";
 
 /**
- * `Badge` is the trust badge primitive. `BadgeTone` deliberately has no
- * "success" member, so a transaction in "Enviada"/"Pendiente de confirmación"
- * cannot read as success — not by convention, by type.
+ * `Badge` is the trust badge primitive. `BadgeTone` now includes an adopted
+ * "success" tone (template `--ok-s`/`--ok-t`), but it is bounded by
+ * `demo-ui.md` §2: no variant defaults to it, so a transaction in
+ * "Enviada"/"Pendiente de confirmación" cannot read as success, and success is
+ * only ever selected explicitly for a ledger-confirmed result.
  *
  * Every story renders visible text: meaning never lives in colour or icon
  * alone (the project's accessibility rule for statuses).
@@ -64,3 +67,15 @@ export const PendingIsNotConfirmed: Story = {
 };
 
 export const Simulado: Story = { args: { variant: "simulado", label: "SIMULADO" } };
+
+/**
+ * The adopted success tone, opt-in and only for a ledger-confirmed outcome.
+ * The tone travels with icon and text; it is never the only signal.
+ */
+export const Confirmed: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant="transaction" tone="success" label="Confirmada" icon={IoCheckmarkCircleOutline} lang="es" />
+    </div>
+  )
+};

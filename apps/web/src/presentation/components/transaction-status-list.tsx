@@ -25,13 +25,16 @@ import { microcopy } from "@/application/trust/disclosures";
  *   yet seen confirmation simply omits the `confirmed` item; that absence is
  *   the pre-confirmation placeholder, and appending it is what `aria-live`
  *   announces.
- * - The template's `--ok-*`/`--warn-*`/`--err-*`/`--text2` tokens do not exist
- *   here. States map onto the real `--color-trust-*` tokens only:
- *   `signed` → neutral, `sent` → caution, `confirmed` → info, `failed` →
- *   critical. "Sent" therefore can never use a success colour: there is no
- *   success token, and the confirmed state's positive read is carried by its
- *   checkmark icon plus the visible "Confirmada en el ledger" text — never by
- *   colour alone (WCAG 2.2 AA).
+ * - The template's `--ok-*`/`--warn-*`/`--err-*`/`--text2` tokens are the
+ *   template's own status pairs, now available as `--color-trust-*-surface`
+ *   plus the adopted `--color-trust-success` (Slice 3, `demo-ui.md` §5.4).
+ *   States map onto them: `signed` → neutral outline, `sent` → caution,
+ *   `confirmed` → success, `failed` → critical. "Sent" can still never use a
+ *   success colour — it selects the caution pair — and the confirmed state's
+ *   positive read is carried by its checkmark icon plus the visible
+ *   "Confirmada en el ledger" text, never by colour alone (WCAG 2.2 AA). The
+ *   success tone is only reachable here for a ledger-confirmed state, exactly
+ *   as `demo-ui.md` §2 bounds it.
  * - The state colour lives on the **surface and the icon only**, never on a
  *   text run. Measured over the state's own `/10` tint in light mode, the
  *   state colour as text reaches 4.38:1 (`caution`) and 4.50:1 (`info`) —
@@ -95,16 +98,16 @@ const STATE_ICON: Readonly<Record<TransactionStatusState, IconType>> = {
  */
 const STATE_SURFACE_CLASS: Readonly<Record<TransactionStatusState, string>> = {
   signed: "border border-trust-neutral/30 bg-trust-neutral/10",
-  sent: "border border-trust-caution/30 bg-trust-caution/10",
-  confirmed: "border border-trust-info/30 bg-trust-info/10",
-  failed: "border border-trust-critical/30 bg-trust-critical/10"
+  sent: "border border-trust-caution/30 bg-trust-caution-surface",
+  confirmed: "border border-trust-success/30 bg-trust-success-surface",
+  failed: "border border-trust-critical/30 bg-trust-critical-surface"
 };
 
 /** The state colour proper, applied to the decorative mark only. */
 const STATE_ICON_CLASS: Readonly<Record<TransactionStatusState, string>> = {
   signed: "text-trust-neutral",
   sent: "text-trust-caution",
-  confirmed: "text-trust-info",
+  confirmed: "text-trust-success",
   failed: "text-trust-critical"
 };
 

@@ -38,6 +38,22 @@
   --color-trust-caution: #7a4b00;
   --color-trust-critical: #a12622;
 
+  /*
+   * Status surface/text pairs, adopted from the template's own status tokens
+   * (`Vaqcrow Sistema.dc.html` line 15: `--info-s/--info-t`, `--warn-s/--warn-t`,
+   * `--err-s/--err-t`, `--ok-s/--ok-t`; `docs/design/demo-ui.md` §5.4). The
+   * text values already match the `--color-trust-*` tones above, so only the
+   * solid surfaces and the adopted success pair are new. The success tone is
+   * bounded by `demo-ui.md` §2: green is reserved for outcomes actually
+   * confirmed in the ledger, never for `Enviado`/`Pendiente`, and never the
+   * only signal (it always travels with icon, title and text).
+   */
+  --color-trust-info-surface: #eaf2ff;
+  --color-trust-caution-surface: #fff4d6;
+  --color-trust-critical-surface: #fdecec;
+  --color-trust-success: #176b3a;
+  --color-trust-success-surface: #e8f5ec;
+
   --color-chart-primary: #1d4e89;
   --color-chart-anomaly: #a12622;
   --color-chart-missing: #94a3b8;
@@ -157,6 +173,13 @@
   --color-trust-info: #a9ccff;
   --color-trust-caution: #ffd27a;
   --color-trust-critical: #ffb3ae;
+
+  /* Template status surfaces, dark values (`Vaqcrow Sistema.dc.html` line 16). */
+  --color-trust-info-surface: #172e4d;
+  --color-trust-caution-surface: #422f0a;
+  --color-trust-critical-surface: #451f22;
+  --color-trust-success: #8de5ae;
+  --color-trust-success-surface: #163a27;
 
   --color-chart-primary: #a9ccff;
   --color-chart-anomaly: #ffb3ae;

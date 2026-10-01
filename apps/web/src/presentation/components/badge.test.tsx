@@ -14,12 +14,21 @@ const VARIANTS: readonly BadgeVariant[] = [
 ];
 
 describe("Badge", () => {
-  it("never renders a 'success' tone — the type union has no such member", () => {
-    // Type-level guard: BadgeTone excludes "success"; this line fails to
-    // compile if the union is ever widened to include it.
-    const tones: readonly BadgeTone[] = ["neutral", "info", "caution", "critical"];
+  it("keeps success opt-in: no variant resolves to it by default", () => {
+    // Slice 3 adopts the template's success tone, bounded by `demo-ui.md` §2:
+    // green is only for a ledger-confirmed outcome, so it is a tone a caller
+    // selects explicitly, never a variant default.
+    const tones: readonly BadgeTone[] = ["neutral", "info", "caution", "critical", "success"];
 
-    expect(tones).not.toContain("success");
+    expect(tones).toContain("success");
+  });
+
+  it("renders the adopted success surface only when explicitly asked", () => {
+    const { container } = render(<Badge variant="transaction" label="Confirmada" tone="success" />);
+
+    const badge = container.querySelector("[data-tone]");
+    expect(badge).toHaveAttribute("data-tone", "success");
+    expect(badge?.className ?? "").toMatch(/trust-success/);
   });
 
   it("always renders visible label text, never relying on icon or color alone", () => {

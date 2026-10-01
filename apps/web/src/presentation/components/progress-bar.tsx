@@ -57,10 +57,12 @@ export function ProgressBar({
       valueLabel={valueText}
       {...(className ? { className } : {})}
     >
-      <Label>{label}</Label>
-      <HeroProgressBar.Output>{valueText}</HeroProgressBar.Output>
-      <HeroProgressBar.Track>
-        <HeroProgressBar.Fill />
+      {/* Track geometry from `Vaqcrow Sistema.dc.html` line 261: 6 px high,
+          pill radius, `--surface` fill and an inset 1 px `--border` line. */}
+      <Label className="text-sm font-medium text-text-secondary">{label}</Label>
+      <HeroProgressBar.Output className="text-sm font-medium tabular-nums">{valueText}</HeroProgressBar.Output>
+      <HeroProgressBar.Track className="h-1.5 rounded-pill bg-page-surface shadow-[inset_0_0_0_1px_var(--color-page-border)]">
+        <HeroProgressBar.Fill className="rounded-pill" />
       </HeroProgressBar.Track>
     </HeroProgressBar>
   );

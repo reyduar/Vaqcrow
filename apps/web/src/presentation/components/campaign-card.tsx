@@ -90,12 +90,13 @@ export function CampaignCard({
 
   return (
     <article
-      className={`flex flex-col gap-5 rounded-2xl border border-border p-6 ${className ?? ""}`.trim()}
+      className={`flex flex-col gap-5 rounded-card border border-border p-6 ${className ?? ""}`.trim()}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <HeadingTag className="m-0 text-lg leading-tight font-bold">{smeName}</HeadingTag>
-          {subtitle ? <div className="mt-0.5 text-sm text-muted">{subtitle}</div> : null}
+          {/* Template card title: 20 px / 700 (`Vaqcrow Sistema.dc.html` line 253). */}
+          <HeadingTag className="m-0 text-xl leading-tight font-bold">{smeName}</HeadingTag>
+          {subtitle ? <div className="mt-0.5 text-sm text-text-secondary">{subtitle}</div> : null}
         </div>
         {simuladoLabel ? <Badge variant="simulado" label={simuladoLabel} lang="es" /> : null}
       </div>
@@ -108,16 +109,16 @@ export function CampaignCard({
           {...(formatRaised ? { formatValue: formatRaised } : {})}
           isGoalReached={isGoalReached}
         />
-        {closeDateLabel ? <div className="text-sm text-muted">{closeDateLabel}</div> : null}
+        {closeDateLabel ? <div className="text-sm text-text-secondary">{closeDateLabel}</div> : null}
       </div>
 
       <dl className="m-0 grid grid-cols-2 gap-3 border-t border-border pt-4">
         <div>
-          <dt className="text-xs text-muted">Revenue share</dt>
+          <dt className="text-xs text-text-secondary">Revenue share</dt>
           <dd className="m-0 mt-0.5 font-semibold">{revenueShareTerms}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted">Riesgo</dt>
+          <dt className="text-xs text-text-secondary">Riesgo</dt>
           <dd className="m-0 mt-0.5">
             <Badge
               variant="risk"

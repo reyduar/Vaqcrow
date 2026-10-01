@@ -14,11 +14,11 @@ import { HashDisplay } from "./hash-display";
  *
  * A state is always visible text, never colour alone: `observed`, `absent` and
  * `unavailable` each render their own word and carry it as `data-state` so the
- * distinction survives a greyscale render and assistive tech. There is no
- * success tone in this codebase, and the timeline invents none: a pending or
- * failed movement is rendered with the wording the projection gave it and can
- * never read as confirmed. Hashes go through `HashDisplay` with the
- * caller-supplied `explorerUrl`; this component never builds one (`D1`).
+ * distinction survives a greyscale render and assistive tech. The adopted
+ * success tone is not used here: a pending or failed movement is rendered with
+ * the wording the projection gave it and can never read as confirmed, and this
+ * recap makes no confirmed claim of its own. Hashes go through `HashDisplay`
+ * with the caller-supplied `explorerUrl`; this component never builds one (`D1`).
  *
  * The recap deliberately does not carry `microcopy.priorRunHash`: a hash read
  * back from the API cannot tell whether it came from this run or from a rehearsal,
