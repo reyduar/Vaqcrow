@@ -1821,12 +1821,12 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 
 **Rama propuesta.** `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
 
-### #370 — Implementar Supabase Auth, roles, RLS y la autorización de la API
+### ~~#370 — Implementar Supabase Auth, roles, RLS y la autorización de la API~~
 
 ^issue-370
 
 - **Título original:** `Task: Implement Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #370](https://github.com/reyduar/Vaqcrow/issues/370) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog` (verificado el 2026-10-02: el issue sigue abierto aunque su PR está mergeada en la rama de la Feature).
+- **GitHub y estado:** [issue #370](https://github.com/reyduar/Vaqcrow/issues/370) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-02: su PR #443 está mergeada en la rama de la Feature, no en `main`).
 - **Jerarquía y bloqueos:** padre [#369](#^issue-369); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#371](#^issue-371).

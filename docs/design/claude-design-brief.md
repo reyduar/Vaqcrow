@@ -266,7 +266,7 @@ detallada en [`demo-ui.md` §8](./demo-ui.md).
 - **Actor:** persona nueva. **Propósito:** entender la propuesta y crear/activar la cuenta.
 - **Contenido clave:** hero corto; los 4 pasos del modelo (PyME → evaluación → bóveda → distribución); trust strip; CTA primario.
 - **Estados:** nuevo · validación en curso · cuenta creada · error de red.
-- **Límite:** sin autenticación real; Auth.js de producción está fuera de alcance.
+- **Límite:** la autenticación es real con Supabase Auth (#369); Auth.js v5 (#134) quedó superseded. El alta y el ingreso desde la web llegan con #378.
 
 #### 2 · Onboarding PyME: KYC — `/onboarding/pyme/kyc`
 - **Actor:** PyME. **Propósito:** completar KYC/KYB **simulado** para poder registrar la PyME.
