@@ -223,6 +223,78 @@ describe("default-deny authorization", () => {
   });
 });
 
+describe("sanitized denials", () => {
+  const unavailablePort = () =>
+    fakeAuthPort({ verifyAccessToken: async () => ({ ok: false, error: { code: "unavailable" } }) });
+
+  type Scenario = readonly [label: string, port: () => ReturnType<typeof fakeAuthPort>, headers: Record<string, string>];
+
+  function scenariosFor(allowed: Allowed): Scenario[] {
+    const scenarios: Scenario[] = [
+      ["no token", fakeAuthPort, {}],
+      ["a malformed authorization header", fakeAuthPort, { authorization: "Basic abc" }],
+      ["a rejected token", fakeAuthPort, { authorization: "Bearer garbage" }],
+      ["an inactive principal", fakeAuthPort, bearer("ADMIN", "inactive")],
+      ["an unavailable auth provider", unavailablePort, bearer("ADMIN")]
+    ];
+    const forbidden = allowed === "any" || allowed === "public" ? undefined : ROLES.find((role) => !allowed.includes(role));
+    if (forbidden) {
+      scenarios.push([`a forbidden role (${forbidden})`, fakeAuthPort, bearer(forbidden)]);
+    }
+    return scenarios;
+  }
+
+  const guarded = MATRIX.filter(([, , allowed]) => allowed !== "public");
+
+  it.each(guarded)("%s %s denies with a body of exactly { code }", async (method, pattern, allowed) => {
+    const seen = new Set<number>();
+    for (const [label, port, headers] of scenariosFor(allowed)) {
+      app = buildFullApp({ port: port() }).app;
+      const response = await app.inject({
+        method: method as "GET" | "POST",
+        url: concreteUrl(pattern),
+        headers,
+        ...(method === "POST" ? { payload: {} } : {})
+      });
+      await app.close();
+      app = undefined;
+
+      expect([401, 403, 503], label).toContain(response.statusCode);
+      seen.add(response.statusCode);
+      expect(response.headers["content-type"], label).toMatch(/^application\/json/);
+      const body = response.json() as Record<string, unknown>;
+      expect(Object.keys(body), label).toEqual(["code"]);
+      expect(["unauthenticated", "forbidden", "unavailable"], label).toContain(body["code"]);
+      expect(response.body, label).toBe(JSON.stringify({ code: body["code"] }));
+    }
+    expect(seen.has(401) && seen.has(503)).toBe(true);
+  });
+
+  it("answers 503 { code } and never echoes the error when the auth port throws", async () => {
+    const throwingPort = fakeAuthPort({
+      verifyAccessToken: async () => {
+        throw new Error("internal provider detail");
+      }
+    });
+    app = buildFullApp({ port: throwingPort }).app;
+
+    const response = await app.inject({ method: "GET", url: "/campaigns/abc", headers: bearer("ADMIN") });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.body).toBe(JSON.stringify({ code: "unavailable" }));
+  });
+
+  it("denies a route without a policy entry with a body of exactly { code }", async () => {
+    app = buildApp({ auth: { port: fakeAuthPort() } });
+    app.get("/unlisted", async () => ({ leaked: true }));
+
+    const response = await app.inject({ method: "GET", url: "/unlisted", headers: bearer("ADMIN") });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body).toBe(JSON.stringify({ code: "forbidden" }));
+  });
+});
+
 describe("policy table", () => {
   it("matches the specification matrix exactly", () => {
     expect([...ROUTE_POLICY_KEYS].sort()).toEqual(MATRIX.map(([method, pattern]) => `${method} ${pattern}`).sort());

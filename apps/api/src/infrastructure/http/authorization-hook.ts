@@ -64,7 +64,14 @@ export function registerAuthorizationHook(
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const verified = await port.verifyAccessToken(token);
+    let verified: Awaited<ReturnType<AuthPort["verifyAccessToken"]>>;
+    try {
+      verified = await port.verifyAccessToken(token);
+    } catch {
+      // The port contract is to return `unavailable`, never throw; if an
+      // adapter breaks it, Fastify's default handler would echo the message.
+      return reply.code(503).send({ code: "unavailable" });
+    }
     if (!verified.ok) {
       return verified.error.code === "unavailable"
         ? reply.code(503).send({ code: "unavailable" })
