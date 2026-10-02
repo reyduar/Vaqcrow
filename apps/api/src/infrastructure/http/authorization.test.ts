@@ -64,6 +64,7 @@ function buildFullApp(auth?: AuthDependency): {
 
 let app: FastifyInstance | undefined;
 afterEach(async () => {
+  vi.restoreAllMocks();
   await app?.close();
   app = undefined;
 });
@@ -282,6 +283,32 @@ describe("sanitized denials", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.body).toBe(JSON.stringify({ code: "unavailable" }));
+  });
+
+  it("logs a thrown auth port error by name and correlation id only, never its message", async () => {
+    const sentinel = "SENTINEL-auth-port-detail-7f3a";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const throwingPort = fakeAuthPort({
+      verifyAccessToken: async () => {
+        const error = new Error(sentinel);
+        error.name = "ProviderCrashError";
+        throw error;
+      }
+    });
+    app = buildFullApp({ port: throwingPort }).app;
+
+    const response = await app.inject({ method: "GET", url: "/campaigns/abc", headers: bearer("ADMIN") });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.body).toBe(JSON.stringify({ code: "unavailable" }));
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(logged).toHaveBeenCalledWith("[AuthorizationHook] auth port threw", {
+      cause: "ProviderCrashError",
+      correlationId: response.headers["x-correlation-id"]
+    });
+    expect(JSON.stringify(logged.mock.calls)).not.toContain(sentinel);
+    expect(response.body).not.toContain(sentinel);
+    expect(JSON.stringify(response.headers)).not.toContain(sentinel);
   });
 
   it("denies a route without a policy entry with a body of exactly { code }", async () => {
