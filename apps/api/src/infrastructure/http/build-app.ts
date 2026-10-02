@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
-import type { FastifyInstance } from "fastify";
+import type { FastifyError, FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
@@ -22,6 +22,39 @@ import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
 import type { SmeRequestRouteDependencies } from "./routes/sme-request.route.js";
 import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
+
+/**
+ * Fastify's own 4xx errors (body parsing, media type, body size, schema
+ * validation) carry fixed framework text, never request or provider data, so
+ * their default body is kept unchanged.
+ */
+function isFrameworkClientError(error: FastifyError): boolean {
+  const status = error.statusCode;
+  if (status === undefined || status < 400 || status >= 500) return false;
+  // `code` is typed as a string but is absent on plain errors thrown by handlers.
+  return error.validation !== undefined || (typeof error.code === "string" && error.code.startsWith("FST_"));
+}
+
+/**
+ * Anything else that escapes a route is unexpected: answer a bare
+ * `500 { code: "internal" }` and log only the error name, never its message
+ * (it could echo provider details or request data). Fastify's logger is
+ * disabled, so this follows the adapters' `console.error` convention.
+ */
+function registerErrorHandler(app: FastifyInstance): void {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    if (isFrameworkClientError(error)) {
+      return reply.send(error);
+    }
+    // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
+    console.error("[HttpErrorHandler] unhandled error", {
+      cause: error instanceof Error ? error.name : "unknown",
+      statusCode: typeof error.statusCode === "number" ? error.statusCode : 500,
+      correlationId: request.id
+    });
+    return reply.code(500).send({ code: "internal" });
+  });
+}
 
 function assertRandomUUIDAvailable(): void {
   const crypto = Reflect.get(globalThis, "crypto") as { randomUUID?: unknown } | undefined;
@@ -72,6 +105,7 @@ export function buildApp(dependencies: {
     done();
   });
   registerAuthorizationHook(app, dependencies.auth);
+  registerErrorHandler(app);
   const observeRoutes = dependencies.observeRoutes;
   if (observeRoutes) {
     app.addHook("onRoute", (route) => {

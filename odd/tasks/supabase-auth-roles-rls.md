@@ -140,6 +140,13 @@ Rama `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, crea
   - Test: el puerto lanza un `Error` con nombre `ProviderCrashError` y un mensaje centinela; se afirma 503 con cuerpo exacto, una sola llamada a `console.error` con `{ cause: "ProviderCrashError", correlationId: <x-correlation-id de la respuesta> }`, y que el centinela no aparece en los registros, el cuerpo ni las cabeceras.
   - RED: `vitest run src/infrastructure/http/authorization.test.ts -t "logs a thrown"` → `AssertionError: expected "error" to be called 1 times, but got 0 times`, `Tests 1 failed | 159 skipped (160)`.
   - GREEN: `vitest run src/infrastructure/http/authorization.test.ts` → `Tests 160 passed (160)`.
+- [x] **T6 — Manejador de errores sanitizado.** `buildApp` no definía `setErrorHandler`: una excepción no atrapada dentro de un handler respondía el 500 por defecto de Fastify con el `message` crudo (seguimiento registrado en T4).
+  - Ruta: delegada (escritor único, T5–T6). Archivos: `apps/api/src/infrastructure/http/build-app.ts`, `apps/api/src/infrastructure/http/build-app.test.ts`, `docs/architecture/identity-and-rls-boundaries.md` §9.4 (párrafo sobre el registro de T5 y el 500 sanitizado). Commit: ver `git log` (`fix(api): sanitize uncaught handler errors`).
+  - Evidencia previa: las rutas validan con `safeParse` en el handler y responden sus 4xx con `reply.code(...).send({ code })` (`invalid_request` y otros); ninguna declara esquemas de Fastify ni lanza errores con `statusCode`. Los únicos 4xx con forma Fastify son los del framework, observados con una sonda temporal (ya borrada): `400 FST_ERR_CTP_INVALID_JSON_BODY` («Body is not valid JSON but content-type is set to 'application/json'»), `400 FST_ERR_CTP_EMPTY_JSON_BODY`, `415 FST_ERR_CTP_INVALID_MEDIA_TYPE`, `413 FST_ERR_CTP_BODY_TOO_LARGE`; texto fijo, sin eco del payload (un JSON con `SECRETVALUE` no aparece en el cuerpo). No existe un código interno previo en `packages/contracts` ni en las rutas.
+  - Diseño: `registerErrorHandler` después del hook de autorización. Si el error es un 4xx del framework (`validation` presente o `code` con prefijo `FST_`), `reply.send(error)` conserva el cuerpo por defecto sin cambios. Todo lo demás —5xx, errores sin estado y errores ajenos a Fastify que declaran un 4xx (podrían traer un mensaje arbitrario de una dependencia)— responde `500 { code: "internal" }` y registra `console.error("[HttpErrorHandler] unhandled error", { cause: <nombre>, statusCode: <declarado o 500>, correlationId })`, nunca el `message`. Se usa `console.error` porque Fastify corre con `logger: false` (misma convención que T5 y los adaptadores). La cabecera `x-correlation-id` y las de CORS se fijan en `onRequest`, así que siguen presentes en el 500 (los tests de CORS existentes no cubrían errores; el test nuevo lo afirma).
+  - Tests (`describe("error handler")`): ruta ad-hoc que lanza `HandlerCrashError` con un mensaje centinela → 500, cuerpo exacto `{"code":"internal"}`, `x-correlation-id` válido, `access-control-allow-origin` presente, una llamada de registro con nombre/estado/correlación y el centinela ausente de registros y cabeceras; error ajeno que declara `statusCode 404` → 500 `internal`, registro con `statusCode: 404`; JSON mal formado (400) y `text/xml` (415) → cuerpo Fastify sin cambios y sin registro.
+  - RED: `vitest run src/infrastructure/http/build-app.test.ts` → `Tests 2 failed | 15 passed (17)`: `expected '{"statusCode":500,"error":"Internal S…' to be '{"code":"internal"}'` y `expected 404 to be 500`. Los dos casos de 4xx del framework ya pasaban: fijan el comportamiento de hoy como guarda. Un primer GREEN parcial falló (`Tests 1 failed | 16 passed (17)`) porque un `Error` plano no trae `code` y `error.code.startsWith` lanzaba dentro del manejador; se protegió con `typeof error.code === "string"`.
+  - GREEN: `vitest run src/infrastructure/http/build-app.test.ts` → `Tests 17 passed (17)`; `vitest run src/infrastructure/http` → `Test Files 14 passed (14)`, `Tests 454 passed (454)`.
 
 ## Verificación
 
@@ -151,6 +158,13 @@ Task #371 (2026-10-01, rama de #371 sobre `a094e91`):
 - `pnpm run test:db` → `Files=9, Tests=167, Result: PASS` (orquestador, tras independizar los fixtures del seed).
 - No ejecutado: `@vaqcrow/web` (la rama no toca `apps/web`).
 
+T5 y T6 (2026-10-02, escritor):
+
+- `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http` → `Test Files 14 passed (14)`, `Tests 454 passed (454)`.
+- `pnpm --filter @vaqcrow/api test` → `Test Files 59 passed (59)`, `Tests 1371 passed (1371)`.
+- `pnpm --filter @vaqcrow/api lint` y `typecheck` → limpios; `pnpm run boundaries` → `no dependency violations found (564 modules, 1863 dependencies cruised)`.
+- No ejecutado: `@vaqcrow/web` (fuera de alcance) ni `test:db` (sin cambios de base).
+
 ## Próximo paso
 
-PR de #371 contra la rama de la Feature; seguimiento `setErrorHandler` (excepciones dentro de handlers devuelven el `message` crudo de Fastify en 500); Task #372 (evidencia); confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía); R1-002 antes del merge a `main`.
+PR de #371 contra la rama de la Feature; Task #372 (evidencia); confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía); R1-002 antes del merge a `main`.
