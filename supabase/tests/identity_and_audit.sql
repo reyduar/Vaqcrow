@@ -104,12 +104,12 @@ insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
 values (
   '55555555-5555-4555-8555-555555555555', 'admin@example.test',
   '{"role": "PYME"}'::jsonb,
-  '{"role": "ADMIN", "display_name": "Admin Vaqcrow", "username": "vaqcrow.admin"}'::jsonb
+  '{"role": "ADMIN", "display_name": "Admin Vaqcrow", "username": "fixture.identity.admin"}'::jsonb
 );
 
 select is(
   (select role || ':' || display_name || ':' || username from public.profile where user_id = '55555555-5555-4555-8555-555555555555'),
-  'ADMIN:Admin Vaqcrow:vaqcrow.admin',
+  'ADMIN:Admin Vaqcrow:fixture.identity.admin',
   'app_metadata role ADMIN creates an ADMIN profile (service-role-only path)'
 );
 

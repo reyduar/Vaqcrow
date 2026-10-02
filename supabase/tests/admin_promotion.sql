@@ -20,12 +20,12 @@ select is(
 
 update auth.users
 set raw_app_meta_data = raw_app_meta_data
-  || '{"role": "ADMIN", "display_name": "Admin Vaqcrow", "username": "vaqcrow.admin"}'::jsonb
+  || '{"role": "ADMIN", "display_name": "Admin Vaqcrow", "username": "fixture.promoted.admin"}'::jsonb
 where id = 'aaaaaaa1-0000-4000-8000-000000000001';
 
 select is(
   (select role || ':' || display_name || ':' || username from public.profile where user_id = 'aaaaaaa1-0000-4000-8000-000000000001'),
-  'ADMIN:Admin Vaqcrow:vaqcrow.admin',
+  'ADMIN:Admin Vaqcrow:fixture.promoted.admin',
   'the app_metadata update promotes the profile to ADMIN with display name and username'
 );
 
