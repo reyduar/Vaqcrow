@@ -178,6 +178,8 @@ T5 y T6 (2026-10-02, escritor):
 - `pnpm --filter @vaqcrow/api lint` y `typecheck` → limpios; `pnpm run boundaries` → `no dependency violations found (564 modules, 1863 dependencies cruised)`.
 - No ejecutado: `@vaqcrow/web` (fuera de alcance) ni `test:db` (sin cambios de base).
 
+- **Revisión RDD de #372 (2026-10-02):** base `84fe98d`, sólo commits, riesgo `high` (5 archivos, 206 líneas; la palabra «authentication» en el documento de evidencia); el owner eligió «Revisar este cambio»; cuatro lentes sin bloqueantes → `approved`, linaje `review-8d88fe815e206252`, autoridad `burned`. Consultivos: 4 `WARNING` (R2/R3 sobre las líneas 14 y 163 del documento: seguía diciendo que #370 estaba abierto y que los residuos de documentación quedaban pendientes, cuando el commit de corrección ya los había resuelto) → corregidos en el commit `docs(planning): align the evidence with the closed Tasks and fixed residues`, que también actualiza la línea 167; 3 `SUGGESTION` sin cambios.
+
 ## Próximo paso
 
 PR de #372 contra la rama de la Feature. Después, [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login, egreso y shell por rol) desde la rama de #369; R1-002 resuelto con [#398](https://github.com/reyduar/Vaqcrow/issues/398) o aceptado explícitamente por el owner antes del merge a `main`; confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía) y ejercitar sign-in/sign-out para completar el criterio 1 de #369.

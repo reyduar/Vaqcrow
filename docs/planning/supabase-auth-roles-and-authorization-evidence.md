@@ -11,7 +11,7 @@ El issue [#372](https://github.com/reyduar/Vaqcrow/issues/372) ("Task: Document 
 
 | Task | Rama | PR | Merge (en la rama de la Feature) | Estado del issue (2026-10-02) |
 |---|---|---|---|---|
-| #370 — implementar | `Vaqcrow#370_Task_Implement_Supabase_Auth_roles_RLS_and_API_authorization` | [#443](https://github.com/reyduar/Vaqcrow/pull/443) | `a094e91`, 2026-10-02 01:26 UTC | **abierto**, Project `Backlog` (ver §9) |
+| #370 — implementar | `Vaqcrow#370_Task_Implement_Supabase_Auth_roles_RLS_and_API_authorization` | [#443](https://github.com/reyduar/Vaqcrow/pull/443) | `a094e91`, 2026-10-02 01:26 UTC | cerrado a mano el 2026-10-02, Project `Done` (ver §9) |
 | #371 — probar | `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization` | [#444](https://github.com/reyduar/Vaqcrow/pull/444) | `84fe98d`, 2026-10-02 11:08 UTC | cerrado 2026-10-02, Project `Done` |
 | #372 — documentar | `Vaqcrow#372_Task_Document_evidence_for_Supabase_Auth_roles_RLS_and_API_authorization` | — | — | este documento |
 
@@ -157,14 +157,14 @@ Revisiones RDD (bitácora): U1+U2 `approved` dos veces; U3+U4 `approved`; correc
 
 ## 9. Riesgos, contradicciones y limitaciones aceptadas
 
-- **Estado de los issues desalineado.** #370 sigue **abierto** y en `Backlog` en el Project aunque su PR #443 está mergeada en la rama de la Feature; #371 se cerró manualmente. Esta Task no lo modifica: cerrarlo es decisión del owner.
+- **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal: #370 (PR #443) y #371 (PR #444) se cerraron a mano el 2026-10-02 y el Project los muestra en `Done`. Ninguno está en `main`.
 - **El remoto no se re-verificó aquí.** Todo lo del proyecto remoto proviene de la bitácora (2026-10-01/02); esta Task no lo tocó.
 - **Suite de web no re-ejecutada localmente.** Se apoya en el CI de #443 y #444.
-- **Residuos de documentación** del criterio 7: quedan fuera de la superficie de esta Task y se registran como seguimiento.
+- **Residuos de documentación** del criterio 7: corregidos en esta Task (`docs/design/claude-design-brief.md` y la fila D-12 de `docs/design/demo-ui.md`).
 
 ## 10. Estado de entrega y próximos pasos
 
-- Este cambio es sólo documentación: este archivo, la bitácora y las entradas de #370–#372 en `demo-tasks-list.md`. Commit en la rama de #372; la PR contra la rama de la Feature es un paso posterior.
+- Este cambio es sólo documentación: este archivo, la bitácora, las entradas de #370–#372 en `demo-tasks-list.md` y las dos correcciones de `docs/design/`. Commit en la rama de #372; la PR contra la rama de la Feature es un paso posterior.
 - La Feature #369 **no está en `main`** y no se cierra al mergear esta Task en su rama: llega a `main` junto con #378.
 
 > [!todo] Condiciones antes del merge a `main` de #369 + #378
