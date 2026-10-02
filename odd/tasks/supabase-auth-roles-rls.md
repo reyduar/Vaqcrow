@@ -112,4 +112,4 @@ _Pendiente._
 
 ## Próximo paso
 
-PR de #370 contra la rama de la Feature; Tasks #371 (tests: matriz que pruebe que el handler se alcanza, paginación y fallos de `listUsers` del seed) y #372 (evidencia); R1-002 antes del merge a `main`.
+PR de #370 contra la rama de la Feature; Tasks #371 (tests: matriz que pruebe que el handler se alcanza, paginación, fallos y rollback compensatorio del seed) y #372 (evidencia); confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía); R1-002 antes del merge a `main`.
