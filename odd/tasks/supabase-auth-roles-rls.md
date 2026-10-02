@@ -106,6 +106,19 @@ Un usuario `Inactivo` recibe `401` aunque su token sea válido.
   - `docs/architecture/environments.md`: revisado, consistente con §13 de U4; sin cambios.
   - No tocados (históricos): `*-evidence.md`, `odd/tasks/*` anteriores, `b2.json`. Pendiente fuera de alcance: el texto del aviso «Demostración con datos simulados» en sus cuatro superficies (nota ya registrada en DEMO.md §12) se reescribe con #378.
 
+## Task #371 — Pruebas
+
+Rama `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, creada desde la rama de la Feature (`a094e91`, merge de la PR #443); su PR apunta a la rama de la Feature. TDD estricto (RED observado antes del GREEN); los tests de PR usan sólo dobles. Lo demás que pide el issue (matriz rol × endpoint, RLS propietario, sin grants por defecto, idempotencia del seed, `ADMIN` imposible por signup) ya lo cubre #370; estas son las brechas que quedan.
+
+- [x] **T1 — Matriz que prueba el handler.** En `apps/api/src/infrastructure/http/authorization.test.ts`, los casos de rol permitido sólo afirman «no 401/403»; tienen que probar que se alcanzó el handler. Ruta: delegada (escritor único, T1–T4).
+  - Ruta: delegada (escritor único). Archivo: `apps/api/src/infrastructure/http/authorization.test.ts`. Commit: ver `git log` (`test(api): prove allowed roles reach the route past the authorization hook`).
+  - Diseño: cada caso de la matriz agrega una sonda `preValidation` que responde `200 { reachedRoute, role }` con el patrón de la ruta y el rol del `request.principal`. `preValidation` sólo corre si `onRequest` (el hook) dejó pasar la petición, así que el caso permitido prueba que se llegó a la ruta con el principal verificado adjunto; el caso denegado afirma `403 { code: "forbidden" }` y que la sonda **no** se llamó. No se usa el handler real porque los `POST` con `payload: {}` fallan la validación del esquema (400) antes del handler y las dependencias son stubs vacíos: la sonda es la señal uniforme para las 22 rutas.
+  - RED (mutante temporal en `authorization-hook.ts`, revertido con `git checkout`: `return reply.code(500).send({ code: "mutant" })` después de adjuntar el principal, es decir, bloquear todo rol permitido): la aserción vieja `-t "authorized exactly"` → `Tests 63 passed | 73 skipped (136)` (el mutante pasaba); la nueva → `Tests 31 failed | 32 passed | 73 skipped (136)`, `expected 500 to be 200` (los 31 casos permitidos fallan, los 32 denegados pasan).
+  - GREEN (hook sin mutar): `vitest run src/infrastructure/http/authorization.test.ts` → `Tests 136 passed (136)`; `eslint` del archivo y `typecheck` limpios.
+- [ ] **T2 — Alcance de RLS de `ADMIN`.** Las lecturas de admin pasan por la API (`service_role`); no hay política RLS de admin. pgTAP que pruebe que un JWT `ADMIN` directo a la base sólo ve su propio `profile`, y documentarlo.
+- [ ] **T3 — Seed.** Tests de fallo de `listUsers`, paginación y mensaje al agotar `LIST_MAX_PAGES`; borrado compensatorio del usuario de Auth recién creado cuando falla la verificación del `profile` posterior a `createUser` (cambio de comportamiento acotado).
+- [ ] **T4 — Errores sanitizados transversales.** Ninguna respuesta 401/403/503 expone más que `{ code }`.
+
 ## Verificación
 
 _Pendiente._

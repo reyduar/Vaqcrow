@@ -101,13 +101,32 @@ describe("default-deny authorization", () => {
     });
 
     it.each(ROLES)("role %s is authorized exactly as the policy table says", async (role) => {
-      const response = await call(bearer(role));
+      app = buildFullApp({ port: fakeAuthPort() }).app;
+      // A route-level probe: preValidation only runs once onRequest (the
+      // authorization hook) let the request through, so answering from it
+      // proves the request reached the route with the verified principal.
+      const probe = vi.fn();
+      app.addHook("preValidation", async (request, reply) => {
+        probe(request.routeOptions.url);
+        return reply.code(200).send({ reachedRoute: request.routeOptions.url, role: request.principal?.role });
+      });
+
+      const response = await app.inject({
+        method: method as "GET" | "POST",
+        url,
+        headers: bearer(role),
+        ...(method === "POST" ? { payload: {} } : {})
+      });
+
       const permitted = allowed === "any" || allowed.includes(role);
       if (permitted) {
-        expect([401, 403]).not.toContain(response.statusCode);
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ reachedRoute: pattern, role });
+        expect(probe).toHaveBeenCalledExactlyOnceWith(pattern);
       } else {
         expect(response.statusCode).toBe(403);
         expect(response.json()).toEqual({ code: "forbidden" });
+        expect(probe).not.toHaveBeenCalled();
       }
     });
   });
