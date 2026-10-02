@@ -50,21 +50,43 @@ function fakeClient(fake: Fake) {
 
 describe("seedSuperAdmin", () => {
   it("creates a confirmed ADMIN user whose app_metadata drives the profile trigger", async () => {
-    const { client, created } = fakeClient({});
+    const { client, created, reads } = fakeClient({ profile: { user_id: USER_ID, role: "ADMIN", status: "active" } });
 
     const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
 
     expect(outcome).toEqual({ status: "created", userId: USER_ID });
+    expect(reads).toEqual([["user_id", USER_ID]]);
     expect(created).toEqual([
       {
         email: EMAIL,
         password: PASSWORD,
         email_confirm: true,
+        // INVERSOR passes the strict insert trigger; the app_metadata update promotes to ADMIN.
+        user_metadata: { role: "INVERSOR", display_name: "Admin Vaqcrow" },
         app_metadata: { role: "ADMIN", display_name: "Admin Vaqcrow", username: "vaqcrow.admin" }
       }
     ]);
     expect(SUPERADMIN_DISPLAY_NAME).toBe("Admin Vaqcrow");
     expect(SUPERADMIN_USERNAME).toBe("vaqcrow.admin");
+  });
+
+  it.each([
+    ["the profile was not promoted", { user_id: USER_ID, role: "INVERSOR", status: "active" }],
+    ["the profile is missing", null]
+  ])("reports a failure when, after creation, %s", async (_label, profile) => {
+    const { client } = fakeClient({ profile });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome.status).toBe("failed");
+    expect(JSON.stringify(outcome)).toContain("not an active ADMIN");
+  });
+
+  it("fails when the post-creation profile read errors", async () => {
+    const { client } = fakeClient({ profileError: { code: "57014" } });
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+    expect(outcome).toMatchObject({ status: "failed" });
+    expect(JSON.stringify(outcome)).toContain("57014");
   });
 
   it("is a no-op when the user already exists with an active ADMIN profile", async () => {
@@ -110,6 +132,7 @@ describe("seedSuperAdmin", () => {
     expect(outcome.status).toBe("failed");
     expect(JSON.stringify(outcome)).not.toContain(PASSWORD);
     expect(JSON.stringify(outcome)).toContain("weak_password");
+    expect(JSON.stringify(outcome)).toContain("422");
   });
 
   it("fails when the profile read errors", async () => {
@@ -119,6 +142,30 @@ describe("seedSuperAdmin", () => {
       profileError: { code: "57014" }
     });
     expect((await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD })).status).toBe("failed");
+  });
+});
+
+describe("provider error reporting", () => {
+  it("surfaces the provider code and HTTP status, never the message", async () => {
+    const { client } = fakeClient({
+      createError: { code: "unexpected_failure", status: 500, message: "ERROR: signup role must be PYME" }
+    });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome).toEqual({
+      status: "failed",
+      reason: "createUser failed: provider error code unexpected_failure (HTTP 500)"
+    });
+  });
+
+  it("falls back to unknown when the provider gives neither code nor status", async () => {
+    const { client } = fakeClient({ createError: {} });
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+    expect(outcome).toEqual({
+      status: "failed",
+      reason: "createUser failed: provider error code unknown (HTTP unknown)"
+    });
   });
 });
 
@@ -172,7 +219,7 @@ describe("runSeedSuperAdmin", () => {
   });
 
   it.each([
-    ["created", {}, 0, "created"],
+    ["created", { profile: { user_id: USER_ID, role: "ADMIN", status: "active" } }, 0, "created"],
     [
       "already present",
       {
