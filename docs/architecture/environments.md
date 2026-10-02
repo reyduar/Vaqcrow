@@ -22,7 +22,7 @@ status: draft
 |---|---|---|
 | **Supabase** | Proyecto remoto (`https://<project-ref>.supabase.co`) | Stack local del CLI (`http://127.0.0.1:54321` en el host; `http://host.docker.internal:54321` dentro del contenedor de la API) |
 | **API** | Corre en el host (`pnpm --filter @vaqcrow/api dev:cloud`) o en Railway | Corre en un contenedor construido con `apps/api/Dockerfile` vía `docker-compose.local.yml` |
-| **Web** | `pnpm --filter @vaqcrow/web dev:cloud`, o Vercel | `pnpm --filter @vaqcrow/web dev:docker`, apuntando a `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` |
+| **Web** | `pnpm --filter @vaqcrow/web dev:cloud`, o Vercel; `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` del proyecto remoto | `pnpm --filter @vaqcrow/web dev:docker`, apuntando a `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` y a Supabase local (`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`) |
 | **Stellar** | Testnet pública, vía Horizon | Testnet pública para la API (ver §5); Quickstart en Docker Desktop sólo para los contratos (`contracts/scripts/local-network.sh`) |
 | **`APP_ENV`** | `demo` | `local` |
 | **Propósito** | El único perfil que corre la demo real; es el que se despliega en Railway/Vercel | Pruebas locales — migraciones, integración, desarrollo sin tocar el proyecto de la demo |
@@ -237,3 +237,18 @@ pnpm --filter @vaqcrow/api seed:superadmin:cloud    # lee ../../.env.cloud
 - **Nunca promueve:** si el email ya existe como `PYME`/`INVERSOR`, o como `ADMIN` inactivo, o sin perfil, falla con código 1 sin modificar nada.
 - Nunca corre al arrancar la API. Si falta una variable, el error nombra la variable, nunca su valor; la contraseña no se imprime.
 - `pnpm demo:preflight --env-file .env.cloud` incluye el chequeo «An active ADMIN profile exists» y también `profile`/`audit_log` entre las tablas.
+
+### 13.4 Sesión en la web (`NEXT_PUBLIC_SUPABASE_*`)
+
+La web abre la sesión real de Supabase Auth en el navegador (Task [#379](https://github.com/reyduar/Vaqcrow/issues/379)) con dos variables públicas:
+
+| Variable | Valor | Notas |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | La URL del proyecto: remoto en `.env.cloud`/Vercel, `http://127.0.0.1:54321` en `.env.docker` | La misma que `SUPABASE_URL` de la API vista desde el host |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | La clave publicable del mismo proyecto | Pensada para el navegador: el acceso lo acota RLS. **Nunca** la `service_role` |
+
+- `generate-docker-env.sh` las escribe solo, a partir de `supabase status -o env` (las mismas URL y clave publicable que `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`).
+- En `.env.cloud` y en el panel de Vercel las agrega la persona operadora; las plantillas `.env.*.example` también las tienen que listar vacías (las sesiones de agente no pueden editar `.env*`).
+- `pnpm demo:preflight` las exige en el chequeo «Web environment variables», junto con `NEXT_PUBLIC_API_BASE_URL`; como la de la API, sólo nombra la variable faltante, nunca el valor.
+- Si falta alguna, la web falla al crear la sesión con un error que nombra la variable (`SupabaseConfigError`), sin imprimir valores.
+- El cliente es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, así el gating por rol del servidor puede leerla más adelante. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.

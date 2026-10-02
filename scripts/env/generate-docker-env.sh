@@ -7,7 +7,9 @@
 #
 # Sources:
 #   - `supabase status -o env` for the running local Supabase stack
-#     (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_PUBLISHABLE_KEY).
+#     (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_PUBLISHABLE_KEY), also
+#     written as the browser pair NEXT_PUBLIC_SUPABASE_URL /
+#     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY for apps/web (never the service key).
 #   - Fixed, non-secret local defaults (APP_ENV, PORT, LOG_LEVEL,
 #     NEXT_PUBLIC_API_BASE_URL).
 #   - The `LLM_*` lines, copied verbatim from `.env.cloud` — this profile
@@ -194,6 +196,8 @@ umask 077
   echo "SUPABASE_URL=${SUPABASE_URL}"
   echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}"
   echo "SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}"
+  echo "NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}"
+  echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}"
   echo
   echo "# Copied verbatim from .env.cloud — this profile reuses the demo LLM credential."
   printf '%s\n' "$LLM_LINES"
@@ -205,7 +209,7 @@ chmod 600 "$OUT_FILE"
 
 echo "wrote $OUT_FILE with keys:"
 {
-  echo "APP_ENV PORT LOG_LEVEL NEXT_PUBLIC_API_BASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_PUBLISHABLE_KEY"
+  echo "APP_ENV PORT LOG_LEVEL NEXT_PUBLIC_API_BASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
   echo "$STELLAR_KEY_NAMES"
   printf '%s\n' "$LLM_LINES" | cut -d= -f1
   printf '%s\n' "$SUPERADMIN_LINES" | cut -d= -f1

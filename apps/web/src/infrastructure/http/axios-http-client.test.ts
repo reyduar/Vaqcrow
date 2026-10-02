@@ -232,3 +232,68 @@ describe("AxiosHttpClient", () => {
     });
   });
 });
+
+describe("AxiosHttpClient access token", () => {
+  const ok = () => vi.fn<RequestFn>().mockResolvedValue({ status: 200, data: {} });
+
+  it("sends Authorization: Bearer with the token the provider returns, per request", async () => {
+    const request = ok();
+    const tokens = ["token-one", "token-two"];
+    const client = new AxiosHttpClient(fakeInstance(request), async () => tokens.shift() ?? null);
+
+    await client.send({ method: "GET", path: "/a" });
+    await client.send({ method: "GET", path: "/b" });
+
+    expect(request.mock.calls[0]![0].headers).toEqual({ Authorization: "Bearer token-one" });
+    expect(request.mock.calls[1]![0].headers).toEqual({ Authorization: "Bearer token-two" });
+  });
+
+  it("sends no Authorization header when the provider returns null", async () => {
+    const request = ok();
+    await new AxiosHttpClient(fakeInstance(request), async () => null).send({ method: "GET", path: "/a" });
+    expect(request.mock.calls[0]![0].headers).toBeUndefined();
+  });
+
+  it("sends no Authorization header without a provider", async () => {
+    const request = ok();
+    await new AxiosHttpClient(fakeInstance(request)).send({ method: "GET", path: "/a" });
+    expect(request.mock.calls[0]![0].headers).toBeUndefined();
+  });
+
+  it.each([
+    ["an empty token", ""],
+    ["a token with a line break", "abc\r\nX-Injected: 1"],
+    ["a token with spaces", "abc def"]
+  ])("drops %s instead of sending a malformed header", async (_label, token) => {
+    const request = ok();
+    await new AxiosHttpClient(fakeInstance(request), async () => token).send({ method: "GET", path: "/a" });
+    expect(request.mock.calls[0]![0].headers).toBeUndefined();
+  });
+
+  it("sends the request without the header when the provider throws", async () => {
+    const request = ok();
+    await new AxiosHttpClient(fakeInstance(request), async () => {
+      throw new Error("refresh failed token=abc");
+    }).send({ method: "GET", path: "/a" });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0]![0].headers).toBeUndefined();
+  });
+
+  it("wires the provider through create()", async () => {
+    const request = ok();
+    const client = AxiosHttpClient.create(
+      { baseUrl: "https://api.example.test", accessToken: async () => "jwt" },
+      () => fakeInstance(request)
+    );
+    await client.send({ method: "GET", path: "/a" });
+    expect(request.mock.calls[0]![0].headers).toEqual({ Authorization: "Bearer jwt" });
+  });
+
+  it("never exposes the token in a sanitized error", async () => {
+    const request = vi.fn<RequestFn>().mockResolvedValue({ status: 401, data: {} });
+    const error = await new AxiosHttpClient(fakeInstance(request), async () => "jwt-secret")
+      .send({ method: "GET", path: "/a" })
+      .catch((e: unknown) => e);
+    expect(JSON.stringify(error)).not.toContain("jwt-secret");
+  });
+});

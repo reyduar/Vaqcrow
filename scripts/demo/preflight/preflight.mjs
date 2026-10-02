@@ -46,8 +46,17 @@ export const REQUIRED_API_ENV = [
 export const STELLAR_TESTNET_HORIZON_URL = "https://horizon-testnet.stellar.org";
 export const STELLAR_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 
-/** Names the web needs. */
-export const REQUIRED_WEB_ENV = ["NEXT_PUBLIC_API_BASE_URL"];
+/**
+ * Names the web needs. The two Supabase names mirror
+ * `apps/web/src/infrastructure/auth/supabase-auth-session.ts`
+ * (`readSupabaseBrowserConfig`): the browser session cannot start without them.
+ * The publishable key is browser-safe, so it is not in SECRET_ENV_NAMES.
+ */
+export const REQUIRED_WEB_ENV = [
+  "NEXT_PUBLIC_API_BASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+];
 
 /** Env names whose VALUES are secrets: redacted from every reported string. */
 // VAQCROW_SUPERADMIN_PASSWORD is never required or read by a check (the API does
