@@ -126,4 +126,59 @@ describe("createSessionStore", () => {
 
     expect(store.getState().status).toBe("signed-in");
   });
+
+  it.each([
+    ["signIn", "invalid_credentials"],
+    ["signOut", "network"]
+  ] as const)("a failed %s during the initial read never strands loading", async (operation, code) => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    const release = fake.holdNextGetSession();
+    const initial = store.getState().refresh();
+
+    fake.failNext(operation, code);
+    const result =
+      operation === "signIn"
+        ? await store.getState().signIn({ email: ANA.email, password: ANA.password })
+        : await store.getState().signOut();
+    release();
+    await initial;
+
+    expect(result).toEqual({ ok: false, code });
+    expect(store.getState()).toMatchObject({ status: "signed-out", principal: null });
+  });
+
+  it.each(["network", "unavailable"] as const)(
+    "a transient %s refresh failure keeps the signed-in principal and records the code",
+    async (code) => {
+      const fake = new FakeAuthSession();
+      fake.seedAccount(ANA);
+      const store = createSessionStore(fake);
+      await store.getState().signIn({ email: ANA.email, password: ANA.password });
+
+      fake.failNext("getSession", code);
+      await store.getState().refresh();
+
+      expect(store.getState()).toMatchObject({
+        status: "signed-in",
+        principal: { role: "INVERSOR", displayName: "Ana Pérez" },
+        error: code
+      });
+    }
+  );
+
+  it("only an explicit signed-out snapshot signs out a signed-in store", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    fake.failNext("getSession", "network");
+    await store.getState().refresh();
+
+    await fake.signOut();
+    await store.getState().refresh();
+
+    expect(store.getState()).toMatchObject({ status: "signed-out", principal: null, error: null });
+  });
 });

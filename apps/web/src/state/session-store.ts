@@ -24,7 +24,11 @@ export type ActionResult<T extends object = object> = ({ ok: true } & T) | { ok:
 export interface SessionData {
   status: SessionStatus;
   principal: SessionPrincipal | null;
-  /** Code of the last failed session read (not of sign-in/sign-up attempts). */
+  /**
+   * Code of the last failed session read (not of sign-in/sign-up attempts).
+   * A failed read never signs a signed-in store out: only an explicit
+   * signed-out snapshot does.
+   */
   error: AuthErrorCode | null;
 }
 
@@ -47,56 +51,72 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
   // Every write takes a ticket; a result whose ticket is stale is dropped.
   let latest = 0;
 
-  return createStore<SessionState>()((set) => ({
-    status: "loading",
-    principal: null,
-    error: null,
-
-    refresh: async () => {
-      const ticket = ++latest;
-      try {
-        const snapshot = await port.getSession();
-        if (ticket !== latest) return;
-        set(
-          snapshot.status === "signed-in"
-            ? { status: "signed-in", principal: snapshot.principal, error: null }
-            : { status: "signed-out", principal: null, error: null }
-        );
-      } catch (error) {
-        if (ticket !== latest) return;
-        set({ status: "signed-out", principal: null, error: codeOf(error) });
-      }
-    },
-
-    signIn: async (input) => {
-      const ticket = ++latest;
-      try {
-        const principal = await port.signIn(input);
-        if (ticket === latest) set({ status: "signed-in", principal, error: null });
-        return { ok: true, principal };
-      } catch (error) {
-        return { ok: false, code: codeOf(error) };
-      }
-    },
-
-    signUp: async (input) => {
-      try {
-        const outcome = await port.signUp(input);
-        return { ok: true, status: outcome.status };
-      } catch (error) {
-        return { ok: false, code: codeOf(error) };
-      }
-    },
-
-    signOut: async () => {
-      const ticket = ++latest;
-      try {
-        await port.signOut();
-        if (ticket === latest) set({ status: "signed-out", principal: null, error: null });
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, code: codeOf(error) };
-      }
+  return createStore<SessionState>()((set, get) => {
+    /**
+     * A failed action still took a ticket, so a read already in flight is
+     * dropped when it resolves. While nothing has been read yet, re-read the
+     * session so the store never stays `loading`.
+     */
+    async function settleAfterFailedAction(ticket: number): Promise<void> {
+      if (ticket === latest && get().status === "loading") await get().refresh();
     }
-  }));
+
+    return {
+      status: "loading",
+      principal: null,
+      error: null,
+
+      refresh: async () => {
+        const ticket = ++latest;
+        try {
+          const snapshot = await port.getSession();
+          if (ticket !== latest) return;
+          set(
+            snapshot.status === "signed-in"
+              ? { status: "signed-in", principal: snapshot.principal, error: null }
+              : { status: "signed-out", principal: null, error: null }
+          );
+        } catch (error) {
+          if (ticket !== latest) return;
+          const code = codeOf(error);
+          // A transient read failure keeps a known principal and records why.
+          if (get().status === "signed-in") set({ error: code });
+          else set({ status: "signed-out", principal: null, error: code });
+        }
+      },
+
+      signIn: async (input) => {
+        const ticket = ++latest;
+        try {
+          const principal = await port.signIn(input);
+          if (ticket === latest) set({ status: "signed-in", principal, error: null });
+          return { ok: true, principal };
+        } catch (error) {
+          await settleAfterFailedAction(ticket);
+          return { ok: false, code: codeOf(error) };
+        }
+      },
+
+      signUp: async (input) => {
+        try {
+          const outcome = await port.signUp(input);
+          return { ok: true, status: outcome.status };
+        } catch (error) {
+          return { ok: false, code: codeOf(error) };
+        }
+      },
+
+      signOut: async () => {
+        const ticket = ++latest;
+        try {
+          await port.signOut();
+          if (ticket === latest) set({ status: "signed-out", principal: null, error: null });
+          return { ok: true };
+        } catch (error) {
+          await settleAfterFailedAction(ticket);
+          return { ok: false, code: codeOf(error) };
+        }
+      }
+    };
+  });
 }
