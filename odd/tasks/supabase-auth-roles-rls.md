@@ -147,6 +147,19 @@ Rama `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, crea
   - Tests (`describe("error handler")`): ruta ad-hoc que lanza `HandlerCrashError` con un mensaje centinela → 500, cuerpo exacto `{"code":"internal"}`, `x-correlation-id` válido, `access-control-allow-origin` presente, una llamada de registro con nombre/estado/correlación y el centinela ausente de registros y cabeceras; error ajeno que declara `statusCode 404` → 500 `internal`, registro con `statusCode: 404`; JSON mal formado (400) y `text/xml` (415) → cuerpo Fastify sin cambios y sin registro.
   - RED: `vitest run src/infrastructure/http/build-app.test.ts` → `Tests 2 failed | 15 passed (17)`: `expected '{"statusCode":500,"error":"Internal S…' to be '{"code":"internal"}'` y `expected 404 to be 500`. Los dos casos de 4xx del framework ya pasaban: fijan el comportamiento de hoy como guarda. Un primer GREEN parcial falló (`Tests 1 failed | 16 passed (17)`) porque un `Error` plano no trae `code` y `error.code.startsWith` lanzaba dentro del manejador; se protegió con `typeof error.code === "string"`.
   - GREEN: `vitest run src/infrastructure/http/build-app.test.ts` → `Tests 17 passed (17)`; `vitest run src/infrastructure/http` → `Test Files 14 passed (14)`, `Tests 454 passed (454)`.
+- **Revisión RDD de T5–T6 (2026-10-02):** base `b24eab9`, sólo commits, riesgo `high` (6 archivos, 197 líneas); el owner eligió «Revisar este cambio»; cuatro lentes sin bloqueantes → `approved`, linaje `review-3ff864778304158b`, autoridad `burned`. Consultivos: 5 `SUGGESTION` sobre `apps/api/src/infrastructure/http/build-app.ts` (R2-001 :52, R2-002 :35, R3-001 :35, R3-002 :31-33, R4-001 :48-52).
+- **Entrega:** PR [#444](https://github.com/reyduar/Vaqcrow/pull/444) mergeada en la rama de la Feature (`84fe98d`, 2026-10-02); #371 cerrado manualmente. CI de la PR (run `36998899577`): quality gates, Playwright y contratos en verde.
+
+## Task #372 — Evidencia
+
+Rama `Vaqcrow#372_Task_Document_evidence_for_Supabase_Auth_roles_RLS_and_API_authorization`, creada desde la rama de la Feature en `84fe98d`. Ruta: delegada (escritor único, sólo documentación).
+
+- Documento: `docs/planning/supabase-auth-roles-and-authorization-evidence.md` (español; estructura de `supabase-schema-and-persistence-evidence.md`). Mapea los 10 criterios de #369 citados textualmente: 8 cumplidos (el 5 con la condición R1-002 y el 7 con dos residuos de documentación) y 2 parciales — criterio 1 (sign-in/sign-out nunca ejercitados; sin login hasta #378; Resend sin entrega observada) y criterio 2 (la invitación de admin no existe; es #390).
+- Re-ejecutado el 2026-10-02 sobre `84fe98d` (Node `v24.21.0`): `pnpm --filter @vaqcrow/api test` → `Test Files 59 passed (59)`, `Tests 1371 passed (1371)`; `pnpm --filter @vaqcrow/contracts test` → `15 passed`, `526 passed`; `pnpm run test:db` → `Files=9, Tests=167, Result: PASS`; `pnpm run boundaries` → `no dependency violations found (564 modules, 1863 dependencies cruised)`; `pnpm run test:boundaries` → `10 passed`, `150 passed`; `pnpm --filter @vaqcrow/api lint` y `typecheck` → exit 0. CI consultado con `gh pr checks`: #443 (run `36949922220`) y #444 (run `36998899577`) en verde.
+- No re-ejecutado: `@vaqcrow/web` (fuera de alcance; se apoya en el CI) ni nada contra el proyecto remoto (se cita la bitácora).
+- Hallazgos: #370 sigue abierto y en `Backlog` aunque la PR #443 está mergeada en la rama de la Feature; residuos de «sin autenticación real» en `docs/design/claude-design-brief.md:269` y en la fila D-12 de `docs/design/demo-ui.md` («Supabase Auth aún no implementado»). Ninguno se tocó (fuera de la superficie).
+- `docs/planning/demo-tasks-list.md`: #370 y #371 pasan a «Rama e implementación» (mergeadas en la rama de la Feature, no en `main`); #371 en `Done`.
+- Commit: ver `git log` (`docs(planning): record the evidence for Supabase Auth, roles, RLS and API authorization`).
 
 ## Verificación
 
@@ -167,4 +180,4 @@ T5 y T6 (2026-10-02, escritor):
 
 ## Próximo paso
 
-PR de #371 contra la rama de la Feature; Task #372 (evidencia); confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía); R1-002 antes del merge a `main`.
+PR de #372 contra la rama de la Feature. Después, [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login, egreso y shell por rol) desde la rama de #369; R1-002 resuelto con [#398](https://github.com/reyduar/Vaqcrow/issues/398) o aceptado explícitamente por el owner antes del merge a `main`; confirmar la **entrega real** del email de confirmación por Resend en el primer alta de #378 (el SMTP está configurado por el owner y `/auth/v1/settings` lo confirma, pero la entrega no se observó todavía) y ejercitar sign-in/sign-out para completar el criterio 1 de #369.

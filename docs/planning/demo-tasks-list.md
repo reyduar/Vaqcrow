@@ -1826,24 +1826,24 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 ^issue-370
 
 - **Título original:** `Task: Implement Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #370](https://github.com/reyduar/Vaqcrow/issues/370) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #370](https://github.com/reyduar/Vaqcrow/issues/370) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog` (verificado el 2026-10-02: el issue sigue abierto aunque su PR está mergeada en la rama de la Feature).
 - **Jerarquía y bloqueos:** padre [#369](#^issue-369); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#371](#^issue-371).
 
-**Rama propuesta.** `Vaqcrow#370_Task_Implement_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#370_Task_Implement_Supabase_Auth_roles_RLS_and_API_authorization`, mergeada vía [PR #443](https://github.com/reyduar/Vaqcrow/pull/443) en la rama de la Feature #369 (`a094e91`), **no en `main`**: #369 llega a `main` junto con [#378](#^issue-378). Evidencia en [`supabase-auth-roles-and-authorization-evidence.md`](./supabase-auth-roles-and-authorization-evidence.md).
 
-### #371 — Probar Supabase Auth, roles, RLS y la autorización de la API
+### ~~#371 — Probar Supabase Auth, roles, RLS y la autorización de la API~~
 
 ^issue-371
 
 - **Título original:** `Task: Test Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #371](https://github.com/reyduar/Vaqcrow/issues/371) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #371](https://github.com/reyduar/Vaqcrow/issues/371) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Done` (issue cerrado el 2026-10-02).
 - **Jerarquía y bloqueos:** padre [#369](#^issue-369); bloqueada nativamente por [#370](#^issue-370).
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#372](#^issue-372).
 
-**Rama propuesta.** `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, mergeada vía [PR #444](https://github.com/reyduar/Vaqcrow/pull/444) en la rama de la Feature #369 (`84fe98d`), **no en `main`**. Evidencia en [`supabase-auth-roles-and-authorization-evidence.md`](./supabase-auth-roles-and-authorization-evidence.md).
 
 ### #372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API
 
@@ -1855,7 +1855,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#369](#^issue-369).
 
-**Rama propuesta.** `Vaqcrow#372_Task_Document_evidence_for_Supabase_Auth_roles_RLS_and_API_authorization` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#372_Task_Document_evidence_for_Supabase_Auth_roles_RLS_and_API_authorization`, creada desde la rama de la Feature en `84fe98d`. Evidencia en [`supabase-auth-roles-and-authorization-evidence.md`](./supabase-auth-roles-and-authorization-evidence.md). Commit y Pull Request contra la rama de la Feature quedan como paso explícito posterior.
 
 ### #378 — Crear cuentas, ingresar y shell según el rol
 
