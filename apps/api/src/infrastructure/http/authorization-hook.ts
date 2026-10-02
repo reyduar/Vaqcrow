@@ -64,7 +64,22 @@ export function registerAuthorizationHook(
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const verified = await port.verifyAccessToken(token);
+    let verified: Awaited<ReturnType<AuthPort["verifyAccessToken"]>>;
+    try {
+      verified = await port.verifyAccessToken(token);
+    } catch (cause) {
+      // The port contract is to return `unavailable`, never throw; if an
+      // adapter breaks it, Fastify's default handler would echo the message.
+      // Only the error name is logged: a message could echo the token or
+      // provider details. Fastify's logger is disabled (`logger: false`), so
+      // this follows the adapters' `console.error` convention.
+      // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
+      console.error("[AuthorizationHook] auth port threw", {
+        cause: cause instanceof Error ? cause.name : "unknown",
+        correlationId: request.id
+      });
+      return reply.code(503).send({ code: "unavailable" });
+    }
     if (!verified.ok) {
       return verified.error.code === "unavailable"
         ? reply.code(503).send({ code: "unavailable" })

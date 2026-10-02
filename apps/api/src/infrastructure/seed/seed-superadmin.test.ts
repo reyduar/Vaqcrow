@@ -12,9 +12,16 @@ const EMAIL = "admin@vaqcrow.example";
 const PASSWORD = "S3cret-Passw0rd-do-not-print";
 const USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
+type User = { id: string; email?: string };
+
 interface Fake {
   readonly createError?: { code?: string; status?: number; message?: string } | null;
-  readonly existing?: Array<{ id: string; email?: string }>;
+  readonly existing?: User[];
+  /** One entry per `listUsers` page; overrides `existing` when given. */
+  readonly pages?: (page: number) => User[];
+  readonly listError?: { code?: string; status?: number; message?: string } | null;
+  readonly deleteError?: { code?: string; status?: number; message?: string } | null;
+  readonly deleteThrows?: boolean;
   readonly profile?: { user_id: string; role: string; status: string } | null;
   readonly profileError?: { code: string } | null;
 }
@@ -22,6 +29,8 @@ interface Fake {
 function fakeClient(fake: Fake) {
   const created: unknown[] = [];
   const reads: Array<readonly [string, unknown]> = [];
+  const listed: Array<{ page: number; perPage: number }> = [];
+  const deleted: string[] = [];
   const client: SeedClient = {
     auth: {
       admin: {
@@ -31,7 +40,20 @@ function fakeClient(fake: Fake) {
             ? { data: { user: null }, error: fake.createError }
             : { data: { user: { id: USER_ID } }, error: null };
         },
-        listUsers: async () => ({ data: { users: fake.existing ?? [] }, error: null })
+        listUsers: async (params) => {
+          listed.push(params);
+          if (fake.listError) {
+            return { data: { users: [] }, error: fake.listError };
+          }
+          return { data: { users: fake.pages ? fake.pages(params.page) : (fake.existing ?? []) }, error: null };
+        },
+        deleteUser: async (id) => {
+          deleted.push(id);
+          if (fake.deleteThrows) {
+            throw new Error(`network down while deleting ${EMAIL}`);
+          }
+          return { error: fake.deleteError ?? null };
+        }
       }
     },
     from: () => ({
@@ -45,8 +67,11 @@ function fakeClient(fake: Fake) {
       })
     })
   };
-  return { client, created, reads };
+  return { client, created, reads, listed, deleted };
 }
+
+const filler = (page: number, count: number): User[] =>
+  Array.from({ length: count }, (_, index) => ({ id: `filler-${page}-${index}`, email: `user${page}-${index}@x.test` }));
 
 describe("seedSuperAdmin", () => {
   it("creates a confirmed ADMIN user whose app_metadata drives the profile trigger", async () => {
@@ -142,6 +167,131 @@ describe("seedSuperAdmin", () => {
       profileError: { code: "57014" }
     });
     expect((await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD })).status).toBe("failed");
+  });
+});
+
+describe("compensating rollback after a failed post-creation check", () => {
+  it.each([
+    ["the profile was not promoted", { profile: { user_id: USER_ID, role: "INVERSOR", status: "active" } }],
+    ["the profile is inactive", { profile: { user_id: USER_ID, role: "ADMIN", status: "inactive" } }],
+    ["the profile is missing", { profile: null }],
+    ["the profile read errors", { profileError: { code: "57014" } }]
+  ] as Array<[string, Fake]>)("deletes the just-created user when %s", async (_label, fake) => {
+    const { client, deleted } = fakeClient(fake);
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome.status).toBe("failed");
+    expect(deleted).toEqual([USER_ID]);
+    expect(JSON.stringify(outcome)).toContain(`the created user ${USER_ID} was deleted (rolled back)`);
+  });
+
+  it("never deletes anything on success", async () => {
+    const { client, deleted } = fakeClient({ profile: { user_id: USER_ID, role: "ADMIN", status: "active" } });
+    expect((await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD })).status).toBe("created");
+    expect(deleted).toEqual([]);
+  });
+
+  it("never deletes a pre-existing user, even one it refuses", async () => {
+    const { client, deleted } = fakeClient({
+      createError: { code: "email_exists", status: 422 },
+      existing: [{ id: USER_ID, email: EMAIL }],
+      profile: { user_id: USER_ID, role: "PYME", status: "active" }
+    });
+    expect((await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD })).status).toBe("refused");
+    expect(deleted).toEqual([]);
+  });
+
+  it("reports a failed rollback with the provider code only, so the operator deletes the user by hand", async () => {
+    const { client, deleted } = fakeClient({
+      profile: null,
+      deleteError: { code: "unexpected_failure", status: 500, message: `cannot delete ${EMAIL}` }
+    });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(deleted).toEqual([USER_ID]);
+    expect(outcome).toEqual({
+      status: "failed",
+      reason:
+        `created user ${USER_ID} but its profile is not an active ADMIN (the promotion did not apply); ` +
+        `rolling back failed: provider error code unexpected_failure (HTTP 500); ` +
+        `delete user ${USER_ID} manually before running the seed again`
+    });
+    expect(JSON.stringify(outcome)).not.toContain(EMAIL);
+  });
+
+  it("reports a rollback that throws without echoing the exception message", async () => {
+    const { client } = fakeClient({ profile: null, deleteThrows: true });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome.status).toBe("failed");
+    expect(JSON.stringify(outcome)).toContain("rolling back failed: Error");
+    expect(JSON.stringify(outcome)).toContain(`delete user ${USER_ID} manually`);
+    expect(JSON.stringify(outcome)).not.toContain(EMAIL);
+  });
+});
+
+describe("existing-user lookup", () => {
+  const taken = { code: "email_exists", status: 422 };
+
+  it("fails with the provider code when listUsers errors, never its message", async () => {
+    const { client, reads } = fakeClient({
+      createError: taken,
+      listError: { code: "unexpected_failure", status: 503, message: `lookup of ${EMAIL} failed` }
+    });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome).toEqual({
+      status: "failed",
+      reason: "listUsers failed: provider error code unexpected_failure (HTTP 503)"
+    });
+    expect(reads).toEqual([]);
+  });
+
+  it("walks later pages until it finds the user", async () => {
+    const { client, listed } = fakeClient({
+      createError: taken,
+      pages: (page) => (page < 3 ? filler(page, 200) : [...filler(page, 5), { id: USER_ID, email: EMAIL }]),
+      profile: { user_id: USER_ID, role: "ADMIN", status: "active" }
+    });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(outcome).toEqual({ status: "already_present", userId: USER_ID });
+    expect(listed).toEqual([
+      { page: 1, perPage: 200 },
+      { page: 2, perPage: 200 },
+      { page: 3, perPage: 200 }
+    ]);
+  });
+
+  it("stops at the first short page and reports the user as not found", async () => {
+    const { client, listed } = fakeClient({
+      createError: taken,
+      pages: (page) => (page === 1 ? filler(page, 200) : filler(page, 10))
+    });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(listed).toHaveLength(2);
+    expect(outcome).toEqual({ status: "failed", reason: "the email is reported as taken but no matching user was found" });
+  });
+
+  it("reports an exhausted search distinctly instead of claiming the user does not exist", async () => {
+    const { client, listed } = fakeClient({ createError: taken, pages: (page) => filler(page, 200) });
+
+    const outcome = await seedSuperAdmin({ client, email: EMAIL, password: PASSWORD });
+
+    expect(listed).toHaveLength(50);
+    expect(outcome).toEqual({
+      status: "failed",
+      reason:
+        "the email is reported as taken but the user was not among the first 10000 users " +
+        "(search limit of 50 pages reached); nothing was changed"
+    });
   });
 });
 

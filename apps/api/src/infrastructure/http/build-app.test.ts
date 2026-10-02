@@ -15,6 +15,7 @@ describe("buildApp", () => {
 
   afterEach(async () => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     await app?.close();
     app = undefined;
   });
@@ -98,6 +99,104 @@ describe("buildApp", () => {
     expect(response.statusCode).toBe(500);
     expect(correlationIdSchema.safeParse(capturedRequestId).success).toBe(true);
     expect(response.headers["x-correlation-id"]).toBe(capturedRequestId);
+  });
+
+  describe("error handler", () => {
+    const SENTINEL = "SENTINEL-handler-detail-41c9";
+    const ORIGIN = "https://vaqcrow-web.example.com";
+
+    function sentinelError(name: string, statusCode?: number): Error {
+      const error = new Error(SENTINEL) as Error & { statusCode?: number };
+      error.name = name;
+      if (statusCode !== undefined) error.statusCode = statusCode;
+      return error;
+    }
+
+    it("answers an uncaught handler exception with a sanitized 500 and logs only its name", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      app = buildApp({ ...openPolicy, cors: { allowedOrigins: [ORIGIN] } });
+      app.get("/explodes", async () => {
+        throw sentinelError("HandlerCrashError");
+      });
+
+      const response = await app.inject({ method: "GET", url: "/explodes", headers: { origin: ORIGIN } });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers["content-type"]).toMatch(/^application\/json/);
+      expect(response.body).toBe(JSON.stringify({ code: "internal" }));
+      const correlationId = response.headers["x-correlation-id"];
+      expect(correlationIdSchema.safeParse(correlationId).success).toBe(true);
+      expect(response.headers["access-control-allow-origin"]).toBe(ORIGIN);
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged).toHaveBeenCalledWith("[HttpErrorHandler] unhandled error", {
+        cause: "HandlerCrashError",
+        statusCode: 500,
+        correlationId
+      });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(SENTINEL);
+      expect(JSON.stringify(response.headers)).not.toContain(SENTINEL);
+    });
+
+    it("sanitizes an error that claims a 4xx status but is not Fastify's own", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      app = buildApp(openPolicy);
+      app.get("/claims-404", async () => {
+        throw sentinelError("LibraryNotFoundError", 404);
+      });
+
+      const response = await app.inject({ method: "GET", url: "/claims-404" });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toBe(JSON.stringify({ code: "internal" }));
+      expect(logged).toHaveBeenCalledWith("[HttpErrorHandler] unhandled error", {
+        cause: "LibraryNotFoundError",
+        statusCode: 404,
+        correlationId: response.headers["x-correlation-id"]
+      });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(SENTINEL);
+    });
+
+    it.each([
+      [
+        "malformed JSON",
+        "application/json",
+        '{"a": ',
+        400,
+        {
+          statusCode: 400,
+          code: "FST_ERR_CTP_INVALID_JSON_BODY",
+          error: "Bad Request",
+          message: "Body is not valid JSON but content-type is set to 'application/json'"
+        }
+      ],
+      [
+        "an unsupported media type",
+        "text/xml",
+        "<a/>",
+        415,
+        {
+          statusCode: 415,
+          code: "FST_ERR_CTP_INVALID_MEDIA_TYPE",
+          error: "Unsupported Media Type",
+          message: "Unsupported Media Type"
+        }
+      ]
+    ])("keeps Fastify's own 4xx body unchanged for %s", async (_label, contentType, payload, status, body) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      app = buildApp(openPolicy);
+      app.post("/echo", async () => ({ reached: true }));
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/echo",
+        headers: { "content-type": contentType },
+        payload
+      });
+
+      expect(response.statusCode).toBe(status);
+      expect(response.json()).toEqual(body);
+      expect(logged).not.toHaveBeenCalled();
+    });
   });
 
   describe("CORS", () => {

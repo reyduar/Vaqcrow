@@ -10,8 +10,9 @@
  * `user_metadata.role` = INVERSOR to accept it) and only then UPDATEs
  * `app_metadata`; the `on_auth_user_app_metadata_updated` trigger promotes the
  * profile to ADMIN when `app_metadata.role = "ADMIN"` (only the service role can
- * write `app_metadata`). The seed then reads the profile back and fails loudly if
- * it is not an active ADMIN. An existing user is never modified: it is a no-op when it is already an active
+ * write `app_metadata`). The seed then reads the profile back; if it is not an
+ * active ADMIN (or cannot be read) it deletes the user it just created, so the
+ * next run starts clean, and fails loudly. An existing user is never modified: it is a no-op when it is already an active
  * ADMIN and a loud refusal otherwise, so the script can never promote anyone.
  */
 
@@ -42,6 +43,7 @@ export interface SeedClient {
         page: number;
         perPage: number;
       }): Promise<{ data: { users: Array<{ id: string; email?: string }> }; error: ProviderError | null }>;
+      deleteUser(id: string): Promise<{ error: ProviderError | null }>;
     };
   };
   from(table: "profile"): {
@@ -77,22 +79,46 @@ async function readProfile(client: SeedClient, userId: string) {
   return client.from("profile").select("user_id, role, status").eq("user_id", userId).maybeSingle();
 }
 
-async function findUserIdByEmail(client: SeedClient, email: string): Promise<string | undefined | Error> {
+type Lookup =
+  | { readonly kind: "found"; readonly userId: string }
+  | { readonly kind: "absent" }
+  | { readonly kind: "exhausted" }
+  | { readonly kind: "error"; readonly reason: string };
+
+async function findUserIdByEmail(client: SeedClient, email: string): Promise<Lookup> {
   const wanted = email.toLowerCase();
   for (let page = 1; page <= LIST_MAX_PAGES; page += 1) {
     const { data, error } = await client.auth.admin.listUsers({ page, perPage: LIST_PAGE_SIZE });
     if (error) {
-      return new Error(describe(error));
+      return { kind: "error", reason: describe(error) };
     }
     const match = data.users.find((user) => user.email?.toLowerCase() === wanted);
     if (match) {
-      return match.id;
+      return { kind: "found", userId: match.id };
     }
     if (data.users.length < LIST_PAGE_SIZE) {
-      return undefined;
+      return { kind: "absent" };
     }
   }
-  return undefined;
+  return { kind: "exhausted" };
+}
+
+/**
+ * Deletes the user this run just created after its post-creation check failed,
+ * so a rerun is not refused forever. Only the provider code/status or the
+ * exception name is reported, never a message.
+ */
+async function rollBack(client: SeedClient, userId: string, cause: string): Promise<SeedOutcome> {
+  let failure: string | undefined;
+  try {
+    const { error } = await client.auth.admin.deleteUser(userId);
+    failure = error ? describe(error) : undefined;
+  } catch (error) {
+    failure = error instanceof Error ? error.name : "unknown exception";
+  }
+  return failure === undefined
+    ? failed(`${cause}; the created user ${userId} was deleted (rolled back)`)
+    : failed(`${cause}; rolling back failed: ${failure}; delete user ${userId} manually before running the seed again`);
 }
 
 export async function seedSuperAdmin(input: {
@@ -116,10 +142,14 @@ export async function seedSuperAdmin(input: {
     const userId = created.data.user.id;
     const verified = await readProfile(client, userId);
     if (verified.error) {
-      return failed(`created user ${userId} but the profile read failed: ${describeDb(verified.error)}`);
+      return rollBack(client, userId, `created user ${userId} but the profile read failed: ${describeDb(verified.error)}`);
     }
     if (verified.data?.role !== "ADMIN" || verified.data.status !== "active") {
-      return failed(`created user ${userId} but its profile is not an active ADMIN (the promotion did not apply)`);
+      return rollBack(
+        client,
+        userId,
+        `created user ${userId} but its profile is not an active ADMIN (the promotion did not apply)`
+      );
     }
     return { status: "created", userId };
   }
@@ -128,13 +158,21 @@ export async function seedSuperAdmin(input: {
     return failed(created.error ? `createUser failed: ${describe(created.error)}` : "createUser returned no user");
   }
 
-  const found = await findUserIdByEmail(client, email);
-  if (found instanceof Error) {
-    return failed(`listUsers failed: ${found.message}`);
+  const lookup = await findUserIdByEmail(client, email);
+  switch (lookup.kind) {
+    case "error":
+      return failed(`listUsers failed: ${lookup.reason}`);
+    case "absent":
+      return failed("the email is reported as taken but no matching user was found");
+    case "exhausted":
+      return failed(
+        `the email is reported as taken but the user was not among the first ${LIST_MAX_PAGES * LIST_PAGE_SIZE} users ` +
+          `(search limit of ${LIST_MAX_PAGES} pages reached); nothing was changed`
+      );
+    case "found":
+      break;
   }
-  if (found === undefined) {
-    return failed("the email is reported as taken but no matching user was found");
-  }
+  const found = lookup.userId;
 
   const profile = await readProfile(client, found);
   if (profile.error) {
