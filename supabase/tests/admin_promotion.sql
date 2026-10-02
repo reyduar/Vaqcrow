@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(10);
 
 -- Reproduces the sequence GoTrue's admin createUser really runs: INSERT into
 -- auth.users WITHOUT the caller's app_metadata, then UPDATE raw_app_meta_data.
@@ -77,18 +77,34 @@ select is(
 insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
 values (
   'aaaaaaa4-0000-4000-8000-000000000004', 'orphan@example.test',
-  '{"role": "INVERSOR"}'::jsonb, '{}'::jsonb
+  '{"role": "INVERSOR", "display_name": "Orphan"}'::jsonb, '{}'::jsonb
 );
 delete from public.profile where user_id = 'aaaaaaa4-0000-4000-8000-000000000004';
 
 update auth.users
-set raw_app_meta_data = raw_app_meta_data || '{"role": "ADMIN"}'::jsonb
+set raw_app_meta_data = raw_app_meta_data || '{"role": "ADMIN", "display_name": "Orphan Admin"}'::jsonb
 where id = 'aaaaaaa4-0000-4000-8000-000000000004';
 
 select is(
   (select role || ':' || display_name from public.profile where user_id = 'aaaaaaa4-0000-4000-8000-000000000004'),
-  'ADMIN:orphan',
+  'ADMIN:Orphan Admin',
   'promotion creates the profile when none exists'
+);
+
+-- Creating a missing profile without a display name fails: no email-derived name.
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+values (
+  'aaaaaaa5-0000-4000-8000-000000000005', 'orphan-noname@example.test',
+  '{"role": "INVERSOR", "display_name": "Orphan Two"}'::jsonb, '{}'::jsonb
+);
+delete from public.profile where user_id = 'aaaaaaa5-0000-4000-8000-000000000005';
+
+select throws_ok(
+  $$update auth.users
+    set raw_app_meta_data = raw_app_meta_data || '{"role": "ADMIN"}'::jsonb
+    where id = 'aaaaaaa5-0000-4000-8000-000000000005'$$,
+  '22023', 'display name is required (at least 2 characters)',
+  'promotion that must create a missing profile without a display name is rejected'
 );
 
 -- Access control ------------------------------------------------------------------
