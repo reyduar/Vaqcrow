@@ -13,6 +13,8 @@
     "test:integration:cloud": "vitest run --config vitest.integration.config.ts --mode cloud",
     "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --watch dist/index.js)",
     "dev:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/index.js",
+    "seed:superadmin:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/seed-superadmin-cli.js",
+    "seed:superadmin:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-superadmin-cli.js",
     "start": "node dist/index.js"
   },
   "dependencies": {

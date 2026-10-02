@@ -2,7 +2,7 @@ import { parseSalesPeriod } from "@vaqcrow/contracts";
 import { describe, expect, it } from "vitest";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 
 /**
  * The HTTP surface of the monthly sales feed (Task #83).
@@ -19,7 +19,7 @@ const BUSINESS = "panaderia-horizonte";
 const SERIES_URL = `/businesses/${BUSINESS}/sales-periods`;
 
 function appWith(provider: SalesDataProviderPort = createSimulatedSalesDataProvider()) {
-  return buildApp({ salesFeed: { provider } });
+  return buildAppAs("PYME", { salesFeed: { provider } });
 }
 
 describe("GET /businesses/:businessId/sales-periods", () => {
@@ -160,7 +160,7 @@ describe("POST /businesses/:businessId/sales-periods", () => {
 
 describe("sales-feed route registration", () => {
   it("is not registered when the dependency group is not supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("PYME");
 
     const get = await app.inject({ method: "GET", url: SERIES_URL });
     const post = await app.inject({ method: "POST", url: SERIES_URL, payload: {} });

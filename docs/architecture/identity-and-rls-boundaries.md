@@ -6,10 +6,14 @@ tags:
   - supabase
   - rls
 date: 2026-09-28
+updated: 2026-10-01
 status: accepted
 ---
 
 # Vaqcrow — Límites de identidad y RLS
+
+> [!important] Actualización 2026-10-01: el modelo de identidad ya existe, en la rama de la Feature
+> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación vive en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y todavía no está en `main`**: llega junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) en una entrega apilada. Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen `main` y el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6).
 
 > [!info] Objetivo
 > Registrar la decisión que resuelve el issue [#196](https://github.com/reyduar/Vaqcrow/issues/196): qué se hace con las dos tablas que hoy tienen RLS habilitada y cero políticas —`public.application_review` y `public.human_decision`—, por qué **todavía no** se escriben políticas de fila, y qué las desbloquea. Complementa [[docs/planning/supabase-schema-and-persistence-evidence|la evidencia del esquema y la persistencia]] (#13) y [[docs/planning/human-assessment-and-approval-evidence|la evidencia de la evaluación y aprobación humana]] (#19), que difieren este trabajo acá.
@@ -54,10 +58,10 @@ En síntesis: **RLS habilitada, cero políticas, `service_role` como único rol 
 
 ## 3. Por qué las políticas no se pueden escribir todavía
 
-Una política RLS necesita un **sujeto**: `auth.uid()`, un claim de un JWT, un rol — algo contra lo cual escribir `using (...)`. Este repositorio **no tiene ninguna capa de autenticación**: no hay Auth.js, no hay sesión, no hay `auth.uid()`. El único llamador es la API como `service_role`, que hace bypass de RLS por completo.
+Una política RLS necesita un **sujeto**: `auth.uid()`, un claim de un JWT, un rol — algo contra lo cual escribir `using (...)`. En `main` **no hay ninguna capa de autenticación** (estado al decidir #196): no hay Auth.js, no hay sesión, no hay `auth.uid()`. El único llamador es la API como `service_role`, que hace bypass de RLS por completo.
 
 > [!warning] La tensión de [#134](https://github.com/reyduar/Vaqcrow/issues/134)
-> [#134](https://github.com/reyduar/Vaqcrow/issues/134) ("Establish Auth.js authentication and session boundaries") es la Feature donde nacería una identidad de persona usuaria. Está **cerrado como completed**, pero **todos sus criterios de aceptación siguen sin marcar y no hay ninguna implementación versionada en `main`**. Este documento nombra esa contradicción en lugar de taparla: el estado del issue no es evidencia de que la capa de autenticación exista. Hoy, en el código, no existe.
+> [#134](https://github.com/reyduar/Vaqcrow/issues/134) ("Establish Auth.js authentication and session boundaries") es la Feature donde nacería una identidad de persona usuaria. Está **cerrado como completed**, pero **todos sus criterios de aceptación siguen sin marcar y no hay ninguna implementación versionada en `main`**. Este documento nombra esa contradicción en lugar de taparla: el estado del issue no es evidencia de que la capa de autenticación exista. En `main`, hoy, no existe; la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) lo reemplaza con Supabase Auth (§9) y supersede el límite de Auth.js (decisión del owner, 2026-10-01).
 
 Escribir una política ahora sería inventar un modelo de seguridad sin ninguna identidad contra la cual fijarlo —y una política que devolviera `true` para todos convertiría un aviso INFO en un agujero real, con la apariencia de estar resuelto. Ése es el único movimiento que empeoraría la situación. Por eso la política se **posterga**, no se improvisa.
 
@@ -89,13 +93,51 @@ Cuando eso ocurra, las políticas se escriben como una **Task bajo la Feature qu
 
 ## 7. Lo que este documento no afirma
 
-- **No afirma que exista autenticación.** Este repositorio no tiene capa de autenticación hoy. Ningún nivel de acceso de §1 es una identidad autenticada implementada: son los niveles declarados para el modelo de identidad que todavía no está.
-- **No afirma que las políticas existan.** No existen; están diferidas.
+- **No afirma que exista autenticación en `main`.** La implementación (§9) está en la rama de la Feature #369, apilada con #378, y no se fusionó a `main`.
+- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas son las de `profile` (§9.3).
 - **No afirma que la demo exponga estas tablas.** No hay hoy ninguna ruta, pantalla ni endpoint que las lea o escriba para un rol distinto de `service_role`.
 - **No afirma que el estado actual sea producto de una política.** Lo que deniega es el GRANT (§2).
 
 ## 8. Reversión / cuándo revisar
 
-Esta decisión se revisa cuando se elija un modelo de identidad —en particular, cuando [#134](https://github.com/reyduar/Vaqcrow/issues/134) (o la Feature que finalmente lo introduzca) se implemente de verdad en `main`. En esa revisión hay que: (a) decidir el mapeo definitivo de los niveles de §1 contra las filas de cada tabla, (b) escribir las políticas como una Task de esa Feature, y (c) reemplazar la guarda por las pruebas de acceso no privilegiado que correspondan.
+Esta decisión se revisa cuando el modelo de identidad de §9 llegue a `main` (el reemplazo de [#134](https://github.com/reyduar/Vaqcrow/issues/134) es la Feature #369). En esa revisión hay que: (a) decidir el mapeo definitivo de los niveles de §1 contra las filas de cada tabla, (b) escribir las políticas como una Task de esa Feature, y (c) reemplazar la guarda por las pruebas de acceso no privilegiado que correspondan.
 
 Si en cambio se decide que la demo acotada **nunca** expondrá estas tablas a un rol distinto de `service_role`, la resolución correcta es la **opción 1** del issue: dejar registrada esa decisión y conservar la guarda como contención permanente. Ambas salidas son legítimas; lo que no lo es es escribir una política sin identidad.
+
+## 9. El modelo de identidad implementado (Task #370, rama de la Feature #369)
+
+> [!warning] Alcance de entrega
+> Todo lo de esta sección está en la rama de la Feature #369 y **no en `main`**. Se entrega apilado con #378: hasta entonces la demo desplegada conserva el comportamiento anterior. No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La web todavía **no envía tokens**; eso es una ruptura conocida hasta #378.
+
+### 9.1 Roles y perfil
+
+La migración `supabase/migrations/20260930180000_create_identity_and_audit.sql` crea `public.profile` (una fila por usuario de `auth.users`): rol `PYME` / `INVERSOR` / `ADMIN`, nombre visible, usuario único y estado `active` / `inactive`. Aplicada y verificada en el proyecto remoto. Un usuario `inactive` recibe `401` aunque su token sea válido. Se desactiva, no se borra: la FK `audit_log.actor_user_id → profile` impide borrar a quien tiene auditoría.
+
+### 9.2 Trigger de alta
+
+`on_auth_user_created` ejecuta `handle_new_user()` (`security definer`, `search_path=''`, sin `execute` para `anon`/`authenticated`) y crea el perfil. El rol `ADMIN` **sólo entra por `app_metadata`**, que escribe únicamente `service_role`; el `user_metadata` —editable por la propia persona— sólo puede pedir `PYME` o `INVERSOR`. Así nadie se autoasigna `ADMIN`. El superadmin («Admin Vaqcrow», `vaqcrow.admin`) se siembra con `pnpm --filter @vaqcrow/api seed:superadmin:docker|cloud` (script manual por perfil; email y contraseña desde `VAQCROW_SUPERADMIN_EMAIL` / `VAQCROW_SUPERADMIN_PASSWORD`; nunca al arrancar la API). El preflight comprueba que exista un `ADMIN` activo.
+
+### 9.3 RLS
+
+`profile` tiene RLS y la política `profile_select_own` (cada persona autenticada lee sólo su fila). Los grants son explícitos: `authenticated` sólo `SELECT`; `service_role` escribe. Esta es la primera política real del repositorio y reemplaza el «cero políticas» **para `profile`**; no cambia el patrón de las demás tablas.
+
+### 9.4 Autorización en la API
+
+`apps/api` valida el token en el servidor (`AuthPort` + adaptador `SupabaseAuth`: `auth.getUser(token)` y rol leído de `profile`, con timeout de 5 s) y aplica un hook `onRequest` con **denegación por defecto**: la tabla de políticas vive en `apps/api/src/application/authorization/route-policy.ts` y toda ruta no listada se deniega. Respuestas: `401 unauthenticated` (sin token, token inválido o perfil inactivo), `403 forbidden` (rol sin permiso) y `503 unavailable` (el proveedor de identidad no responde). El rol sale de `profile`, nunca del cliente. El `actor` de la decisión humana es el `displayName` del admin autenticado y ya no viaja en el body (el `displayName` no es único: el `userId` quedará en `audit_log` cuando se cablee la auditoría).
+
+### 9.5 Registro de auditoría
+
+`public.audit_log` es append-only (`service_role` sólo `INSERT`/`SELECT`). El puerto `AuditLogPort` y su adaptador están cableados en `index.ts` pero **todavía no se invocan**; se usan cuando una Task posterior los llame (#410).
+
+### 9.6 Lo que no cambia
+
+`application_review` y `human_decision` siguen siendo **sólo `service_role`** (la API es la única escritora) y `tests/rls-grants-containment.test.ts` sigue vigente. No se escriben políticas sobre ellas.
+
+### 9.7 Brecha conocida: R1-002 (propiedad por fila)
+
+> [!warning] Las rutas `PYME` verifican el rol, no la propiedad de la fila
+> Una PyME registrada podría leer la solicitud de otra por id, leer o escribir las ventas de cualquier negocio y leer cualquier distribución. Reduce la exposición respecto de `main` (rutas sin autenticación) y la propiedad por fila llega con [#398](https://github.com/reyduar/Vaqcrow/issues/398). Como #369 y #378 llegan juntas a `main`, **R1-002 se resuelve o el owner lo acepta explícitamente antes de ese merge**.
+
+### 9.8 Email
+
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner según [[docs/architecture/environments|environments.md]] §13 — **pendiente** al 2026-10-01. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).

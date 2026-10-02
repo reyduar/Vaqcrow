@@ -2,8 +2,13 @@ import { correlationIdSchema } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./build-app.js";
+import { fakeAuthPort } from "./test-support/auth.js";
 
 const CALLER_CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
+
+// Ad-hoc probe routes have no entry in the production policy table; these tests
+// are about request ids, not authorization, so they opt into an open policy.
+const openPolicy = { auth: { port: fakeAuthPort(), policy: () => ({ kind: "public" as const }) } };
 
 describe("buildApp", () => {
   let app: FastifyInstance | undefined;
@@ -46,7 +51,7 @@ describe("buildApp", () => {
   });
 
   it("returns the server-generated request ID in the response header", async () => {
-    app = buildApp();
+    app = buildApp(openPolicy);
     app.get("/request-id", async (request) => ({ requestId: request.id }));
 
     const response = await app.inject({ method: "GET", url: "/request-id" });
@@ -57,7 +62,7 @@ describe("buildApp", () => {
   });
 
   it("does not reuse a caller-supplied correlation ID", async () => {
-    app = buildApp();
+    app = buildApp(openPolicy);
     app.get("/request-id", async (request) => ({ requestId: request.id }));
 
     const response = await app.inject({
@@ -81,7 +86,7 @@ describe("buildApp", () => {
   });
 
   it("preserves the handler request ID on 500 responses", async () => {
-    app = buildApp();
+    app = buildApp(openPolicy);
     let capturedRequestId: string | undefined;
     app.get("/failure", async (request) => {
       capturedRequestId = request.id;
@@ -126,6 +131,25 @@ describe("buildApp", () => {
 
       expect(response.headers["access-control-allow-origin"]).toBe(ALLOWED_ORIGIN);
       expect(response.headers["access-control-expose-headers"]).toContain("x-correlation-id");
+    });
+
+    it("allows the authorization and content-type request headers in a preflight", async () => {
+      app = buildApp({ cors: { allowedOrigins: [ALLOWED_ORIGIN] } });
+
+      const response = await app.inject({
+        method: "OPTIONS",
+        url: "/health",
+        headers: {
+          origin: ALLOWED_ORIGIN,
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "authorization,content-type"
+        }
+      });
+
+      expect(response.statusCode).toBe(204);
+      const allowed = String(response.headers["access-control-allow-headers"]).toLowerCase();
+      expect(allowed).toContain("authorization");
+      expect(allowed).toContain("content-type");
     });
 
     it("omits the allow-origin header for a disallowed origin", async () => {

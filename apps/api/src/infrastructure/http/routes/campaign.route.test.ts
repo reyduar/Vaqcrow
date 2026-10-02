@@ -14,7 +14,7 @@ import type {
 } from "../../../application/ports/campaign-vault-invocation-port.js";
 import type { CampaignRecord, CampaignRepositoryPort } from "../../../application/ports/campaign-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 import type { CampaignRouteDependencies } from "./campaign.route.js";
 
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
@@ -182,7 +182,7 @@ describe("POST /campaigns", () => {
       findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }),
       create: vi.fn().mockResolvedValue({ ok: true, value: campaignRecord })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -195,7 +195,7 @@ describe("POST /campaigns", () => {
     const campaigns = campaignsDouble({
       findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: campaignRecord })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -205,7 +205,7 @@ describe("POST /campaigns", () => {
   it("returns 404 when the application does not exist", async () => {
     const applicationReviews = applicationReviewsDouble();
     vi.mocked(applicationReviews.findById).mockResolvedValue({ ok: false, error: { code: "not_found" } });
-    app = buildApp({ campaign: deps({ applicationReviews }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -219,7 +219,7 @@ describe("POST /campaigns", () => {
       ok: true,
       value: { applicationId: APPLICATION_ID, state: "in_review" } as never
     });
-    app = buildApp({ campaign: deps({ applicationReviews }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -241,7 +241,7 @@ describe("POST /campaigns", () => {
     const accounts = accountsDouble();
     vi.mocked(accounts.accountExists).mockResolvedValue({ ok: true, value: false });
     vi.mocked(accounts.createAccount).mockResolvedValue({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, accounts, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, accounts, chain }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -261,7 +261,7 @@ describe("POST /campaigns", () => {
         .mockResolvedValueOnce({ ok: false, error: { code: "not_found" } })
         .mockResolvedValue({ ok: true, value: { ...fundingChainState, goalStroops: 1n } })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -280,7 +280,7 @@ describe("POST /campaigns", () => {
     });
     const factory = factoryDouble();
     vi.mocked(factory.deploy).mockResolvedValue({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, chain, factory }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, factory }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -289,7 +289,7 @@ describe("POST /campaigns", () => {
   });
 
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -311,7 +311,7 @@ describe("GET /campaigns/:campaignId", () => {
   });
 
   it("reconciles the mirror against a fresh chain read and returns the snapshot", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -324,7 +324,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("includes the investor's own contribution when ?investor= is given", async () => {
     const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 2_500_000n }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({
       method: "GET",
@@ -338,7 +338,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("never serves the mirror as chain truth: 503 when the chain is unreachable", async () => {
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -348,7 +348,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("returns 404 when the campaign is not mirrored", async () => {
     const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }) });
-    app = buildApp({ campaign: deps({ campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -374,7 +374,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("always prepares contribute with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -399,7 +399,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("always prepares withdraw with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -419,7 +419,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("prepares refund with the given source when one is provided", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -439,7 +439,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("prepares refund with the investor as source when none is given", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -462,7 +462,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
       readCampaign: vi.fn().mockResolvedValue({ ok: true, value: { ...fundingChainState, state: "settled" } })
     });
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ chain, invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain, invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -476,7 +476,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("returns 503 when the chain is unreachable while checking contribute eligibility", async () => {
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({
       method: "POST",
@@ -491,7 +491,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
     const invocations = invocationsDouble({
       prepare: vi.fn().mockResolvedValue({ ok: false, error: { code: "invalid_input" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -504,7 +504,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
   });
 
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -518,7 +518,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("returns 404 when the campaign is not mirrored", async () => {
     const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }) });
-    app = buildApp({ campaign: deps({ campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns }) });
 
     const response = await app.inject({
       method: "POST",
@@ -548,7 +548,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("always verifies contribute with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -565,7 +565,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("always verifies withdraw with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -585,7 +585,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("omits sourceAccountId for refund so any self-signed source is accepted", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -607,7 +607,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       verify: vi.fn().mockReturnValue({ ok: false, refusal: { code: "wrong_source", reason: "internal detail" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -625,7 +625,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       submit: vi.fn().mockResolvedValue({ ok: true, value: { hash: TRANSACTION_HASH, status: "rejected" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -640,7 +640,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       submit: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -652,7 +652,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
   });
 
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -674,7 +674,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
   });
 
   it("reports a pending transaction with no campaign snapshot", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -686,7 +686,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     const invocations = invocationsDouble({
       findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -703,7 +703,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     it("reads the investor's on-chain contribution and reconciles it into the mirror on success", async () => {
       const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 2_500_000n }) });
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       const response = await app.inject({
         method: "GET",
@@ -721,7 +721,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     it("records nothing when no investor is given, as before", async () => {
       const chain = chainDouble();
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -731,7 +731,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
     it("does not read the chain for a pending transaction", async () => {
       const chain = chainDouble();
-      app = buildApp({ campaign: deps({ chain }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
       const response = await app.inject({
         method: "GET",
@@ -744,7 +744,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
     it("rejects a malformed investor with 400 before looking the transaction up", async () => {
       const invocations = success();
-      app = buildApp({ campaign: deps({ invocations }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
       const response = await app.inject({
         method: "GET",
@@ -761,7 +761,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
         readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
       });
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       const response = await app.inject({
         method: "GET",
@@ -778,7 +778,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
       findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } })
     });
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ invocations, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations, chain }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -787,7 +787,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
   it("returns 503 when the transaction lookup is unavailable", async () => {
     const invocations = invocationsDouble({ findResult: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -797,7 +797,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
 describe("campaign route registration", () => {
   it("is absent when the campaign dependency group is not supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("ADMIN");
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -806,7 +806,7 @@ describe("campaign route registration", () => {
   });
 
   it("sets the correlation ID header", async () => {
-    const app = buildApp({ campaign: deps() });
+    const app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 

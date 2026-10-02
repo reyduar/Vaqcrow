@@ -17,7 +17,7 @@ import type {
 } from "../../../application/ports/application-assessment-repository-port.js";
 import type { SalesDataProviderPort, SalesDataProviderResult } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 
 /**
  * The HTTP surface of an application-scoped assessment (Feature #22 Task #71,
@@ -174,7 +174,7 @@ function appWith(
   }),
   collaborators: ReturnType<typeof collaboratorsFor> = collaboratorsFor()
 ): FastifyInstance {
-  return buildApp({
+  return buildAppAs("ADMIN", {
     applicationAssessment: { repository, provider, timeoutMs: 5_000, ...collaborators.dependencies }
   });
 }
@@ -561,7 +561,7 @@ describe("POST /application-reviews/:applicationId/assessments", () => {
   });
 
   it("is not registered when no application assessment is supplied", async () => {
-    app = buildApp();
+    app = buildAppAs("ADMIN");
 
     const response = await app.inject({
       method: "POST",

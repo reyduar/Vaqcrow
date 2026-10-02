@@ -44,7 +44,7 @@ La Feature [#438](https://github.com/reyduar/Vaqcrow/issues/438) retira las ruta
 
 La historia vertical implementada hoy (que el producto por roles reutilizará como motor) sigue un único caso sintético —**Panadería Horizonte SRL**, una PyME argentina— de punta a punta:
 
-1. La PyME presenta identidad, KYC/KYB, historial de ventas y comprobantes simulados.
+1. La PyME presenta verificación de identidad, KYC/KYB, historial de ventas y comprobantes simulados.
 2. Una IA real analiza la evidencia suministrada, detecta anomalías y datos faltantes, expresa incertidumbre y entrega una recomendación estructurada y trazable.
 3. Un operador revisa la evidencia y registra la decisión humana; la IA no autoriza el financiamiento.
 4. Un inversor conecta Freighter y firma, de forma no custodial, la invocación del contrato que alimenta la bóveda de la campaña en Stellar Testnet.
@@ -266,7 +266,7 @@ El **fondeo se custodia en un contrato de Stellar** (Rust + `soroban-sdk`): cada
 - `apps/worker` no existe todavía: las confirmaciones asíncronas viven en la API. Solo se agregará como proceso independiente si esos jobs no caben de forma segura en ella.
 - Supabase aporta servicios gestionados, sin convertir al cliente web en dueño de la autorización ni de los estados críticos.
 
-Estos despliegues son la **demo en Stellar Testnet**, no una operación productiva real: la identidad, KYC/KYB y ventas siguen simulados y los activos no tienen valor económico.
+Estos despliegues son la **demo en Stellar Testnet**, no una operación productiva real: la verificación de identidad, KYC/KYB y ventas siguen simulados y los activos no tienen valor económico.
 
 ## Cómo ejecutar el proyecto
 

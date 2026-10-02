@@ -39,8 +39,9 @@ Por eso el perfil se elige explícitamente en cada comando (D2): `node --env-fil
 
 1. **Renombrar el archivo existente.** Si ya tenés un `.env.local` en la raíz con credenciales reales de la demo, movelo a `.env.cloud` (`mv .env.local .env.cloud`). Esto lo hacés vos: una regla global de permisos impide que las sesiones de agente lean, editen o muevan cualquier `.env*`.
 2. **Copiar las plantillas.** `.env.cloud.example` → `.env.cloud` y `.env.docker.example` → `.env.docker` (si no hiciste el paso 1), completando los placeholders. Las plantillas viven junto a este documento.
-3. **Levantar el perfil docker.** `pnpm env:docker:up` arranca Supabase local (CLI, sin `studio`/`storage-api`/`realtime`/etc. — la API sólo necesita `kong` y `postgrest`), el Stellar Quickstart si no está ya sano en `:8000`, genera `.env.docker` si falta, y construye + levanta el contenedor de la API.
-4. **Generar `.env.docker` a mano si hace falta.** `./scripts/env/generate-docker-env.sh` lee `supabase status -o env` (Supabase local debe estar arriba) y copia las líneas `LLM_*` verbatim desde `.env.cloud` — el perfil docker reutiliza la credencial LLM de la demo en vez de tener la propia. Nunca imprime valores, sólo los nombres de las claves escritas. Rechaza sobrescribir un `.env.docker` existente salvo `--force`.
+3. **Levantar el perfil docker.** `pnpm env:docker:up` arranca Supabase local (CLI, sin `studio`/`storage-api`/`realtime`/etc.; la API necesita `kong` y `postgrest`, y la confirmación de email necesita `gotrue` y `mailpit`, que **sí** se levantan), el Stellar Quickstart si no está ya sano en `:8000`, genera `.env.docker` si falta, y construye + levanta el contenedor de la API.
+4. **Generar `.env.docker` a mano si hace falta.** `./scripts/env/generate-docker-env.sh` lee `supabase status -o env` (Supabase local debe estar arriba) y copia las líneas `LLM_*` verbatim desde `.env.cloud` — el perfil docker reutiliza la credencial LLM de la demo en vez de tener la propia. Nunca imprime valores, sólo los nombres de las claves escritas. Rechaza sobrescribir un `.env.docker` existente salvo `--force`; con `--force` **conserva** las líneas `VAQCROW_SUPERADMIN_EMAIL`/`VAQCROW_SUPERADMIN_PASSWORD` que ya hubieras escrito (si faltan, las deja vacías).
+5. **Completar el superadmin.** Escribí vos, a mano, `VAQCROW_SUPERADMIN_EMAIL` y `VAQCROW_SUPERADMIN_PASSWORD` en `.env.docker` y en `.env.cloud` (las plantillas traen las dos líneas vacías). La contraseña no se commitea, no se imprime y no vive en Railway: sólo la lee el script de seed (§13.3).
 
 ## 4. Comandos del día a día
 
@@ -58,7 +59,12 @@ pnpm dev:api:cloud                # API local en :3000 contra el proyecto remoto
 pnpm dev:web:cloud                # web en :3001 contra NEXT_PUBLIC_API_BASE_URL (.env.cloud)
 
 pnpm run test:db                  # supabase test db --local — siempre contra el stack local
+
+pnpm --filter @vaqcrow/api seed:superadmin:docker   # siembra el superadmin en Supabase local (.env.docker)
+pnpm --filter @vaqcrow/api seed:superadmin:cloud    # ídem contra el proyecto remoto (.env.cloud)
 ```
+
+**Email local.** El stack local envía los emails de Auth (el enlace de confirmación del alta de `PYME`/`INVERSOR`) al servidor de pruebas Mailpit del CLI (`[local_smtp]` en `supabase/config.toml`): nada sale a Internet. Se leen en <http://127.0.0.1:54324>. Resend **no** se configura en local. Si cambiás `supabase/config.toml` (por ejemplo `[auth]`), reiniciá el stack con `pnpm env:docker:down` y `pnpm env:docker:up`.
 
 ## 5. Suite de integración por perfil
 
@@ -182,3 +188,52 @@ pnpm --filter @vaqcrow/web run test:e2e:live # equivalente, filtrado al workspac
 > `apps/web/src` nunca puede importar `@stellar/stellar-sdk` (regla `web-never-imports-server-stellar-sdk`). `apps/web/e2e-live/support/freighter-live-emulator.ts` emula el mismo protocolo `postMessage` de Freighter que el doble determinístico, pero el paso `SUBMIT_TRANSACTION` llama a un puente `page.exposeFunction("vaqcrowLiveSign", …)`: la página manda el XDR sin firmar y la clave pública, y la firma real ocurre en el proceso de Node de Playwright (`apps/web/e2e-live/support/identities.ts`, `Keypair.random()` de la Stellar CLI SDK, fondeadas con Friendbot). La clave privada nunca cruza al navegador.
 
 No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts`'s guard contra hosts externos, `apps/web/playwright.config.ts` y `pnpm run test:e2e` (17 tests, `testDir: "./e2e"`) no cambian. `apps/web/e2e-live/` vive fuera del glob que `tests/testing-and-ci-gates.test.ts` recorre, y `apps/web/playwright.live.config.ts` es una configuración separada, nunca referenciada por `turbo.json`, `.github/workflows/ci.yml` ni `pnpm run verify`.
+
+## 13. Supabase Auth: email, superadmin y proyecto remoto
+
+> [!info] Decisiones
+> D1 (owner, 2026-10-01): la confirmación de email está activada para `PYME`/`INVERSOR`; Supabase Auth envía el enlace por **Resend** como SMTP propio. D3: el superadmin se siembra con un script manual por perfil. La recuperación de contraseña queda diferida (D2). Bitácora: `odd/tasks/supabase-auth-roles-rls.md`.
+
+### 13.1 Local (ya versionado)
+
+`supabase/config.toml` fija `site_url = "http://localhost:3001"`, `enable_signup = true` y `[auth.email] enable_confirmations = true`; los emails van a Mailpit (§4). No hay nada que configurar a mano.
+
+### 13.2 Proyecto remoto — pasos del owner (pendiente)
+
+> [!todo] Pendiente del owner
+> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. Hasta completarlo, el remoto no envía emails de confirmación con el dominio propio.
+
+En el dashboard de Supabase del proyecto de la demo:
+
+1. **Authentication → Emails → SMTP Settings → Enable custom SMTP** con estos valores:
+
+   | Campo | Valor |
+   |---|---|
+   | Sender email | `no-reply@vaqcrow.com` |
+   | Sender name | `Vaqcrow` |
+   | Host | `smtp.resend.com` |
+   | Port | `465` |
+   | Username | `resend` |
+   | Password | la API key de Resend (la tiene el owner; **nunca** se commitea ni se pega en el repositorio) |
+
+   El dominio `vaqcrow.com` ya está verificado en Resend. Con SMTP propio, revisá también **Authentication → Rate Limits** (el límite de emails por hora arranca bajo).
+2. **Authentication → Sign In / Providers → Email**: activar **Confirm email** (y dejar **Allow new users to sign up** activado).
+3. **Authentication → URL Configuration**:
+   - **Site URL**: `https://vaqcrow-web-nine.vercel.app` (la URL de la web en Vercel que cita el `README.md`).
+   - **Redirect URLs**: `https://vaqcrow-web-nine.vercel.app/**` y, si se corre la web en local contra el remoto, `http://localhost:3001/**`.
+4. Verificar: dar de alta una cuenta de prueba `PYME`/`INVERSOR` desde la web (o `POST /auth/v1/signup` con la clave publicable) y comprobar que llega el email desde `no-reply@vaqcrow.com` y que el login falla hasta confirmarlo.
+
+### 13.3 Sembrar el superadmin
+
+Requiere `VAQCROW_SUPERADMIN_EMAIL` y `VAQCROW_SUPERADMIN_PASSWORD` (más `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`) en el archivo del perfil:
+
+```bash
+pnpm --filter @vaqcrow/api seed:superadmin:docker   # lee ../../.env.docker
+pnpm --filter @vaqcrow/api seed:superadmin:cloud    # lee ../../.env.cloud
+```
+
+- Crea el usuario con la Admin API (`email_confirm: true`, `app_metadata.role = ADMIN`; el trigger de U1 crea el perfil «Admin Vaqcrow», usuario `vaqcrow.admin`).
+- **Idempotente:** si el usuario ya es un `ADMIN` activo, informa «already present» y no cambia nada.
+- **Nunca promueve:** si el email ya existe como `PYME`/`INVERSOR`, o como `ADMIN` inactivo, o sin perfil, falla con código 1 sin modificar nada.
+- Nunca corre al arrancar la API. Si falta una variable, el error nombra la variable, nunca su valor; la contraseña no se imprime.
+- `pnpm demo:preflight --env-file .env.cloud` incluye el chequeo «An active ADMIN profile exists» y también `profile`/`audit_log` entre las tablas.

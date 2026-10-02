@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
 import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
 
@@ -36,7 +36,7 @@ function build(
   repository: Partial<SmeRequestRepositoryPort> = {},
   salesData: Partial<SalesDataProviderPort> = {}
 ): FastifyInstance {
-  app = buildApp({
+  app = buildAppAs("PYME", {
     smeRequest: {
       repository: {
         submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } }),

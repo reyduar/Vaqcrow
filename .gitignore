@@ -94,3 +94,6 @@ Thumbs.db
 # disk, deliberately out of the repository; see
 # odd/tasks/template-stays-out-of-the-repo.md
 docs/design/template/
+# The design handoff (same screens plus its README and brief) stays out for the
+# same reason; owner decision, 2026-10-01.
+docs/design/design_handoff_vaqcrow/

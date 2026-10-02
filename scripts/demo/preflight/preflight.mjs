@@ -50,7 +50,15 @@ export const STELLAR_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 export const REQUIRED_WEB_ENV = ["NEXT_PUBLIC_API_BASE_URL"];
 
 /** Env names whose VALUES are secrets: redacted from every reported string. */
-const SECRET_ENV_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "STELLAR_PLATFORM_SECRET_KEY", "LLM_API_KEY"];
+// VAQCROW_SUPERADMIN_PASSWORD is never required or read by a check (the API does
+// not need it at runtime); it is listed only so it is redacted if a shell or
+// profile file happens to expose it to this process.
+const SECRET_ENV_NAMES = [
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "STELLAR_PLATFORM_SECRET_KEY",
+  "LLM_API_KEY",
+  "VAQCROW_SUPERADMIN_PASSWORD"
+];
 
 /** The tables the journey writes and reads (application through distribution). */
 export const JOURNEY_TABLES = [
@@ -60,7 +68,10 @@ export const JOURNEY_TABLES = [
   "human_decision",
   "campaign",
   "campaign_contribution",
-  "revenue_share_distribution"
+  "revenue_share_distribution",
+  // Identity (#370): roles and the append-only audit trail.
+  "profile",
+  "audit_log"
 ];
 
 /**
@@ -449,6 +460,32 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
             const status = await head("revenue_share_distribution?select=campaign_id,period&limit=0");
             const ok = status === 200 || status === 206;
             return { ok, detail: ok ? "both columns selectable" : `select of campaign_id,period answered HTTP ${status} (migration missing?)` };
+          },
+          redact
+        )
+  );
+
+  // 5. Seeded super admin: at least one active ADMIN profile (service-role read, one row).
+  checks.push(
+    schemaUnavailable
+      ? roleMissing("admin-profile", "An active ADMIN profile exists", schemaUnavailable)
+      : await check(
+          "admin-profile",
+          "An active ADMIN profile exists",
+          async () => {
+            const response = await fetchFn(
+              `${trimSlash(supabaseUrl)}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`,
+              { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }, signal: timeout() }
+            );
+            if (!response.ok) return { ok: false, detail: `profile query answered HTTP ${response.status} (migration missing?)` };
+            const rows = await response.json();
+            const found = Array.isArray(rows) && rows.length > 0;
+            return {
+              ok: found,
+              detail: found
+                ? "an active ADMIN profile found"
+                : "no active ADMIN profile; run pnpm --filter @vaqcrow/api seed:superadmin:<docker|cloud>"
+            };
           },
           redact
         )

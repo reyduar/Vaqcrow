@@ -12,6 +12,10 @@
 #     NEXT_PUBLIC_API_BASE_URL).
 #   - The `LLM_*` lines, copied verbatim from `.env.cloud` — this profile
 #     does not stand up its own LLM credential; it reuses the demo one.
+#   - The `VAQCROW_SUPERADMIN_*` lines, preserved verbatim from an existing
+#     `.env.docker` when regenerating with --force (operator-entered, read by
+#     `pnpm --filter @vaqcrow/api seed:superadmin:docker`); empty
+#     placeholders otherwise. Their values are never printed.
 #   - Stellar: `STELLAR_NETWORK=testnet` unless
 #     `contracts/.local-deployment.json` exists (written by
 #     `contracts/scripts/bootstrap-local-campaign.sh`), in which case the
@@ -103,6 +107,20 @@ if [[ -z "$LLM_LINES" ]] || ! printf '%s\n' "$LLM_LINES" | grep -q '^LLM_API_KEY
   exit 1
 fi
 
+# Operator-entered super-admin seed variables survive a regeneration. Never
+# sourced or eval'd, and only the key names are ever printed.
+SUPERADMIN_LINES=""
+if [[ -f "$OUT_FILE" ]]; then
+  SUPERADMIN_LINES="$(grep -E '^VAQCROW_SUPERADMIN_(EMAIL|PASSWORD)=' "$OUT_FILE" || true)"
+fi
+if ! printf '%s\n' "$SUPERADMIN_LINES" | grep -q '^VAQCROW_SUPERADMIN_EMAIL='; then
+  SUPERADMIN_LINES="$(printf '%s\n' "$SUPERADMIN_LINES" | grep -v '^$' || true)"
+  SUPERADMIN_LINES="${SUPERADMIN_LINES:+${SUPERADMIN_LINES}$'\n'}VAQCROW_SUPERADMIN_EMAIL="
+fi
+if ! printf '%s\n' "$SUPERADMIN_LINES" | grep -q '^VAQCROW_SUPERADMIN_PASSWORD='; then
+  SUPERADMIN_LINES="${SUPERADMIN_LINES}"$'\n'"VAQCROW_SUPERADMIN_PASSWORD="
+fi
+
 # Stellar: the local-network profile (docs/architecture/environments.md
 # §"Bóveda de campaña en la red local") is opt-in. It only activates once
 # `contracts/scripts/bootstrap-local-campaign.sh` (pnpm env:docker:bootstrap)
@@ -179,6 +197,9 @@ umask 077
   echo
   echo "# Copied verbatim from .env.cloud — this profile reuses the demo LLM credential."
   printf '%s\n' "$LLM_LINES"
+  echo
+  echo "# Super-admin seed (pnpm --filter @vaqcrow/api seed:superadmin:docker). Operator-entered; preserved on regeneration."
+  printf '%s\n' "$SUPERADMIN_LINES"
 } > "$OUT_FILE"
 chmod 600 "$OUT_FILE"
 
@@ -187,5 +208,6 @@ echo "wrote $OUT_FILE with keys:"
   echo "APP_ENV PORT LOG_LEVEL NEXT_PUBLIC_API_BASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_PUBLISHABLE_KEY"
   echo "$STELLAR_KEY_NAMES"
   printf '%s\n' "$LLM_LINES" | cut -d= -f1
+  printf '%s\n' "$SUPERADMIN_LINES" | cut -d= -f1
 } | tr '\n' ' ' | tr -s ' '
 echo

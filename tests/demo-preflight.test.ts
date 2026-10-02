@@ -78,6 +78,8 @@ function fetchDouble(overrides: Record<string, Handler> = {}) {
     ),
     [`HEAD ${SUPABASE}/rest/v1/revenue_share_distribution?select=campaign_id,period&limit=0`]: () =>
       new Response(null, { status: 200 }),
+    [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () =>
+      json([{ user_id: "11111111-1111-4111-8111-111111111111" }]),
     ...overrides
   };
   const calls: { key: string; url: string; init?: RequestInit }[] = [];
@@ -433,6 +435,55 @@ describe("demo preflight: remote schema", () => {
     const report = await runPreflight(deps(fetchFn, { env: rest }));
     expect(statusOf(report, "schema-tables")).toBe("fail");
     expect(calls.some((call) => call.key.includes("/rest/v1/"))).toBe(false);
+  });
+});
+
+describe("demo preflight: identity", () => {
+  it("includes the identity tables in the journey tables", () => {
+    expect(JOURNEY_TABLES).toEqual(expect.arrayContaining(["profile", "audit_log"]));
+  });
+
+  it("passes when an active ADMIN profile exists, asking for one row with the service key", async () => {
+    const { fetchFn, calls } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn));
+    expect(statusOf(report, "admin-profile")).toBe("pass");
+    const call = calls.find((candidate) => candidate.key.startsWith("GET ") && candidate.url.includes("/rest/v1/profile"));
+    expect(call?.init?.headers).toMatchObject({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
+  });
+
+  it("fails, pointing at the seed command, when no active ADMIN exists", async () => {
+    const { fetchFn } = fetchDouble({
+      [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () => json([])
+    });
+    const report = await runPreflight(deps(fetchFn));
+    const check = report.checks.find((candidate) => candidate.id === "admin-profile");
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain("seed:superadmin");
+    expect(exitCodeFor(report)).toBe(1);
+  });
+
+  it("fails when the profile query errors, and skips it with a reason when Supabase env is missing", async () => {
+    const { fetchFn } = fetchDouble({
+      [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () => json({}, 404)
+    });
+    expect(statusOf(await runPreflight(deps(fetchFn)), "admin-profile")).toBe("fail");
+
+    const { SUPABASE_URL: _url, ...rest } = env;
+    void _url;
+    const second = fetchDouble();
+    const report = await runPreflight(deps(second.fetchFn, { env: rest }));
+    expect(statusOf(report, "admin-profile")).toBe("fail");
+    expect(second.calls.some((call) => call.key.includes("/rest/v1/"))).toBe(false);
+  });
+
+  it("does not require the super-admin password, and redacts it if it is ever present", async () => {
+    expect(REQUIRED_API_ENV).not.toContain("VAQCROW_SUPERADMIN_PASSWORD");
+    expect(REQUIRED_API_ENV).not.toContain("VAQCROW_SUPERADMIN_EMAIL");
+    const password = "superadmin-password-never-printed";
+    const { fetchFn } = fetchDouble({ [`GET ${API}/health`]: () => json({ leak: password }, 500) });
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, VAQCROW_SUPERADMIN_PASSWORD: password } }));
+    expect(statusOf(report, "env-api")).toBe("pass");
+    expect(formatReport(report, { json: true })).not.toContain(password);
   });
 });
 
