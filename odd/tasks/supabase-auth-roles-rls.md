@@ -89,7 +89,10 @@ Un usuario `Inactivo` recibe `401` aunque su token sea válido.
   - Runbook del remoto en `docs/architecture/environments.md` §13 (español): SMTP `smtp.resend.com:465`, usuario `resend`, contraseña = API key de Resend, remitente `no-reply@vaqcrow.com` / `Vaqcrow`, «Confirm email», Site URL `https://vaqcrow-web-nine.vercel.app` + redirect URLs, cómo correr el seed por perfil; email local documentado en §3/§4.
   - **Pendiente del owner:** configurar el SMTP de Resend, «Confirm email» y las URLs en el dashboard del proyecto remoto (§13.2) y sembrar el superadmin remoto (`seed:superadmin:cloud`). Hasta entonces el remoto no cumple D1.
 - **Revisión RDD de U3 + U4 (2026-10-01):** riesgo `high` (18 archivos, 809 líneas; `hot_path`, `process_boundary`, `shell_source`); el owner eligió «Revisar este cambio»; cuatro lentes sin bloqueantes → `approved`, acuse `review-6dcf145f3904403a` con autoridad `burned`. Consultivos para [#371](https://github.com/reyduar/Vaqcrow/issues/371): `WARNING` el seed informa «email tomado sin usuario» también cuando la búsqueda agota `LIST_MAX_PAGES` (mensaje engañoso con más de 10.000 usuarios); `WARNING` faltan tests de fallo y paginación de `listUsers`; 8 sugerencias menores.
-- [ ] **U5 — Documentación.** `identity-and-rls-boundaries.md`, `environments.md`, `DEMO.md`, `CLAUDE.md`/`AGENTS.md`. Ruta: delegada.
+- [x] **U5 — Documentación.** `identity-and-rls-boundaries.md`, `environments.md`, `DEMO.md`, `CLAUDE.md`/`AGENTS.md`. Ruta: delegada.
+  - Ruta: delegada (escritor único), sólo documentación. Archivos: `docs/architecture/identity-and-rls-boundaries.md` (aviso de actualización, §3/§7/§8 acotados a `main` y nueva §9 con roles, trigger, RLS de `profile`, autorización de la API, auditoría, lo que no cambia, brecha R1-002 y email; marca qué está en la rama de la Feature vs `main`); `docs/planning/DEMO.md` (matriz real/simulado y párrafo de Supabase: implementado en la rama #369, apilado con #378, no en `main`; confirmación de email, recuperación diferida, seed); `docs/design/demo-ui.md` §2 (fila de autenticación); `docs/planning/demo-run-preflight.md` y `README.md` (identidad -> verificación de identidad/KYC simulada); `CLAUDE.md` y `AGENTS.md` (cuatro decisiones asentadas: email por Resend y recuperación diferida, seed por perfil, entrega apilada sin interruptor, `actor` = admin autenticado; `cmp` idénticos).
+  - `docs/architecture/environments.md`: revisado, consistente con §13 de U4; sin cambios.
+  - No tocados (históricos): `*-evidence.md`, `odd/tasks/*` anteriores, `b2.json`. Pendiente fuera de alcance: el texto del aviso «Demostración con datos simulados» en sus cuatro superficies (nota ya registrada en DEMO.md §12) se reescribe con #378.
 
 ## Verificación
 
@@ -97,4 +100,4 @@ _Pendiente._
 
 ## Próximo paso
 
-Revisar U3 y U4 (commits en la rama); el owner completa §13.2 de `environments.md` en el dashboard remoto; luego U5 — documentación.
+PR de #370 contra la rama de la Feature; Tasks #371 (tests: matriz que pruebe que el handler se alcanza, paginación y fallos de `listUsers` del seed) y #372 (evidencia); paso del owner en el dashboard (SMTP Resend) y el seed por perfil; R1-002 antes del merge a `main`.

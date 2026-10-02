@@ -15,7 +15,7 @@ status: draft
 > Dejar listo, y poder comprobar antes de empezar, el entorno de una corrida del recorrido completo de la demo (solicitud → evaluación de IA → aprobación humana → fondeo en la bóveda → ventas mensuales → obligación determinística → distribución en Testnet → evidencia) sin objetivo de duración (el objetivo de tiempo que tenía este runbook se retiró el 2026-10-01 porque el owner nunca lo propuso). Es la Task T6 de [#95](https://github.com/reyduar/Vaqcrow/issues/95) (Feature #30). No reemplaza a [[docs/guides/freighter-and-testnet-walkthrough|la guía de Freighter y Testnet]], que explica el recorrido paso a paso.
 
 > [!warning] Sólo Testnet, sólo simulación
-> Identidad, KYC/KYB, historial de ventas y conversión ARS ↔ activo son **simulados**; Stellar corre en **Testnet** y el XLM no tiene valor económico; la IA es solo asesora. Nada de esto describe un producto en producción.
+> La verificación de identidad (KYC/KYB), el historial de ventas y la conversión ARS ↔ activo son **simulados** (las cuentas de Supabase Auth son reales, en la rama de la Feature #369, aún no en `main`); Stellar corre en **Testnet** y el XLM no tiene valor económico; la IA es solo asesora. Nada de esto describe un producto en producción.
 
 ## 1. Decisión: no hay reset de base de datos
 
