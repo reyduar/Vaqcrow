@@ -209,9 +209,11 @@ Corrida final de `pnpm run verify` sobre `859ee81` más la documentación de T5 
 > [!warning] Regresión previa de `6553dbd`, fuera de la superficie de T5
 > La unidad 1 de T4 construyó las divulgaciones con `disclosure(id, title, body, banner)`, así que `disclosures.ts` ya no tiene literales `text: "…"`. El test de consistencia los busca con una regex sobre la fuente: encuentra cero, falla el conteo y sus casos «quotes every canonical disclosure verbatim» pasan **vacíos** (sin comparar nada). El texto canónico no cambió (lo fija su test byte a byte en `apps/web`), pero la guarda entre código y documentos está apagada. Se corrige en `tests/trust-disclosures-canonical-consistency.test.ts` (leer `title` + `body`, o importar el registro), fuera de la superficie autorizada de esta delegación.
 
+Corrida final de `pnpm run verify` sobre `5eac715` (2026-10-03, orquestador, árbol de trabajo): **exit 0**. `@vaqcrow/web` 131 archivos / 1191 tests, `@vaqcrow/api` 59 / 1371, `@vaqcrow/contracts` 526, `@vaqcrow/domain` 120, `@vaqcrow/ai` 107; `boundaries` sin violaciones (628 módulos, 2048 dependencias); `test:boundaries` 10 archivos / 152 tests.
+
 ## Pendiente del operador
 
-- Agregar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` vacías a `.env.cloud.example` y `.env.docker.example` (los agentes no pueden editar `.env*`).
+- `.env.cloud.example`: el owner agregó las variables web de Supabase (commit `chore(env): add the web Supabase variables to the cloud template`, sin lectura de agentes). Falta `.env.docker.example` (los agentes no pueden editar `.env*`).
 - Cargar los valores reales de esas dos variables en Vercel (`production`) y en `.env.cloud`.
 - Observar la entrega de Resend en el primer alta real contra el proyecto remoto (el owner configuró el SMTP de Resend en el panel el 2026-10-02; la entrega todavía no se observó).
 - Decidir sobre el `WARN` `auth_leaked_password_protection` del advisor de seguridad de Supabase (opción del panel de Auth; decisión del owner).
