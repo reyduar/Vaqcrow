@@ -437,7 +437,7 @@ Cada ejecución usa un `correlationId` visible. Se registran latencia del LLM, v
 
 Estos textos deben aparecer en la aplicación y en la presentación, sin eufemismos:
 
-> **Demostración con datos simulados.** La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.
+> **Demostración con datos simulados.** El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.
 
 > **Stellar Testnet.** Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.
 
@@ -449,8 +449,8 @@ Estos textos deben aparecer en la aplicación y en la presentación, sin eufemis
 
 > **No apto para producción.** Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.
 
-> [!warning] Reconciliación pendiente del primer aviso
-> El texto de «Demostración con datos simulados» menciona la identidad como sintética. Con autenticación real, las cuentas son reales y lo simulado es la verificación KYC/KYB. Ese texto vive en cuatro superficies canónicas a la vez (`disclosures.ts`, este §12, `demo-ui.md` §2 y §11), así que se reescribe en las cuatro a la vez; no se edita aquí por separado. **Sigue pendiente después de #379:** las cuentas reales ya existen en la rama de #378, pero el texto canónico no cambió porque el recorrido de seis pasos que lo muestra sigue en pie hasta [#438](https://github.com/reyduar/Vaqcrow/issues/438) y `disclosures.ts` quedó fuera del alcance de #379. Debe reescribirse antes de que #369/#378 lleguen a `main`, porque desde ese momento las cuentas son reales.
+> [!info] Primer aviso reescrito (owner, 2026-10-03, #379)
+> Con autenticación real, las cuentas son reales y lo simulado es la verificación KYC/KYB, el historial de ventas y la conversión ARS/activo. El texto de «Demostración con datos simulados» se reescribió a la vez en sus cuatro superficies canónicas (`disclosures.ts`, este §12, `demo-ui.md` §2 y §11 y el brief §6.2); la guarda `tests/trust-disclosures-canonical-consistency.test.ts` exige que coincidan palabra por palabra. El documento de evidencia de #240 conserva el texto anterior como registro histórico.
 
 ## 13. SDD-lite por capacidad
 

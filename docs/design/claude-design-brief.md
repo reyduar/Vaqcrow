@@ -62,7 +62,7 @@ aprobación es humana y siempre atribuida.
 Vaqcrow es hoy una **demo de dos semanas** construida como Trabajo Fin de Máster. El template debe
 hacer legible, no solo posible, esta lista de límites:
 
-- Identidad, KYC/KYB, ventas y conversión ARS/activo Stellar son **sintéticos**.
+- KYC/KYB, historial de ventas y conversión ARS/activo Stellar son **simulados**; las cuentas son reales (Supabase Auth, #369/#378).
 - Todo ocurre en **Stellar Testnet** con activos **sin valor económico**.
 - La firma es **no custodial** (Freighter); Vaqcrow nunca recibe seeds.
 - La IA es **advisory** y bajo supervisión humana.
@@ -394,7 +394,7 @@ detallada en [`demo-ui.md` §8](./demo-ui.md).
 
 Estos seis textos se muestran **verbatim**, sin abreviar, en la aplicación:
 
-> **Demostración con datos simulados.** La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.
+> **Demostración con datos simulados.** El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.
 
 > **Stellar Testnet.** Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.
 

@@ -47,7 +47,7 @@ export const disclosures: Readonly<Record<DisclosureId, Disclosure>> = Object.fr
   simulation: disclosure(
     "simulation",
     "Demostración con datos simulados",
-    "La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.",
+    "El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.",
     "simulation"
   ),
   testnet: disclosure(

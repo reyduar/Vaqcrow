@@ -13,7 +13,7 @@ const meta = {
   args: {
     variant: "simulation",
     title: "Demostración con datos simulados",
-    body: "La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos.",
+    body: "El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados.",
     lang: "es"
   }
 } satisfies Meta<typeof TrustBanner>;
