@@ -25,6 +25,9 @@ describe("createLazyAuthSession", () => {
       displayName: "Ana"
     });
     await expect(port.getAccessToken()).resolves.toBe(fake.token);
+    await port.clearLocalSession();
+    expect(fake.localClears).toBe(1);
+    await expect(port.getAccessToken()).resolves.toBeNull();
     const unsubscribe = port.onSessionChange(() => undefined);
     expect(fake.listenerCount).toBe(1);
     unsubscribe();
@@ -42,6 +45,7 @@ describe("createLazyAuthSession", () => {
       new AuthSessionError("unavailable")
     );
     await expect(port.signOut()).rejects.toEqual(new AuthSessionError("unavailable"));
+    await expect(port.clearLocalSession()).rejects.toEqual(new AuthSessionError("unavailable"));
     await expect(port.getAccessToken()).resolves.toBeNull();
     expect(() => port.onSessionChange(() => undefined)()).not.toThrow();
   });

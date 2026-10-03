@@ -112,6 +112,42 @@ describe("createSessionStore", () => {
     expect(store.getState().status).toBe("signed-in");
   });
 
+  it("discardSession signs out globally when it can", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+
+    expect(await store.getState().discardSession()).toEqual({ ok: true });
+    expect(fake.localClears).toBe(0);
+    expect(store.getState()).toMatchObject({ status: "signed-out", principal: null, signedOutByUser: true });
+  });
+
+  it("discardSession clears the local session when the global sign-out fails", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    fake.failNext("signOut", "network");
+
+    expect(await store.getState().discardSession()).toEqual({ ok: true });
+    expect(fake.localClears).toBe(1);
+    expect((await fake.getSession()).status).toBe("signed-out");
+    expect(store.getState()).toMatchObject({ status: "signed-out", principal: null, signedOutByUser: true });
+  });
+
+  it("discardSession returns the local clear's code when both sign-outs fail", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    fake.failNext("signOut", "network");
+    fake.failNext("clearLocalSession", "unavailable");
+
+    expect(await store.getState().discardSession()).toEqual({ ok: false, code: "unavailable" });
+    expect(store.getState()).toMatchObject({ status: "signed-in", signedOutByUser: false });
+  });
+
   it("marks an explicit sign-out until the next signed-in result", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount(ANA);

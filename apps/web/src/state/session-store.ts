@@ -45,6 +45,13 @@ export interface SessionActions {
   signIn: (input: SignInInput) => Promise<ActionResult<{ principal: SessionPrincipal }>>;
   signUp: (input: SignUpInput) => Promise<ActionResult<{ status: SignUpOutcome["status"] }>>;
   signOut: () => Promise<ActionResult>;
+  /**
+   * Ends a session that must not be kept (D14: a sign-in whose selected role
+   * does not match). Signs out globally and, when that fails, clears the
+   * local session so none survives in this browser. Fails only when even the
+   * local clear fails, with that code.
+   */
+  discardSession: () => Promise<ActionResult>;
 }
 
 export type SessionState = SessionData & SessionActions;
@@ -118,6 +125,20 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
         const ticket = ++latest;
         try {
           await port.signOut();
+          if (ticket === latest) set({ status: "signed-out", principal: null, error: null, signedOutByUser: true });
+          return { ok: true };
+        } catch (error) {
+          await settleAfterFailedAction(ticket);
+          return { ok: false, code: codeOf(error) };
+        }
+      },
+
+      discardSession: async () => {
+        const signedOut = await get().signOut();
+        if (signedOut.ok) return signedOut;
+        const ticket = ++latest;
+        try {
+          await port.clearLocalSession();
           if (ticket === latest) set({ status: "signed-out", principal: null, error: null, signedOutByUser: true });
           return { ok: true };
         } catch (error) {

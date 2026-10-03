@@ -120,6 +120,15 @@ export class SupabaseAuthSession implements AuthSessionPort {
     await call(() => this.client.auth.signOut());
   }
 
+  async clearLocalSession(): Promise<void> {
+    // auth-js removes the stored session (cookies through @supabase/ssr) even
+    // when its logout request fails, so its result is not the signal: the
+    // postcondition is. A session still readable afterwards is a failure.
+    await Promise.resolve(this.client.auth.signOut({ scope: "local" })).catch(() => undefined);
+    const { data } = await call(() => this.client.auth.getSession());
+    if (data.session) throw new AuthSessionError("unavailable");
+  }
+
   async getSession(): Promise<SessionSnapshot> {
     const { data } = await call(() => this.client.auth.getSession());
     if (!data.session) return { status: "signed-out" };

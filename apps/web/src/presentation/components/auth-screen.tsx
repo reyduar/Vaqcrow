@@ -33,7 +33,7 @@ import {
   type AuthMode
 } from "@/application/auth/auth-form";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/application/auth/sign-up-input";
-import type { AccountRole } from "@/application/ports/auth-session-port";
+import type { AccountRole, AuthErrorCode } from "@/application/ports/auth-session-port";
 import { disclosures } from "@/application/trust/disclosures";
 import { useSessionStoreApi } from "@/state/session-store-provider";
 import { AccountCreatedPanel } from "./account-created-panel";
@@ -61,6 +61,12 @@ export interface AuthScreenProps {
  * closed at once (D14). The email lives in its input only: it is never
  * rendered back, and the password is cleared once the account exists.
  */
+/** Sanitized diagnostics: the failure code only, never the provider message or the email. */
+function logDiscardFailure(cause: AuthErrorCode): void {
+  // eslint-disable-next-line no-console -- a session survived a D14 rejection; the cause is a sanitized code
+  console.error("[Auth] session discard failed", { cause });
+}
+
 export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
   const router = useRouter();
   const session = useSessionStoreApi();
@@ -112,8 +118,10 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
       const mismatch = signInRoleMismatch(role, result.principal.role);
       if (mismatch) {
         // D14: keep no session for a sign-in the selected role does not match.
-        // A failed sign-out still shows the mismatch and never navigates.
-        await session.getState().signOut();
+        // A failed sign-out falls back to clearing the local session; if even
+        // that fails, the mismatch still shows and nothing navigates.
+        const discarded = await session.getState().discardSession();
+        if (!discarded.ok) logDiscardFailure(discarded.code);
         fail(mismatch);
         return;
       }

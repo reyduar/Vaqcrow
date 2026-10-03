@@ -30,7 +30,7 @@ export interface FakeAccount {
   readonly confirmed?: boolean;
 }
 
-type Operation = "signUp" | "signIn" | "signOut" | "getSession";
+type Operation = "signUp" | "signIn" | "signOut" | "clearLocalSession" | "getSession";
 
 export class FakeAuthSession implements AuthSessionPort {
   /** Signup requests received, without passwords. */
@@ -43,6 +43,8 @@ export class FakeAuthSession implements AuthSessionPort {
   private signUpOutcome: SignUpOutcome = { status: "confirmation_required" };
   private signUpOpensSession = true;
   token = "fake-access-token";
+  /** Calls of `clearLocalSession()` received, failed ones included. */
+  localClears = 0;
 
   get listenerCount(): number {
     return this.listeners.size;
@@ -106,6 +108,12 @@ export class FakeAuthSession implements AuthSessionPort {
 
   async signOut(): Promise<void> {
     this.throwIfFailing("signOut");
+    this.setCurrent(null);
+  }
+
+  async clearLocalSession(): Promise<void> {
+    this.localClears += 1;
+    this.throwIfFailing("clearLocalSession");
     this.setCurrent(null);
   }
 

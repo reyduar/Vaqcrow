@@ -533,7 +533,7 @@ describe("AuthScreen login", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("still shows the mismatch and stays put when signing out after it fails", async () => {
+  it("clears the local session when signing out after a mismatch fails (D14)", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
     fake.failNext("signOut", "network");
@@ -543,8 +543,29 @@ describe("AuthScreen login", () => {
     submit("Ingresar");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.");
+    expect(fake.localClears).toBe(1);
+    await expectSignedOut(fake);
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
+  });
+
+  it("still shows the mismatch, stays put and logs a sanitized cause when no sign-out works", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const fake = new FakeAuthSession();
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
+    fake.failNext("signOut", "network");
+    fake.failNext("clearLocalSession", "unavailable");
+    renderScreen("login", "INVERSOR", fake);
+    fillLogin();
+
+    submit("Ingresar");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.");
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
+    expect(consoleError).toHaveBeenCalledWith("[Auth] session discard failed", { cause: "unavailable" });
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(EMAIL);
+    consoleError.mockRestore();
   });
 
   it("shows 'Correo o contraseña incorrectos.' for wrong credentials", async () => {
