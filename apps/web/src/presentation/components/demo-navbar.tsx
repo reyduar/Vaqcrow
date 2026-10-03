@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { IoCloseOutline, IoGitNetworkOutline, IoMenuOutline } from "react-icons/io5";
 import { microcopy } from "@/application/trust/disclosures";
 import { Badge } from "./badge";
+import { BrandIsotipo } from "./brand-isotipo";
 
 /**
  * DemoNavbar (Issue #318 / T1): the sticky header from `Vaqcrow Onboarding
@@ -16,11 +17,23 @@ import { Badge } from "./badge";
  * small-screen disclosure.
  *
  * Decoding of the template (recorded, not left implicit):
- * - **Logo.** The template masks `assets/vaqcrow-isotipo.png` behind the
- *   isotipo square. The asset now lives in `apps/web/public/` (copied from
- *   the owner's template export for the auth screens, #379), but this header
- *   still renders the wordmark `Vaqcrow` alone; masking the isotipo here is a
- *   follow-up, not a silent substitution.
+ * - **Logo.** The template masks `assets/vaqcrow-isotipo.png` (33 × 32 px)
+ *   with the `--logo` colour next to the wordmark; `BrandIsotipo` does the
+ *   same with `apps/web/public/vaqcrow-isotipo.png` and `bg-logo` (purple on
+ *   light, white on dark), decorative inside the named brand link.
+ * - **One-line nav (`singleLineNav`).** As in the template
+ *   (`flex-wrap:nowrap; overflow-x:auto`), the role-aware header's nav never
+ *   wraps its items from the `@md` width up: it takes the free space and
+ *   scrolls sideways if it ever runs out. The collapsed narrow-screen
+ *   disclosure still wraps. Opt-in, so the six-step journey (more items,
+ *   retired by #438) keeps wrapping as before. Deviation, recorded: links use 10 px side padding
+ *   and no gap (template: 12 px plus a 4 px gap) so the whole header still
+ *   fits the 1264 px container once the theme buttons grow to the 44 px
+ *   minimum target (`demo-ui.md` §5.6); text-to-text spacing stays 20 px.
+ * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`
+ *   (the six-step journey keeps it); the role-aware header passes the
+ *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
+ *   `TESTNET` en encabezado fijo") and keeps the full note in its footer.
  * - **Brand token, not HeroUI accent.** The template's `--accent` is the
  *   purple brand (`#8a05be`), which is the app's `--color-brand-accent`.
  *   HeroUI's own `--color-accent` is blue and would read as a different brand,
@@ -57,6 +70,10 @@ export interface DemoNavbarProps {
   readonly navLabel?: string;
   /** Right-end slot, e.g. the future `AccountMenu`. */
   readonly actions?: ReactNode;
+  /** Testnet badge label. Defaults to the canonical `microcopy.testnetBadge`. */
+  readonly testnetLabel?: string;
+  /** Keeps the nav on one line from `@md` up, as the template header does. */
+  readonly singleLineNav?: boolean;
   readonly className?: string;
 }
 
@@ -65,6 +82,8 @@ export function DemoNavbar({
   brandHref = "/",
   navLabel = "Principal",
   actions,
+  testnetLabel = microcopy.testnetBadge,
+  singleLineNav = false,
   className
 }: DemoNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -80,14 +99,15 @@ export function DemoNavbar({
             <Link
               href={brandHref}
               aria-label="Vaqcrow, inicio"
-              className="flex items-center text-text-primary no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              className="flex items-center gap-2 text-text-primary no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
+              <BrandIsotipo />
               <span className="text-[19px] font-bold tracking-[-0.02em]">Vaqcrow</span>
             </Link>
             <Badge variant="demo" label="DEMO" />
             <Badge
               variant="testnet"
-              label={microcopy.testnetBadge}
+              label={testnetLabel}
               icon={IoGitNetworkOutline}
               lang="es"
             />
@@ -114,14 +134,16 @@ export function DemoNavbar({
             data-state={isOpen ? "open" : "closed"}
             className={`${
               isOpen ? "flex" : "hidden"
-            } order-last w-full flex-wrap items-center gap-1 @md:order-none @md:flex @md:w-auto @md:min-w-0 @md:flex-1`}
+            } order-last w-full flex-wrap items-center @md:order-none @md:flex @md:w-auto @md:min-w-0 @md:flex-1 ${
+              singleLineNav ? "gap-0 @md:flex-nowrap @md:overflow-x-auto @md:[scrollbar-width:none]" : "gap-1"
+            }`}
           >
             {items.map((item, index) => (
               <Link
                 key={`${item.href}-${index}`}
                 href={item.href}
                 {...(item.current ? { "aria-current": "page" as const } : {})}
-                className={`flex h-11 items-center whitespace-nowrap px-3 text-sm ${
+                className={`flex h-11 items-center whitespace-nowrap text-sm ${singleLineNav ? "px-2.5" : "px-3"} ${
                   item.current
                     ? "border-b-2 border-brand-accent font-semibold text-text-primary"
                     : "font-medium text-text-secondary hover:text-text-primary"

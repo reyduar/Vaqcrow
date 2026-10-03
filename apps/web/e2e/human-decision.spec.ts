@@ -18,8 +18,8 @@ test("never preselects a decision and keeps the persisted AI assessment advisory
 
   await expect(page.getByRole("heading", { name: "Evaluación de IA", exact: true })).toBeVisible();
   await expect(page.getByText(/La IA solo asesora: no aprueba, no define límites y no transfiere fondos/)).toBeVisible();
-  // Scoped to the decision form: the header's theme switcher is its own radio group
-  // and always has a selection, which says nothing about the decision.
+  // Scoped to the decision form, so no other control on the page (such as the
+  // header's theme switcher) can stand in for the decision's own radios.
   const decision = page.getByRole("form", { name: "Decisión humana" });
   await expect(decision.locator('input[type="radio"]')).not.toHaveCount(0);
   await expect(decision.locator('input[type="radio"]:checked')).toHaveCount(0);

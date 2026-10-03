@@ -15,6 +15,7 @@ import {
 } from "react-icons/io5";
 import {
   accountMenuLabel,
+  HEADER_TESTNET_BADGE,
   isCurrentPath,
   shellViewFor,
   SIGN_IN_LINK,
@@ -123,6 +124,8 @@ export function AppHeader() {
   return (
     <DemoNavbar
       items={items}
+      testnetLabel={HEADER_TESTNET_BADGE}
+      singleLineNav
       actions={
         <>
           <ThemeSwitcher />

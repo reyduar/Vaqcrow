@@ -71,10 +71,35 @@ describe("AppHeader signed out", () => {
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/login");
     expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/signup");
     expect(screen.getByText("DEMO")).toBeInTheDocument();
-    expect(screen.getByText("TESTNET · Activos sin valor económico")).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Tema" })).toBeInTheDocument();
+    // demo-ui.md §2: the fixed header carries the `TESTNET` badge, as in the
+    // template; the full "Activos sin valor económico" note stays in the footer.
+    expect(screen.getByText("TESTNET", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("TESTNET · Activos sin valor económico")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("group", { name: "Tema" })).getAllByRole("button")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: /Menú de cuenta/ })).not.toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
+  });
+
+  it("draws the isotipo next to the wordmark inside the brand link, as in the template", async () => {
+    await renderHeader(null);
+
+    const brand = screen.getByRole("link", { name: "Vaqcrow, inicio" });
+    const isotipo = brand.querySelector("[data-brand-isotipo]");
+    expect(isotipo).not.toBeNull();
+    expect(isotipo).toHaveAttribute("aria-hidden", "true");
+    // The mask takes the theme's logo colour (purple on light, white on dark).
+    expect(isotipo?.className ?? "").toMatch(/\bbg-logo\b/);
+    expect(brand).toHaveTextContent("Vaqcrow");
+  });
+
+  it("keeps the primary nav on one line at desktop width", async () => {
+    await renderHeader(null);
+
+    const nav = screen.getByRole("navigation", { name: "Principal" });
+    // jsdom has no layout: the class contract is asserted here and the real
+    // single line at 1280 px by `e2e/app-header.spec.ts`.
+    expect(nav.className).toMatch(/@md:flex-nowrap/);
+    expect(nav.className).toMatch(/@md:overflow-x-auto/);
   });
 
   it("shows no auth actions while the session is still loading", () => {

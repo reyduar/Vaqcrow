@@ -1,16 +1,10 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { IoGitNetworkOutline, IoKeyOutline } from "react-icons/io5";
 import { ROLE_COPY, SCREEN_COPY } from "@/application/auth/auth-form";
 import type { AccountRole } from "@/application/ports/auth-session-port";
 import { disclosures, microcopy } from "@/application/trust/disclosures";
 import { FOCUS_RING } from "./auth-field";
-
-/** The isotipo is drawn as a mask so it takes the surrounding colour, as in the template. */
-const ISOTIPO_MASK: CSSProperties = {
-  WebkitMask: "url(/vaqcrow-isotipo.png) center / contain no-repeat",
-  mask: "url(/vaqcrow-isotipo.png) center / contain no-repeat"
-};
+import { ISOTIPO_MASK } from "./brand-isotipo";
 
 /**
  * Left panel of `Vaqcrow Onboarding.dc.html` (lines 30–52): the purple
