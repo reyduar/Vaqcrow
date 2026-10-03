@@ -28,8 +28,8 @@ export function authHref(mode: AuthMode, role: AccountRole): string {
 
 /**
  * Where a verified principal lands after signing in (D2). The role comes from
- * the session port, never from the selector. `ADMIN` goes to `/` until the
- * admin console exists.
+ * the session port, never from the selector. `ADMIN` goes to `/` (used by the
+ * route gate; `/login` itself rejects an `ADMIN`, see `signInRoleMismatch`).
  */
 export function homeRouteFor(role: PrincipalRole): "/portfolio" | "/company" | "/" {
   if (role === "INVERSOR") return "/portfolio";
@@ -210,6 +210,26 @@ export const SIGNED_IN_UNREADABLE_MESSAGE: AuthErrorMessage = Object.freeze({
   title: "Cuenta creada.",
   detail: "No pudimos abrir tu sesión: ingresá con tu correo y contraseña."
 });
+
+/**
+ * D14 (owner, 2026-10-03): the «Soy inversor / Soy PyME» toggle must match the
+ * verified role. The role still comes from the profile, never from the toggle:
+ * the toggle only decides whether this sign-in is accepted. A mismatch returns
+ * the message to show (the caller signs out so no session is kept); a match
+ * returns `null`. An `ADMIN` never signs in through `/login` (its entry is
+ * `/admin`, #386): it gets the neutral sign-in title, an existing string that
+ * neither names the admin role nor points to the console (owner assumption).
+ */
+export function signInRoleMismatch(selected: AccountRole, verified: PrincipalRole): AuthErrorMessage | null {
+  if (verified === selected) return null;
+  if (verified === "PYME") {
+    return { kind: "rejected", title: "Esta cuenta es de PyME.", detail: "Elegí «Soy PyME» para ingresar." };
+  }
+  if (verified === "INVERSOR") {
+    return { kind: "rejected", title: "Esta cuenta es de inversor.", detail: "Elegí «Soy inversor» para ingresar." };
+  }
+  return { kind: "rejected", title: LOGIN_TITLE };
+}
 
 /**
  * Sanitized copy per error code; provider messages never reach the screen.

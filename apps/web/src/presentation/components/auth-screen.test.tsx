@@ -449,7 +449,34 @@ describe("AuthScreen login", () => {
     fill("Contraseña", password);
   }
 
-  it("redirects by the verified role, not by the selector", async () => {
+  async function expectSignedOut(fake: FakeAuthSession) {
+    await waitFor(async () => expect((await fake.getSession()).status).toBe("signed-out"));
+  }
+
+  it("sends a PyME signed in with «Soy PyME» to its campaign", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
+    renderScreen("login", "PYME", fake);
+    fillLogin();
+
+    submit("Ingresar");
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/company"));
+    expect((await fake.getSession()).status).toBe("signed-in");
+  });
+
+  it("sends an investor signed in with «Soy inversor» to the portfolio", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "INVERSOR", displayName: "Lucía Fernández" });
+    renderScreen("login", "INVERSOR", fake);
+    fillLogin();
+
+    submit("Ingresar");
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/portfolio"));
+  });
+
+  it("rejects a PyME account signed in with «Soy inversor» and keeps no session (D14)", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
     renderScreen("login", "INVERSOR", fake);
@@ -458,10 +485,13 @@ describe("AuthScreen login", () => {
 
     submit("Ingresar");
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/company"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.");
+    await expectSignedOut(fake);
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
   });
 
-  it("sends an investor to the portfolio", async () => {
+  it("rejects an investor account signed in with «Soy PyME» and keeps no session (D14)", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "INVERSOR", displayName: "Lucía Fernández" });
     renderScreen("login", "PYME", fake);
@@ -469,10 +499,28 @@ describe("AuthScreen login", () => {
 
     submit("Ingresar");
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/portfolio"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Esta cuenta es de inversor. Elegí «Soy inversor» para ingresar."
+    );
+    await expectSignedOut(fake);
+    expect(push).not.toHaveBeenCalled();
   });
 
-  it("sends an admin to the home page (the admin console is out of scope)", async () => {
+  it("accepts the same account once the matching role is selected", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
+    renderScreen("login", "INVERSOR", fake);
+    fillLogin();
+    submit("Ingresar");
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Soy PyME" }));
+    submit("Ingresar");
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/company"));
+  });
+
+  it("rejects an ADMIN at /login with the neutral sign-in title and keeps no session", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "ADMIN", displayName: "Admin Vaqcrow" });
     renderScreen("login", "INVERSOR", fake);
@@ -480,7 +528,23 @@ describe("AuthScreen login", () => {
 
     submit("Ingresar");
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos ingresar.");
+    await expectSignedOut(fake);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("still shows the mismatch and stays put when signing out after it fails", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role: "PYME", displayName: "Panadería La Espiga" });
+    fake.failNext("signOut", "network");
+    renderScreen("login", "INVERSOR", fake);
+    fillLogin();
+
+    submit("Ingresar");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.");
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Ingresar" })).toBeEnabled();
   });
 
   it("shows 'Correo o contraseña incorrectos.' for wrong credentials", async () => {

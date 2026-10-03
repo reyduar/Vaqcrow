@@ -160,3 +160,23 @@ test("wrong credentials are refused without signing in", async ({ page }) => {
   await page.goto("/portfolio");
   await expect(page).toHaveURL(/\/login\?role=investor$/);
 });
+
+test("a PyME account is refused with «Soy inversor» and accepted with «Soy PyME» (D14)", async ({ page }) => {
+  const pyme = ROLES[1];
+  await signUp(page, pyme);
+  await expect(page.getByRole("heading", { level: 2, name: pyme.createdTitle })).toBeVisible();
+  await confirm(page, pyme.email);
+
+  await signIn(page, "investor", pyme.email);
+
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar." })
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/login\?role=investor$/);
+  // No session was kept: the gated campaign page still sends the visitor to sign in.
+  await page.goto(pyme.home);
+  await expect(page).toHaveURL(/\/login\?role=pyme$/);
+
+  await signIn(page, pyme.param, pyme.email);
+  await expectHome(page, pyme);
+});

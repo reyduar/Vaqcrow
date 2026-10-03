@@ -27,6 +27,7 @@ import {
   ROLE_COPY,
   SCREEN_COPY,
   SIGNED_IN_UNREADABLE_MESSAGE,
+  signInRoleMismatch,
   validateAuthForm,
   type AuthErrorMessage,
   type AuthMode
@@ -55,8 +56,9 @@ export interface AuthScreenProps {
  * `/signup` and `/login`: `Vaqcrow Onboarding.dc.html` in its two modes.
  *
  * Errors appear after the first submit, as in the template. Sign-in redirects
- * by the role the session port verified (D2), never by the selector, which
- * only changes the copy. The email lives in its input only: it is never
+ * by the role the session port verified (D2), never by the selector; the
+ * selector must match that role or the sign-in is rejected and the session
+ * closed at once (D14). The email lives in its input only: it is never
  * rendered back, and the password is cleared once the account exists.
  */
 export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
@@ -103,9 +105,20 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
 
     if (!signup) {
       const result = await session.getState().signIn({ email, password });
+      if (!result.ok) {
+        fail(authErrorMessage("login", result.code));
+        return;
+      }
+      const mismatch = signInRoleMismatch(role, result.principal.role);
+      if (mismatch) {
+        // D14: keep no session for a sign-in the selected role does not match.
+        // A failed sign-out still shows the mismatch and never navigates.
+        await session.getState().signOut();
+        fail(mismatch);
+        return;
+      }
       // Keep the busy state while navigating away.
-      if (result.ok) router.push(homeRouteFor(result.principal.role));
-      else fail(authErrorMessage("login", result.code));
+      router.push(homeRouteFor(result.principal.role));
       return;
     }
 

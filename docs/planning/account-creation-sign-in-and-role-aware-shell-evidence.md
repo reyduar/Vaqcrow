@@ -152,7 +152,7 @@ Decisiones del owner registradas durante la Feature (bitácora, 2026-10-02/03), 
 | # | Decisión | Estado |
 |---|---|---|
 | D1 | Rutas siempre en inglés: `/`, `/signup`, `/login`, `/portfolio`, `/company`. | vigente |
-| D2 | El ingreso redirige por el rol del perfil verificado; el selector del ingreso sólo cambia textos. | vigente |
+| D2 | El ingreso redirige por el rol del perfil verificado; el selector del ingreso sólo cambia textos. | vigente; la parte del selector la reemplaza D14 (2026-10-03, ver addendum) |
 | D3 | Nombre visible obligatorio (≥ 2 caracteres); el email nunca se muestra. | vigente |
 | D4 | Menús del avatar por rol con «Centro de ayuda». | **reemplazada por D9** |
 | D5 | Copy de reemplazo de la cuenta de demostración y de los errores de ingreso. | vigente |
