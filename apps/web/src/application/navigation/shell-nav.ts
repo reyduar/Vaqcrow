@@ -36,6 +36,8 @@ export interface ShellView {
 export const SIGN_IN_LINK: ShellLink = Object.freeze({ label: "Ingresar", href: "/login" });
 export const SIGN_UP_LINK: ShellLink = Object.freeze({ label: "Crear cuenta", href: "/signup" });
 export const SIGN_OUT_LABEL = "Cerrar sesión";
+/** Shown next to the account menu when signing out fails (owner-visible assumption; not in the template). */
+export const SIGN_OUT_ERROR = "No pudimos cerrar la sesión. Volvé a intentar.";
 
 export function accountMenuLabel(displayName: string): string {
   return `Menú de cuenta de ${displayName}`;

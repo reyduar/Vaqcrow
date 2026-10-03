@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { NextRequest, NextResponse } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 const { createServerClient } = vi.hoisted(() => ({ createServerClient: vi.fn() }));
 vi.mock("@supabase/ssr", () => ({ createServerClient }));
@@ -51,8 +51,15 @@ function fakeClient({
 
 const request = () => new NextRequest("https://vaqcrow.test/portfolio", { headers: { cookie: "sb-auth=abc" } });
 
+let consoleError: MockInstance<typeof console.error>;
+
 beforeEach(() => {
   createServerClient.mockReset();
+  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleError.mockRestore();
 });
 
 describe("readProxySession", () => {
@@ -100,6 +107,67 @@ describe("readProxySession", () => {
     const session = await readProxySession(request(), { url: undefined, publishableKey: "" });
     expect(session.principal).toBeNull();
     expect(createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["the claims read", { hangClaims: true }],
+    ["the profile read", { hangProfile: true }]
+  ] as const)("fails closed and logs only `timeout` when %s hangs", async (_label, hang) => {
+    createServerClient.mockImplementation(() => ({
+      auth: {
+        getClaims: () => ("hangClaims" in hang ? new Promise(() => {}) : Promise.resolve({ data: { claims: { sub: "u" } }, error: null }))
+      },
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: () => new Promise(() => {}) }) })
+      })
+    }));
+
+    const session = await readProxySession(request(), ENV, { timeoutMs: 20 });
+
+    expect(session.principal).toBeNull();
+    expect(consoleError).toHaveBeenCalledWith("[Proxy] session read failed", { cause: "timeout" });
+  });
+
+  it("bounds the session read to 3 seconds by default", async () => {
+    vi.useFakeTimers();
+    try {
+      createServerClient.mockImplementation(() => ({
+        auth: { getClaims: () => new Promise(() => {}) },
+        from: () => ({})
+      }));
+      const pending = readProxySession(request(), ENV);
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(consoleError).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await pending).principal).toBeNull();
+      expect(consoleError).toHaveBeenCalledWith("[Proxy] session read failed", { cause: "timeout" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["a claims error", { claims: null, claimsError: new TypeError("jwt secret-token persona@example.test") }, "TypeError"],
+    ["a profile read error", { claims: { sub: "user-1" }, rowError: { message: "persona@example.test", code: "42501" } }, "profile_error"]
+  ] as const)("logs only a sanitized cause on %s", async (_label, setup, cause) => {
+    fakeClient(setup);
+    await readProxySession(request(), ENV);
+    expect(consoleError).toHaveBeenCalledWith("[Proxy] session read failed", { cause });
+    expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(/secret-token|example\.test|42501/);
+  });
+
+  it("logs the error name when the client throws", async () => {
+    createServerClient.mockImplementation(() => {
+      throw new RangeError("network persona@example.test");
+    });
+    await readProxySession(request(), ENV);
+    expect(consoleError).toHaveBeenCalledWith("[Proxy] session read failed", { cause: "RangeError" });
+  });
+
+  it("does not log an ordinary signed-out visit", async () => {
+    fakeClient({ claims: null });
+    await readProxySession(request(), ENV);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("copies refreshed session cookies and cache headers onto any response", async () => {

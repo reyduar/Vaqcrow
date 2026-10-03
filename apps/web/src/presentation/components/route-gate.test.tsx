@@ -1,13 +1,21 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
-import { SessionStoreProvider } from "@/state/session-store-provider";
+import { SessionStoreProvider, useSessionStoreApi } from "@/state/session-store-provider";
+import type { SessionStore } from "@/state/session-store";
 import { FakeAuthSession } from "@/test/fake-auth-session";
+import { AppHeader } from "./app-header";
 import { RouteGate } from "./route-gate";
 
-const { replace, pathname } = vi.hoisted(() => ({ replace: vi.fn(), pathname: { current: "/portfolio" } }));
+const { push, replace, pathname } = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  pathname: { current: "/portfolio" }
+}));
+// A fresh router object per render, as a worst case: the gate must not
+// redirect again just because the router identity changed.
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace }),
+  useRouter: () => ({ push, replace, refresh: vi.fn() }),
   usePathname: () => pathname.current
 }));
 
@@ -20,18 +28,28 @@ async function portFor(role: PrincipalRole | null) {
   return fake;
 }
 
+function StoreProbe({ onStore }: { onStore: (store: SessionStore) => void }) {
+  onStore(useSessionStoreApi());
+  return null;
+}
+
 function renderGate(port: FakeAuthSession, path: string) {
   pathname.current = path;
-  render(
+  let store!: SessionStore;
+  const tree = () => (
     <SessionStoreProvider port={port}>
+      <StoreProbe onStore={(value) => (store = value)} />
       <RouteGate>
         <p>Contenido protegido</p>
       </RouteGate>
     </SessionStoreProvider>
   );
+  const view = render(tree());
+  return { view, rerender: () => view.rerender(tree()), store: () => store };
 }
 
 beforeEach(() => {
+  push.mockReset();
   replace.mockReset();
 });
 
@@ -63,5 +81,53 @@ describe("RouteGate", () => {
     renderGate(await portFor(role), path);
     expect(await screen.findByText("Contenido protegido")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("never repeats router.replace with the same target", async () => {
+    const { rerender, store } = renderGate(await portFor(null), "/portfolio");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?role=investor"));
+
+    rerender();
+    await act(async () => {
+      await store().getState().refresh();
+    });
+    rerender();
+
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not redirect when the target is the current path", async () => {
+    const fake = await portFor("INVERSOR");
+    const { store } = renderGate(fake, "/");
+    await waitFor(() => expect(store().getState().status).toBe("signed-in"));
+
+    await act(async () => {
+      await store().getState().signOut();
+    });
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("lets the header's sign-out navigation win on a protected page", async () => {
+    pathname.current = "/portfolio";
+    const fake = await portFor("INVERSOR");
+    render(
+      <SessionStoreProvider port={fake}>
+        <AppHeader />
+        <RouteGate>
+          <p>Contenido protegido</p>
+        </RouteGate>
+      </SessionStoreProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Menú de cuenta de Persona" }));
+
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Cerrar sesión" }));
+    });
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
+    expect(replace).not.toHaveBeenCalledWith(expect.stringMatching(/^\/login/));
+    expect(replace.mock.calls.filter(([target]) => target === "/").length).toBeLessThanOrEqual(1);
+    expect(screen.queryByText("Contenido protegido")).not.toBeInTheDocument();
   });
 });

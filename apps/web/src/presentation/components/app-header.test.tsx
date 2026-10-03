@@ -150,6 +150,30 @@ describe("AppHeader INVERSOR", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
     expect(await fake.getSession()).toEqual({ status: "signed-out" });
     expect(await screen.findByRole("link", { name: "Ingresar" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stays on the page and says so when signing out fails", async () => {
+    const { fake } = await renderHeader("INVERSOR", "/portfolio");
+    fake.failNext("signOut", "network");
+
+    const menu = openMenu("INVERSOR");
+    await act(async () => {
+      fireEvent.click(within(menu).getByRole("menuitem", { name: "Cerrar sesión" }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cerrar la sesión. Volvé a intentar.");
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: `Menú de cuenta de ${NAMES.INVERSOR}` })).toBeInTheDocument();
+    expect(await fake.getSession()).toMatchObject({ status: "signed-in" });
+
+    // A later successful attempt clears the error and goes home.
+    const again = openMenu("INVERSOR");
+    await act(async () => {
+      fireEvent.click(within(again).getByRole("menuitem", { name: "Cerrar sesión" }));
+    });
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 

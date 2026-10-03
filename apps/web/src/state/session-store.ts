@@ -30,6 +30,13 @@ export interface SessionData {
    * signed-out snapshot does.
    */
   error: AuthErrorCode | null;
+  /**
+   * True after this store's own successful `signOut()`, until the next
+   * signed-in result. The caller that signed out owns the navigation that
+   * follows, so the route gate does not race it to `/login`. A sign-out seen
+   * from elsewhere (another tab, an expired session) leaves it false.
+   */
+  signedOutByUser: boolean;
 }
 
 export interface SessionActions {
@@ -65,6 +72,7 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
       status: "loading",
       principal: null,
       error: null,
+      signedOutByUser: false,
 
       refresh: async () => {
         const ticket = ++latest;
@@ -73,7 +81,7 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
           if (ticket !== latest) return;
           set(
             snapshot.status === "signed-in"
-              ? { status: "signed-in", principal: snapshot.principal, error: null }
+              ? { status: "signed-in", principal: snapshot.principal, error: null, signedOutByUser: false }
               : { status: "signed-out", principal: null, error: null }
           );
         } catch (error) {
@@ -89,7 +97,7 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
         const ticket = ++latest;
         try {
           const principal = await port.signIn(input);
-          if (ticket === latest) set({ status: "signed-in", principal, error: null });
+          if (ticket === latest) set({ status: "signed-in", principal, error: null, signedOutByUser: false });
           return { ok: true, principal };
         } catch (error) {
           await settleAfterFailedAction(ticket);
@@ -110,7 +118,7 @@ export function createSessionStore(port: AuthSessionPort): SessionStore {
         const ticket = ++latest;
         try {
           await port.signOut();
-          if (ticket === latest) set({ status: "signed-out", principal: null, error: null });
+          if (ticket === latest) set({ status: "signed-out", principal: null, error: null, signedOutByUser: true });
           return { ok: true };
         } catch (error) {
           await settleAfterFailedAction(ticket);

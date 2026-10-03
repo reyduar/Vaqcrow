@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import type { IconType } from "react-icons";
 import {
   IoBookOutline,
@@ -17,6 +18,7 @@ import {
   isCurrentPath,
   shellViewFor,
   SIGN_IN_LINK,
+  SIGN_OUT_ERROR,
   SIGN_OUT_LABEL,
   SIGN_UP_LINK,
   type RoleChipIcon,
@@ -50,8 +52,9 @@ const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus
  * While the session is still loading the right end shows only the theme
  * switcher, so neither the auth buttons nor the avatar flash. The email is
  * never rendered (the principal does not even carry it). "Cerrar sesión"
- * calls the store's real sign-out and then navigates home; if signing out
- * fails, the header keeps showing the session that is still open.
+ * calls the store's real sign-out and navigates home only when it succeeded;
+ * if it fails, the page stays put, the header keeps showing the session that
+ * is still open and a short alert says so next to the menu.
  */
 export function AppHeader() {
   const pathname = usePathname();
@@ -60,6 +63,7 @@ export function AppHeader() {
   const status = useSession((state) => state.status);
   const principal = useSession((state) => state.principal);
   const view = shellViewFor(principal?.role ?? null);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const items = view.nav.map((link) => ({
     label: link.label,
@@ -68,8 +72,10 @@ export function AppHeader() {
   }));
 
   async function signOut() {
-    await session.getState().signOut();
-    router.push("/");
+    setSignOutFailed(false);
+    const result = await session.getState().signOut();
+    if (result.ok) router.push("/");
+    else setSignOutFailed(true);
   }
 
   let account = null;
@@ -79,14 +85,21 @@ export function AppHeader() {
       { label: SIGN_OUT_LABEL, icon: IoLogOutOutline, separatorBefore: true, onSelect: () => void signOut() }
     ];
     account = (
-      <AccountMenu
+      <>
+        {signOutFailed ? (
+          <p role="alert" className="m-0 max-w-56 rounded-control bg-trust-critical-surface px-3 py-1.5 text-sm font-medium text-trust-critical">
+            {SIGN_OUT_ERROR}
+          </p>
+        ) : null}
+        <AccountMenu
         variant="avatar"
         name={principal.displayName}
         triggerLabel={accountMenuLabel(principal.displayName)}
         {...(view.avatarSrc ? { avatarSrc: view.avatarSrc } : {})}
         {...(view.chip ? { roleChip: { label: view.chip.label, icon: CHIP_ICONS[view.chip.icon] } } : {})}
         items={menuItems}
-      />
+        />
+      </>
     );
   } else if (status === "signed-out") {
     account = (

@@ -112,6 +112,38 @@ describe("createSessionStore", () => {
     expect(store.getState().status).toBe("signed-in");
   });
 
+  it("marks an explicit sign-out until the next signed-in result", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    expect(store.getState().signedOutByUser).toBe(false);
+
+    await store.getState().signOut();
+    expect(store.getState().signedOutByUser).toBe(true);
+
+    // The SIGNED_OUT event re-reads the session: it must not clear the mark.
+    await store.getState().refresh();
+    expect(store.getState()).toMatchObject({ status: "signed-out", signedOutByUser: true });
+
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    expect(store.getState().signedOutByUser).toBe(false);
+  });
+
+  it("does not mark a failed sign-out nor a sign-out seen from elsewhere", async () => {
+    const fake = new FakeAuthSession();
+    fake.seedAccount(ANA);
+    const store = createSessionStore(fake);
+    await store.getState().signIn({ email: ANA.email, password: ANA.password });
+    fake.failNext("signOut", "network");
+    await store.getState().signOut();
+    expect(store.getState().signedOutByUser).toBe(false);
+
+    await fake.signOut();
+    await store.getState().refresh();
+    expect(store.getState()).toMatchObject({ status: "signed-out", signedOutByUser: false });
+  });
+
   it("a stale refresh never overwrites a newer result", async () => {
     const fake = new FakeAuthSession();
     fake.seedAccount(ANA);
