@@ -173,7 +173,7 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | 4 | Explorar PyMEs | `/explore` | No existe (link del header) | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Explora múltiples oportunidades de PyMEs sintéticas. |
 | 5 | Explorar con filtros avanzados | `/explore` (modo filtros) | No existe | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Acota oportunidades por sector, riesgo, monto u otros criterios. |
 | **PyME** | | | | | |
-| 6 | Registro de PyME | Paso 2 del wizard dentro de `/company` (sin ruta propia) | «Registrar mi PyME» visible en `/company`, inactivo | [#398](https://github.com/reyduar/Vaqcrow/issues/398) | Envía su solicitud, documentos y para qué necesita los fondos. |
+| 6 | Registro de PyME | Paso 2 del wizard dentro de `/company` (sin ruta propia) | «Registrar mi PyME» visible en `/company`, inactivo | [#398](https://github.com/reyduar/Vaqcrow/issues/398) | Carga su solicitud, documentos y para qué necesita los fondos; en el paso 4 (Revisión humana) la propia PyME la envía con «Enviar a revisión», con Freighter conectado como requisito. |
 | 7 | Detalle de PyME | Por definir (exige cuenta) | No existe | [#422](https://github.com/reyduar/Vaqcrow/issues/422) | Revisa evidencia, riesgo y evaluación de una PyME puntual y aporta. |
 | 8 | Tokenización de PyME | Sin ruta propia (pregunta abierta) | No existe | — | Define y visualiza la tokenización del financiamiento. |
 | 9 | Mi campaña | `/company` (sólo `PYME`) | Esqueleto protegido por sesión y rol | [#434](https://github.com/reyduar/Vaqcrow/issues/434) | Ve sus bóvedas, distribuciones, ventas y aportantes. |
@@ -191,6 +191,9 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | 18 | Admin — ingreso, shell y cola de PyMEs | `/admin` | No existe | [#386](https://github.com/reyduar/Vaqcrow/issues/386) | Administra el catálogo de PyMEs registradas. |
 | 19 | Admin — revisión de solicitud | Dentro de `/admin` | No existe | [#410](https://github.com/reyduar/Vaqcrow/issues/410) | Obtiene evaluación estructurada de IA y registra la aprobación humana, que despliega la bóveda. |
 | 20 | Admin — usuarios, invitaciones y auditoría | Dentro de `/admin` | No existe | [#390](https://github.com/reyduar/Vaqcrow/issues/390) | Administra personas usuarias, roles e invitaciones. |
+
+> [!info] Paso 4 del wizard PyME: envío a revisión (owner, 2026-10-03)
+> La propia PyME envía la solicitud con «Enviar a revisión» (reemplaza «Ir a Mi campaña →»; secundario «Revisar lo cargado»). La wallet Freighter es obligatoria: sin ella el ítem «Conectar Freighter» pasa a rojo («Obligatorio») y el envío se bloquea; al enviar, «Revisión humana» pasa a amarillo («En proceso»). El envío lleva al administrador la clave pública de la PyME, destino inmutable de la bóveda, y lo notifica por email y en su dashboard. El despliegue sigue firmado por la plataforma. Fuente: `Vaqcrow Onboarding PyME.dc.html` (paso `sent`); lo implementan [#398](https://github.com/reyduar/Vaqcrow/issues/398), [#406](https://github.com/reyduar/Vaqcrow/issues/406), [#410](https://github.com/reyduar/Vaqcrow/issues/410), [#382](https://github.com/reyduar/Vaqcrow/issues/382) y [#386](https://github.com/reyduar/Vaqcrow/issues/386).
 
 El recorrido guiado de seis pasos sigue con sus rutas propias hasta que [#438](https://github.com/reyduar/Vaqcrow/issues/438) lo retire.
 

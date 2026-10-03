@@ -42,7 +42,7 @@ En el recorrido hay **dos pares de claves distintos**, de dueños distintos. Mez
 
 ## 3. El paso a paso al abrir la bóveda
 
-1. Tras la aprobación humana, la PyME **conecta Freighter** en la web y Vaqcrow lee su **clave pública** (D7). La seed nunca sale de la extensión.
+1. **Antes** de la revisión humana, en el paso 4 del wizard de registro, la PyME **conecta Freighter** (obligatorio para enviar la solicitud) y Vaqcrow guarda su **clave pública** con la solicitud (D7; owner, 2026-10-03). La seed nunca sale de la extensión. Tras la aprobación humana, la API usa esa clave como destino inmutable de la bóveda.
 2. La API calcula la dirección determinística de la bóveda (`predict`) a partir de la solicitud. Si ya hay una bóveda ahí (un intento anterior que falló después del despliegue), la **adopta** en lugar de desplegar otra.
 3. Si la cuenta de la PyME no existe, la **cuenta de la plataforma** envía `CreateAccount` hacia esa clave pública, **firmando con su propia clave**. `CreateAccount` no requiere la firma del destino: la PyME no firma nada en este paso.
 4. La API **verifica que la cuenta existe** y recién entonces llama a `deploy()` en la fábrica, firmado por la plataforma como dueña.

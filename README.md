@@ -29,7 +29,7 @@ Decisión del owner (2026-10-01): la app deja de ser un único recorrido guiado 
 |---|---|
 | [#368 Identidad y acceso](https://github.com/reyduar/Vaqcrow/issues/368) | Supabase Auth (email y contraseña), roles `PYME` / `INVERSOR` / `ADMIN`, RLS por rol y autorización de la API; reemplaza el Auth.js v5 planificado en #134. #369 (API y base) y #378 (alta, ingreso y shell por rol en la web) implementadas en ramas apiladas, fuera de `main` |
 | [#373 Sitio público](https://github.com/reyduar/Vaqcrow/issues/373) | Landing, Acerca de, Guía de inversión, Guía para emprendedores y Ayuda (asistente RAG «Próximamente») |
-| [#374 Alta de PyMEs y campaña](https://github.com/reyduar/Vaqcrow/issues/374) | Registro de la PyME, KYC simulado, carga real de documentos y fotos a Supabase Storage, IA en dos pasos (completitud y riesgo), Freighter de la PyME y «Mi campaña» |
+| [#374 Alta de PyMEs y campaña](https://github.com/reyduar/Vaqcrow/issues/374) | Registro de la PyME, KYC simulado, carga real de documentos y fotos a Supabase Storage, IA en dos pasos (completitud y riesgo), envío a revisión por la propia PyME con su wallet Freighter conectada (obligatoria: su clave pública es el destino de la bóveda) y «Mi campaña» |
 | [#375 Consola de administración](https://github.com/reyduar/Vaqcrow/issues/375) | `/admin` sin alta pública, cola de PyMEs, revisión con aprobación humana que dispara el despliegue de la bóveda, usuarios, invitaciones y auditoría |
 | [#376 Marketplace y área del inversor](https://github.com/reyduar/Vaqcrow/issues/376) | Explorar PyMEs, detalle y aporte, Mi portafolio e Informes |
 | [#377 Notificaciones](https://github.com/reyduar/Vaqcrow/issues/377) | Campana in-app para los tres roles y email por Resend detrás de un puerto |
