@@ -1806,12 +1806,12 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #369 — Establecer Supabase Auth, roles, RLS y autorización de la API
+### ~~#369 — Establecer Supabase Auth, roles, RLS y autorización de la API~~
 
 ^issue-369
 
 - **Título original:** `Feature: Establish Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #369](https://github.com/reyduar/Vaqcrow/issues/369) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #369](https://github.com/reyduar/Vaqcrow/issues/369) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-02 por decisión del owner: ingresar/salir pasan a #378 e invitación de admins a #390; R1-002 sigue como condición antes de `main`; nada está en `main` todavía).
 - **Jerarquía y bloqueos:** padre [#368](#^issue-368); sin bloqueos nativos.
 - **Objetivo:** Introducir autenticación real con Supabase Auth (email y contraseña), los roles `PYME`, `INVERSOR` y `ADMIN`, RLS por rol, autorización en cada endpoint de `apps/api`, el super admin sembrado («Admin Vaqcrow», `vaqcrow.admin`; email y contraseña desde variables de entorno, nunca versionados) y un almacén append-only de registro de auditoría con su puerto.
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
@@ -1845,12 +1845,12 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 
 **Rama e implementación.** `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, mergeada vía [PR #444](https://github.com/reyduar/Vaqcrow/pull/444) en la rama de la Feature #369 (`84fe98d`), **no en `main`**. Evidencia en [`supabase-auth-roles-and-authorization-evidence.md`](./supabase-auth-roles-and-authorization-evidence.md).
 
-### #372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API
+### ~~#372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API~~
 
 ^issue-372
 
 - **Título original:** `Task: Document evidence for Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #372](https://github.com/reyduar/Vaqcrow/issues/372) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #372](https://github.com/reyduar/Vaqcrow/issues/372) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-02: su PR #445 está mergeada en la rama de la Feature, no en `main`).
 - **Jerarquía y bloqueos:** padre [#369](#^issue-369); bloqueada nativamente por [#371](#^issue-371).
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#369](#^issue-369).
