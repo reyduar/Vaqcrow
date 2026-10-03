@@ -1806,12 +1806,12 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 
 **Rama propuesta.** No se crea una rama de implementación: este Epic es un contenedor de seguimiento y nunca debe implementarse directamente.
 
-### #369 — Establecer Supabase Auth, roles, RLS y autorización de la API
+### ~~#369 — Establecer Supabase Auth, roles, RLS y autorización de la API~~
 
 ^issue-369
 
 - **Título original:** `Feature: Establish Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #369](https://github.com/reyduar/Vaqcrow/issues/369) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #369](https://github.com/reyduar/Vaqcrow/issues/369) · Tipo `Feature` · Área `security` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-02 por decisión del owner: ingresar/salir pasan a #378 e invitación de admins a #390; R1-002 sigue como condición antes de `main`; nada está en `main` todavía).
 - **Jerarquía y bloqueos:** padre [#368](#^issue-368); sin bloqueos nativos.
 - **Objetivo:** Introducir autenticación real con Supabase Auth (email y contraseña), los roles `PYME`, `INVERSOR` y `ADMIN`, RLS por rol, autorización en cada endpoint de `apps/api`, el super admin sembrado («Admin Vaqcrow», `vaqcrow.admin`; email y contraseña desde variables de entorno, nunca versionados) y un almacén append-only de registro de auditoría con su puerto.
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
@@ -1845,12 +1845,12 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 
 **Rama e implementación.** `Vaqcrow#371_Task_Test_Supabase_Auth_roles_RLS_and_API_authorization`, mergeada vía [PR #444](https://github.com/reyduar/Vaqcrow/pull/444) en la rama de la Feature #369 (`84fe98d`), **no en `main`**. Evidencia en [`supabase-auth-roles-and-authorization-evidence.md`](./supabase-auth-roles-and-authorization-evidence.md).
 
-### #372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API
+### ~~#372 — Documentar evidencia de Supabase Auth, roles, RLS y la autorización de la API~~
 
 ^issue-372
 
 - **Título original:** `Task: Document evidence for Supabase Auth, roles, RLS and API authorization`
-- **GitHub y estado:** [issue #372](https://github.com/reyduar/Vaqcrow/issues/372) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #372](https://github.com/reyduar/Vaqcrow/issues/372) · Tipo `Task` · Área `security` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-02: su PR #445 está mergeada en la rama de la Feature, no en `main`).
 - **Jerarquía y bloqueos:** padre [#369](#^issue-369); bloqueada nativamente por [#371](#^issue-371).
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#369](#^issue-369).
@@ -1862,40 +1862,41 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 ^issue-378
 
 - **Título original:** `Feature: Provide account creation, sign-in and a role-aware shell`
-- **GitHub y estado:** [issue #378](https://github.com/reyduar/Vaqcrow/issues/378) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #378](https://github.com/reyduar/Vaqcrow/issues/378) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `In progress` (2026-10-03: #379 y #380 cerradas; queda #381). Abierta: su cierre lo decide el owner y nada de #378 está en `main`.
 - **Jerarquía y bloqueos:** padre [#368](#^issue-368); bloqueada nativamente por [#369](#^issue-369).
 - **Objetivo:** Permitir crear una cuenta INVERSOR o PYME, ingresar y navegar un encabezado que se adapta al rol de la sesión, siguiendo el Onboarding y el menú de avatar del template.
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
   - Una página pública «Ingresar»: el template solo tiene un menú de sesión de demostración; no diseña su layout, errores, restablecimiento ni verificación de email.
   - El copy «Sin autenticación real: es una cuenta de demostración» deja de ser verdadero; no hay reemplazo diseñado.
   - De dónde sale el nombre que muestra el avatar si la cuenta solo recoge email, contraseña y rol.
+  - **Resueltas por el owner (2026-10-02/03, decisiones D1–D11 de la bitácora):** página `/login` propia con sus errores y la vista de confirmación de email (sin restablecimiento, diferido); copy de reemplazo de la cuenta de demostración; el nombre visible se pide en el alta («Nombre completo» / «Nombre o Razón Social»). Detalle en [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md) §6.
 - **Orden:** Desbloquea [#398](#^issue-398) y es prerrequisito de [#422](#^issue-422).
 
-**Rama propuesta.** `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama propuesta.** `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks. Creada desde la rama de #369 (`8688136`); contiene #379 (`e6942af`) y #380 (`3766b09`), **no está en `main`**: #369 y #378 llegan a `main` juntas con [#438](#^issue-438), y antes R1-002 se resuelve con [#398](#^issue-398) o lo acepta el owner. Evidencia en [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md).
 
-### #379 — Implementar la creación de cuentas, el ingreso y el shell según el rol
+### ~~#379 — Implementar la creación de cuentas, el ingreso y el shell según el rol~~
 
 ^issue-379
 
 - **Título original:** `Task: Implement account creation, sign-in and the role-aware shell`
-- **GitHub y estado:** [issue #379](https://github.com/reyduar/Vaqcrow/issues/379) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #379](https://github.com/reyduar/Vaqcrow/issues/379) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-03: su PR #446 está mergeada en la rama de la Feature, no en `main`).
 - **Jerarquía y bloqueos:** padre [#378](#^issue-378), que requiere [#369](#^issue-369); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#380](#^issue-380).
 
-**Rama propuesta.** `Vaqcrow#379_Task_Implement_account_creation_sign_in_and_the_role_aware_shell` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#379_Task_Implement_account_creation_sign_in_and_the_role_aware_shell`, mergeada vía [PR #446](https://github.com/reyduar/Vaqcrow/pull/446) en la rama de la Feature #378 (`e6942af`), **no en `main`**. Evidencia en [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md).
 
-### #380 — Probar la creación de cuentas, el ingreso y el shell según el rol
+### ~~#380 — Probar la creación de cuentas, el ingreso y el shell según el rol~~
 
 ^issue-380
 
 - **Título original:** `Task: Test account creation, sign-in and the role-aware shell`
-- **GitHub y estado:** [issue #380](https://github.com/reyduar/Vaqcrow/issues/380) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #380](https://github.com/reyduar/Vaqcrow/issues/380) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done` (cerrado a mano el 2026-10-03: su PR #447 está mergeada en la rama de la Feature, no en `main`).
 - **Jerarquía y bloqueos:** padre [#378](#^issue-378), que requiere [#369](#^issue-369); bloqueada nativamente por [#379](#^issue-379).
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#381](#^issue-381).
 
-**Rama propuesta.** `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell`, mergeada vía [PR #447](https://github.com/reyduar/Vaqcrow/pull/447) en la rama de la Feature #378 (`3766b09`), **no en `main`**. Evidencia en [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md).
 
 ### #381 — Documentar evidencia de la creación de cuentas, el ingreso y el shell según el rol
 
@@ -1907,7 +1908,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#378](#^issue-378).
 
-**Rama propuesta.** `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_role_aware_shell` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_role_aware_shell`, creada desde la rama de la Feature en `3766b09`. Evidencia en [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md). La Pull Request contra la rama de la Feature queda como paso explícito posterior.
 
 ### #373 — Sitio público
 

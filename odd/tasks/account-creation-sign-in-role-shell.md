@@ -36,6 +36,8 @@ Las decisiones están en `CLAUDE.md`/`AGENTS.md` (commit `5a4225d`) y en los com
 | D9 | (owner, 2026-10-02) Menús exactos del shell (reemplaza los ítems de D4; sin «Centro de ayuda»). Sin sesión: Explorar PyMEs → `/explore`, Cómo funciona → `/#how-it-works`, Para emprendedores → `/entrepreneur-guide`, Acerca de → `/about`, más «Ingresar» → `/login` (contorno) y «Crear cuenta» → `/signup` (acento). INVERSOR — header: Explorar PyMEs, Mi portafolio → `/portfolio`, Acerca de; avatar: Mi portafolio, Guía del inversor → `/investor-guide`, Informes → `/reports`, Cerrar sesión. PYME — header: Mi campaña → `/company`, Cómo funciona, Acerca de; avatar: Mi campaña, Guía del emprendedor → `/entrepreneur-guide`, Cerrar sesión. Los links a páginas que todavía no existen se muestran igual (404 aceptado hasta #414/#394/#430/#418). Avatar por rol con chevron; cabecera del menú con avatar, nombre y chip de rol, sin «Sesión de demostración» y nunca el email. «Cerrar sesión» cierra la sesión real y navega a `/`. `/` esqueleto; `/portfolio` sólo INVERSOR; `/company` sólo PYME, con «Registrar mi PyME» y sin popup de wallet. Ninguna página pública enlaza a `/admin`. |
 | D10 | (owner, 2026-10-03) Primer aviso canónico: «Demostración con datos simulados. El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.» |
 | D11 | (owner, 2026-10-03) `.env.cloud.example` no lleva el bloque `VAQCROW_SUPERADMIN_EMAIL` / `VAQCROW_SUPERADMIN_PASSWORD`: esas dos variables viven sólo en el `.env.cloud` real del owner. `.env.docker.example` conserva sus dos líneas vacías. Resuelve los `WARNING` de `review-7f2d388c22ce7ced` sobre la plantilla. |
+| D12 | (owner, 2026-10-03; template `Vaqcrow Onboarding PyME.dc.html`) Paso 4 «Revisión humana» del wizard PyME: la propia PyME envía con «Enviar a revisión» (reemplaza «Ir a Mi campaña →»; secundario «Revisar lo cargado»). La wallet Freighter es obligatoria: sin ella «Conectar Freighter» pasa a rojo («Obligatorio») y aparece «Conectá tu wallet Freighter para poder enviar la solicitud a revisión.»; al enviar, «Revisión humana» pasa a amarillo («En proceso») y luego «Solicitud enviada a revisión. Te avisamos cuando haya una decisión.» con «Ir a Mi campaña». El envío lleva la clave pública al admin (destino inmutable de la bóveda) y lo notifica por email y en su dashboard. El despliegue sigue firmado por la plataforma: el owner corrigió en el template los dos textos que decían que la PyME firmaba el despliegue («…su cuenta es el destino inmutable de los fondos.» y «Si se aprueba, la plataforma abre la bóveda en Testnet con tu cuenta como destino de los fondos.»). Se implementa en #398/#406/#410/#382/#386, no en #378. |
+| D13 | (owner, 2026-10-03) Aprueba tal cual los textos registrados como «supuestos para el owner» en T3/T4: errores de ingreso (`unavailable`/`rate_limited`), alta `email_taken`/`weak_password`/`invalid_input`/otros, variante honesta del error de red del alta, «Cuenta creada. No pudimos abrir tu sesión…», «No pudimos cerrar la sesión. Volvé a intentar.», `ADMIN` en el sitio público (`/login` → `/`, chip y sólo «Cerrar sesión») y «Registrar mi PyME» inactivo hasta #398. El criterio 7 de #378 pasa a cumplido en el documento de evidencia. |
 
 ## TDD
 
@@ -244,6 +246,25 @@ Rama `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell`, 
   - GREEN: `pnpm --filter @vaqcrow/web exec playwright test e2e/auth-roles.spec.ts` → `5 passed`; suite completa `pnpm --filter @vaqcrow/web exec playwright test` → `37 passed` (32 previos + 5).
   - Verificación: `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1204 passed (1204)`; `lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores; `build` compila (`/portfolio`, `/company` `○`, `/login`, `/signup` `ƒ`, `ƒ Proxy (Middleware)`); `pnpm run boundaries` → `no dependency violations found (628 modules, 2048 dependencies cruised)`; `pnpm run test:boundaries` → `Test Files 10 passed (10)`, `Tests 152 passed (152)`.
   - Commit: `test(web): add the Playwright auth smoke against a local Supabase double`.
+- Revisión RDD de #380 (2026-10-03): base `e6942af`, sólo commits, riesgo `high` (10 archivos, 678 líneas); el owner eligió «Omitir esta vez» (`declined_this_candidate`).
+- PR [#447](https://github.com/reyduar/Vaqcrow/pull/447) mergeada en la rama de #378 (`3766b09`, 2026-10-03); #380 cerrado a mano.
+
+## Task #381 — Evidencia
+
+Rama `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_role_aware_shell`, creada desde la rama de #378 (`3766b09`). Sólo documentación (sin RED/GREEN; chequeo estructural más la re-ejecución de las verificaciones).
+
+- Documento: [`docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md`](../../docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md), con los ocho criterios de #378 citados textualmente: cumplidos 2, 4, 6 y 8; parciales 1 y 3 (cumplidos con dobles, pendiente el remoto), 5 (sin prueba de anillo de foco, 44 px, movimiento reducido ni contraste AA) y 7 (supuestos de copy sin aprobación explícita).
+- Ancestría (2026-10-03, `git merge-base --is-ancestor`): `8688136`, `e6942af` y `3766b09` **no** son ancestros de `origin/main` (`aaee084`).
+- Re-ejecutado en el árbol de trabajo (2026-10-03, Node `v24.21.0`):
+  - `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1204 passed (1204)` (sin timeouts de jsdom en esta corrida).
+  - `pnpm --filter @vaqcrow/web exec playwright test` → `37 passed` (incluye los 5 de `auth-roles.spec.ts`).
+  - `pnpm run test:db` (stack local del perfil docker) → `Files=9, Tests=173`, `Result: PASS`.
+  - `pnpm run boundaries` → `no dependency violations found (628 modules, 2048 dependencies cruised)`; `pnpm run test:boundaries` → `Test Files 10 passed (10)`, `Tests 152 passed (152)`.
+  - `pnpm --filter @vaqcrow/web lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores; `build` compila (`/`, `/portfolio`, `/company` `○`; `/login`, `/signup` `ƒ`; `ƒ Proxy (Middleware)`).
+- CI consultado con `gh pr checks`: #446 (runs `37113991595`/`37113991593`) y #447 (runs `37130344785`/`37130344747`), todos los jobs `pass`.
+- La revisión `review-be5686dd920f0b8a` (correcciones finales de #379) figura `approved` en la descripción de la PR #446; esta bitácora no tenía su entrada.
+- `docs/planning/demo-tasks-list.md`: #379 y #380 tachadas con «Rama e implementación»; #381 con su rama y el documento; #378 sigue abierta (`In progress`).
+- Commit: `docs(planning): record the evidence for account creation, sign-in and the role-aware shell`.
 
 ## Pronóstico de entrega
 
@@ -276,4 +297,4 @@ Corrida final de `pnpm run verify` sobre `5eac715` (2026-10-03, orquestador, ár
 
 ## Próximo paso
 
-PR única de #379 contra la rama de #378.
+PR de #381 contra la rama de #378; después, el owner decide el cierre de la Feature #378. Antes de llevar #369 + #378 a `main`: resolver R1-002 con #398 (o que el owner lo acepte) y entregar #438 en el mismo merge. Hacer un alta real contra el proyecto remoto para observar la entrega de Resend y ejercitar ingreso y cierre de sesión.
