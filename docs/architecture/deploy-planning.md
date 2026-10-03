@@ -358,6 +358,10 @@ tests
 | Variable | Valor | Descripción |
 |---|---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto remoto de Supabase | Sesión real de Supabase Auth en la web (Task #379, rama de #378) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publicable del mismo proyecto | Pensada para el navegador (RLS acota el acceso); **nunca** la `service_role` |
+
+`pnpm demo:preflight` exige las tres en su chequeo de la web (`env-web`). Detalle en [[docs/architecture/environments|Perfiles de entorno]] §13.4.
 
 ---
 
@@ -1150,7 +1154,16 @@ vercel env add NEXT_PUBLIC_API_BASE_URL preview
 
 vercel env add NEXT_PUBLIC_API_BASE_URL production
 # Valor: https://api-production-c07f.up.railway.app
+
+# Sesión real de Supabase Auth (Task #379; todavía no seteadas en Vercel)
+vercel env add NEXT_PUBLIC_SUPABASE_URL production
+# Valor: la URL del proyecto remoto de Supabase
+
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production
+# Valor: la clave publicable del mismo proyecto (nunca la service_role)
 ```
+
+`pnpm demo:preflight` exige `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en su chequeo de la web.
 
 ### GitHub Secrets
 

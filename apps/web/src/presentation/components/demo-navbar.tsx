@@ -17,11 +17,10 @@ import { Badge } from "./badge";
  *
  * Decoding of the template (recorded, not left implicit):
  * - **Logo.** The template masks `assets/vaqcrow-isotipo.png` behind the
- *   isotipo square. No such asset lives in `apps/web` (there is no
- *   `apps/web/public/` at all, and the only copy is inside the git-ignored
- *   template folder), so the wordmark `Vaqcrow` renders alone. No image was
- *   fabricated or inlined; adding a real asset is a follow-up, not a silent
- *   substitution.
+ *   isotipo square. The asset now lives in `apps/web/public/` (copied from
+ *   the owner's template export for the auth screens, #379), but this header
+ *   still renders the wordmark `Vaqcrow` alone; masking the isotipo here is a
+ *   follow-up, not a silent substitution.
  * - **Brand token, not HeroUI accent.** The template's `--accent` is the
  *   purple brand (`#8a05be`), which is the app's `--color-brand-accent`.
  *   HeroUI's own `--color-accent` is blue and would read as a different brand,

@@ -41,7 +41,7 @@ El perfil que corre la demo real es `.env.cloud` (API en Railway, web en Vercel;
 |---|---|---|
 | Perfil local (`.env.cloud`) | `APP_ENV`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `STELLAR_NETWORK` | En el archivo local del repositorio (valores no secretos) |
 | Servicio hosteado de la API (Railway) | `STELLAR_CAMPAIGN_FACTORY_ID` + `STELLAR_PLATFORM_SECRET_KEY` (estas dos **como par**: sin ambas no se registran las rutas de campaña) y `CORS_ALLOWED_ORIGINS` (debe incluir el origen de Vercel) | Variables del servicio en Railway; el repositorio nunca guarda el secreto |
-| Host de la web (Vercel) | `NEXT_PUBLIC_API_BASE_URL` | Variable del proyecto en Vercel (sólo `production`, por decisión §5.2 de la evidencia) |
+| Host de la web (Vercel) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (las dos de Supabase sostienen la sesión real de la web desde la Task #379; la clave es la publicable, nunca la `service_role`) | Variables del proyecto en Vercel (sólo `production`, por decisión §5.2 de la evidencia). El chequeo `env-web` exige las tres |
 | **Opcionales** con default canónico | `STELLAR_HORIZON_URL` y `STELLAR_RPC_URL` | Si faltan, tanto la API como el preflight usan los endpoints canónicos de Testnet (`https://horizon-testnet.stellar.org` y `https://soroban-testnet.stellar.org`) |
 
 - **Cuentas del ensayo** (opcionales, alternativa a los flags): `DEMO_SME_PUBLIC_KEY` y `DEMO_INVESTOR_PUBLIC_KEYS` (claves públicas separadas por coma). Son solo direcciones públicas.
@@ -74,7 +74,7 @@ pnpm demo:preflight --help
 ```
 
 > [!warning] Un `--env-file .env.cloud` a solas no cubre toda la corrida
-> El archivo local sólo contiene el subconjunto del perfil local (§2.2). Las variables que viven en Railway (el par de la campaña y `CORS_ALLOWED_ORIGINS`) y en Vercel (`NEXT_PUBLIC_API_BASE_URL`) **no están** en ese archivo. Una corrida con sólo `--env-file .env.cloud` va a marcar en rojo `env-api`, `env-web` y `api-health`, y también las cuentas si no se pasaron los flags. **No es un defecto del entorno**: es la señal correcta de que faltan los valores hosteados. Los chequeos de Horizon y de RPC, en cambio, sí corren: usan los endpoints canónicos de Testnet cuando las variables no están.
+> El archivo local sólo contiene el subconjunto del perfil local (§2.2). Las variables que viven en Railway (el par de la campaña y `CORS_ALLOWED_ORIGINS`) y en Vercel (`NEXT_PUBLIC_API_BASE_URL`) **no están** en ese archivo; las dos `NEXT_PUBLIC_SUPABASE_*` viven en Vercel y también pueden estar en `.env.cloud` para correr la web local contra el proyecto remoto (`pnpm run dev:web:cloud`), pero `env-web` sigue en rojo mientras falte `NEXT_PUBLIC_API_BASE_URL`. Una corrida con sólo `--env-file .env.cloud` va a marcar en rojo `env-api`, `env-web` y `api-health`, y también las cuentas si no se pasaron los flags. **No es un defecto del entorno**: es la señal correcta de que faltan los valores hosteados. Los chequeos de Horizon y de RPC, en cambio, sí corren: usan los endpoints canónicos de Testnet cuando las variables no están.
 
 Cómo aportar los valores hosteados, en orden de preferencia:
 

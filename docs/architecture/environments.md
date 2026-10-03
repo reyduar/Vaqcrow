@@ -250,5 +250,14 @@ La web abre la sesión real de Supabase Auth en el navegador (Task [#379](https:
 - `generate-docker-env.sh` las escribe solo, a partir de `supabase status -o env` (las mismas URL y clave publicable que `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`).
 - En `.env.cloud` y en el panel de Vercel las agrega la persona operadora; las plantillas `.env.*.example` también las tienen que listar vacías (las sesiones de agente no pueden editar `.env*`).
 - `pnpm demo:preflight` las exige en el chequeo «Web environment variables», junto con `NEXT_PUBLIC_API_BASE_URL`; como la de la API, sólo nombra la variable faltante, nunca el valor.
-- Si falta alguna, la web falla al crear la sesión con un error que nombra la variable (`SupabaseConfigError`), sin imprimir valores.
-- El cliente es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, así el gating por rol del servidor puede leerla más adelante. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.
+- Si falta alguna, crear el cliente falla con `SupabaseConfigError`, que nombra la variable sin imprimir valores. La web no se cae: el puerto de sesión se construye perezosamente en el navegador y una configuración faltante se vuelve el error saneado `unavailable` (la pantalla de ingreso muestra «No pudimos ingresar…»), y el proxy la trata como «sin sesión». Así las rutas del recorrido de seis pasos siguen funcionando sin estas variables.
+- El cliente del navegador es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, y por eso el servidor puede leer la misma sesión. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.
+
+**Lectura de la sesión en el servidor (`apps/web/src/proxy.ts`).** Next.js 16 renombró `middleware.ts` a `proxy.ts` (runtime Node). El proxy corre sólo en `/portfolio`, `/company`, `/login` y `/signup` (su `matcher`, atado por un test a `GATED_PATHS`) y, antes de renderizar:
+
+1. Crea un `createServerClient` de `@supabase/ssr` sobre las cookies del request (`getAll`/`setAll`) con las mismas dos variables (`infrastructure/auth/server-session.ts`).
+2. Verifica el token con `getClaims()` (que también lo refresca) y lee el rol y el nombre de la fila propia de `public.profile` con el JWT del usuario, bajo RLS. Las dos lecturas tienen un tope conjunto de 3 s.
+3. Aplica la regla pura `gateRoute`: anónimo en `/portfolio` → `/login?role=investor`, en `/company` → `/login?role=pyme`; rol equivocado → su propio home; sesión abierta en `/login`/`/signup` → su home.
+4. Copia las cookies refrescadas y los headers de caché a la respuesta, sea redirección o no.
+
+Cualquier fallo —configuración faltante, token inválido, perfil ilegible, red o timeout— cuenta como «sin sesión»: las rutas protegidas fallan cerradas y las de ingreso quedan accesibles. Un fallo o timeout deja en el log del servidor `[Proxy] session read failed` con una `cause` saneada (`timeout` o el nombre del error), nunca el mensaje, el token ni el email. En el navegador, `RouteGate` aplica la misma regla después de cargar (cierre de sesión en otra pestaña, página restaurada del caché).

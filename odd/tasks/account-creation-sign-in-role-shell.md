@@ -168,14 +168,52 @@ Las decisiones están en `CLAUDE.md`/`AGENTS.md` (commit `5a4225d`) y en los com
     - Supuesto para el owner: el copy nuevo «No pudimos cerrar la sesión. Volvé a intentar.» (el template no diseña el error de cierre de sesión).
     - RED (`pnpm --filter @vaqcrow/web exec vitest run src/state/session-store.test.ts src/presentation/components/route-gate.test.tsx src/presentation/components/app-header.test.tsx src/infrastructure/auth/server-session.test.ts`): `Test Files 4 failed (4)`, `Tests 11 failed | 48 passed (59)` — los dos casos de `signedOutByUser` (`expected undefined to be false`), «stays on the page and says so when signing out fails», «never repeats router.replace with the same target» (`called 1 times, but got 3 times`), «lets the header's sign-out navigation win» (`replace` con `/login…`), los tres de timeout (vencían los 5 s de Vitest) y los tres de log saneado (`console.error` sin llamar). «does not redirect when the target is the current path» pasó desde el inicio (guarda de regresión).
     - GREEN: mismo comando más `src/proxy.test.ts` → `Tests 72 passed` en los cinco archivos (40 + 32); el primer GREEN de `app-header.test.tsx` falló por abrir el menú dentro de `act` (el clic no se aplicaba hasta salir), corregido en el test.
-    - Verificación: `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1191 passed (1191)`; `lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores.
-    - Commit: `fix(web): settle the role-shell review findings`.
+    - Verificación: `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1191 passed (1191)`; `lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores; `build` compila (`ƒ Proxy (Middleware)`); `pnpm run boundaries` → `no dependency violations found (628 modules, 2048 dependencies cruised)`.
+    - Commit: `fix(web): settle the role-shell review findings` (`859ee81`).
 - [ ] **T5 — Documentación.** `README.md`, `docs/planning/DEMO.md`, `docs/design/demo-ui.md` (tabla pantalla → ruta en inglés), `docs/architecture/environments.md` y los textos de divulgación que decían «sin autenticación real».
+  - Ruta: delegada (writer acotado; nueve documentos que repiten el comportamiento cambiado).
+  - Sin RED/GREEN: documentación pasiva; el chequeo es estructural (lectura de cada sección antes de editarla y contraste con el código y el corpus de evidencia) más `pnpm run verify`.
+  - Regla aplicada: cada afirmación distingue `main` (recorrido de seis pasos con sesión de demostración) de las ramas apiladas de #369 y #378 (sin mergear); ningún documento afirma un merge que no existe.
+  - Cambios:
+    - `README.md`: «Límites actuales» (ya no dice «no hay autenticación real» sin matiz: en `main` no, en las ramas de #369/#378 sí), la nota de rutas (`/` como esqueleto y rutas en inglés en la rama de #378), la tabla de Epics (#368 implementada en ramas apiladas), «Real versus simulado», el stack (Web con `@supabase/ssr` y `proxy.ts`; Persistencia), el isotipo (ya versionado en `apps/web/public/`) y «Próximo paso».
+    - `docs/planning/DEMO.md`: el aviso «Estado frente a dirección», un párrafo de rutas en inglés con la redirección por rol y el enlace a la decisión de `CLAUDE.md` del panel más wizard, el workflow de la PyME (wizard de cuatro pasos y Freighter en la Revisión humana, sin popup), la fila «Cuentas, sesión y roles» de la matriz, §6 y el diagrama (`WEB → Supabase Auth` ya no dice «planificado #369»), y el aviso del primer disclosure.
+    - `docs/design/demo-ui.md`: fila «Autenticación» del resumen, la pregunta abierta de recuperación/verificación/expiración (la verificación ya tiene su vista), la tabla de §4 reescrita con las rutas en inglés, su estado en la rama de #378 y el issue que construye cada una (las rutas en español quedan reemplazadas, con callout), la navegación global de D9, D-12 y las menciones del isotipo.
+    - `docs/architecture/environments.md`: §1 y §13.4 de T2 verificados; §13.4 corrige el comportamiento con variables faltantes (puerto perezoso → `unavailable`, proxy → sin sesión) y suma cómo el servidor lee la sesión en `apps/web/src/proxy.ts`.
+    - `docs/planning/demo-run-preflight.md` y `docs/architecture/deploy-planning.md` (§3 tabla de Vercel y §7 comandos de Vercel): `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` junto a `NEXT_PUBLIC_API_BASE_URL`, y que `env-web` exige las tres (espejo de `REQUIRED_WEB_ENV`).
+    - `docs/architecture/identity-and-rls-boundaries.md`: el aviso de §9 (la web tiene sesión, pero los gateways del recorrido no mandan el token hasta #438) y §9.9 nueva con el lado web (cookies, gating en servidor y cliente, rol de la fila propia bajo RLS, email nunca visible).
+    - Comentarios: `demo-navbar.tsx` (ya existe `apps/web/public/`) y `demo-shell.tsx` (el recorrido no tiene autenticación propia; la sesión real es del shell por rol).
+  - No alineado (fuera de la superficie de T5):
+    - El texto canónico «Demostración con datos simulados» sigue diciendo que la identidad es sintética. Vive en cuatro superficies a la vez (`disclosures.ts`, `DEMO.md` §12, `demo-ui.md` §2/§11 y el brief) y `disclosures.ts` queda fuera de #379; el aviso de `DEMO.md` §12 lo registra como pendiente antes del merge de #369/#378 a `main`.
+    - Plantillas `.env.cloud.example` / `.env.docker.example`: los agentes no pueden editar `.env*` (ver «Pendiente del operador»).
+  - Sin marcar: `pnpm run verify` falla en `test:boundaries` por una regresión previa ajena a T5 (ver «Verificación»).
 
 ## Pronóstico de entrega
 
 Unas 1.500 líneas autoradas entre las cinco tareas, por encima del presupuesto de ~400 por PR. Estrategia elegida por el owner (2026-10-02): **`single-pr`** — una sola PR de #379 contra la rama de #378, con un commit por unidad de trabajo; las revisiones RDD se acotan por commit.
 
+## Verificación
+
+Corrida final de `pnpm run verify` sobre `859ee81` más la documentación de T5 (2026-10-03, en el árbol de trabajo):
+
+| Paso | Resultado |
+|---|---|
+| `lint` | 0 errores; 1 warning previo en `@vaqcrow/web` (`fetch-http-client.ts` `_request`) |
+| `typecheck`, `lint:tests`, `typecheck:tests` | Sin errores |
+| `test` | `@vaqcrow/contracts` 526/526, `@vaqcrow/domain` 120/120, `@vaqcrow/ai` 107/107, `@vaqcrow/api` 1371/1371; `@vaqcrow/web` 1189/1191 con dos `Test timed out in 5000ms` de jsdom bajo carga en archivos no tocados (`auth-screen.test.tsx` «renders the template's two panels in signup mode», `campaign-workspace.test.tsx` «renders the open panel with no campaign id…»). Aislados: `Tests 51 passed (51)`; la suite web completa vuelta a correr: `Test Files 131 passed (131)`, `Tests 1191 passed (1191)` |
+| `build` | Compila; `/`, `/portfolio`, `/company` estáticas, `/login` y `/signup` dinámicas, `ƒ Proxy (Middleware)` |
+| `boundaries` | `no dependency violations found (628 modules, 2048 dependencies cruised)` |
+| `test:boundaries` | **Falla**: `Tests 1 failed \| 151 passed (152)` — `tests/trust-disclosures-canonical-consistency.test.ts` «finds every canonical disclosure text in the source record» (`expected [] to have a length of 6 but got +0`) |
+
+> [!warning] Regresión previa de `6553dbd`, fuera de la superficie de T5
+> La unidad 1 de T4 construyó las divulgaciones con `disclosure(id, title, body, banner)`, así que `disclosures.ts` ya no tiene literales `text: "…"`. El test de consistencia los busca con una regex sobre la fuente: encuentra cero, falla el conteo y sus casos «quotes every canonical disclosure verbatim» pasan **vacíos** (sin comparar nada). El texto canónico no cambió (lo fija su test byte a byte en `apps/web`), pero la guarda entre código y documentos está apagada. Se corrige en `tests/trust-disclosures-canonical-consistency.test.ts` (leer `title` + `body`, o importar el registro), fuera de la superficie autorizada de esta delegación.
+
+## Pendiente del operador
+
+- Agregar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` vacías a `.env.cloud.example` y `.env.docker.example` (los agentes no pueden editar `.env*`).
+- Cargar los valores reales de esas dos variables en Vercel (`production`) y en `.env.cloud`.
+- Observar la entrega de Resend en el primer alta real contra el proyecto remoto (la configuración SMTP del panel sigue pendiente, `environments.md` §13.2).
+- Decidir sobre el `WARN` `auth_leaked_password_protection` del advisor de seguridad de Supabase (opción del panel de Auth; decisión del owner).
+
 ## Próximo paso
 
-Evaluación RDD del tramo T3–T4; después T5 (documentación, incluida la protección por `proxy.ts` y la variante honesta del error de red del alta).
+Corregir la guarda de `tests/trust-disclosures-canonical-consistency.test.ts` (regresión de `6553dbd`) y cerrar T5; después, PR única de #379 contra la rama de #378.

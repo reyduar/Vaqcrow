@@ -10,7 +10,7 @@ Este documento convierte el plan de la demo en un sistema visual y de interacci�
 
 > **Fuente de verdad visual — el template de Claude Design (2026-10-01).** La referencia visual y de sistema de diseño es el template de Claude Design, en `docs/design/template/`, compartido en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. Reemplaza al proyecto de Google Stitch, retirado ese mismo día (ver §11 y §12). El directorio del template está fuera del repositorio a propósito: `docs/design/template/` está en `.gitignore` y no se versiona ningún archivo del template. El detalle —ubicación, compartición, inventario de 14 pantallas y gate de revisión por pantalla— está en «El template de Claude Design (fuente de verdad visual)», más abajo. Lo que el diseño busca está en [[docs/design/claude-design-brief|el brief de Claude Design]] y su [[docs/design/claude-design-continuation-pack|pack de continuación]].
 
-> **Identidad aprobada, archivo fuente pendiente.** La marca usa un isotipo geométrico/angular de cabeza de toro. La referencia visual provista está aprobada, pero este documento no afirma que exista un SVG o PNG versionado en el repositorio. Debe incorporarse un archivo fuente autorizado antes de implementarlo y antes de generar con la herramienta de diseño si exige un asset.
+> **Identidad aprobada, archivo fuente pendiente.** La marca usa un isotipo geométrico/angular de cabeza de toro. La referencia visual provista está aprobada, pero este documento no afirma que exista un SVG o PNG versionado en el repositorio. Debe incorporarse un archivo fuente autorizado antes de implementarlo y antes de generar con la herramienta de diseño si exige un asset. (Actualización, #379: el PNG del template exportado por el owner está versionado en la rama de #378 como `apps/web/public/vaqcrow-isotipo.png`.)
 
 ## Ruta rápida de uso
 
@@ -33,7 +33,7 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 | Estilo | Fintech moderna y confiable: data-forward, precisa, sobria, con superficies limpias, jerarquía fuerte, densidad controlada y microinteracciones discretas. |
 | Color | Morado `#8A05BE` como acento intencional; paletas clara y oscura exactas, sin reemplazos. |
 | Temas | Claro y oscuro son entregables obligatorios en diseño, generación, aprobación, implementación y QA; `Sistema` sigue la preferencia del dispositivo. |
-| Identidad | Isotipo aprobado de cabeza de toro geométrica/angular; morado sobre claro y blanco sobre oscuro o morado. El archivo fuente aún debe incorporarse al repositorio. |
+| Identidad | Isotipo aprobado de cabeza de toro geométrica/angular; morado sobre claro y blanco sobre oscuro o morado. En la rama de #378 está versionado el PNG del template exportado por el owner (`apps/web/public/vaqcrow-isotipo.png`), que usan las pantallas de alta e ingreso; el header todavía muestra sólo la marca tipográfica y no hay un SVG fuente. |
 | Confianza | Estado `TESTNET` persistente, `SIMULADO` junto a cada dato sintético, IA consultiva y confirmación asíncrona explícita. |
 | Wallet | Freighter conecta y firma de forma no custodial; Vaqcrow nunca solicita ni almacena seeds. |
 | Diseño responsivo | Por cada ruta se aprueba el par claro/oscuro de escritorio y luego el par claro/oscuro móvil, sin recortar contenido ni reglas de confianza. |
@@ -41,7 +41,7 @@ El stack siguiente está confirmado como dirección de implementación; su prese
 | Datos y formularios | [Axios](https://www.axios.com/) es transporte HTTP detrás de puertos/adaptadores; [SWR](https://swr.vercel.app/) orquesta estado de servidor y revalidación mediante fetchers de aplicación/adaptador; [React Hook Form](https://react-hook-form.com/) gestiona estado de formulario en navegador, sin decidir reglas de negocio. |
 | Estado y pruebas | [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction) conserva solo estado de workflow cliente entre rutas, sin duplicar SWR ni estado autoritativo del backend; [Playwright](https://playwright.dev/) cubre smoke/E2E determinísticos con fixtures o dobles locales. |
 | Template de Claude Design | El template en `docs/design/template/` («El template de Claude Design (fuente de verdad visual)», más abajo) es la referencia visual y de sistema de diseño, **y prevalece sobre el brief escrito donde difieran** (2026-10-01); su HTML generado nunca es implementación autoritativa de producción. |
-| Autenticación | Hoy `main` conserva la sesión de demostración. La autenticación real con **Supabase Auth** (email y contraseña con confirmación de email, roles `PYME` / `INVERSOR` / `ADMIN`, RLS por rol) está implementada en la rama de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369), apilada con el login de [#378](https://github.com/reyduar/Vaqcrow/issues/378) (aún no en `main`); la recuperación de contraseña está diferida; y **reemplaza** el Auth.js v5 de [#134](https://github.com/reyduar/Vaqcrow/issues/134) (decisión del owner, 2026-10-01). |
+| Autenticación | Hoy `main` conserva la sesión de demostración. La autenticación real con **Supabase Auth** (email y contraseña con confirmación de email, roles `PYME` / `INVERSOR` / `ADMIN`, RLS por rol) está implementada en la rama de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369), apilada con [#378](https://github.com/reyduar/Vaqcrow/issues/378), cuya Task [#379](https://github.com/reyduar/Vaqcrow/issues/379) implementa el alta y el ingreso (`/signup`, `/login`), la sesión en cookies, el header por rol, el cierre de sesión y las rutas protegidas (las dos ramas, aún no en `main`); la recuperación de contraseña está diferida; y **reemplaza** el Auth.js v5 de [#134](https://github.com/reyduar/Vaqcrow/issues/134) (decisión del owner, 2026-10-01). |
 
 ---
 
@@ -101,7 +101,7 @@ Al abrir la experiencia, una persona debe entender:
 - Operación con dinero real o Stellar Public Network.
 - Afirmaciones regulatorias, legales, de solvencia o rentabilidad.
 - Aprobación autónoma por IA.
-- Recuperación de contraseña, verificación de email y expiración de sesión: el template no los diseña y son preguntas abiertas de [#369](https://github.com/reyduar/Vaqcrow/issues/369) y [#378](https://github.com/reyduar/Vaqcrow/issues/378). El login real con Supabase Auth ya forma parte del alcance planificado; la sesión de demostración de hoy lo precede.
+- Recuperación de contraseña y expiración de sesión: el template no las diseña. La recuperación está diferida por el owner; la expiración sigue abierta en [#378](https://github.com/reyduar/Vaqcrow/issues/378). La verificación de email ya tiene su vista: la fase «Cuenta creada» del template, implementada por [#379](https://github.com/reyduar/Vaqcrow/issues/379) en la rama de #378. En `main` sigue la sesión de demostración hasta el merge de #369/#378.
 - Soroban, salvo que exista como extensión posterior independiente del diseño base.
 
 El marketplace con múltiples PyMEs, filtros avanzados y el panel de administración **ya no están fuera de alcance**: están diseñados en el template de Claude Design (sección 4; ver «El template de Claude Design (fuente de verdad visual)») y son parte del producto completo descrito en el Objetivo. Persisten fuera de alcance únicamente los puntos listados arriba.
@@ -156,38 +156,43 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 
 ## 4. Arquitectura de información y mapa de pantallas
 
-> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real de producto (19 flujos, especificado en el [[docs/design/claude-design-brief|brief de Claude Design]] y en el mapa de la sección 4) constituye el producto completo. Las seis rutas originales se conservan como alias/heredadas donde el mapeo es directo (marcado abajo) y siguen siendo el recorrido guiado detallado en la sección 8; el resto son rutas nuevas propuestas.
+> **Alcance ampliado.** El mapa original de seis pantallas (`/demo`, `/demo/solicitud`, `/demo/evaluacion`, `/demo/invertir`, `/demo/transacciones/[intentId]`, `/demo/panel`) describía únicamente la historia vertical de una sola PyME. El inventario real de producto (19 flujos, especificado en el [[docs/design/claude-design-brief|brief de Claude Design]] y en el mapa de la sección 4) constituye el producto completo. Las rutas del recorrido guiado siguen siendo el recorrido detallado en la sección 8 hasta su retiro ([#438](https://github.com/reyduar/Vaqcrow/issues/438)); la tabla siguiente usa las rutas en inglés del producto por roles.
 
 ### Mapa completo (19 flujos reales, agrupados por área)
 
-| # | Flujo | Ruta Next.js propuesta | Actor principal | Resultado de la etapa |
-|---:|---|---|---|---|
-| **Onboarding y acceso** | | | | |
-| 1 | Onboarding | `/onboarding` | Persona nueva | Entiende la propuesta de valor y crea/activa su cuenta. |
-| 2 | Onboarding PyME: KYC | `/onboarding/pyme/kyc` | PyME | Completa KYC/KYB simulado para poder registrar su PyME. |
-| **Landing y marketplace** | | | | |
-| 3 | Landing Page | `/` | Visitante / inversor | Entiende la propuesta general y navega a marketplace u onboarding. |
-| 4 | Marketplace de PyMEs | `/marketplace` | Inversor | Explora múltiples oportunidades de PyMEs sintéticas. |
-| 5 | Marketplace con Filtros Avanzados | `/marketplace` (modo filtros avanzados) | Inversor | Acota oportunidades por sector, riesgo, monto u otros criterios. |
-| **PyME: registro, detalle, tokenización** | | | | |
-| 6 | Registro de PyME | `/demo/solicitud` *(ruta heredada; alias `/pyme/registro`)* | PyME | Envía solicitud y evidencia simulada de su negocio. |
-| 7 | Detalle de PyME | `/marketplace/[pymeId]` | Inversor / evaluador | Revisa evidencia, riesgo y evaluación de una PyME puntual. |
-| 8 | Tokenización de PyME | `/marketplace/[pymeId]/tokenizacion` | PyME / operador | Define y visualiza la tokenización del financiamiento. |
-| **Portafolio, billetera, informes** | | | | |
-| 9 | Portafolio | `/demo/panel` *(ruta heredada; alias `/portafolio`)* | Inversor / PyME | Audita cálculo, firma distribución y verifica hashes de sus posiciones. |
-| 10 | Billetera | `/demo/invertir` *(ruta heredada; alias `/billetera`)* | Inversor / PyME | Conecta Freighter, revisa saldo Testnet y firma sin custodia. |
-| 11 | Informes | `/informes` | Inversor / PyME / evaluador | Consulta reportes agregados de actividad y desempeño simulado. |
-| **Soporte y notificaciones** | | | | |
-| 12 | Notificaciones (Accordion) | `/notificaciones` | Cualquier persona autenticada | Revisa avisos de estado, cambios y confirmaciones. |
-| 13 | Centro de Ayuda | `/ayuda` | Cualquier persona | Resuelve dudas frecuentes sobre la demo y el producto. |
-| 14 | Guía de Inversión | `/guias/inversion` | Inversor | Entiende cómo evaluar e invertir en una PyME sintética. |
-| 15 | Guía para Emprendedores | `/guias/emprendedores` | PyME | Entiende cómo registrar y financiar su PyME sintética. |
-| **Administración** | | | | |
-| 16 | Admin — Gestión de PyMEs | `/admin/pymes` | Operador/admin | Administra el catálogo de PyMEs registradas. |
-| 17 | Admin — Revisión de Solicitud | `/demo/evaluacion` *(ruta heredada; alias `/admin/solicitudes/[solicitudId]`)* | Operador | Obtiene evaluación estructurada de IA y registra aprobación humana. |
-| 18 | Admin — Usuarios | `/admin/usuarios` | Operador/admin | Administra personas usuarias y roles. |
-| **Institucional** | | | | |
-| 19 | Acerca de Vaqcrow | `/acerca-de` | Visitante | Consulta la misión, visión, pilares de valor y presentación del creador del proyecto. |
+> [!important] Rutas en inglés (decisión del owner, 2026-10-02)
+> Las rutas del producto por roles son siempre en inglés. Las rutas en español que esta tabla proponía antes (`/onboarding`, `/marketplace`, `/portafolio`, `/billetera`, `/informes`, `/ayuda`, `/guias/*`, `/acerca-de`, `/admin/pymes`, …) quedan **reemplazadas**; la decisión está en `CLAUDE.md` («The PyME flow is a dashboard plus one wizard») y en la bitácora de #379 (D1, D9). Los pasos del alta de la PyME no tienen ruta propia: viven en un único wizard. «Estado» describe la rama de [#378](https://github.com/reyduar/Vaqcrow/issues/378) después de la Task [#379](https://github.com/reyduar/Vaqcrow/issues/379); nada de esto está todavía en `main`. Los links del header a rutas que todavía no existen se muestran igual (404 aceptado hasta que su issue las construya).
+
+| # | Flujo | Ruta | Estado (rama de #378) | La construye | Resultado de la etapa |
+|---:|---|---|---|---|---|
+| **Acceso y landing** | | | | | |
+| 1 | Crear cuenta / Ingresar | `/signup`, `/login` (`?role=investor\|pyme`) | Implementada: alta e ingreso reales, vista «Cuenta creada», redirección por rol | #379 | La persona crea su cuenta (`PYME` o `INVERSOR`) o ingresa y llega a su home. |
+| 2 | Onboarding PyME: KYC | Paso 1 del wizard dentro de `/company` (sin ruta propia) | No existe | [#398](https://github.com/reyduar/Vaqcrow/issues/398) | Completa KYC/KYB simulado para poder registrar su PyME. |
+| 3 | Landing Page | `/` (con el ancla `/#how-it-works`) | Esqueleto (header y pie, sin contenido) | [#418](https://github.com/reyduar/Vaqcrow/issues/418) | Entiende la propuesta general y navega a Explorar o a Crear cuenta. |
+| **Marketplace** | | | | | |
+| 4 | Explorar PyMEs | `/explore` | No existe (link del header) | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Explora múltiples oportunidades de PyMEs sintéticas. |
+| 5 | Explorar con filtros avanzados | `/explore` (modo filtros) | No existe | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Acota oportunidades por sector, riesgo, monto u otros criterios. |
+| **PyME** | | | | | |
+| 6 | Registro de PyME | Paso 2 del wizard dentro de `/company` (sin ruta propia) | «Registrar mi PyME» visible en `/company`, inactivo | [#398](https://github.com/reyduar/Vaqcrow/issues/398) | Envía su solicitud, documentos y para qué necesita los fondos. |
+| 7 | Detalle de PyME | Por definir (exige cuenta) | No existe | [#422](https://github.com/reyduar/Vaqcrow/issues/422) | Revisa evidencia, riesgo y evaluación de una PyME puntual y aporta. |
+| 8 | Tokenización de PyME | Sin ruta propia (pregunta abierta) | No existe | — | Define y visualiza la tokenización del financiamiento. |
+| 9 | Mi campaña | `/company` (sólo `PYME`) | Esqueleto protegido por sesión y rol | [#434](https://github.com/reyduar/Vaqcrow/issues/434) | Ve sus bóvedas, distribuciones, ventas y aportantes. |
+| **Inversor** | | | | | |
+| 10 | Mi portafolio | `/portfolio` (sólo `INVERSOR`) | Esqueleto protegido por sesión y rol | [#426](https://github.com/reyduar/Vaqcrow/issues/426) | Ve posiciones, retiros y distribuciones recibidas. |
+| 11 | Billetera | Dentro de `/portfolio` (inversor) y paso 4 del wizard (PyME) | No existe | [#426](https://github.com/reyduar/Vaqcrow/issues/426), [#406](https://github.com/reyduar/Vaqcrow/issues/406) | Conecta Freighter y firma sin custodia. |
+| 12 | Informes | `/reports` | No existe (link del menú del inversor) | [#430](https://github.com/reyduar/Vaqcrow/issues/430) | Consulta reportes agregados de actividad y desempeño simulado. |
+| **Soporte y notificaciones** | | | | | |
+| 13 | Notificaciones | Campana in-app en el header (sin ruta propia) | No existe | [#382](https://github.com/reyduar/Vaqcrow/issues/382) | Revisa avisos de estado, cambios y confirmaciones. |
+| 14 | Centro de ayuda | Por definir (asistente RAG «Próximamente») | No existe; fuera de los menús (D9) | [#394](https://github.com/reyduar/Vaqcrow/issues/394) | Resuelve dudas frecuentes sobre la demo y el producto. |
+| 15 | Guía del inversor | `/investor-guide` | No existe (link del menú del inversor) | [#394](https://github.com/reyduar/Vaqcrow/issues/394) | Entiende cómo evaluar e invertir en una PyME sintética. |
+| 16 | Guía para emprendedores | `/entrepreneur-guide` | No existe (link del header y del menú de la PyME) | [#394](https://github.com/reyduar/Vaqcrow/issues/394) | Entiende cómo registrar y financiar su PyME sintética. |
+| 17 | Acerca de Vaqcrow | `/about` | No existe (link del header) | [#394](https://github.com/reyduar/Vaqcrow/issues/394) | Consulta la misión, visión, pilares de valor y presentación del creador del proyecto. |
+| **Administración** (ninguna página pública enlaza a `/admin`) | | | | | |
+| 18 | Admin — ingreso, shell y cola de PyMEs | `/admin` | No existe | [#386](https://github.com/reyduar/Vaqcrow/issues/386) | Administra el catálogo de PyMEs registradas. |
+| 19 | Admin — revisión de solicitud | Dentro de `/admin` | No existe | [#410](https://github.com/reyduar/Vaqcrow/issues/410) | Obtiene evaluación estructurada de IA y registra la aprobación humana, que despliega la bóveda. |
+| 20 | Admin — usuarios, invitaciones y auditoría | Dentro de `/admin` | No existe | [#390](https://github.com/reyduar/Vaqcrow/issues/390) | Administra personas usuarias, roles e invitaciones. |
+
+El recorrido guiado de seis pasos sigue con sus rutas propias hasta que [#438](https://github.com/reyduar/Vaqcrow/issues/438) lo retire.
 
 `/demo/transacciones/[intentId]` (estado asíncrono de transacción) se conserva como patrón de estado compartido —reutilizado desde Billetera, Portafolio y Tokenización— sin ser todavía un flujo propio en el inventario de producto; no se agrega una ruta por cada estado interno: wallet, XDR, aprobación y distribución siguen usando paneles, diálogos o drawers dentro de estas pantallas, con URL/estado recuperable cuando corresponda.
 
@@ -196,7 +201,7 @@ Las especificaciones detalladas de la sección 8 hoy solo cubren las seis rutas 
 ### Navegación global
 
 - Encabezado fijo: marca Vaqcrow, badge `DEMO`, badge `TESTNET` y, dentro del recorrido guiado heredado (sección 8), nombre del caso y progreso `Paso n de 6`. Fuera de ese recorrido (marketplace, admin, informes, etc.) el encabezado conserva marca y badges sin el stepper de 6 pasos.
-- Navegación primaria del producto completo: `Marketplace`, `Portafolio`, `Billetera`, `Informes`, `Ayuda`; el recorrido guiado heredado usa su propia subnavegación `Caso`, `Evaluación`, `Fondeo`, `Evidencia`. El panel de administración usa una navegación separada (`Gestión de PyMEs`, `Solicitudes`, `Usuarios`).
+- Navegación primaria del producto por roles (bitácora de #379, D9; implementada en la rama de #378): sin sesión, `Explorar PyMEs`, `Cómo funciona`, `Para emprendedores`, `Acerca de` más «Ingresar» y «Crear cuenta»; `INVERSOR`, `Explorar PyMEs`, `Mi portafolio`, `Acerca de` y el menú del avatar (`Mi portafolio`, `Guía del inversor`, `Informes`, `Cerrar sesión`); `PYME`, `Mi campaña`, `Cómo funciona`, `Acerca de` y el menú del avatar (`Mi campaña`, `Guía del emprendedor`, `Cerrar sesión`). El menú muestra avatar, nombre y chip de rol, nunca el email. El recorrido guiado heredado usa su propia subnavegación `Caso`, `Evaluación`, `Fondeo`, `Evidencia`. El panel de administración usa una navegación separada (`Gestión de PyMEs`, `Solicitudes`, `Usuarios`).
 - Acceso secundario: selector de tema `Claro` / `Oscuro` / `Sistema`, estado de Freighter, notificaciones y `ID de demo`.
 - Pie de página: disclosure “No apto para producción” y enlace interno a límites de la demo.
 - En móvil, navegación primaria colapsada; `TESTNET` y el paso actual (cuando aplica) permanecen visibles.
@@ -1371,7 +1376,7 @@ Generate exactly two variants of the selected complete screen within its TARGET_
 | D-09 | Cabeza de toro geométrica/angular como isotipo aprobado, con variantes monocromas morada y blanca. | Integra la referencia provista sin convertir su gradiente en lenguaje general ni inventar un archivo del repositorio. | Aceptada; asset fuente pendiente |
 | D-10 | El producto completo (19 flujos) es la aplicación real descrita por el [[docs/design/claude-design-brief|brief]] y el template de Claude Design: marketplace multi-PyME, registro, detalle y tokenización de PyME, portafolio, billetera, informes, notificaciones, centro de ayuda, guías, panel de administración y Acerca de Vaqcrow; la historia vertical original queda como recorrido guiado dentro de ese producto. | El owner construyó manualmente el diseño real del producto, más amplio que la demo original de una sola PyME; el documento debe reflejar ese inventario en vez de un alcance ficticio. | Aceptada en este diseño |
 | D-11 | HeroUI + Tailwind CSS + React Icons `io5` forman la base de implementación visual. | Separa primitivas accesibles, tokens centralizados e iconografía consistente sin convertir el template o constantes locales en fuentes de producción. | Aceptada; reemplaza la decisión abierta sobre iconos |
-| D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; la autenticación pasa a Supabase Auth (#369) y Auth.js v5 (#134) queda superseded. | Evita fuentes de verdad paralelas y conserva al backend (con RLS) como límite autoritativo de identidad y permisos. | Aceptada para handoff; Supabase Auth implementado en la rama de la Feature #369 (todavía no en `main`; el login llega con #378) |
+| D-12 | Axios, SWR, React Hook Form y Zustand tienen responsabilidades no superpuestas; la autenticación pasa a Supabase Auth (#369) y Auth.js v5 (#134) queda superseded. | Evita fuentes de verdad paralelas y conserva al backend (con RLS) como límite autoritativo de identidad y permisos. | Aceptada para handoff; Supabase Auth implementado en la rama de la Feature #369; el alta, el ingreso y el shell por rol, en la de #378 (Task #379). Ninguna de las dos está todavía en `main` |
 
 > [!warning] Retirado (2026-10-01)
 > Las decisiones D-06, D-07, D-08, D-10 y D-11 se tomaron cuando la ejecución del diseño vivía en Google Stitch y su ledger; esa ejecución quedó retirada (ver §11) y la referencia visual es el template de Claude Design. Se conservan como registro, con su redacción ajustada al nuevo medio.
