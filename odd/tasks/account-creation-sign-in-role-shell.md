@@ -185,7 +185,8 @@ Las decisiones están en `CLAUDE.md`/`AGENTS.md` (commit `5a4225d`) y en los com
   - No alineado (fuera de la superficie de T5):
     - El texto canónico «Demostración con datos simulados» sigue diciendo que la identidad es sintética. Vive en cuatro superficies a la vez (`disclosures.ts`, `DEMO.md` §12, `demo-ui.md` §2/§11 y el brief) y `disclosures.ts` queda fuera de #379; el aviso de `DEMO.md` §12 lo registra como pendiente antes del merge de #369/#378 a `main`.
     - Plantillas `.env.cloud.example` / `.env.docker.example`: los agentes no pueden editar `.env*` (ver «Pendiente del operador»).
-  - Sin marcar: `pnpm run verify` falla en `test:boundaries` por una regresión previa ajena a T5 (ver «Verificación»).
+  - Guarda corregida por el orquestador: `tests/trust-disclosures-canonical-consistency.test.ts` lee ahora `title` + `body` de cada `disclosure(…)` y los une como `${title}. ${body}` (la regresión era de `6553dbd`, de esta misma rama). RED: el `expected [] to have a length of 6` de abajo. GREEN: `pnpm run test:boundaries` → `Tests 152 passed (152)`; `lint:tests` y `typecheck:tests` limpios. Commit: `test: read the builder-made disclosures in the canonical consistency guard`.
+  - Sin marcar todavía: falta reescribir el texto canónico «Demostración con datos simulados» (decisión del owner sobre el texto).
 
 ## Pronóstico de entrega
 
@@ -202,7 +203,7 @@ Corrida final de `pnpm run verify` sobre `859ee81` más la documentación de T5 
 | `test` | `@vaqcrow/contracts` 526/526, `@vaqcrow/domain` 120/120, `@vaqcrow/ai` 107/107, `@vaqcrow/api` 1371/1371; `@vaqcrow/web` 1189/1191 con dos `Test timed out in 5000ms` de jsdom bajo carga en archivos no tocados (`auth-screen.test.tsx` «renders the template's two panels in signup mode», `campaign-workspace.test.tsx` «renders the open panel with no campaign id…»). Aislados: `Tests 51 passed (51)`; la suite web completa vuelta a correr: `Test Files 131 passed (131)`, `Tests 1191 passed (1191)` |
 | `build` | Compila; `/`, `/portfolio`, `/company` estáticas, `/login` y `/signup` dinámicas, `ƒ Proxy (Middleware)` |
 | `boundaries` | `no dependency violations found (628 modules, 2048 dependencies cruised)` |
-| `test:boundaries` | **Falla**: `Tests 1 failed \| 151 passed (152)` — `tests/trust-disclosures-canonical-consistency.test.ts` «finds every canonical disclosure text in the source record» (`expected [] to have a length of 6 but got +0`) |
+| `test:boundaries` | **Falla en esta corrida** (corregido después, ver T5): `Tests 1 failed \| 151 passed (152)` — `tests/trust-disclosures-canonical-consistency.test.ts` «finds every canonical disclosure text in the source record» (`expected [] to have a length of 6 but got +0`) |
 
 > [!warning] Regresión previa de `6553dbd`, fuera de la superficie de T5
 > La unidad 1 de T4 construyó las divulgaciones con `disclosure(id, title, body, banner)`, así que `disclosures.ts` ya no tiene literales `text: "…"`. El test de consistencia los busca con una regex sobre la fuente: encuentra cero, falla el conteo y sus casos «quotes every canonical disclosure verbatim» pasan **vacíos** (sin comparar nada). El texto canónico no cambió (lo fija su test byte a byte en `apps/web`), pero la guarda entre código y documentos está apagada. Se corrige en `tests/trust-disclosures-canonical-consistency.test.ts` (leer `title` + `body`, o importar el registro), fuera de la superficie autorizada de esta delegación.
@@ -211,9 +212,9 @@ Corrida final de `pnpm run verify` sobre `859ee81` más la documentación de T5 
 
 - Agregar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` vacías a `.env.cloud.example` y `.env.docker.example` (los agentes no pueden editar `.env*`).
 - Cargar los valores reales de esas dos variables en Vercel (`production`) y en `.env.cloud`.
-- Observar la entrega de Resend en el primer alta real contra el proyecto remoto (la configuración SMTP del panel sigue pendiente, `environments.md` §13.2).
+- Observar la entrega de Resend en el primer alta real contra el proyecto remoto (el owner configuró el SMTP de Resend en el panel el 2026-10-02; la entrega todavía no se observó).
 - Decidir sobre el `WARN` `auth_leaked_password_protection` del advisor de seguridad de Supabase (opción del panel de Auth; decisión del owner).
 
 ## Próximo paso
 
-Corregir la guarda de `tests/trust-disclosures-canonical-consistency.test.ts` (regresión de `6553dbd`) y cerrar T5; después, PR única de #379 contra la rama de #378.
+Reescribir el texto canónico «Demostración con datos simulados» en sus cuatro superficies (decisión del owner) y cerrar T5; después, PR única de #379 contra la rama de #378.

@@ -198,10 +198,10 @@ No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts
 
 `supabase/config.toml` fija `site_url = "http://localhost:3001"`, `enable_signup = true` y `[auth.email] enable_confirmations = true`; los emails van a Mailpit (§4). No hay nada que configurar a mano.
 
-### 13.2 Proyecto remoto — pasos del owner (pendiente)
+### 13.2 Proyecto remoto — pasos del owner (hechos el 2026-10-02)
 
-> [!todo] Pendiente del owner
-> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. Hasta completarlo, el remoto no envía emails de confirmación con el dominio propio.
+> [!info] Configurado por el owner
+> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. El owner la completó el 2026-10-02, y `GET /auth/v1/settings` del remoto confirma la confirmación de email activa (`mailer_autoconfirm: false`). La entrega real por Resend todavía no se observó: se confirma con el primer alta real contra el remoto.
 
 En el dashboard de Supabase del proyecto de la demo:
 
