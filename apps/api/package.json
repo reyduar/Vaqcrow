@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
+    "@fastify/multipart": "^10.1.2",
     "@stellar/stellar-sdk": "^17.1.0",
     "@supabase/supabase-js": "2.116.0",
     "@vaqcrow/ai": "workspace:*",

@@ -12,6 +12,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
+  ["POST", "/storage/uploads", ["PYME"]],
+  ["DELETE", "/storage/uploads", ["PYME"]],
   ["GET", "/businesses/:businessId/sales-periods", ["PYME", "ADMIN"]],
   ["POST", "/businesses/:businessId/sales-periods", ["PYME"]],
   ["POST", "/assessments", ["ADMIN"]],
@@ -56,6 +58,7 @@ function buildFullApp(auth?: AuthDependency): {
     campaign: stub,
     salesFeed: stub,
     smeRequest: stub,
+    storage: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

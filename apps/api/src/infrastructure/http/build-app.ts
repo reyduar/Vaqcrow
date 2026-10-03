@@ -1,8 +1,10 @@
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
@@ -22,6 +24,8 @@ import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
 import type { SmeRequestRouteDependencies } from "./routes/sme-request.route.js";
 import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
+import { registerStorageRoute } from "./routes/storage.route.js";
+import type { StorageRouteDependencies } from "./routes/storage.route.js";
 
 /**
  * Fastify's own 4xx errors (body parsing, media type, body size, schema
@@ -73,6 +77,7 @@ export function buildApp(dependencies: {
   readonly campaign?: CampaignRouteDependencies | undefined;
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly smeRequest?: SmeRequestRouteDependencies;
+  readonly storage?: StorageRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -94,7 +99,7 @@ export function buildApp(dependencies: {
     const allowedOrigins = [...dependencies.cors.allowedOrigins];
     void app.register(cors, {
       origin: allowedOrigins,
-      methods: ["GET", "POST", "OPTIONS"],
+      methods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowedHeaders: ["authorization", "content-type", "x-correlation-id"],
       exposedHeaders: ["x-correlation-id"],
       credentials: false
@@ -139,6 +144,15 @@ export function buildApp(dependencies: {
   }
   if (dependencies.smeRequest) {
     registerSmeRequestRoute(app, dependencies.smeRequest);
+  }
+  if (dependencies.storage) {
+    // Multipart parsing is only needed by the upload route; registering it here
+    // keeps the browser-to-API byte transport self-contained and caps the file
+    // before the route reads it into memory.
+    void app.register(multipart, {
+      limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 1 }
+    });
+    registerStorageRoute(app, dependencies.storage);
   }
   return app;
 }

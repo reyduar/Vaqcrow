@@ -15,6 +15,7 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
+import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
@@ -138,6 +139,12 @@ const app = buildApp({
     repository: smeRequestRepository,
     salesData: salesDataProvider,
     generateApplicationId: () => parseApplicationId(randomUUID())
+  },
+  // The document/photo transport (#399/T4b): the API validates the bytes and
+  // writes to the private `pyme-documents` bucket with `service_role`.
+  storage: {
+    storage: new SupabaseStorageAdapter(supabase),
+    generateObjectId: () => randomUUID()
   },
   cors: config.cors
 });

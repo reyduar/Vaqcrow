@@ -1,18 +1,27 @@
 begin;
 
-select plan(19);
+select plan(20);
 
 -- Private PyME documents bucket and its storage.objects policies
--- (Feature #398, Task #399 / T4a).
+-- (Feature #398, Task #399 / T4a + T4b review-8f8a47eea77a5f47 R1-001).
+--
+-- The upload transport is API-mediated: the browser sends bytes to the API,
+-- which validates them and writes to Storage with `service_role`. `service_role`
+-- bypasses RLS, so the owner has no direct write path at all: the owner
+-- INSERT/UPDATE/DELETE policies were removed by
+-- 20261003130000_restrict_pyme_documents_to_api_writes.sql. Only the two read
+-- policies remain.
 --
 -- The test owner (`postgres`) has BYPASSRLS, so fixtures are inserted directly
 -- and then the policies are exercised under `set local role authenticated` with
 -- a JWT `sub`, exactly as admin_rls_scope.sql and identity_and_audit.sql do.
 --
--- Limitation: Storage installs `protect_objects_delete` (BEFORE DELETE ... FOR
--- EACH STATEMENT) on storage.objects, so no direct DELETE can run — the owner
--- DELETE policy is asserted to exist in `pg_policies` but is not exercised
--- through SQL. Reads, inserts and updates are exercised directly.
+-- Limitation: Storage installs `protect_objects_delete`
+-- (BEFORE DELETE ... FOR EACH STATEMENT) on storage.objects, so no direct DELETE
+-- can run — the trigger raises 42501 before RLS is consulted. The owner DELETE
+-- policy is asserted to be absent in `pg_policies`, and the SQL-delete refusal
+-- is asserted through the trigger. Deleting an object is a Storage API
+-- operation (U3), never SQL.
 
 -- Bucket definition -----------------------------------------------------------
 
@@ -32,6 +41,8 @@ select is(
   'the bucket only allows PDF/JPEG/PNG'
 );
 
+-- Only the read policies remain; the owner write policies are gone -----------
+
 select is(
   (select count(*)::int from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_owner_read'),
@@ -40,27 +51,27 @@ select is(
 );
 select is(
   (select count(*)::int from pg_policies
-    where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_owner_insert'),
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_admin_read'),
   1,
-  'the owner insert policy exists'
+  'the admin read policy exists'
+);
+select is(
+  (select count(*)::int from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_owner_insert'),
+  0,
+  'the owner insert policy is absent (writes are API-mediated, service_role)'
 );
 select is(
   (select count(*)::int from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_owner_update'),
-  1,
-  'the owner update policy exists'
+  0,
+  'the owner update policy is absent (writes are API-mediated, service_role)'
 );
 select is(
   (select count(*)::int from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_owner_delete'),
-  1,
-  'the owner delete policy exists'
-);
-select is(
-  (select count(*)::int from pg_policies
-    where schemaname = 'storage' and tablename = 'objects' and policyname = 'pyme_documents_admin_read'),
-  1,
-  'the admin read policy exists'
+  0,
+  'the owner delete policy is absent (deletes go through the Storage API)'
 );
 
 -- Fixtures (as the test owner, bypassing RLS) ---------------------------------
@@ -93,7 +104,7 @@ select is(
   'three fixture objects exist before any policy is exercised'
 );
 
--- Owner A: only its own first path segment ------------------------------------
+-- Owner A: reads its own, writes nothing --------------------------------------
 
 set local role authenticated;
 select set_config(
@@ -122,20 +133,13 @@ select is(
   'owner A cannot read owner B''s object'
 );
 
-select lives_ok(
+select throws_ok(
   $$insert into storage.objects (id, bucket_id, name, owner)
     values ('d4444444-4444-4444-8444-444444444444', 'pyme-documents',
             'c1111111-1111-4111-8111-111111111111/cuit/eeee-cuit.pdf',
             'c1111111-1111-4111-8111-111111111111')$$,
-  'owner A can insert under its own first path segment'
-);
-select throws_ok(
-  $$insert into storage.objects (id, bucket_id, name, owner)
-    values ('d5555555-5555-4555-8555-555555555555', 'pyme-documents',
-            'c2222222-2222-4222-8222-222222222222/cuit/ffff-cuit.pdf',
-            'c1111111-1111-4111-8111-111111111111')$$,
   '42501', null,
-  'owner A cannot insert under another owner''s first path segment'
+  'owner A cannot insert even under its own first path segment (no write policy)'
 );
 
 -- A data-modifying CTE must be at the top level of its statement, so the
@@ -146,18 +150,20 @@ with denied as (
   returning 1
 )
 select is(count(*)::int, 0, 'owner A cannot update owner B''s object') from denied;
--- The owner DELETE policy cannot be exercised here: Storage installs
--- `protect_objects_delete` (BEFORE DELETE ... FOR EACH STATEMENT) on
--- storage.objects, so every direct DELETE raises and only the Storage API may
--- delete. The policy's existence is asserted above; no direct-delete behavior
--- is claimed.
+
+with denied as (
+  update storage.objects set metadata = '{"tampered": true}'::jsonb
+  where split_part(name, '/', 1) = 'c1111111-1111-4111-8111-111111111111'
+  returning 1
+)
+select is(count(*)::int, 0, 'owner A cannot update its own object either (no write policy)') from denied;
 
 reset role;
 
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'pyme-documents'),
-  4,
-  'the denied cross-owner writes left the other owner''s rows intact'
+  3,
+  'the denied owner writes left every row intact'
 );
 
 -- ADMIN: reads every object in the bucket, writes nothing ----------------------
@@ -180,7 +186,7 @@ select is(
 );
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'pyme-documents'),
-  4,
+  3,
   'an ADMIN read policy reaches every object in the bucket'
 );
 with denied as (
@@ -191,6 +197,14 @@ with denied as (
 select is(count(*)::int, 0, 'the ADMIN read policy grants no write') from denied;
 
 reset role;
+
+-- Direct DELETE is refused by Storage, whatever the role -----------------------
+
+select throws_ok(
+  $$delete from storage.objects where bucket_id = 'pyme-documents'$$,
+  '42501', 'Direct deletion from storage tables is not allowed. Use the Storage API instead.',
+  'a direct SQL DELETE is refused; deletion must go through the Storage API'
+);
 
 select * from finish();
 
