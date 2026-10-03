@@ -144,7 +144,7 @@ Si el adaptador lanza, el hook registra internamente sólo el nombre del error y
 
 ### 9.8 Email
 
-Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner en el panel el 2026-10-02 según [[docs/architecture/environments|environments.md]] §13; la entrega real todavía no se observó y se confirma con el primer alta real contra el remoto. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), activado por el owner en el panel el 2026-10-03 según [[docs/architecture/environments|environments.md]] §13.2 (antes figuraba el 2026-10-02, pero los logs de Supabase Auth muestran que el primer alta real salió por el mailer por defecto de Supabase); la entrega real por Resend se observó ese mismo día. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
 
 ### 9.9 El lado web (Task #379, rama de la Feature #378)
 

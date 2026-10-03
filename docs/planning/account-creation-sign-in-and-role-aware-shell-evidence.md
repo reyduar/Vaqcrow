@@ -215,3 +215,37 @@ Revisiones RDD:
 > 2. [#438](https://github.com/reyduar/Vaqcrow/issues/438): retirar el recorrido de seis pasos en la misma entrega.
 > 3. Hacer un alta real contra el proyecto remoto: observar la entrega del email de confirmación por Resend y ejercitar ingreso y cierre de sesión, para completar los criterios 1 y 3 (y el criterio 1 de #369).
 > 4. Agregar `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` a `.env.docker.example` (operador) y decidir el `WARN` de leaked password protection.
+
+## Addendum 2026-10-03 — verificación contra el proyecto remoto
+
+> [!info] Fuente y alcance
+> Prueba del owner + logs de Supabase Auth, 2026-10-03, sobre el **preview de Vercel** `https://vaqcrow-a6dmgen8s-reyduars-projects.vercel.app` (rama de la Feature #378 en `c6be7c0`) contra el proyecto Supabase **remoto** real. No es producción ni `main`: nada de #369/#378 está en `main` todavía. Las secciones anteriores quedan como registro histórico; este addendum no las reescribe.
+
+### Qué se verificó
+
+| Paso | Resultado observado |
+|---|---|
+| Primer alta `INVERSOR` (16:03Z) | Usuario y perfil `INVERSOR` creados, `confirmation_sent_at` presente, pero **el correo no llegó**. `auth_logs`: `mail.send` con `mail_from: noreply@mail.app.supabase.io`, el mailer por defecto de Supabase: el SMTP propio (Resend) no estaba activo. El owner lo activó y borró el usuario sin confirmar. |
+| Segunda alta `INVERSOR` | Correo de confirmación entregado por Resend con la plantilla «Confirm signup» (de `docs/design/template/emails/Vaqcrow Email Confirmar cuenta.html`). El logo apunta a `https://vaqcrow-web-nine.vercel.app/vaqcrow-isotipo.png`, que da 404 hasta que #378 llegue a `main`: por ahora el correo sale sin logo. |
+| Confirmación | Enlace → `GET /verify` 303 (16:41:46Z) → intercambio PKCE 200 (16:41:48Z). |
+| Ingreso `INVERSOR` | `POST /token` con contraseña 200 (16:42:10Z); llegó a `/portfolio` con el header de inversor de D9 y el menú del avatar (nombre y chip INVERSOR, sin email). |
+| Cierre de sesión | Volvió al header público con «Ingresar» / «Crear cuenta». |
+| Alta, confirmación e ingreso `PYME` | Correo → confirmación → `/company` con el menú del avatar de PyME (chip PYME; Mi campaña, Guía del emprendedor, Cerrar sesión); «Registrar mi PyME» presente (tapado por el menú abierto en la captura). |
+
+### Criterios que cierra
+
+- **Criterio 1** (alta respaldada por Supabase Auth real): pasa a ✅ **CUMPLIDO** — el alta con selector de rol corrió contra el remoto para los dos roles, con confirmación por correo real.
+- **Criterio 3** (el cierre termina la sesión real): pasa a ✅ **CUMPLIDO** — ingreso y cierre de sesión contra el remoto; las redirecciones de páginas protegidas siguen probadas por el smoke de Playwright (no se re-probaron a mano en el preview).
+- **Criterio 5** sigue ⚠️ **PARCIAL**: la accesibilidad (anillo de foco, 44 px, movimiento reducido, contraste AA) no se midió en esta prueba.
+
+### Corrección del SMTP
+
+Este documento, la bitácora y `environments.md` §13.2 decían que el owner había configurado el SMTP de Resend el 2026-10-02. **Era incorrecto**: los logs del primer alta real muestran el mailer por defecto de Supabase. El SMTP propio se activó el 2026-10-03 y la entrega real por Resend se observó ese mismo día.
+
+### Defecto observado
+
+Una cuenta `PYME` ingresó con «Soy inversor» seleccionado y llegó a `/company`. El owner lo decidió como D14 (el selector tiene que coincidir con el rol verificado; si no, el ingreso se rechaza y no queda sesión); se implementa en la rama `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell-02-follow-ups`.
+
+### Condiciones antes de `main` que siguen abiertas
+
+La condición 3 de §10 queda cumplida con esta prueba. Siguen abiertas la 1 (R1-002), la 2 (#438) y la 4 (`.env.docker.example` y el `WARN` de leaked password protection).

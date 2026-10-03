@@ -267,6 +267,24 @@ Rama `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_ro
 - `docs/planning/demo-tasks-list.md`: #379 y #380 tachadas con «Rama e implementación»; #381 con su rama y el documento; #378 sigue abierta (`In progress`).
 - Commit: `docs(planning): record the evidence for account creation, sign-in and the role-aware shell`.
 
+## Verificación contra el remoto (2026-10-03)
+
+Fuente: prueba del owner + logs de Supabase Auth, en el preview de Vercel `https://vaqcrow-a6dmgen8s-reyduars-projects.vercel.app` (rama de #378 en `c6be7c0`) contra el proyecto Supabase remoto real. No es producción ni `main`.
+
+- Primer alta `INVERSOR` (16:03Z): usuario y perfil creados, `confirmation_sent_at` presente, **sin correo**. `auth_logs`: `mail.send` con `mail_from: noreply@mail.app.supabase.io` → mailer por defecto de Supabase; el SMTP propio no estaba activo. El owner lo activó el 2026-10-03 y borró el usuario sin confirmar.
+- Segunda alta `INVERSOR`: correo entregado por Resend (plantilla «Confirm signup» de `docs/design/template/emails/Vaqcrow Email Confirmar cuenta.html`; el logo `https://vaqcrow-web-nine.vercel.app/vaqcrow-isotipo.png` da 404 hasta que #378 llegue a `main`). Enlace → `GET /verify` 303 (16:41:46Z), PKCE 200 (16:41:48Z), `POST /token` 200 (16:42:10Z) → `/portfolio` con header de inversor (D9) y menú del avatar con nombre y chip INVERSOR, sin email. Cerrar sesión → header público con «Ingresar» / «Crear cuenta».
+- Alta `PYME` → correo → confirmación → `/company` con menú de PyME (chip PYME; Mi campaña, Guía del emprendedor, Cerrar sesión) y «Registrar mi PyME».
+- Defecto: una cuenta `PYME` ingresó con «Soy inversor» → D14 (unidad 2 de abajo).
+- Corrección: la bitácora y los documentos decían que el SMTP de Resend quedó configurado el 2026-10-02; los logs prueban que no. Alineados `CLAUDE.md`/`AGENTS.md`, `environments.md` §13.2 (más la nota de cómo probar auth en un preview de Vercel), `DEMO.md`, `identity-and-rls-boundaries.md` §9 y un addendum fechado en los documentos de evidencia de #369 y #378 (sin reescribir sus resultados históricos). Cierra el criterio 1 de #369 y los criterios 1 y 3 de #378; el 5 de #378 sigue parcial (accesibilidad sin medir).
+
+## Seguimientos de #378 (rama `…-02-follow-ups`)
+
+Rama `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell-02-follow-ups`, apilada sobre la rama de #378 (`c6be7c0`); `1d4a539` registra D14. Ruta: delegada (un writer acotado, tres unidades).
+
+- [x] **U1 — Documentación de la verificación remota y corrección del SMTP.** Sin RED/GREEN (documentación pasiva; chequeo estructural más `pnpm run test:boundaries`). Commit: `docs: record the remote auth verification and correct the SMTP date`.
+- [ ] **U2 — D14: el selector del ingreso tiene que coincidir con el rol verificado.**
+- [ ] **U3 — Fidelidad del header con el template.**
+
 ## Pronóstico de entrega
 
 Unas 1.500 líneas autoradas entre las cinco tareas, por encima del presupuesto de ~400 por PR. Estrategia elegida por el owner (2026-10-02): **`single-pr`** — una sola PR de #379 contra la rama de #378, con un commit por unidad de trabajo; las revisiones RDD se acotan por commit.
@@ -293,7 +311,7 @@ Corrida final de `pnpm run verify` sobre `5eac715` (2026-10-03, orquestador, ár
 
 - `.env.cloud.example`: el owner agregó las variables web de Supabase (commit `chore(env): add the web Supabase variables to the cloud template`, sin lectura de agentes). Falta `.env.docker.example` (los agentes no pueden editar `.env*`).
 - Cargar los valores reales de esas dos variables en Vercel (`production`) y en `.env.cloud`.
-- Observar la entrega de Resend en el primer alta real contra el proyecto remoto (el owner configuró el SMTP de Resend en el panel el 2026-10-02; la entrega todavía no se observó).
+- ~~Observar la entrega de Resend en el primer alta real contra el proyecto remoto~~ — hecho el 2026-10-03 (ver «Verificación contra el remoto»); el SMTP propio se activó ese día, no el 2026-10-02.
 - Decidir sobre el `WARN` `auth_leaked_password_protection` del advisor de seguridad de Supabase (opción del panel de Auth; decisión del owner).
 
 ## Próximo paso
