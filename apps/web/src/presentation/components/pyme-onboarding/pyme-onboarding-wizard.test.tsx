@@ -1,12 +1,56 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
+import { FakeAiEvaluation } from "@/test/fake-ai-evaluation";
 import { FakeKyc } from "@/test/fake-kyc";
+import { FakeUpload } from "@/test/fake-upload";
+import { FakeWallet } from "@/test/fake-wallet";
 import { PymeOnboardingWizard } from "./pyme-onboarding-wizard";
 
 function renderWizard(fake = new FakeKyc()) {
   const onBack = vi.fn();
   render(<PymeOnboardingWizard kyc={fake} onBack={onBack} />);
   return { fake, onBack };
+}
+
+function pdfFile(name: string): File {
+  return new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], name, { type: "application/pdf" });
+}
+
+async function uploadRequiredDocuments() {
+  for (const title of ["Declaraciones de ventas", "Constancia de CUIT", "Estatuto"]) {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(title), { target: { files: [pdfFile(`${title}.pdf`)] } });
+    });
+  }
+}
+
+async function advanceToRegistration(kyc = new FakeKyc()) {
+  const release = kyc.holdNextVerify();
+  startVerification();
+  await act(async () => {
+    release();
+  });
+  await screen.findByText("KYC aprobado · SIMULADO");
+  fireEvent.click(screen.getByRole("button", { name: "Siguiente paso" }));
+  return kyc;
+}
+
+const SAVED_REQUEST: SmeRequest = {
+  smeReference: "30712345678",
+  declaredTotalArs: 27138250,
+  periodStart: "2026-01",
+  periodEnd: "2026-08",
+  simuladoLabel: "SIMULADO"
+};
+
+function gateway(overrides: Partial<SmeRequestGateway> = {}): SmeRequestGateway {
+  return {
+    submit: vi.fn().mockResolvedValue({ applicationId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10", request: SAVED_REQUEST }),
+    load: vi.fn(),
+    ...overrides
+  };
 }
 
 function selectDocument(value: "person_a" | "person_b") {
@@ -209,5 +253,60 @@ describe("PymeOnboardingWizard KYC state machine", () => {
 
     expect(screen.getByLabelText("Documento")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
+
+describe("PymeOnboardingWizard steps 3 and 4", () => {
+  it("advances from a valid step-2 submit to the busy evaluation and then to the review", async () => {
+    const kyc = new FakeKyc();
+    const ai = new FakeAiEvaluation();
+    const releaseAi = ai.holdNextEvaluate();
+    render(
+      <PymeOnboardingWizard
+        kyc={kyc}
+        upload={new FakeUpload()}
+        ai={ai}
+        wallet={new FakeWallet({ publicKey: "GBXK1234567890ABCD7Q2M" })}
+        gateway={gateway()}
+        onBack={vi.fn()}
+      />
+    );
+
+    await advanceToRegistration(kyc);
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    await uploadRequiredDocuments();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar a evaluación AI" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Evaluación AI" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Analizando tu solicitud…");
+    expect(ai.calls).toEqual([{ smeReference: "30712345678", sales: expect.any(Array) }]);
+
+    await act(async () => {
+      releaseAi();
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Continuar/ }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Qué pasa ahora" })).toBeInTheDocument();
+    const current = within(screen.getByRole("list", { name: "Pasos del registro" })).getByRole("listitem", {
+      current: "step"
+    });
+    expect(within(current).getByText("Revisión humana")).toBeInTheDocument();
+  });
+
+  it("returns to step 2 with Corregir datos and keeps the loaded values", async () => {
+    const kyc = new FakeKyc();
+    const ai = new FakeAiEvaluation();
+    render(<PymeOnboardingWizard kyc={kyc} upload={new FakeUpload()} ai={ai} wallet={new FakeWallet()} onBack={vi.fn()} />);
+
+    await advanceToRegistration(kyc);
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    await uploadRequiredDocuments();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar a evaluación AI" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: /Corregir datos/ }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Registrá tu PyME" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Razón social")).toHaveValue("Panadería Horizonte SRL");
   });
 });

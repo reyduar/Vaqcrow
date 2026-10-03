@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { IconType } from "react-icons";
 import {
   IoArrowBackOutline,
@@ -27,11 +27,26 @@ import {
   type KycPhase,
   type KycPrimaryIcon
 } from "@/application/pyme-onboarding/kyc-step";
+import { type RegistrationValues } from "@/application/pyme-onboarding/registration-step";
+import { smeReferenceFor } from "@/application/pyme-onboarding/review-step";
+import type { AiEvaluationInput, AiEvaluationPort } from "@/application/ports/ai-evaluation-port";
 import type { KycDocument, KycPort, KycResult } from "@/application/ports/kyc-port";
+import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { UploadPort } from "@/application/ports/upload-port";
+import type { WalletPort } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
+import { SimulatedAiEvaluationAdapter } from "@/infrastructure/ai-evaluation/simulated-ai-evaluation-adapter";
+import { createSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
+import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { FOCUS_RING } from "../auth-field";
+import { AiStep } from "./ai-step";
 import { RegistrationStep } from "./registration-step";
+import { ReviewStep } from "./review-step";
+
+/** Module-scope defaults stay stable across renders, like the other workspaces. */
+const defaultAi: AiEvaluationPort = new SimulatedAiEvaluationAdapter();
+const defaultWallet: WalletPort = new FreighterWallet();
+const defaultGateway = createSmeRequestGateway(process.env["NEXT_PUBLIC_API_BASE_URL"]);
 
 const PRIMARY_ICONS: Readonly<Record<KycPrimaryIcon, IconType>> = {
   scan: IoScanOutline,
@@ -46,6 +61,12 @@ export interface PymeOnboardingWizardProps {
   readonly kyc: KycPort;
   /** Upload capability for step 2; optional so tests can inject a double. */
   readonly upload?: UploadPort;
+  /** AI evaluation for step 3; optional so tests can inject a double. */
+  readonly ai?: AiEvaluationPort;
+  /** Wallet capability for step 4; optional so tests can inject a double. */
+  readonly wallet?: WalletPort;
+  /** SME-request engine for step 4's send; `null` forces «no backend». */
+  readonly gateway?: SmeRequestGateway | null;
   /** «Volver» returns to the `/company` dashboard skeleton; the URL never changes. */
   readonly onBack: () => void;
 }
@@ -69,13 +90,21 @@ export interface PymeOnboardingWizardProps {
  * so this screen uses native controls with the repo's Tailwind tokens (the
  * `AuthField` deviation, recorded in `odd/tasks/account-creation-sign-in-role-shell.md`).
  */
-export function PymeOnboardingWizard({ kyc, upload, onBack }: PymeOnboardingWizardProps) {
+export function PymeOnboardingWizard({
+  kyc,
+  upload,
+  ai = defaultAi,
+  wallet = defaultWallet,
+  gateway = defaultGateway,
+  onBack
+}: PymeOnboardingWizardProps) {
   const titleId = useId();
   const documentId = useId();
   const [stepIndex, setStepIndex] = useState(0);
   const [document, setDocument] = useState<KycDocument>("person_a");
   const [phase, setPhase] = useState<KycPhase>("idle");
   const [result, setResult] = useState<KycResult | null>(null);
+  const [registration, setRegistration] = useState<RegistrationValues | null>(null);
   const requestRef = useRef(0);
 
   const outcome = result?.outcome ?? null;
@@ -83,6 +112,10 @@ export function PymeOnboardingWizard({ kyc, upload, onBack }: PymeOnboardingWiza
   const done = kycResultCopy(phase, result);
   const steps = wizardStepStates(stepIndex);
   const PrimaryIcon = PRIMARY_ICONS[kycPrimaryIcon(phase, outcome)];
+  const aiInput = useMemo<AiEvaluationInput | null>(
+    () => (registration ? { smeReference: smeReferenceFor(registration), sales: registration.sales } : null),
+    [registration]
+  );
 
   async function verify() {
     if (busy) return;
@@ -291,9 +324,33 @@ export function PymeOnboardingWizard({ kyc, upload, onBack }: PymeOnboardingWiza
           </p>
         </aside>
         </div>
-      ) : (
-        <RegistrationStep upload={upload} />
-      )}
+      ) : null}
+
+      {stepIndex >= 1 ? (
+        <div hidden={stepIndex !== 1}>
+          <RegistrationStep
+            upload={upload}
+            onSubmit={(values) => {
+              setRegistration(values);
+              setStepIndex(2);
+            }}
+          />
+        </div>
+      ) : null}
+
+      {stepIndex === 2 && aiInput ? (
+        <AiStep port={ai} input={aiInput} onContinue={() => setStepIndex(3)} onCorrect={() => setStepIndex(1)} />
+      ) : null}
+
+      {stepIndex === 3 && registration ? (
+        <ReviewStep
+          wallet={wallet}
+          gateway={gateway}
+          values={registration}
+          onEdit={() => setStepIndex(1)}
+          onDone={onBack}
+        />
+      ) : null}
     </div>
   );
 }

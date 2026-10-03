@@ -98,16 +98,28 @@ export function documentUploadErrorMessage(code: UploadErrorCode): string {
   return DOCUMENT_UPLOAD_COPY.errors[code];
 }
 
+/**
+ * What produced the current error. `validation` is a local reject (nothing was
+ * sent, so there is nothing to retry); `upload` and `remove` are failures of a
+ * real call, which the person can retry.
+ */
+export type UploadErrorKind = "validation" | "upload" | "remove";
+
 export interface DocumentSlotState {
   readonly phase: UploadPhase;
   /** Transport progress 0–100 while `phase === "uploading"`. */
   readonly progress: number;
   readonly document: UploadedDocument | null;
   readonly error: UploadErrorCode | null;
-  /** Whether the current error came from an upload or a removal attempt. */
-  readonly errorKind: "upload" | "remove" | null;
+  /** Whether the current error came from validation, an upload or a removal. */
+  readonly errorKind: UploadErrorKind | null;
   /** Name of the file being uploaded, for the progress label. */
   readonly pendingFileName: string | null;
+}
+
+/** A retry control only acts on a real failure, never on a local reject. */
+export function retryableError(kind: UploadErrorKind | null): boolean {
+  return kind === "upload" || kind === "remove";
 }
 
 export type DocumentsState = Readonly<Record<DocumentSlotKind, DocumentSlotState>>;
@@ -119,6 +131,8 @@ export interface PhotoState {
   readonly progress: number;
   readonly document: UploadedDocument | null;
   readonly error: UploadErrorCode | null;
+  /** Whether the current error came from validation, an upload or a removal. */
+  readonly errorKind: UploadErrorKind | null;
   /** Object URL for the local preview; `null` when the runtime has none. */
   readonly previewUrl: string | null;
   /** Name of the file being uploaded, for the progress label. */

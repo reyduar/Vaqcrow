@@ -14,6 +14,7 @@ import {
   formatFileSize,
   missingDocumentKinds,
   movePhoto,
+  retryableError,
   submitGateMessage,
   validateUploadFile,
   type DocumentsState
@@ -175,5 +176,14 @@ describe("DOCUMENT_UPLOAD_COPY", () => {
     expect(documentUploadErrorMessage("network")).toBe(
       "No hay conexión con el servidor. Revisá tu conexión y volvé a intentar."
     );
+  });
+});
+
+describe("retryableError", () => {
+  it("offers a retry for an upload or remove failure, never for a local validation reject", () => {
+    expect(retryableError("upload")).toBe(true);
+    expect(retryableError("remove")).toBe(true);
+    expect(retryableError("validation")).toBe(false);
+    expect(retryableError(null)).toBe(false);
   });
 });

@@ -22,6 +22,7 @@ import {
   emptyDocumentSlotState,
   formatFileSize,
   movePhoto,
+  retryableError,
   validateUploadFile,
   type DocumentSlotKind,
   type DocumentSlotState,
@@ -131,10 +132,22 @@ export function DocumentUpload({
   }
 
   function chooseDocument(kind: DocumentSlotKind, file: File): void {
+    // R3-005: replacing while an upload is in flight would strand the earlier
+    // object, so the control is disabled while uploading and this guard keeps a
+    // programmatic change from slipping through.
+    if (documents[kind].phase === "uploading") return;
     const token = (requests.current[kind] += 1);
     const validation = validateUploadFile(file);
     if (!validation.ok) {
-      updateSlot(kind, { ...emptyDocumentSlotState(), phase: "error", error: validation.code, errorKind: "upload" });
+      // R3-003: a locally rejected file is not retryable, and forgetting the
+      // remembered file stops a stale valid file from being re-uploaded later.
+      delete lastFiles.current[kind];
+      updateSlot(kind, {
+        ...emptyDocumentSlotState(),
+        phase: "error",
+        error: validation.code,
+        errorKind: "validation"
+      });
       return;
     }
     lastFiles.current[kind] = file;
@@ -192,6 +205,7 @@ export function DocumentUpload({
       void removeDocument(kind);
       return;
     }
+    if (slot.errorKind !== "upload") return;
     const file = lastFiles.current[kind];
     if (file) chooseDocument(kind, file);
   }
@@ -205,13 +219,31 @@ export function DocumentUpload({
     if (!validation.ok) {
       onPhotosChange((current) => [
         ...current,
-        { id, phase: "error", progress: 0, document: null, error: validation.code, previewUrl, pendingFileName: null }
+        {
+          id,
+          phase: "error",
+          progress: 0,
+          document: null,
+          error: validation.code,
+          errorKind: "validation",
+          previewUrl,
+          pendingFileName: null
+        }
       ]);
       return;
     }
     onPhotosChange((current) => [
       ...current,
-      { id, phase: "uploading", progress: 0, document: null, error: null, previewUrl, pendingFileName: file.name }
+      {
+        id,
+        phase: "uploading",
+        progress: 0,
+        document: null,
+        error: null,
+        errorKind: null,
+        previewUrl,
+        pendingFileName: file.name
+      }
     ]);
 
     void upload
@@ -234,10 +266,18 @@ export function DocumentUpload({
                     progress: 100,
                     document: { path: result.path, name: result.name, size: result.size, contentType: result.contentType },
                     error: null,
+                    errorKind: null,
                     pendingFileName: null
                   };
                 }
-                return { ...photo, phase: "error" as const, progress: 0, error: result.code, pendingFileName: null };
+                return {
+                  ...photo,
+                  phase: "error" as const,
+                  progress: 0,
+                  error: result.code,
+                  errorKind: "upload" as const,
+                  pendingFileName: null
+                };
               })
             : current
         );
@@ -245,11 +285,20 @@ export function DocumentUpload({
   }
 
   function retryPhoto(id: string): void {
+    const current = photos.find((candidate) => candidate.id === id);
+    if (!current) return;
+    if (current.errorKind === "remove") {
+      void removePhoto(id);
+      return;
+    }
+    if (current.errorKind !== "upload") return;
     const file = lastPhotoFiles.current.get(id);
     if (!file || !validateUploadFile(file).ok) return;
-    onPhotosChange((current) =>
-      current.map((photo) =>
-        photo.id === id ? { ...photo, phase: "uploading", progress: 0, error: null, pendingFileName: file.name } : photo
+    onPhotosChange((photosState) =>
+      photosState.map((photo) =>
+        photo.id === id
+          ? { ...photo, phase: "uploading", progress: 0, error: null, errorKind: null, pendingFileName: file.name }
+          : photo
       )
     );
     void upload
@@ -272,22 +321,58 @@ export function DocumentUpload({
                     progress: 100,
                     document: { path: result.path, name: result.name, size: result.size, contentType: result.contentType },
                     error: null,
+                    errorKind: null,
                     pendingFileName: null
                   };
                 }
-                return { ...photo, phase: "error" as const, progress: 0, error: result.code, pendingFileName: null };
+                return {
+                  ...photo,
+                  phase: "error" as const,
+                  progress: 0,
+                  error: result.code,
+                  errorKind: "upload" as const,
+                  pendingFileName: null
+                };
               })
             : current
         );
       });
   }
 
-  function removePhoto(id: string): void {
+  async function removePhoto(id: string): Promise<void> {
     const photo = photos.find((candidate) => candidate.id === id);
-    lastPhotoFiles.current.delete(id);
-    onPhotosChange((current) => current.filter((candidate) => candidate.id !== id));
-    revokePreviewUrl(photo?.previewUrl ?? null);
-    if (photo?.document) void upload.removeDocument(photo.document.path);
+    if (!photo) return;
+    if (!photo.document) {
+      // Nothing is stored yet (uploading/validation/upload error): dropping the
+      // row cancels it. A photo being uploaded cannot be removed from the UI.
+      lastPhotoFiles.current.delete(id);
+      onPhotosChange((current) => current.filter((candidate) => candidate.id !== id));
+      revokePreviewUrl(photo.previewUrl);
+      return;
+    }
+    const result = await upload.removeDocument(photo.document.path);
+    if (result.ok) {
+      lastPhotoFiles.current.delete(id);
+      onPhotosChange((current) => current.filter((candidate) => candidate.id !== id));
+      revokePreviewUrl(photo.previewUrl);
+      return;
+    }
+    // R3-002: keep the photo (no silent orphan) and surface the same
+    // failure/retry the document slots use.
+    onPhotosChange((current) =>
+      current.map((candidate) =>
+        candidate.id === id
+          ? {
+              ...candidate,
+              phase: "error" as const,
+              progress: 0,
+              error: result.code,
+              errorKind: "remove" as const,
+              pendingFileName: null
+            }
+          : candidate
+      )
+    );
   }
 
   function movePhotoById(id: string, direction: MoveDirection): void {
@@ -338,7 +423,7 @@ export function DocumentUpload({
               {state.phase === "uploading" ? (
                 <Progress name={state.pendingFileName ?? ""} progress={state.progress} />
               ) : null}
-              {state.phase === "uploaded" && state.document ? (
+              {state.document && state.phase !== "uploading" ? (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
                   <IoCheckmarkCircleOutline aria-hidden="true" focusable="false" className="text-trust-success" />
                   <span className="font-medium text-text-primary">{state.document.name}</span>
@@ -366,17 +451,21 @@ export function DocumentUpload({
                   accept={ACCEPT_ATTRIBUTE}
                   aria-label={slot.title}
                   aria-describedby={describedBy || undefined}
+                  disabled={state.phase === "uploading"}
                   onChange={onFileChange(slot.kind)}
                   className="peer sr-only"
                 />
                 <label
                   htmlFor={inputId(slot.kind)}
-                  className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-control border border-control bg-canvas px-3 text-[13px] font-semibold text-text-primary hover:bg-page-surface peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus-ring"
+                  aria-disabled={state.phase === "uploading"}
+                  className={`inline-flex h-11 items-center gap-1.5 rounded-control border border-control bg-canvas px-3 text-[13px] font-semibold text-text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus-ring ${
+                    state.phase === "uploading" ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-page-surface"
+                  }`}
                 >
                   <IoCloudUploadOutline aria-hidden="true" focusable="false" className="text-[16px]" />
                   {state.document ? DOCUMENT_UPLOAD_COPY.replace : DOCUMENT_UPLOAD_COPY.chooseFile}
                 </label>
-                {state.phase === "error" ? (
+                {state.phase === "error" && retryableError(state.errorKind) ? (
                   <button type="button" onClick={() => retryDocument(slot.kind)} className={`${ACTION_BUTTON} ${FOCUS_RING}`}>
                     <IoRefreshOutline aria-hidden="true" focusable="false" className="text-[16px]" />
                     {DOCUMENT_UPLOAD_COPY.retry}
@@ -426,16 +515,20 @@ export function DocumentUpload({
                 {photo.phase === "error" && photo.error ? (
                   <div className="flex flex-col gap-1.5">
                     <span role="alert" className="text-[12px] font-medium text-trust-critical">
-                      {documentUploadErrorMessage(photo.error)}
+                      {photo.errorKind === "remove"
+                        ? DOCUMENT_UPLOAD_COPY.removeFailed
+                        : documentUploadErrorMessage(photo.error)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => retryPhoto(photo.id)}
-                      className={`${ACTION_BUTTON} w-full justify-center ${FOCUS_RING}`}
-                    >
-                      <IoRefreshOutline aria-hidden="true" focusable="false" className="text-[16px]" />
-                      {DOCUMENT_UPLOAD_COPY.retry}
-                    </button>
+                    {retryableError(photo.errorKind) ? (
+                      <button
+                        type="button"
+                        onClick={() => retryPhoto(photo.id)}
+                        className={`${ACTION_BUTTON} w-full justify-center ${FOCUS_RING}`}
+                      >
+                        <IoRefreshOutline aria-hidden="true" focusable="false" className="text-[16px]" />
+                        {DOCUMENT_UPLOAD_COPY.retry}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -465,8 +558,9 @@ export function DocumentUpload({
                   <button
                     type="button"
                     aria-label={DOCUMENT_UPLOAD_COPY.removePhoto(index + 1)}
-                    onClick={() => removePhoto(photo.id)}
-                    className={`grid h-11 w-11 place-items-center rounded-control border border-control bg-transparent text-trust-critical hover:bg-canvas ${FOCUS_RING}`}
+                    disabled={photo.phase === "uploading"}
+                    onClick={() => void removePhoto(photo.id)}
+                    className={`grid h-11 w-11 place-items-center rounded-control border border-control bg-transparent text-trust-critical hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
                   >
                     <IoTrashOutline aria-hidden="true" focusable="false" className="text-[16px]" />
                   </button>

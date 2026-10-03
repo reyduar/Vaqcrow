@@ -177,3 +177,119 @@ describe("DocumentUpload photos", () => {
     expect(upload.removes).toEqual(["photo/local.jpg"]);
   });
 });
+
+describe("DocumentUpload remove failures (R3-001/R3-002)", () => {
+  it("keeps the document, shows the remove message and retries the delete (R3-001)", async () => {
+    const upload = new FakeUpload();
+    renderUpload(upload);
+
+    await chooseDocument("Constancia de CUIT", file("cuit.pdf", "application/pdf"));
+    await screen.findByText("cuit.pdf");
+
+    upload.failNext("unavailable");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Quitar" }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo quitar el archivo. Probá de nuevo.");
+    expect(screen.getByText("cuit.pdf")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    });
+
+    await waitFor(() => expect(screen.queryByText("cuit.pdf")).not.toBeInTheDocument());
+    expect(upload.removes).toEqual(["cuit/cuit.pdf", "cuit/cuit.pdf"]);
+  });
+
+  it("keeps the photo, shows the remove message and retries the delete (R3-002)", async () => {
+    const upload = new FakeUpload();
+    renderUpload(upload);
+
+    await addPhoto(file("local.jpg", "image/jpeg"));
+    expect(photoItems()).toHaveLength(1);
+
+    upload.failNext("network");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Quitar foto 1" }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo quitar el archivo. Probá de nuevo.");
+    expect(photoItems()).toHaveLength(1);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    });
+
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(upload.removes).toEqual(["photo/local.jpg", "photo/local.jpg"]);
+  });
+});
+
+describe("DocumentUpload retry control (R3-003)", () => {
+  it("does not render Reintentar for a locally rejected file", async () => {
+    renderUpload();
+
+    await chooseDocument("Declaraciones de ventas", file("notas.txt", "text/plain"));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Formato no admitido. Usá PDF, JPG o PNG.");
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+  });
+
+  it("forgets a remembered file after a later local rejection, so it cannot be re-uploaded silently", async () => {
+    const upload = new FakeUpload();
+    upload.failNext("unavailable");
+    renderUpload(upload);
+
+    await chooseDocument("Constancia de CUIT", file("a.pdf", "application/pdf"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo subir el archivo. Probá de nuevo.");
+
+    await chooseDocument("Constancia de CUIT", file("b.txt", "text/plain"));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Formato no admitido. Usá PDF, JPG o PNG.");
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+    expect(upload.uploads).toHaveLength(1);
+    expect(upload.uploads[0]?.file.name).toBe("a.pdf");
+  });
+
+  it("still offers Reintentar for an upload failure and re-uploads the remembered file", async () => {
+    const upload = new FakeUpload();
+    upload.failNext("unavailable");
+    renderUpload(upload);
+
+    await chooseDocument("Constancia de CUIT", file("cuit.pdf", "application/pdf"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo subir el archivo. Probá de nuevo.");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    });
+
+    expect(await screen.findByText("cuit.pdf")).toBeInTheDocument();
+    expect(upload.uploads.map((request) => request.file.name)).toEqual(["cuit.pdf", "cuit.pdf"]);
+  });
+});
+
+describe("DocumentUpload in-flight replacement (R3-005)", () => {
+  it("disables the file control while an upload is in flight, so the earlier object is not orphaned", async () => {
+    const upload = new FakeUpload();
+    const release = upload.holdNextUpload();
+    renderUpload(upload);
+
+    await chooseDocument("Constancia de CUIT", file("a.pdf", "application/pdf"));
+    expect(screen.getByLabelText("Constancia de CUIT")).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Constancia de CUIT"), {
+        target: { files: [file("b.pdf", "application/pdf")] }
+      });
+    });
+
+    await act(async () => {
+      release();
+    });
+
+    expect(await screen.findByText("a.pdf")).toBeInTheDocument();
+    expect(upload.uploads).toHaveLength(1);
+    expect(upload.uploads[0]?.file.name).toBe("a.pdf");
+  });
+});
