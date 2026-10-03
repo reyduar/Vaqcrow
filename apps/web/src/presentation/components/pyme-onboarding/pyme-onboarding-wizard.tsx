@@ -30,6 +30,7 @@ import {
 import type { KycDocument, KycPort, KycResult } from "@/application/ports/kyc-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { FOCUS_RING } from "../auth-field";
+import { RegistrationStep } from "./registration-step";
 
 const PRIMARY_ICONS: Readonly<Record<KycPrimaryIcon, IconType>> = {
   scan: IoScanOutline,
@@ -48,11 +49,16 @@ export interface PymeOnboardingWizardProps {
 
 /**
  * The PyME registration wizard, rendered inside `/company` with no route of
- * its own (owner decision; `docs/design/demo-ui.md` §4). This unit (T1) ships
- * the shell — «Volver», the four-step stepper and step 1 «Verificación de
- * identidad» — with the KYC verification behind `KycPort`. Steps 2–4 are
- * later units; «Siguiente paso» is deliberately a no-op here rather than a
- * half-built step 2 with invented copy.
+ * its own (owner decision; `docs/design/demo-ui.md` §4). T1 shipped the shell
+ * — «Volver», the four-step stepper and step 1 «Verificación de identidad» —
+ * with the KYC verification behind `KycPort`. T2 adds step 2 «Registrá tu
+ * PyME»: an approved KYC's «Siguiente paso» advances `stepIndex`, and the
+ * stepper re-renders from `wizardStepStates(stepIndex)` so step 1 shows done
+ * and step 2 carries `aria-current="step"`. Steps 3–4 are later units.
+ *
+ * «Volver» stays visible on step 2 too. Registered deviation: the template
+ * only draws it on the KYC step, but this wizard has no route of its own, so
+ * hiding it would trap the person inside step 2 with no way back to `/company`.
  *
  * Copy is verbatim from `Vaqcrow Onboarding PyME.dc.html`. The 52 px CTAs and
  * the 48 px native `select` follow the template; the shared `Button`/`Select`
@@ -63,6 +69,7 @@ export interface PymeOnboardingWizardProps {
 export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps) {
   const titleId = useId();
   const documentId = useId();
+  const [stepIndex, setStepIndex] = useState(0);
   const [document, setDocument] = useState<KycDocument>("person_a");
   const [phase, setPhase] = useState<KycPhase>("idle");
   const [result, setResult] = useState<KycResult | null>(null);
@@ -71,7 +78,7 @@ export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps)
   const outcome = result?.outcome ?? null;
   const busy = phase === "busy";
   const done = kycResultCopy(phase, result);
-  const steps = wizardStepStates(0);
+  const steps = wizardStepStates(stepIndex);
   const PrimaryIcon = PRIMARY_ICONS[kycPrimaryIcon(phase, outcome)];
 
   async function verify() {
@@ -103,7 +110,7 @@ export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps)
     const action = kycPrimaryAction(phase, outcome);
     if (action === "verify") void verify();
     else if (action === "retry") chooseAnother();
-    // "next": step 2 is a later unit; the no-op keeps T1 bounded and invents no copy.
+    else setStepIndex(1);
   }
 
   function onSecondary() {
@@ -167,7 +174,8 @@ export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps)
         </ol>
       </div>
 
-      <div className="flex flex-wrap items-start justify-center gap-8">
+      {stepIndex === 0 ? (
+        <div className="flex flex-wrap items-start justify-center gap-8">
         <section aria-labelledby={titleId} className="flex max-w-[720px] min-w-0 flex-[999_1_520px] flex-col gap-6">
           <div className="flex flex-col items-center gap-2.5 text-center">
             <h1 id={titleId} className="m-0 text-[clamp(34px,4.4vw,48px)] leading-[1.08] font-bold tracking-[-0.03em]">
@@ -279,7 +287,10 @@ export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps)
             {KYC_ASIDE_PARAGRAPH_2.tail}
           </p>
         </aside>
-      </div>
+        </div>
+      ) : (
+        <RegistrationStep />
+      )}
     </div>
   );
 }

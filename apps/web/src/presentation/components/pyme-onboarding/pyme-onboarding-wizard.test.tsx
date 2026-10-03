@@ -86,7 +86,7 @@ describe("PymeOnboardingWizard shell", () => {
 });
 
 describe("PymeOnboardingWizard KYC state machine", () => {
-  it("shows the busy status with the simulated provider and disables both buttons", () => {
+  it("shows the busy status with the simulated provider and disables both buttons", async () => {
     const fake = new FakeKyc();
     const release = fake.holdNextVerify();
     renderWizard(fake);
@@ -101,7 +101,7 @@ describe("PymeOnboardingWizard KYC state machine", () => {
 
     expect(fake.calls).toEqual([{ document: "person_a" }]);
 
-    void act(() => {
+    await act(async () => {
       release();
     });
   });
@@ -145,7 +145,7 @@ describe("PymeOnboardingWizard KYC state machine", () => {
     expect(screen.getByRole("button", { name: "Iniciar verificación simulada" })).toBeInTheDocument();
   });
 
-  it("keeps 'Siguiente paso' a no-op in this unit (step 2 is a later unit, no invented copy)", async () => {
+  it("advances to step 2 'Registrá tu PyME' after an approved KYC and marks KYC done", async () => {
     const fake = new FakeKyc();
     const release = fake.holdNextVerify();
     renderWizard(fake);
@@ -159,9 +159,17 @@ describe("PymeOnboardingWizard KYC state machine", () => {
     fireEvent.click(screen.getByRole("button", { name: "Siguiente paso" }));
 
     const stepper = screen.getByRole("list", { name: "Pasos del registro" });
+    const items = within(stepper).getAllByRole("listitem");
+    expect(items).toHaveLength(4);
+    expect(items[0]).not.toHaveAttribute("aria-current");
     const current = within(stepper).getByRole("listitem", { current: "step" });
-    expect(within(current).getByText("KYC")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Verificación de identidad" })).toBeInTheDocument();
+    expect(within(current).getByText("Registro PyME")).toBeInTheDocument();
+    expect(within(stepper).getByText("KYC")).toBeInTheDocument();
+
+    expect(screen.queryByRole("heading", { level: 1, name: "Verificación de identidad" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Registrá tu PyME" })).toBeInTheDocument();
+    // «Volver» stays reachable on step 2 (registered deviation: no route of its own).
+    expect(screen.getByRole("button", { name: "Volver a la pantalla anterior" })).toBeInTheDocument();
   });
 
   it("renders 'Requiere cambios' for the partner document and retries from the primary action", async () => {
