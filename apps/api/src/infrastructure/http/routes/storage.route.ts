@@ -129,8 +129,21 @@ export function registerStorageRoute(app: FastifyInstance, dependencies: Storage
       return reply.code(403).send({ code: "forbidden" });
     }
 
+    // A string prefix alone is not enough: `..`, `.` and empty segments would
+    // let a path that starts with the caller's own prefix resolve elsewhere in
+    // the bucket (or to the bucket root), so any such segment is refused before
+    // the adapter is asked to remove anything.
+    const remainder = path.slice(prefix.length);
+    if (remainder.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
+      return reply.code(403).send({ code: "forbidden" });
+    }
+
     const removed = await dependencies.storage.removeObject(path);
     if (!removed.ok) {
+      // Removing a missing object is the idempotent success the port documents.
+      if (removed.error.code === "not_found") {
+        return reply.code(204).send();
+      }
       return reply.code(503).send({ code: "unavailable" });
     }
 

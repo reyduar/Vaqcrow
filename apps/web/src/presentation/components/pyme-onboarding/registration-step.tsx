@@ -24,7 +24,18 @@ import {
   type RegistrationScalarField,
   type RegistrationValues
 } from "@/application/pyme-onboarding/registration-step";
+import {
+  allDocumentsUploaded,
+  emptyDocumentsState,
+  missingDocumentKinds,
+  submitGateMessage,
+  type DocumentsState,
+  type PhotoState
+} from "@/application/pyme-onboarding/document-upload";
+import type { UploadPort } from "@/application/ports/upload-port";
+import { UNAVAILABLE_UPLOAD_PORT } from "@/infrastructure/upload/unavailable-upload-port";
 import { FOCUS_RING } from "../auth-field";
+import { DocumentUpload } from "./document-upload";
 
 /**
  * Step 2 «Registrá tu PyME» of the onboarding wizard: the template's form
@@ -37,9 +48,11 @@ import { FOCUS_RING } from "../auth-field";
  * - The template draws only an icon for a missing/anomalous month; a product
  *   rule forbids meaning carried by colour alone, so each indicator also
  *   renders the visible text «Faltante» / «Anomalía».
- * - The «Declaraciones de ventas» attach control (template lines 190–192) is
- *   intentionally not rendered: real document/photo upload is T4 and its UI is
- *   an owner decision still pending.
+ * - The template's mock «Declaraciones de ventas» attach control (lines
+ *   190–192) is replaced by the real document/photo upload section (owner
+ *   decisions U1–U5, T4c): three mandatory document slots and up to four
+ *   optional photos. Submitting is blocked until the three documents are
+ *   uploaded; the photos stay optional.
  * - Native controls at the template's 48 px / 54 px heights with the repo's
  *   Tailwind tokens, plus `FOCUS_RING`, exactly like step 1 (the shared
  *   primitives are fixed at 44 px and the `Select` renders a popover listbox;
@@ -49,6 +62,8 @@ import { FOCUS_RING } from "../auth-field";
 export interface RegistrationStepProps {
   /** Receives the raw form strings on a valid submit; default no-op (T2 has no persistence). */
   readonly onSubmit?: (values: RegistrationValues) => void | Promise<void>;
+  /** Upload capability for the document/photo section; defaults to an unavailable port. */
+  readonly upload?: UploadPort | undefined;
 }
 
 const FIELD_LABELS: Readonly<Record<RegistrationScalarField, string>> = Object.freeze({
@@ -83,10 +98,12 @@ function ErrorRow({ id, message }: { readonly id: string; readonly message: stri
   );
 }
 
-export function RegistrationStep({ onSubmit = () => {} }: RegistrationStepProps) {
+export function RegistrationStep({ onSubmit = () => {}, upload = UNAVAILABLE_UPLOAD_PORT }: RegistrationStepProps) {
   const uid = useId();
   const controls = useRef<Partial<Record<RegistrationField, HTMLElement | null>>>({});
   const [values, setValues] = useState<RegistrationValues>(EMPTY_REGISTRATION_VALUES);
+  const [documents, setDocuments] = useState<DocumentsState>(emptyDocumentsState);
+  const [photos, setPhotos] = useState<readonly PhotoState[]>([]);
   const [tried, setTried] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -102,6 +119,7 @@ export function RegistrationStep({ onSubmit = () => {} }: RegistrationStepProps)
 
   const anomalies = salesAnomaly(values.sales);
   const missingMonths = salesMissing(values.sales);
+  const missingDocs = missingDocumentKinds(documents);
 
   function setField(field: RegistrationScalarField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -134,6 +152,10 @@ export function RegistrationStep({ onSubmit = () => {} }: RegistrationStepProps)
     const firstInvalid = found[0];
     if (firstInvalid) {
       controls.current[firstInvalid.field]?.focus();
+      return;
+    }
+    // Owner U1: the three mandatory documents must be uploaded before sending.
+    if (!allDocumentsUploaded(documents)) {
       return;
     }
     const result = onSubmit(values);
@@ -187,15 +209,20 @@ export function RegistrationStep({ onSubmit = () => {} }: RegistrationStepProps)
           </button>
         </div>
 
-        {tried && errors.length > 0 ? (
+        {tried && (errors.length > 0 || missingDocs.length > 0) ? (
           <div
             role="alert"
             className="flex gap-2.5 rounded-card bg-trust-critical-surface px-4 py-3.5 text-sm text-trust-critical"
           >
             <IoAlertCircleOutline aria-hidden="true" focusable="false" className="mt-0.5 shrink-0 text-[19px]" />
             <span>
-              <strong className="font-[650]">{registrationErrorSummary(errors.length)}</strong>{" "}
-              {REGISTRATION_COPY.errorSummaryTail}
+              {errors.length > 0 ? (
+                <>
+                  <strong className="font-[650]">{registrationErrorSummary(errors.length)}</strong>{" "}
+                  {REGISTRATION_COPY.errorSummaryTail}{" "}
+                </>
+              ) : null}
+              {missingDocs.length > 0 ? submitGateMessage(missingDocs) : null}
             </span>
           </div>
         ) : null}
@@ -369,6 +396,15 @@ export function RegistrationStep({ onSubmit = () => {} }: RegistrationStepProps)
           <span className="text-xs text-text-secondary">{REGISTRATION_COPY.salesHint}</span>
           {errorFor("sales") ? <ErrorRow id={salesErrorId} message={errorFor("sales") as string} /> : null}
         </fieldset>
+
+        {/* Where the template drew its mock «Declaraciones de ventas» attach control. */}
+        <DocumentUpload
+          upload={upload}
+          documents={documents}
+          photos={photos}
+          onDocumentsChange={setDocuments}
+          onPhotosChange={setPhotos}
+        />
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-[18px]">
           <div className="flex min-w-0 flex-col gap-1.5">

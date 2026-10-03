@@ -1,12 +1,28 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEMO_VALUES } from "@/application/pyme-onboarding/registration-step";
+import { FakeUpload } from "@/test/fake-upload";
 import { RegistrationStep } from "./registration-step";
+
+function pdfFile(name = "documento.pdf"): File {
+  return new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], name, { type: "application/pdf" });
+}
+
+const REQUIRED_DOCUMENTS = ["Declaraciones de ventas", "Constancia de CUIT", "Estatuto"] as const;
+
+async function uploadRequiredDocuments() {
+  for (const title of REQUIRED_DOCUMENTS) {
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(title), { target: { files: [pdfFile(`${title}.pdf`)] } });
+    });
+  }
+}
 
 function renderStep(props: Partial<React.ComponentProps<typeof RegistrationStep>> = {}) {
   const onSubmit = vi.fn();
-  render(<RegistrationStep onSubmit={onSubmit} {...props} />);
-  return { onSubmit };
+  const upload = (props.upload as FakeUpload | undefined) ?? new FakeUpload();
+  render(<RegistrationStep onSubmit={onSubmit} {...props} upload={upload} />);
+  return { onSubmit, upload };
 }
 
 function fillDemo() {
@@ -76,10 +92,15 @@ describe("RegistrationStep copy and layout", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render the T4 attach/upload control", () => {
+  it("renders the real document and photo upload section instead of the template's mock control", () => {
     renderStep();
 
-    expect(screen.queryByText("Declaraciones de ventas")).not.toBeInTheDocument();
+    expect(screen.getByText("Documentos obligatorios")).toBeInTheDocument();
+    expect(screen.getByLabelText("Declaraciones de ventas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Constancia de CUIT")).toBeInTheDocument();
+    expect(screen.getByLabelText("Estatuto")).toBeInTheDocument();
+    expect(screen.getByText("Fotos (opcional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Agregar foto")).toBeInTheDocument();
     expect(screen.queryByText(/Adjuntar declaraciones/)).not.toBeInTheDocument();
     expect(screen.queryByText(/declaraciones-2026-sinteticas/)).not.toBeInTheDocument();
   });
@@ -189,10 +210,11 @@ describe("RegistrationStep demo values", () => {
     expect(screen.getByLabelText("Ventas de junio en ARS")).toBeInTheDocument();
   });
 
-  it("submits the demo values without an error summary", async () => {
+  it("submits the demo values without an error summary once the documents are uploaded", async () => {
     const { onSubmit } = renderStep();
 
     fillDemo();
+    await uploadRequiredDocuments();
     submit();
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -211,6 +233,7 @@ describe("RegistrationStep demo values", () => {
     renderStep({ onSubmit });
 
     fillDemo();
+    await uploadRequiredDocuments();
     submit();
 
     expect(screen.getByRole("button", { name: "Enviando…" })).toBeDisabled();
@@ -221,5 +244,40 @@ describe("RegistrationStep demo values", () => {
 
     expect(screen.getByRole("button", { name: "Enviar a evaluación AI" })).toBeEnabled();
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("RegistrationStep document gate", () => {
+  it("blocks submit and names the missing document slots until all three are uploaded", async () => {
+    const { onSubmit, upload } = renderStep();
+
+    fillDemo();
+    submit();
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Antes de enviar, subí los documentos obligatorios: Declaraciones de ventas, Constancia de CUIT y Estatuto."
+    );
+
+    await uploadRequiredDocuments();
+    submit();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(upload.uploads).toHaveLength(3);
+  });
+
+  it("names only the document slots still missing", async () => {
+    renderStep();
+
+    fillDemo();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Constancia de CUIT"), { target: { files: [pdfFile("cuit.pdf")] } });
+    });
+    submit();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Antes de enviar, subí los documentos obligatorios: Declaraciones de ventas y Estatuto."
+    );
   });
 });

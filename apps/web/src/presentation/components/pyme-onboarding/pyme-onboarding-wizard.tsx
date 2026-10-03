@@ -28,6 +28,7 @@ import {
   type KycPrimaryIcon
 } from "@/application/pyme-onboarding/kyc-step";
 import type { KycDocument, KycPort, KycResult } from "@/application/ports/kyc-port";
+import type { UploadPort } from "@/application/ports/upload-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { FOCUS_RING } from "../auth-field";
 import { RegistrationStep } from "./registration-step";
@@ -43,6 +44,8 @@ const BUTTON_BASE =
 
 export interface PymeOnboardingWizardProps {
   readonly kyc: KycPort;
+  /** Upload capability for step 2; optional so tests can inject a double. */
+  readonly upload?: UploadPort;
   /** «Volver» returns to the `/company` dashboard skeleton; the URL never changes. */
   readonly onBack: () => void;
 }
@@ -66,7 +69,7 @@ export interface PymeOnboardingWizardProps {
  * so this screen uses native controls with the repo's Tailwind tokens (the
  * `AuthField` deviation, recorded in `odd/tasks/account-creation-sign-in-role-shell.md`).
  */
-export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps) {
+export function PymeOnboardingWizard({ kyc, upload, onBack }: PymeOnboardingWizardProps) {
   const titleId = useId();
   const documentId = useId();
   const [stepIndex, setStepIndex] = useState(0);
@@ -289,7 +292,7 @@ export function PymeOnboardingWizard({ kyc, onBack }: PymeOnboardingWizardProps)
         </aside>
         </div>
       ) : (
-        <RegistrationStep />
+        <RegistrationStep upload={upload} />
       )}
     </div>
   );

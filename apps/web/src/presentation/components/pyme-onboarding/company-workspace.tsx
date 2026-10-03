@@ -4,7 +4,9 @@ import { useState } from "react";
 import { IoStorefrontOutline } from "react-icons/io5";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
 import type { KycPort } from "@/application/ports/kyc-port";
+import type { UploadPort } from "@/application/ports/upload-port";
 import { SimulatedKycAdapter } from "@/infrastructure/kyc/simulated-kyc-adapter";
+import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-port";
 import { FOCUS_RING } from "../auth-field";
 import { PageHeading } from "../page-heading";
 import { PymeOnboardingWizard } from "./pyme-onboarding-wizard";
@@ -15,6 +17,8 @@ const defaultKyc: KycPort = new SimulatedKycAdapter();
 export interface CompanyWorkspaceProps {
   /** Injectable for tests; production uses the simulated KYC adapter. */
   readonly kyc?: KycPort;
+  /** Injectable for tests; production builds the browser upload port lazily. */
+  readonly upload?: UploadPort;
 }
 
 /**
@@ -25,11 +29,13 @@ export interface CompanyWorkspaceProps {
  * is intentionally not implemented here. Opening the wizard never changes the
  * URL — the wizard lives inside `/company` and «Volver» restores this view.
  */
-export function CompanyWorkspace({ kyc = defaultKyc }: CompanyWorkspaceProps) {
+export function CompanyWorkspace({ kyc = defaultKyc, upload }: CompanyWorkspaceProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
+  const uploadPort = upload ?? defaultUpload;
 
   if (wizardOpen) {
-    return <PymeOnboardingWizard kyc={kyc} onBack={() => setWizardOpen(false)} />;
+    return <PymeOnboardingWizard kyc={kyc} upload={uploadPort} onBack={() => setWizardOpen(false)} />;
   }
 
   return (

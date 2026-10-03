@@ -161,6 +161,28 @@ describe("POST /storage/uploads", () => {
     expect(fake.uploaded).toHaveLength(0);
   });
 
+  it("accepts a file of exactly the 10 MB cap", async () => {
+    const fake = fakeStorage();
+    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const exact = new Uint8Array(10485760);
+    exact.set(PDF);
+    const body = multipart([
+      { name: "kind", value: "cuit" },
+      { name: "file", filename: "exact.pdf", contentType: "application/pdf", data: exact }
+    ]);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/storage/uploads",
+      headers: { "content-type": body.contentType },
+      payload: body.payload
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(fake.uploaded).toHaveLength(1);
+    expect(fake.uploaded[0]?.bytes.byteLength).toBe(10485760);
+  });
+
   it("rejects a missing file part", async () => {
     const fake = fakeStorage();
     app = buildAppAs("PYME", { storage: deps(fake.port) });
@@ -313,6 +335,56 @@ describe("DELETE /storage/uploads", () => {
 
     expect(response.statusCode).toBe(403);
     expect(fake.removed).toHaveLength(0);
+  });
+
+  it("refuses a path that starts with the caller's prefix but escapes it with ..", async () => {
+    const fake = fakeStorage();
+    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const path = `${USER_ID}/cuit/../${OTHER_ID}/secret.pdf`;
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+    expect(fake.removed).toHaveLength(0);
+  });
+
+  it("refuses a path with a . segment, an empty segment or a leading slash", async () => {
+    const fake = fakeStorage();
+    app = buildAppAs("PYME", { storage: deps(fake.port) });
+
+    for (const path of [
+      `${USER_ID}/./cuit/x.pdf`,
+      `${USER_ID}//cuit/x.pdf`,
+      `${USER_ID}/cuit//x.pdf`,
+      `${USER_ID}/cuit/x.pdf/`
+    ]) {
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/storage/uploads?path=${encodeURIComponent(path)}`
+      });
+
+      expect(response.statusCode, path).toBe(403);
+    }
+    expect(fake.removed).toHaveLength(0);
+  });
+
+  it("treats a not_found removal as the idempotent success it documents", async () => {
+    const fake = fakeStorage({
+      removeObject: async () => ({ ok: false, error: { code: "not_found" } })
+    });
+    app = buildAppAs("PYME", { storage: deps(fake.port) });
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/storage/uploads?path=${encodeURIComponent(`${USER_ID}/cuit/x.pdf`)}`
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe("");
   });
 
   it("rejects a request with no path", async () => {
