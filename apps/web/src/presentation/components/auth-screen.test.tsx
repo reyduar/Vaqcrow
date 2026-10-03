@@ -176,6 +176,42 @@ describe("AuthScreen validation", () => {
     expect(signUp).not.toHaveBeenCalled();
   });
 
+  it("an invalid email alone blocks the request and moves focus to the email field", () => {
+    const fake = renderScreen("signup");
+    const signUp = vi.spyOn(fake, "signUp");
+    fill("Nombre completo", "Lucía Fernández");
+    fill("Correo electrónico", "lucia.example.test");
+    fill("Contraseña", PASSWORD);
+
+    submit("Crear mi cuenta");
+
+    expect(screen.getByLabelText("Nombre completo")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Contraseña")).toHaveAttribute("aria-invalid", "false");
+    const email = screen.getByLabelText("Correo electrónico");
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription("Ingresá un correo con el formato nombre@dominio.com.");
+    expect(email).toHaveFocus();
+    expect(signUp).not.toHaveBeenCalled();
+  });
+
+  it("a short password alone blocks the request and moves focus to the password field", () => {
+    const fake = renderScreen("signup", "PYME");
+    const signUp = vi.spyOn(fake, "signUp");
+    fill("Nombre o Razón Social", "Panadería La Espiga");
+    fill("Correo electrónico", EMAIL);
+    fill("Contraseña", "1234567");
+
+    submit("Crear mi cuenta");
+
+    expect(screen.getByLabelText("Nombre o Razón Social")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("aria-invalid", "false");
+    const password = screen.getByLabelText("Contraseña");
+    expect(password).toHaveAttribute("aria-invalid", "true");
+    expect(password).toHaveAccessibleDescription("Mínimo 8 caracteres.");
+    expect(password).toHaveFocus();
+    expect(signUp).not.toHaveBeenCalled();
+  });
+
   it("validates the PyME name with its own message", () => {
     renderScreen("signup", "PYME");
     submit("Crear mi cuenta");
@@ -208,6 +244,25 @@ describe("AuthScreen signup", () => {
     await act(async () => {
       pending.resolve({ status: "confirmation_required" });
     });
+  });
+
+  it("sends a single request when the form is submitted again while validating", async () => {
+    const fake = renderScreen("signup");
+    const pending = deferred<SignUpOutcome>();
+    const signUp = vi.spyOn(fake, "signUp").mockReturnValue(pending.promise);
+    fillSignup();
+
+    submit("Crear mi cuenta");
+    const form = (await screen.findByRole("button", { name: "Validando…" })).closest("form");
+    // A form submission (e.g. Enter) bypasses the disabled button.
+    fireEvent.submit(form as HTMLFormElement);
+    fireEvent.submit(form as HTMLFormElement);
+
+    expect(signUp).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pending.resolve({ status: "confirmation_required" });
+    });
+    expect(await screen.findByRole("heading", { level: 2, name: "Conectá tu wallet" })).toBeInTheDocument();
   });
 
   it("sends the trimmed name, role and the login page as the confirmation target", async () => {

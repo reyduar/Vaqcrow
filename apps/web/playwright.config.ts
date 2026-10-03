@@ -1,5 +1,11 @@
 import { defineConfig } from "@playwright/test";
-import { APP_BASE_URL, APP_PORT, STUB_API_BASE_URL } from "./e2e/support/targets";
+import {
+  APP_BASE_URL,
+  APP_PORT,
+  STUB_API_BASE_URL,
+  STUB_SUPABASE_PUBLISHABLE_KEY,
+  STUB_SUPABASE_URL
+} from "./e2e/support/targets";
 
 /**
  * Deterministic browser coverage for the Vaqcrow demo (issue #47).
@@ -8,8 +14,9 @@ import { APP_BASE_URL, APP_PORT, STUB_API_BASE_URL } from "./e2e/support/targets
  * - Chromium only (deploy-planning.md §Parte 4 decision), single worker, no retries:
  *   a flaky pass is a failure, never something a retry may hide.
  * - The app talks to a local stub API double (`e2e/support/stub-api-server.mjs`) that
- *   serves frozen fixtures. Pull-request verification never reaches Stellar, Horizon,
- *   Supabase, or an LLM provider.
+ *   serves frozen fixtures, and to a local Supabase Auth + PostgREST double
+ *   (`e2e/support/stub-supabase-server.mjs`, issue #380) with a fake publishable key.
+ *   Pull-request verification never reaches Stellar, Horizon, Supabase, or an LLM provider.
  * - No `webServer` reachability check depends on an external host.
  */
 export default defineConfig({
@@ -40,12 +47,23 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI
     },
     {
+      name: "stub-supabase",
+      command: "node e2e/support/stub-supabase-server.mjs",
+      url: `${STUB_SUPABASE_URL}/health`,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI
+    },
+    {
       name: "next",
       command: `next dev --hostname 127.0.0.1 --port ${APP_PORT}`,
       url: `${APP_BASE_URL}/request`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
-      env: { NEXT_PUBLIC_API_BASE_URL: STUB_API_BASE_URL }
+      env: {
+        NEXT_PUBLIC_API_BASE_URL: STUB_API_BASE_URL,
+        NEXT_PUBLIC_SUPABASE_URL: STUB_SUPABASE_URL,
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: STUB_SUPABASE_PUBLISHABLE_KEY
+      }
     }
   ]
 });
