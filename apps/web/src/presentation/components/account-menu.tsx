@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { IconType } from "react-icons";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { Avatar } from "./avatar";
@@ -72,6 +72,7 @@ export function AccountMenu({
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const hasItems = items.length > 0;
 
@@ -96,6 +97,9 @@ export function AccountMenu({
       }
     };
 
+    // WAI-ARIA menu button: opening the menu moves focus to its first item.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -103,6 +107,37 @@ export function AccountMenu({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
+
+  function menuItems(): HTMLElement[] {
+    return Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+  }
+
+  /** Arrow keys, Home and End move focus between the items, wrapping around. */
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = menuItems();
+    if (items.length === 0) return;
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next: Record<string, number> = {
+      ArrowDown: (current + 1) % items.length,
+      ArrowUp: (current - 1 + items.length) % items.length,
+      Home: 0,
+      End: items.length - 1
+    };
+    const target = next[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    items[target]?.focus();
+  }
+
+  /**
+   * Focus moving to an element outside the menu (Tab, Shift+Tab) closes it and
+   * leaves focus where the user sent it. A `null` related target (a pointer
+   * press on a non-focusable spot) is left to the outside-pointer handler.
+   */
+  function handleFocusOut(event: ReactFocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && !wrapperRef.current?.contains(next)) closeMenu();
+  }
 
   const identity = (
     <>
@@ -129,7 +164,7 @@ export function AccountMenu({
   }
 
   return (
-    <div ref={wrapperRef} className="relative inline-flex">
+    <div ref={wrapperRef} className="relative inline-flex" onBlur={handleFocusOut}>
       {isAvatar ? (
         // Template trigger: 48 px pill, 40 px round avatar and a chevron.
         <button
@@ -165,8 +200,10 @@ export function AccountMenu({
 
       {isOpen ? (
         <div
+          ref={menuRef}
           id={menuId}
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           aria-label={`Cuenta de ${name}`}
           className={
             isAvatar

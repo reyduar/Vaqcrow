@@ -200,6 +200,41 @@ Las decisiones están en `CLAUDE.md`/`AGENTS.md` (commit `5a4225d`) y en los com
   - Guarda corregida por el orquestador: `tests/trust-disclosures-canonical-consistency.test.ts` lee ahora `title` + `body` de cada `disclosure(…)` y los une como `${title}. ${body}` (la regresión era de `6553dbd`, de esta misma rama). RED: el `expected [] to have a length of 6` de abajo. GREEN: `pnpm run test:boundaries` → `Tests 152 passed (152)`; `lint:tests` y `typecheck:tests` limpios. Commit: `test: read the builder-made disclosures in the canonical consistency guard`.
   - Texto canónico reescrito (owner, 2026-10-03, D10) en sus cuatro superficies a la vez: `disclosures.ts`, `DEMO.md` §12, `demo-ui.md` §2/§11 y el brief §6.2 (más la story de `trust-banner` y la línea del brief §2 que decía «identidad sintética»). Nuevo cuerpo: «El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.». El documento de evidencia de #240 conserva el texto anterior (histórico). RED: `disclosures.test.ts` con el texto nuevo → `Tests 1 failed | 31 passed (32)`. GREEN: `vitest run src/application/trust src/presentation/components/trust-banner` → `Tests 56 passed (56)`; `pnpm run test:boundaries` → `Tests 152 passed (152)` (la guarda compara las cuatro superficies). Commit: `fix(web): stop calling real accounts synthetic in the simulation disclosure`.
 
+## Entrega de #379
+
+- PR [#446](https://github.com/reyduar/Vaqcrow/pull/446) mergeada en la rama de #378 (`e6942af`, 2026-10-03); #379 cerrado a mano (la base no es la rama principal) y el tablero lo muestra en `Done`. Nada de #369/#378 está en `main`.
+- Owner (2026-10-03): cargó `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en Vercel y en `.env.cloud` (no verificado por agentes). `.env.docker.example` sigue sin ellas.
+
+## Task #380 — Pruebas
+
+Rama `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell`, creada desde la rama de #378 (`e6942af`); su PR apunta a la rama de #378. TDD estricto; los tests de PR usan sólo dobles (sin Supabase, Resend, Testnet ni LLM en vivo).
+
+- [x] **P1 — Mapa de cobertura.** Contrastar los requisitos del issue con los tests ya existentes de #379 y listar sólo las brechas.
+  - Ruta: delegada (writer acotado, junto con P2 y P3). Sin código: lectura de los tests de #379 contra los requisitos funcionales del issue.
+
+    | Requisito | Tests existentes | Brecha |
+    |---|---|---|
+    | (a) Alta válida | `auth-screen.test.tsx` («a %s signup shows the created view without the email», «sends the trimmed name…») | No |
+    | (a) Email inválido | `auth-screen.test.tsx` «shows each field error after the first submit…» (los tres campos inválidos a la vez) | Sí: email inválido **solo** (resto válido, foco al email) |
+    | (a) Contraseña corta | ídem (combinado) | Sí: contraseña corta **sola** (foco a la contraseña) |
+    | (a) Error de red | `auth-screen.test.tsx` «shows the honest network error…», login «shows the network message» | No |
+    | (a) Ocupado | `auth-screen.test.tsx` «shows the busy state and the live region while validating» | Sí: un segundo envío del formulario (Enter, que no pasa por el botón deshabilitado) no manda otro pedido |
+    | (b) Header/menú por rol (render) | `app-header.test.tsx` (sin sesión, cargando, INVERSOR, PYME, ADMIN), `account-menu.test.tsx` (variante `avatar`) | No |
+    | (b) Escape, clic afuera | `app-header.test.tsx` «closes the menu on Escape and on an outside click», `account-menu.test.tsx` (ambas variantes; foco al disparador con Escape desde `document`) | No |
+    | (b) Foco | sólo «Escape devuelve el foco» desde `document` | Sí: al abrir el foco no entra al menú, no hay flechas/Home/End entre ítems y Tab fuera del menú lo deja abierto (defecto real del `role="menu"`, ver P2); Escape desde un ítem en el header integrado |
+    | (c) Anónimo en página protegida → ingreso | `proxy.test.ts`, `route-gate.test.tsx` (cliente), `route-gate.test.ts` (regla pura), `server-session.test.ts` | No |
+    | (c) Rol equivocado → su home | ídem | No |
+    | (c) Con sesión en `/login`/`/signup` → home | `proxy.test.ts`, `route-gate.test.ts` (el `RouteGate` del cliente sólo se monta en `(app)`) | No |
+    | (d) Smoke de Playwright por rol | ninguno (los specs e2e corren sin Supabase) | Sí → P3 |
+- [x] **P2 — Brechas de componentes y guardas.** Formulario de alta (válido, email inválido, contraseña corta, error de red, ocupado), header/menú por rol con teclado (Escape, clic afuera, foco) y guardas de ruta, sólo donde falte cobertura.
+  - Ruta: delegada (writer acotado). Archivos: `apps/web/src/presentation/components/auth-screen.test.tsx`, `account-menu.test.tsx`, `app-header.test.tsx`, `account-menu.tsx`.
+  - Formulario (guardas de regresión; el comportamiento ya existía): «an invalid email alone blocks the request and moves focus to the email field», «a short password alone blocks the request and moves focus to the password field», «sends a single request when the form is submitted again while validating». Pasaron al primer intento, así que el RED se mostró con mutantes temporales (revertidos con `git checkout`): foco siempre al nombre → `Tests 2 failed | 36 passed (38)` (los dos casos de campo aislado); sin `if (busy) return;` → `Tests 1 failed | 37 passed (38)` (`expected "signUp" to be called 1 times, but got 3 times`).
+  - **Defecto real en `AccountMenu`:** con `role="menu"`, abrir el menú no movía el foco a ningún ítem, no había navegación con flechas y Tab fuera del menú lo dejaba abierto con el foco en otra parte. RED (`pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/account-menu.test.tsx src/presentation/components/app-header.test.tsx`): `Tests 4 failed | 20 passed (24)` — «moves focus to the first item when it opens», «moves between items with the arrow keys, Home and End, wrapping around», «closes when focus leaves it (Tab) without pulling focus back to the trigger» y, en el header integrado, «moves focus into the open menu and back to the avatar button on Escape». «returns focus to the trigger on Escape pressed from inside the menu» y «stays open while focus moves between its own items» pasaron desde el inicio (guardas).
+  - Arreglo mínimo (patrón de botón de menú de WAI-ARIA): al abrir, foco al primer `menuitem`; `ArrowDown`/`ArrowUp` (con vuelta), `Home`/`End` en el menú; un `focusout` hacia un elemento fuera del contenedor cierra sin devolver el foco (un `relatedTarget` nulo, como un clic en un punto no enfocable del menú, queda para el manejador de clic afuera). Escape y clic afuera no cambian. Aplica a las dos variantes.
+  - GREEN (mismo comando): `Tests 24 passed (24)`; `vitest run src/presentation src/app` → `Test Files 98 passed (98)`, `Tests 827 passed (827)`; `lint` 0 errores (1 warning previo, `fetch-http-client.ts`); `typecheck` sin errores.
+  - Commit: `test(web): close the coverage gaps of the auth screens and role shell`.
+- [ ] **P3 — Smoke de Playwright.** Alta con cada rol, cerrar sesión y volver a ingresar, contra un doble de Supabase Auth/PostgREST local al e2e (sin proyecto real).
+
 ## Pronóstico de entrega
 
 Unas 1.500 líneas autoradas entre las cinco tareas, por encima del presupuesto de ~400 por PR. Estrategia elegida por el owner (2026-10-02): **`single-pr`** — una sola PR de #379 contra la rama de #378, con un commit por unidad de trabajo; las revisiones RDD se acotan por commit.

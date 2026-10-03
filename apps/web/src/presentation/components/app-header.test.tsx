@@ -139,6 +139,19 @@ describe("AppHeader INVERSOR", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("moves focus into the open menu and back to the avatar button on Escape", async () => {
+    await renderHeader("INVERSOR");
+    const trigger = screen.getByRole("button", { name: `Menú de cuenta de ${NAMES.INVERSOR}` });
+    const menu = openMenu("INVERSOR");
+    const first = within(menu).getByRole("menuitem", { name: "Mi portafolio" });
+    expect(first).toHaveFocus();
+
+    fireEvent.keyDown(first, { key: "Escape" });
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it("signs out through the port and navigates home", async () => {
     const { fake } = await renderHeader("INVERSOR", "/portfolio");
     const menu = openMenu("INVERSOR");
