@@ -41,6 +41,7 @@ export class FakeAuthSession implements AuthSessionPort {
   private current: SessionPrincipal | null = null;
   private heldGetSession: Promise<void> | null = null;
   private signUpOutcome: SignUpOutcome = { status: "confirmation_required" };
+  private signUpOpensSession = true;
   token = "fake-access-token";
 
   get listenerCount(): number {
@@ -62,6 +63,15 @@ export class FakeAuthSession implements AuthSessionPort {
   }
 
   /**
+   * Makes signUp report `signed_in` without leaving a readable session: the
+   * provider claims a session that `getSession()` then reports as signed out.
+   */
+  reportSignUpsAsSignedInWithoutSession(): void {
+    this.signUpOutcome = { status: "signed_in" };
+    this.signUpOpensSession = false;
+  }
+
+  /**
    * Holds the next `getSession()` resolution until the returned release is
    * called. The snapshot is taken when the call starts.
    */
@@ -79,7 +89,7 @@ export class FakeAuthSession implements AuthSessionPort {
     this.signUps.push({ role: normalized.role, displayName: normalized.displayName, email: normalized.email });
     const confirmed = this.signUpOutcome.status === "signed_in";
     this.seedAccount({ ...normalized, confirmed });
-    if (confirmed) this.setCurrent({ role: normalized.role, displayName: normalized.displayName });
+    if (confirmed && this.signUpOpensSession) this.setCurrent({ role: normalized.role, displayName: normalized.displayName });
     return this.signUpOutcome;
   }
 

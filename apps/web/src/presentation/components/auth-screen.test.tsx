@@ -64,6 +64,14 @@ describe("AuthScreen layout", () => {
     expect(screen.getByRole("button", { name: "Crear mi cuenta" })).toBeInTheDocument();
   });
 
+  it("renders the canonical no-production notice whole, from its structured title and body", () => {
+    renderScreen("signup");
+    const lead = screen.getByText("No apto para producción.");
+    expect(lead.parentElement).toHaveTextContent(
+      "No apto para producción. Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina."
+    );
+  });
+
   it("replaces the template's 'no real authentication' note with the Testnet note", () => {
     renderScreen("signup");
     expect(screen.getByText("Demo en Stellar Testnet: los activos no tienen valor económico.")).toBeInTheDocument();
@@ -218,7 +226,7 @@ describe("AuthScreen signup", () => {
     });
   });
 
-  it("shows the template's network error", async () => {
+  it("shows the honest network error (the port cannot tell whether the request was sent)", async () => {
     const fake = renderScreen("signup");
     fake.failNext("signUp", "network");
     fillSignup();
@@ -226,7 +234,7 @@ describe("AuthScreen signup", () => {
     submit("Crear mi cuenta");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "No pudimos crear la cuenta. Hubo un error de red; tus datos no se enviaron. Revisá la conexión y volvé a intentar."
+      "No pudimos crear la cuenta. Hubo un error de red; revisá la conexión y volvé a intentar."
     );
     expect(screen.getByRole("button", { name: "Crear mi cuenta" })).toBeEnabled();
   });
@@ -343,6 +351,40 @@ describe("AuthScreen signup", () => {
     submit("Crear mi cuenta");
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/company"));
+  });
+
+  it("gives a clear outcome when the provider signs in right away but the session read fails", async () => {
+    const fake = new FakeAuthSession();
+    fake.confirmSignUpsImmediately();
+    renderScreen("signup", "INVERSOR", fake);
+    await waitFor(() => expect(fake.listenerCount).toBe(1));
+    fake.failNext("getSession", "unavailable");
+    fillSignup();
+
+    submit("Crear mi cuenta");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Cuenta creada. No pudimos abrir tu sesión: ingresá con tu correo y contraseña."
+    );
+    expect(screen.getByRole("link", { name: "Ingresá" })).toHaveAttribute("href", "/login?role=investor");
+    expect(screen.getByRole("button", { name: "Crear mi cuenta" })).toBeEnabled();
+    expect(screen.queryByText(/Confirmá tu correo/)).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("gives the same clear outcome when the provider signs in right away but no session is readable", async () => {
+    const fake = new FakeAuthSession();
+    fake.reportSignUpsAsSignedInWithoutSession();
+    renderScreen("signup", "PYME", fake);
+    fillSignup();
+
+    submit("Crear mi cuenta");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Cuenta creada. No pudimos abrir tu sesión: ingresá con tu correo y contraseña."
+    );
+    expect(screen.queryByRole("heading", { name: "Registrá tu PyME" })).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 });
 

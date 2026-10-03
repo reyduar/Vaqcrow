@@ -202,6 +202,16 @@ const LOGIN_TITLE = "No pudimos ingresar.";
 const RETRY_LATER = "Volvé a intentar en unos minutos.";
 
 /**
+ * The provider reported `signed_in` at signup but no session could be read
+ * back: the account exists, so the person signs in instead (owner assumption).
+ */
+export const SIGNED_IN_UNREADABLE_MESSAGE: AuthErrorMessage = Object.freeze({
+  kind: "rejected",
+  title: "Cuenta creada.",
+  detail: "No pudimos abrir tu sesión: ingresá con tu correo y contraseña."
+});
+
+/**
  * Sanitized copy per error code; provider messages never reach the screen.
  * Strings beyond the template and D5 are owner assumptions recorded in the log.
  */
@@ -232,7 +242,9 @@ export function authErrorMessage(mode: AuthMode, code: AuthErrorCode): AuthError
       return {
         kind: "network",
         title: SIGNUP_TITLE,
-        detail: "Hubo un error de red; tus datos no se enviaron. Revisá la conexión y volvé a intentar."
+        // The port cannot tell whether the request reached the server, so the
+        // copy never claims the data was not sent (owner-visible assumption).
+        detail: "Hubo un error de red; revisá la conexión y volvé a intentar."
       };
     case "email_taken":
       return { kind: "rejected", title: SIGNUP_TITLE, detail: "Ese correo ya tiene una cuenta: ingresá o usá otro correo." };

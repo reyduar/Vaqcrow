@@ -36,12 +36,9 @@ const STEP_ICONS: Readonly<Record<NextStepIcon, IconType>> = {
  */
 export function AccountCreatedPanel({
   role,
-  confirmed,
   onBack
 }: {
   readonly role: AccountRole;
-  /** Whether the new account can already sign in; right after signup it cannot. */
-  readonly confirmed: boolean;
   readonly onBack: () => void;
 }) {
   const copy = ROLE_COPY[role];
@@ -88,9 +85,9 @@ export function AccountCreatedPanel({
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
-          onClick={() => {
-            if (!confirmed) setNotice(created.confirmFirst);
-          }}
+          // This view only appears for an unconfirmed account (signup returned
+          // `confirmation_required`), so the action always explains that first.
+          onClick={() => setNotice(created.confirmFirst)}
           className={`flex h-[52px] flex-1 items-center justify-center gap-2 rounded-control bg-brand-accent px-[18px] text-base font-[650] text-on-accent transition-colors duration-150 hover:bg-brand-accent-hover motion-reduce:transition-none ${FOCUS_RING}`}
         >
           {created.cta}

@@ -91,10 +91,9 @@ describe("authErrorMessage", () => {
   });
 
   it.each([
-    [
-      "network",
-      "No pudimos crear la cuenta. Hubo un error de red; tus datos no se enviaron. Revisá la conexión y volvé a intentar."
-    ],
+    // The port cannot tell whether the request reached the server, so the copy
+    // never claims the data was not sent.
+    ["network", "No pudimos crear la cuenta. Hubo un error de red; revisá la conexión y volvé a intentar."],
     ["email_taken", "No pudimos crear la cuenta. Ese correo ya tiene una cuenta: ingresá o usá otro correo."],
     ["weak_password", "No pudimos crear la cuenta. Elegí una contraseña más difícil de adivinar."],
     ["invalid_input", "No pudimos crear la cuenta. Revisá los datos e intentá de nuevo."],
@@ -102,6 +101,10 @@ describe("authErrorMessage", () => {
   ] as const)("signup %s", (code, text) => {
     const message = authErrorMessage("signup", code);
     expect([message.title, message.detail].filter(Boolean).join(" ")).toBe(text);
+  });
+
+  it("never claims the signup data was not sent", () => {
+    expect(JSON.stringify(authErrorMessage("signup", "network"))).not.toContain("no se enviaron");
   });
 
   it("marks only network failures with the offline icon", () => {

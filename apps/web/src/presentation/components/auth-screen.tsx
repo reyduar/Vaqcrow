@@ -26,6 +26,7 @@ import {
   PASSWORD_MIN_LENGTH,
   ROLE_COPY,
   SCREEN_COPY,
+  SIGNED_IN_UNREADABLE_MESSAGE,
   validateAuthForm,
   type AuthErrorMessage,
   type AuthMode
@@ -120,12 +121,15 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
       return;
     }
     if (result.status === "signed_in") {
+      // The account is already confirmed: never show the "confirm your email"
+      // view. Redirect by the verified role, or say plainly how to continue.
       await session.getState().refresh();
       const principal = session.getState().principal;
-      if (principal) {
-        router.push(homeRouteFor(principal.role));
-        return;
-      }
+      setPassword("");
+      setPasswordShown(false);
+      if (principal) router.push(homeRouteFor(principal.role));
+      else fail(SIGNED_IN_UNREADABLE_MESSAGE);
+      return;
     }
     setPassword("");
     setPasswordShown(false);
@@ -162,7 +166,7 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
 
         <div className="m-auto flex w-full max-w-[480px] flex-col gap-7">
           {phase === "created" ? (
-            <AccountCreatedPanel role={role} confirmed={false} onBack={backToForm} />
+            <AccountCreatedPanel role={role} onBack={backToForm} />
           ) : (
             <>
               <RoleSelector value={role} onChange={setRole} />
@@ -287,7 +291,7 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
 
         <p className="m-0 max-w-[560px] self-center text-center text-xs leading-[1.55] text-pretty text-text-secondary">
           <strong className="font-[650] text-text-primary">{`${NO_PRODUCTION.title}.`}</strong>{" "}
-          {NO_PRODUCTION.text.slice(NO_PRODUCTION.title.length + 2)}
+          {NO_PRODUCTION.body}
         </p>
       </main>
     </div>

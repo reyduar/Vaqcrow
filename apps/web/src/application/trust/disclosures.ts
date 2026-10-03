@@ -28,48 +28,58 @@ export interface Disclosure {
   readonly id: DisclosureId;
   /** Short lead phrase, no trailing period — used as a heading. */
   readonly title: string;
-  /** Full canonical text, verbatim and unabbreviated, including the lead sentence. */
+  /** The canonical text after the lead sentence, verbatim. */
+  readonly body: string;
+  /** Full canonical text, verbatim and unabbreviated, including the lead sentence: `${title}. ${body}`. */
   readonly text: string;
   readonly banner: DisclosureBannerVariant;
 }
 
+/**
+ * Builds a disclosure from its lead title and body so a consumer that styles
+ * the lead apart (e.g. the auth screen footer) never slices `text` by offset.
+ */
+function disclosure(id: DisclosureId, title: string, body: string, banner: DisclosureBannerVariant): Disclosure {
+  return Object.freeze({ id, title, body, text: `${title}. ${body}`, banner });
+}
+
 export const disclosures: Readonly<Record<DisclosureId, Disclosure>> = Object.freeze({
-  simulation: Object.freeze({
-    id: "simulation",
-    title: "Demostración con datos simulados",
-    text: "Demostración con datos simulados. La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.",
-    banner: "simulation"
-  }),
-  testnet: Object.freeze({
-    id: "testnet",
-    title: "Stellar Testnet",
-    text: "Stellar Testnet. Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.",
-    banner: "testnet"
-  }),
-  "non-custody": Object.freeze({
-    id: "non-custody",
-    title: "Firma no custodial",
-    text: "Firma no custodial. Freighter es la wallet e interfaz de firma. La persona usuaria conserva sus claves; Vaqcrow construye y verifica la transacción y nunca recibe su seed.",
-    banner: "simulation"
-  }),
-  "contract-custody": Object.freeze({
-    id: "contract-custody",
-    title: "Custodia por contrato",
-    text: "Custodia por contrato. Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.",
-    banner: "simulation"
-  }),
-  "human-ai": Object.freeze({
-    id: "human-ai",
-    title: "IA con supervisión humana",
-    text: "IA con supervisión humana. La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.",
-    banner: "simulation"
-  }),
-  "no-production": Object.freeze({
-    id: "no-production",
-    title: "No apto para producción",
-    text: "No apto para producción. Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.",
-    banner: "simulation"
-  })
+  simulation: disclosure(
+    "simulation",
+    "Demostración con datos simulados",
+    "La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.",
+    "simulation"
+  ),
+  testnet: disclosure(
+    "testnet",
+    "Stellar Testnet",
+    "Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.",
+    "testnet"
+  ),
+  "non-custody": disclosure(
+    "non-custody",
+    "Firma no custodial",
+    "Freighter es la wallet e interfaz de firma. La persona usuaria conserva sus claves; Vaqcrow construye y verifica la transacción y nunca recibe su seed.",
+    "simulation"
+  ),
+  "contract-custody": disclosure(
+    "contract-custody",
+    "Custodia por contrato",
+    "Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.",
+    "simulation"
+  ),
+  "human-ai": disclosure(
+    "human-ai",
+    "IA con supervisión humana",
+    "La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.",
+    "simulation"
+  ),
+  "no-production": disclosure(
+    "no-production",
+    "No apto para producción",
+    "Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.",
+    "simulation"
+  )
 } as const);
 
 /**

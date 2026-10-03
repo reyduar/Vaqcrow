@@ -29,6 +29,15 @@ describe("disclosures", () => {
     });
   }
 
+  for (const id of Object.keys(CANONICAL_TEXTS)) {
+    it(`splits "${id}" into its lead title and a body without re-deriving offsets`, () => {
+      const disclosure = disclosures[id as keyof typeof disclosures];
+      expect(disclosure.body.length).toBeGreaterThan(0);
+      expect(disclosure.body.startsWith(disclosure.title)).toBe(false);
+      expect(`${disclosure.title}. ${disclosure.body}`).toBe(disclosure.text);
+    });
+  }
+
   it("is frozen at both the record and entry level", () => {
     expect(Object.isFrozen(disclosures)).toBe(true);
     expect(Object.isFrozen(disclosures.simulation)).toBe(true);
