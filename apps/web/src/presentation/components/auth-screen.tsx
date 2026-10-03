@@ -52,6 +52,12 @@ export interface AuthScreenProps {
   readonly initialRole: AccountRole;
 }
 
+/** Sanitized diagnostics: the failure code only, never the provider message or the email. */
+function logDiscardFailure(cause: AuthErrorCode): void {
+  // eslint-disable-next-line no-console -- a session survived a D14 rejection; the cause is a sanitized code
+  console.error("[Auth] session discard failed", { cause });
+}
+
 /**
  * `/signup` and `/login`: `Vaqcrow Onboarding.dc.html` in its two modes.
  *
@@ -61,12 +67,6 @@ export interface AuthScreenProps {
  * closed at once (D14). The email lives in its input only: it is never
  * rendered back, and the password is cleared once the account exists.
  */
-/** Sanitized diagnostics: the failure code only, never the provider message or the email. */
-function logDiscardFailure(cause: AuthErrorCode): void {
-  // eslint-disable-next-line no-console -- a session survived a D14 rejection; the cause is a sanitized code
-  console.error("[Auth] session discard failed", { cause });
-}
-
 export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
   const router = useRouter();
   const session = useSessionStoreApi();

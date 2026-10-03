@@ -121,9 +121,11 @@ export class SupabaseAuthSession implements AuthSessionPort {
   }
 
   async clearLocalSession(): Promise<void> {
-    // auth-js removes the stored session (cookies through @supabase/ssr) even
-    // when its logout request fails, so its result is not the signal: the
-    // postcondition is. A session still readable afterwards is a failure.
+    // auth-js 2.116.0 (`GoTrueClient._signOut`) removes the stored session
+    // (cookies through @supabase/ssr) even when its logout request fails with a
+    // network or 5xx error, so its result is not the signal: the postcondition
+    // is. If an upgrade changes that, a session still readable afterwards is
+    // reported as a failure (fail closed), never as success.
     await Promise.resolve(this.client.auth.signOut({ scope: "local" })).catch(() => undefined);
     const { data } = await call(() => this.client.auth.getSession());
     if (data.session) throw new AuthSessionError("unavailable");

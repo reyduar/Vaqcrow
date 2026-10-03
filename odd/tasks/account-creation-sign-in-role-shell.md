@@ -313,6 +313,8 @@ Rama `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell-0
   - GREEN: el mismo comando → `Test Files 7 passed (7)`, `Tests 139 passed (139)`; suite web `vitest run --maxWorkers=4` → `Test Files 131 passed (131)`, `Tests 1228 passed (1228)`; `lint` 0 errores (1 warning previo, `fetch-http-client.ts` `_request`); `typecheck` sin errores; `pnpm run boundaries` → `no dependency violations found (629 modules, 2051 dependencies cruised)`.
   - Commit: `fix(web): clear the local session when sign-out fails after a role mismatch`.
 
+- Revisión RDD de U4 (2026-10-03): base `0aa91de`, sólo commits, riesgo `high` (11 archivos, 163 líneas); el owner eligió «Revisar este cambio»; cuatro lentes sin bloqueantes → `approved`, linaje `review-892396433c528c0c`, autoridad `burned`. Consultivos: `WARNING` R2 (el JSDoc de `AuthScreen` quedó sobre el helper de log) → corregido moviendo el helper; `WARNING` R3 (la premisa de que auth-js borra la sesión aunque falle el logout sólo estaba probada con mocks) → verificada por el orquestador en la versión instalada, `@supabase/auth-js` 2.116.0, `GoTrueClient.js:3441-3443` (ante errores que no son 401/403/404 llama `_removeSession()` antes de devolver el error); el comentario del adaptador cita la versión y el chequeo posterior falla cerrado si una actualización lo cambia. 5 `SUGGESTION` sin cambios. Commit: `refactor(web): keep the AuthScreen docblock on its component and pin the auth-js premise`.
+
 ## Pronóstico de entrega
 
 Unas 1.500 líneas autoradas entre las cinco tareas, por encima del presupuesto de ~400 por PR. Estrategia elegida por el owner (2026-10-02): **`single-pr`** — una sola PR de #379 contra la rama de #378, con un commit por unidad de trabajo; las revisiones RDD se acotan por commit.
