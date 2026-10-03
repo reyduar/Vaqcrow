@@ -146,17 +146,41 @@ export const SCREEN_COPY = {
   idleLive: "Demo en Stellar Testnet: los activos no tienen valor económico."
 } as const;
 
-/** The "Cuenta creada" view (template phase `created`, owner override D7). */
+/** The "Cuenta creada" view's shared copy (template phase `created`, owner override D7). */
 export const CREATED_COPY = {
   bannerTitle: "Cuenta creada.",
   bannerBody: "Confirmá tu correo desde el enlace que te enviamos para poder ingresar.",
-  title: "Conectá tu wallet",
-  body: "Freighter firma cada transacción. Vaqcrow construye y verifica la transacción, y nunca recibe tu seed.",
   stepsLabel: "Próximos pasos",
-  connect: "Conectar Freighter",
-  back: "Volver al formulario",
-  confirmFirst: "Antes de conectar Freighter, confirmá tu cuenta con el enlace que te enviamos a tu correo."
+  back: "Volver al formulario"
 } as const;
+
+export interface CreatedRoleCopy {
+  readonly title: string;
+  readonly body: string;
+  /** The primary action; right after signup it only explains that the account must be confirmed. */
+  readonly cta: string;
+  readonly confirmFirst: string;
+}
+
+/**
+ * The "Cuenta creada" view per role, as the template's `nextTitle`/`nextBody`/
+ * `nextCta` (owner, D8). The PyME is asked for Freighter in the wizard's last
+ * step (#398), not here.
+ */
+export const CREATED_ROLE_COPY: Readonly<Record<AccountRole, CreatedRoleCopy>> = {
+  INVERSOR: {
+    title: "Conectá tu wallet",
+    body: "Freighter firma cada transacción. Vaqcrow construye y verifica la transacción, y nunca recibe tu seed.",
+    cta: "Conectar Freighter",
+    confirmFirst: "Antes de conectar Freighter, confirmá tu cuenta con el enlace que te enviamos a tu correo."
+  },
+  PYME: {
+    title: "Registrá tu PyME",
+    body: "El KYC/KYB de esta demo es simulado: no constituye una verificación de identidad.",
+    cta: "Continuar con el KYC simulado",
+    confirmFirst: "Antes de continuar, confirmá tu cuenta con el enlace que te enviamos a tu correo."
+  }
+};
 
 export function validateAuthForm(mode: AuthMode, role: AccountRole, values: AuthFormValues): AuthFormValidation {
   const name =

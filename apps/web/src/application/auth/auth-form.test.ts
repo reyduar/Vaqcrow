@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CREATED_ROLE_COPY,
   authErrorMessage,
   authHref,
   homeRouteFor,
@@ -106,5 +107,25 @@ describe("authErrorMessage", () => {
   it("marks only network failures with the offline icon", () => {
     expect(authErrorMessage("signup", "network").kind).toBe("network");
     expect(authErrorMessage("login", "invalid_credentials").kind).toBe("rejected");
+  });
+});
+
+describe("CREATED_ROLE_COPY", () => {
+  it("keeps the template's investor post-signup view", () => {
+    expect(CREATED_ROLE_COPY.INVERSOR).toEqual({
+      title: "Conectá tu wallet",
+      body: "Freighter firma cada transacción. Vaqcrow construye y verifica la transacción, y nunca recibe tu seed.",
+      cta: "Conectar Freighter",
+      confirmFirst: "Antes de conectar Freighter, confirmá tu cuenta con el enlace que te enviamos a tu correo."
+    });
+  });
+
+  it("follows the template's PyME post-signup view (D8)", () => {
+    expect(CREATED_ROLE_COPY.PYME).toEqual({
+      title: "Registrá tu PyME",
+      body: "El KYC/KYB de esta demo es simulado: no constituye una verificación de identidad.",
+      cta: "Continuar con el KYC simulado",
+      confirmFirst: "Antes de continuar, confirmá tu cuenta con el enlace que te enviamos a tu correo."
+    });
   });
 });

@@ -11,7 +11,7 @@ import {
   IoSearchOutline,
   IoWalletOutline
 } from "react-icons/io5";
-import { CREATED_COPY, ROLE_COPY, type NextStepIcon } from "@/application/auth/auth-form";
+import { CREATED_COPY, CREATED_ROLE_COPY, ROLE_COPY, type NextStepIcon } from "@/application/auth/auth-form";
 import type { AccountRole } from "@/application/ports/auth-session-port";
 import { FOCUS_RING } from "./auth-field";
 
@@ -26,10 +26,13 @@ const STEP_ICONS: Readonly<Record<NextStepIcon, IconType>> = {
 /**
  * The template's `created` phase (`Vaqcrow Onboarding.dc.html` lines
  * 132–155) with the owner overrides of D7: the banner asks to confirm the
- * email and shows the role, never the email itself; the view is «Conectá tu
- * wallet» for both roles; and «Conectar Freighter» only explains that the
- * account must be confirmed first (the wallet connection lands with
- * #406/#426). Focus moves to the heading when the view appears.
+ * email and shows the role, never the email itself. The rest follows the
+ * template per role (D8): the investor sees «Conectá tu wallet» / «Conectar
+ * Freighter» and the PyME «Registrá tu PyME» / «Continuar con el KYC
+ * simulado». While the account is unconfirmed the primary action only
+ * explains that it must be confirmed first (the wallet connection lands with
+ * #406/#426, the PyME wizard with #398). Focus moves to the heading when the
+ * view appears.
  */
 export function AccountCreatedPanel({
   role,
@@ -42,6 +45,7 @@ export function AccountCreatedPanel({
   readonly onBack: () => void;
 }) {
   const copy = ROLE_COPY[role];
+  const created = CREATED_ROLE_COPY[role];
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -65,9 +69,9 @@ export function AccountCreatedPanel({
           tabIndex={-1}
           className={`m-0 text-[clamp(30px,3vw,40px)] leading-[1.15] font-bold tracking-[-0.025em] ${FOCUS_RING}`}
         >
-          {CREATED_COPY.title}
+          {created.title}
         </h2>
-        <p className="m-0 text-base text-pretty text-text-secondary">{CREATED_COPY.body}</p>
+        <p className="m-0 text-base text-pretty text-text-secondary">{created.body}</p>
       </div>
       <ol aria-label={CREATED_COPY.stepsLabel} className="m-0 flex list-none flex-col gap-2 p-0">
         {copy.nextSteps.map((step) => {
@@ -85,11 +89,11 @@ export function AccountCreatedPanel({
         <button
           type="button"
           onClick={() => {
-            if (!confirmed) setNotice(CREATED_COPY.confirmFirst);
+            if (!confirmed) setNotice(created.confirmFirst);
           }}
           className={`flex h-[52px] flex-1 items-center justify-center gap-2 rounded-control bg-brand-accent px-[18px] text-base font-[650] text-on-accent transition-colors duration-150 hover:bg-brand-accent-hover motion-reduce:transition-none ${FOCUS_RING}`}
         >
-          {CREATED_COPY.connect}
+          {created.cta}
           <IoArrowForwardOutline aria-hidden="true" focusable="false" className="text-lg" />
         </button>
         <button

@@ -246,15 +246,20 @@ describe("AuthScreen signup", () => {
   });
 
   it.each([
-    ["INVERSOR", "Inversor", ["Conectar Freighter", "Explorar PyMEs en campaña", "Leer la guía de inversión"]],
-    ["PYME", "PyME", ["Completar KYC/KYB", "Cargar ventas mensuales", "Conectar Freighter"]]
-  ] as const)("a %s signup shows the created view without the email", async (role, roleLabel, steps) => {
+    [
+      "INVERSOR",
+      "Inversor",
+      "Conectá tu wallet",
+      ["Conectar Freighter", "Explorar PyMEs en campaña", "Leer la guía de inversión"]
+    ],
+    ["PYME", "PyME", "Registrá tu PyME", ["Completar KYC/KYB", "Cargar ventas mensuales", "Conectar Freighter"]]
+  ] as const)("a %s signup shows the created view without the email", async (role, roleLabel, title, steps) => {
     renderScreen("signup", role);
     fillSignup();
 
     submit("Crear mi cuenta");
 
-    const heading = await screen.findByRole("heading", { level: 2, name: "Conectá tu wallet" });
+    const heading = await screen.findByRole("heading", { level: 2, name: title });
     await waitFor(() => expect(heading).toHaveFocus());
     const status = screen.getByText(/Cuenta creada\./).closest("[role='status']");
     expect(status).toHaveTextContent(
@@ -282,16 +287,39 @@ describe("AuthScreen signup", () => {
     expect(tags).toEqual(["SIMULADO", "SIMULADO", "TESTNET"]);
   });
 
-  it("'Conectar Freighter' asks to confirm the account first", async () => {
+  it("the investor view explains Freighter signing and 'Conectar Freighter' asks to confirm first", async () => {
     renderScreen("signup");
     fillSignup();
     submit("Crear mi cuenta");
 
-    fireEvent.click(await screen.findByRole("button", { name: "Conectar Freighter" }));
+    expect(
+      await screen.findByText(
+        "Freighter firma cada transacción. Vaqcrow construye y verifica la transacción, y nunca recibe tu seed."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continuar con el KYC simulado/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
 
     expect(
       screen.getByText("Antes de conectar Freighter, confirmá tu cuenta con el enlace que te enviamos a tu correo.")
     ).toHaveAttribute("role", "status");
+  });
+
+  it("the PyME view follows the template and 'Continuar con el KYC simulado' asks to confirm first", async () => {
+    renderScreen("signup", "PYME");
+    fillSignup();
+    submit("Crear mi cuenta");
+
+    expect(
+      await screen.findByText("El KYC/KYB de esta demo es simulado: no constituye una verificación de identidad.")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Conectar Freighter/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar con el KYC simulado" }));
+
+    expect(
+      screen.getByText("Antes de continuar, confirmá tu cuenta con el enlace que te enviamos a tu correo.")
+    ).toHaveAttribute("role", "status");
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("'Volver al formulario' returns to the form with the password cleared", async () => {
