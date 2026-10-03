@@ -2,7 +2,7 @@ import { expect, test } from "./support/local-only";
 import { STUB_API_BASE_URL } from "./support/targets";
 
 /**
- * Issue-critical path 1: the guided demo shell. Covers the entry redirect, the
+ * Issue-critical path 1: the guided demo shell. Covers the journey entry, the
  * persistent environment chrome, and a real traversal across all six steps —
  * the behavior `apps/web`'s unit tests can only approximate with mocked routers.
  */
@@ -20,11 +20,21 @@ test.beforeEach(async ({ request }) => {
   await request.post(`${STUB_API_BASE_URL}/__reset`);
 });
 
-test("the root redirects to the first demo step", async ({ page }) => {
+test("the journey still opens at its first step", async ({ page }) => {
+  // `/` is now the role-based landing skeleton (#379); the six-step journey
+  // stays reachable at `/request` until #438 retires it.
+  await page.goto("/request");
+
+  await expect(page.getByRole("heading", { level: 1, name: "Solicitud" })).toBeVisible();
+});
+
+test("the root is the public landing skeleton, without a link to /admin", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page).toHaveURL(/\/request$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Solicitud" })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/signup");
+  await expect(page.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/login");
+  await expect(page.locator('a[href^="/admin"]')).toHaveCount(0);
 });
 
 test("the shell renders the demo chrome and the step progress", async ({ page }) => {

@@ -61,11 +61,37 @@ export interface AxiosHttpClientOptions {
   readonly headers?: Readonly<Record<string, string>>;
   /** Request timeout in milliseconds; defaults to 10s. */
   readonly timeoutMs?: number;
+  /** Resolves the current access token per request; `null` sends no `Authorization` header. */
+  readonly accessToken?: AccessTokenProvider;
+}
+
+/** Async source of the signed-in user's access token (e.g. `AuthSessionPort.getAccessToken`). */
+export type AccessTokenProvider = () => Promise<string | null>;
+
+/** RFC 6750 `b64token` characters: anything else (spaces, CR/LF) is never put in a header. */
+const BEARER_TOKEN_PATTERN = /^[A-Za-z0-9\-._~+/]+=*$/;
+
+async function authorizationHeader(provider: AccessTokenProvider | undefined): Promise<Record<string, string> | undefined> {
+  if (!provider) return undefined;
+  let token: string | null;
+  try {
+    token = await provider();
+  } catch {
+    // No token is not a transport failure: the request goes out unauthenticated
+    // and the API answers 401, which callers already map.
+    return undefined;
+  }
+  return typeof token === "string" && BEARER_TOKEN_PATTERN.test(token)
+    ? { Authorization: `Bearer ${token}` }
+    : undefined;
 }
 
 /** Axios-backed implementation of `HttpClientPort`. Axios must not leak outside this file. */
 export class AxiosHttpClient implements HttpClientPort {
-  constructor(private readonly instance: AxiosInstance) {}
+  constructor(
+    private readonly instance: AxiosInstance,
+    private readonly accessToken?: AccessTokenProvider
+  ) {}
 
   static create(
     options: AxiosHttpClientOptions,
@@ -76,17 +102,20 @@ export class AxiosHttpClient implements HttpClientPort {
         baseURL: options.baseUrl,
         timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         ...(options.headers ? { headers: { ...options.headers } } : {})
-      })
+      }),
+      options.accessToken
     );
   }
 
   async send<T>(request: HttpRequest): Promise<HttpResponse<T>> {
+    const headers = await authorizationHeader(this.accessToken);
     let response: { status: number; data: unknown };
     try {
       response = await this.instance.request({
         method: request.method,
         url: request.path,
         ...(request.body !== undefined ? { data: request.body } : {}),
+        ...(headers ? { headers } : {}),
         // Non-2xx statuses are mapped by this adapter, not by axios.
         validateStatus: () => true
       });

@@ -53,14 +53,17 @@ const normalize = (value: string) =>
     .trim();
 
 /**
- * Every canonical `text:` literal, read from source rather than imported: the
- * root test project has no path into `apps/web`, and reading the literal also
- * proves the file really carries it. The interface's `readonly text: string;`
- * declaration is not matched — the pattern requires a quoted value.
+ * Every canonical text, read from source rather than imported: the root test
+ * project has no path into `apps/web`, and reading the literals also proves the
+ * file really carries them. Each record is built by
+ * `disclosure(id, title, body, banner)`, whose `text` is `${title}. ${body}`,
+ * so the pattern captures the quoted title and body and joins them the same way.
  */
 function canonicalTexts(): string[] {
   const source = read(DISCLOSURES_SOURCE);
-  return [...source.matchAll(/^\s*text: "([^"]+)"/gm)].map((match) => match[1] ?? "");
+  return [...source.matchAll(/disclosure\(\s*"[^"]+",\s*"([^"]+)",\s*"([^"]+)",/g)].map(
+    (match) => `${match[1] ?? ""}. ${match[2] ?? ""}`
+  );
 }
 
 describe("trust disclosures: code and documents stay in lockstep", () => {

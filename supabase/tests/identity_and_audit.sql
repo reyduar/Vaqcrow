@@ -1,6 +1,6 @@
 begin;
 
-select plan(32);
+select plan(37);
 
 -- Structure and access control ------------------------------------------------
 
@@ -70,16 +70,53 @@ select is(
   'a PYME signup creates a PYME profile with the trimmed display name'
 );
 
-insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
-values (
-  '22222222-2222-4222-8222-222222222222', 'inversor@example.test',
-  '{"role": "INVERSOR"}'::jsonb, '{}'::jsonb
+select throws_ok(
+  $$insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+    values ('22222222-2222-4222-8222-222222222222', 'inversor@example.test', '{"role": "INVERSOR"}'::jsonb, '{}'::jsonb)$$,
+  '22023', 'display name is required (at least 2 characters)',
+  'an INVERSOR signup without a display name is rejected (no email-derived name)'
+);
+
+select throws_ok(
+  $$insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+    values ('22222222-2222-4222-8222-222222222223', 'blank@example.test', '{"role": "PYME", "display_name": "   "}'::jsonb, '{}'::jsonb)$$,
+  '22023', 'display name is required (at least 2 characters)',
+  'a PYME signup with a blank display name is rejected'
+);
+
+select throws_ok(
+  $$insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+    values ('22222222-2222-4222-8222-222222222224', 'short@example.test', '{"role": "INVERSOR", "display_name": " A "}'::jsonb, '{}'::jsonb)$$,
+  '22023', 'display name is required (at least 2 characters)',
+  'a signup with a 1-character display name is rejected'
+);
+
+select throws_ok(
+  $$insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+    values ('22222222-2222-4222-8222-222222222225', 'admin-noname@example.test', '{}'::jsonb, '{"role": "ADMIN"}'::jsonb)$$,
+  '22023', 'display name is required (at least 2 characters)',
+  'an ADMIN insert (app_metadata) without a display name is rejected'
 );
 
 select is(
-  (select role || ':' || display_name from public.profile where user_id = '22222222-2222-4222-8222-222222222222'),
-  'INVERSOR:inversor',
-  'an INVERSOR signup falls back to the email local part as display name'
+  (select count(*)::int from public.profile where user_id in (
+    '22222222-2222-4222-8222-222222222222', '22222222-2222-4222-8222-222222222223',
+    '22222222-2222-4222-8222-222222222224', '22222222-2222-4222-8222-222222222225'
+  )),
+  0,
+  'a signup rejected for its display name creates no profile row'
+);
+
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+values (
+  '22222222-2222-4222-8222-222222222226', 'two@example.test',
+  '{"role": "INVERSOR", "display_name": " Al "}'::jsonb, '{}'::jsonb
+);
+
+select is(
+  (select role || ':' || display_name from public.profile where user_id = '22222222-2222-4222-8222-222222222226'),
+  'INVERSOR:Al',
+  'a signup with a 2-character display name is accepted'
 );
 
 select throws_ok(

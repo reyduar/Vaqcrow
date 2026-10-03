@@ -22,7 +22,7 @@ status: draft
 |---|---|---|
 | **Supabase** | Proyecto remoto (`https://<project-ref>.supabase.co`) | Stack local del CLI (`http://127.0.0.1:54321` en el host; `http://host.docker.internal:54321` dentro del contenedor de la API) |
 | **API** | Corre en el host (`pnpm --filter @vaqcrow/api dev:cloud`) o en Railway | Corre en un contenedor construido con `apps/api/Dockerfile` vía `docker-compose.local.yml` |
-| **Web** | `pnpm --filter @vaqcrow/web dev:cloud`, o Vercel | `pnpm --filter @vaqcrow/web dev:docker`, apuntando a `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` |
+| **Web** | `pnpm --filter @vaqcrow/web dev:cloud`, o Vercel; `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` del proyecto remoto | `pnpm --filter @vaqcrow/web dev:docker`, apuntando a `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` y a Supabase local (`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`) |
 | **Stellar** | Testnet pública, vía Horizon | Testnet pública para la API (ver §5); Quickstart en Docker Desktop sólo para los contratos (`contracts/scripts/local-network.sh`) |
 | **`APP_ENV`** | `demo` | `local` |
 | **Propósito** | El único perfil que corre la demo real; es el que se despliega en Railway/Vercel | Pruebas locales — migraciones, integración, desarrollo sin tocar el proyecto de la demo |
@@ -41,7 +41,7 @@ Por eso el perfil se elige explícitamente en cada comando (D2): `node --env-fil
 2. **Copiar las plantillas.** `.env.cloud.example` → `.env.cloud` y `.env.docker.example` → `.env.docker` (si no hiciste el paso 1), completando los placeholders. Las plantillas viven junto a este documento.
 3. **Levantar el perfil docker.** `pnpm env:docker:up` arranca Supabase local (CLI, sin `studio`/`storage-api`/`realtime`/etc.; la API necesita `kong` y `postgrest`, y la confirmación de email necesita `gotrue` y `mailpit`, que **sí** se levantan), el Stellar Quickstart si no está ya sano en `:8000`, genera `.env.docker` si falta, y construye + levanta el contenedor de la API.
 4. **Generar `.env.docker` a mano si hace falta.** `./scripts/env/generate-docker-env.sh` lee `supabase status -o env` (Supabase local debe estar arriba) y copia las líneas `LLM_*` verbatim desde `.env.cloud` — el perfil docker reutiliza la credencial LLM de la demo en vez de tener la propia. Nunca imprime valores, sólo los nombres de las claves escritas. Rechaza sobrescribir un `.env.docker` existente salvo `--force`; con `--force` **conserva** las líneas `VAQCROW_SUPERADMIN_EMAIL`/`VAQCROW_SUPERADMIN_PASSWORD` que ya hubieras escrito (si faltan, las deja vacías).
-5. **Completar el superadmin.** Escribí vos, a mano, `VAQCROW_SUPERADMIN_EMAIL` y `VAQCROW_SUPERADMIN_PASSWORD` en `.env.docker` y en `.env.cloud` (las plantillas traen las dos líneas vacías). La contraseña no se commitea, no se imprime y no vive en Railway: sólo la lee el script de seed (§13.3).
+5. **Completar el superadmin.** Escribí vos, a mano, `VAQCROW_SUPERADMIN_EMAIL` y `VAQCROW_SUPERADMIN_PASSWORD` en `.env.docker` y en `.env.cloud` (`.env.docker.example` trae las dos líneas vacías; `.env.cloud.example` no las incluye, por decisión del owner del 2026-10-03). La contraseña no se commitea, no se imprime y no vive en Railway: sólo la lee el script de seed (§13.3).
 
 ## 4. Comandos del día a día
 
@@ -198,10 +198,10 @@ No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts
 
 `supabase/config.toml` fija `site_url = "http://localhost:3001"`, `enable_signup = true` y `[auth.email] enable_confirmations = true`; los emails van a Mailpit (§4). No hay nada que configurar a mano.
 
-### 13.2 Proyecto remoto — pasos del owner (pendiente)
+### 13.2 Proyecto remoto — pasos del owner (hechos el 2026-10-02)
 
-> [!todo] Pendiente del owner
-> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. Hasta completarlo, el remoto no envía emails de confirmación con el dominio propio.
+> [!info] Configurado por el owner
+> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. El owner la completó el 2026-10-02, y `GET /auth/v1/settings` del remoto confirma la confirmación de email activa (`mailer_autoconfirm: false`). La entrega real por Resend todavía no se observó: se confirma con el primer alta real contra el remoto.
 
 En el dashboard de Supabase del proyecto de la demo:
 
@@ -237,3 +237,27 @@ pnpm --filter @vaqcrow/api seed:superadmin:cloud    # lee ../../.env.cloud
 - **Nunca promueve:** si el email ya existe como `PYME`/`INVERSOR`, o como `ADMIN` inactivo, o sin perfil, falla con código 1 sin modificar nada.
 - Nunca corre al arrancar la API. Si falta una variable, el error nombra la variable, nunca su valor; la contraseña no se imprime.
 - `pnpm demo:preflight --env-file .env.cloud` incluye el chequeo «An active ADMIN profile exists» y también `profile`/`audit_log` entre las tablas.
+
+### 13.4 Sesión en la web (`NEXT_PUBLIC_SUPABASE_*`)
+
+La web abre la sesión real de Supabase Auth en el navegador (Task [#379](https://github.com/reyduar/Vaqcrow/issues/379)) con dos variables públicas:
+
+| Variable | Valor | Notas |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | La URL del proyecto: remoto en `.env.cloud`/Vercel, `http://127.0.0.1:54321` en `.env.docker` | La misma que `SUPABASE_URL` de la API vista desde el host |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | La clave publicable del mismo proyecto | Pensada para el navegador: el acceso lo acota RLS. **Nunca** la `service_role` |
+
+- `generate-docker-env.sh` las escribe solo, a partir de `supabase status -o env` (las mismas URL y clave publicable que `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`).
+- En `.env.cloud` y en el panel de Vercel las agrega la persona operadora; las plantillas `.env.*.example` también las tienen que listar vacías (las sesiones de agente no pueden editar `.env*`).
+- `pnpm demo:preflight` las exige en el chequeo «Web environment variables», junto con `NEXT_PUBLIC_API_BASE_URL`; como la de la API, sólo nombra la variable faltante, nunca el valor.
+- Si falta alguna, crear el cliente falla con `SupabaseConfigError`, que nombra la variable sin imprimir valores. La web no se cae: el puerto de sesión se construye perezosamente en el navegador y una configuración faltante se vuelve el error saneado `unavailable` (la pantalla de ingreso muestra «No pudimos ingresar…»), y el proxy la trata como «sin sesión». Así las rutas del recorrido de seis pasos siguen funcionando sin estas variables.
+- El cliente del navegador es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, y por eso el servidor puede leer la misma sesión. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.
+
+**Lectura de la sesión en el servidor (`apps/web/src/proxy.ts`).** Next.js 16 renombró `middleware.ts` a `proxy.ts` (runtime Node). El proxy corre sólo en `/portfolio`, `/company`, `/login` y `/signup` (su `matcher`, atado por un test a `GATED_PATHS`) y, antes de renderizar:
+
+1. Crea un `createServerClient` de `@supabase/ssr` sobre las cookies del request (`getAll`/`setAll`) con las mismas dos variables (`infrastructure/auth/server-session.ts`).
+2. Verifica el token con `getClaims()` (que también lo refresca) y lee el rol y el nombre de la fila propia de `public.profile` con el JWT del usuario, bajo RLS. Las dos lecturas tienen un tope conjunto de 3 s. El timeout no cancela el `getClaims()` en curso: si refresca el token después de vencido el tope, esas cookies se descartan enteras (ni se aplican tarde ni se mezclan con la respuesta), y las que llegaron antes se conservan. La rotación descartada no deja a la sesión varada: Supabase Auth responde al refresh token padre del activo devolviendo el activo (excepción de la detección de reutilización, [guía de sesiones](https://supabase.com/docs/guides/auth/sessions)), así que el próximo refresco del navegador la recupera.
+3. Aplica la regla pura `gateRoute`: anónimo en `/portfolio` → `/login?role=investor`, en `/company` → `/login?role=pyme`; rol equivocado → su propio home; sesión abierta en `/login`/`/signup` → su home.
+4. Copia las cookies refrescadas y los headers de caché a la respuesta, sea redirección o no.
+
+Cualquier fallo —configuración faltante, token inválido, perfil ilegible, red o timeout— cuenta como «sin sesión»: las rutas protegidas fallan cerradas y las de ingreso quedan accesibles. Un fallo o timeout deja en el log del servidor `[Proxy] session read failed` con una `cause` saneada (`timeout` o el nombre del error), nunca el mensaje, el token ni el email. En el navegador, `RouteGate` aplica la misma regla después de cargar (cierre de sesión en otra pestaña, página restaurada del caché).

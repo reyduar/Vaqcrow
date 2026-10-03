@@ -13,8 +13,8 @@ select plan(11);
 
 insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
 values
-  ('a1111111-1111-4111-8111-111111111111', 'pyme@example.test', '{"role": "PYME"}'::jsonb, '{}'::jsonb),
-  ('a2222222-2222-4222-8222-222222222222', 'inversor@example.test', '{"role": "INVERSOR"}'::jsonb, '{}'::jsonb),
+  ('a1111111-1111-4111-8111-111111111111', 'pyme@example.test', '{"role": "PYME", "display_name": "Scope Pyme"}'::jsonb, '{}'::jsonb),
+  ('a2222222-2222-4222-8222-222222222222', 'inversor@example.test', '{"role": "INVERSOR", "display_name": "Scope Inversor"}'::jsonb, '{}'::jsonb),
   (
     'a5555555-5555-4555-8555-555555555555', 'admin@example.test', '{"role": "INVERSOR"}'::jsonb,
     '{"role": "ADMIN", "display_name": "Scope Admin", "username": "scope.admin.test"}'::jsonb

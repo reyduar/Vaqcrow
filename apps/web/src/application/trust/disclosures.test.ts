@@ -5,7 +5,7 @@ import { disclosures, microcopy } from "./disclosures";
 // docs/design/demo-ui.md §2 — byte-for-byte, including punctuation.
 const CANONICAL_TEXTS: Record<string, string> = {
   simulation:
-    "Demostración con datos simulados. La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.",
+    "Demostración con datos simulados. El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.",
   testnet:
     "Stellar Testnet. Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.",
   "non-custody":
@@ -26,6 +26,15 @@ describe("disclosures", () => {
   for (const [id, text] of Object.entries(CANONICAL_TEXTS)) {
     it(`matches the canonical source text verbatim for "${id}"`, () => {
       expect(disclosures[id as keyof typeof disclosures].text).toBe(text);
+    });
+  }
+
+  for (const id of Object.keys(CANONICAL_TEXTS)) {
+    it(`splits "${id}" into its lead title and a body without re-deriving offsets`, () => {
+      const disclosure = disclosures[id as keyof typeof disclosures];
+      expect(disclosure.body.length).toBeGreaterThan(0);
+      expect(disclosure.body.startsWith(disclosure.title)).toBe(false);
+      expect(`${disclosure.title}. ${disclosure.body}`).toBe(disclosure.text);
     });
   }
 

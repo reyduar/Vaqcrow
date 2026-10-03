@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TrustBanner } from "./trust-banner";
 
 const LONG_BODY =
-  "Demostración con datos simulados. La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.";
+  "Demostración con datos simulados. El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.";
 
 describe("TrustBanner", () => {
   it("renders role='alert' for the error variant", () => {

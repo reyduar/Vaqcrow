@@ -19,9 +19,10 @@ export interface DemoShellProps {
 
 /**
  * Shell copy decoded from `Vaqcrow Onboarding PyME.dc.html`
- * (`docs/design/template/`, git-ignored). The demo has no authentication, so the
- * navbar's actions slot shows a non-interactive identity instead of a session
- * menu: there is no person name and no "Cerrar sesión" in the corpus, and
+ * (`docs/design/template/`, git-ignored). The scripted journey has no
+ * authentication of its own (the real session belongs to the role shell,
+ * `AppHeader`, #379), so the navbar's actions slot shows a non-interactive
+ * identity instead of a session menu: there is no person name and no "Cerrar sesión" in the corpus, and
  * `AccountMenu` renders identity only when its `items` list is empty. The demo
  * session is shown as the investor (the template's `userRole` is `INVERSOR`), so
  * the subtitle reads "Inversor". The footer legal row is the "Vaqcrow · 2026"

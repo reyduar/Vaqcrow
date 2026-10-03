@@ -107,7 +107,7 @@ Si en cambio se decide que la demo acotada **nunca** expondrá estas tablas a un
 ## 9. El modelo de identidad implementado (Task #370, rama de la Feature #369)
 
 > [!warning] Alcance de entrega
-> Todo lo de esta sección está en la rama de la Feature #369 y **no en `main`**. Se entrega apilado con #378: hasta entonces la demo desplegada conserva el comportamiento anterior. No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La web todavía **no envía tokens**; eso es una ruptura conocida hasta #378.
+> Todo lo de esta sección está en la rama de la Feature #369 y **no en `main`**. Se entrega apilado con #378: hasta entonces la demo desplegada conserva el comportamiento anterior. No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La sesión real de la web ya existe en la rama de #378 (§9.9) y el cliente HTTP sabe mandar `Authorization: Bearer`, pero los gateways del recorrido de seis pasos **no envían el token**: contra la API autorizada responden `401`. Es una ruptura conocida que se cierra al retirar el recorrido ([#438](https://github.com/reyduar/Vaqcrow/issues/438)), en la misma entrega a `main`.
 
 ### 9.1 Roles y perfil
 
@@ -115,7 +115,7 @@ La migración `supabase/migrations/20260930180000_create_identity_and_audit.sql`
 
 ### 9.2 Trigger de alta
 
-`on_auth_user_created` ejecuta `handle_new_user()` (`security definer`, `search_path=''`, sin `execute` para `anon`/`authenticated`) y crea el perfil. El rol `ADMIN` **sólo entra por `app_metadata`**, que escribe únicamente `service_role`; el `user_metadata` —editable por la propia persona— sólo puede pedir `PYME` o `INVERSOR`. Así nadie se autoasigna `ADMIN`. El superadmin («Admin Vaqcrow», `vaqcrow.admin`) se siembra con `pnpm --filter @vaqcrow/api seed:superadmin:docker|cloud` (script manual por perfil; email y contraseña desde `VAQCROW_SUPERADMIN_EMAIL` / `VAQCROW_SUPERADMIN_PASSWORD`; nunca al arrancar la API). El preflight comprueba que exista un `ADMIN` activo.
+`on_auth_user_created` ejecuta `handle_new_user()` (`security definer`, `search_path=''`, sin `execute` para `anon`/`authenticated`) y crea el perfil. El nombre visible es **obligatorio**: el alta sin `display_name` de al menos 2 caracteres tras recortar espacios se rechaza con `22023` y no deja usuario ni perfil; el email nunca se usa como nombre (migración `20261002120000_require_signup_display_name.sql`, decisión D3 de #379). La promoción a `ADMIN` que tenga que crear un perfil faltante exige lo mismo. El rol `ADMIN` **sólo entra por `app_metadata`**, que escribe únicamente `service_role`; el `user_metadata` —editable por la propia persona— sólo puede pedir `PYME` o `INVERSOR`. Así nadie se autoasigna `ADMIN`. El superadmin («Admin Vaqcrow», `vaqcrow.admin`) se siembra con `pnpm --filter @vaqcrow/api seed:superadmin:docker|cloud` (script manual por perfil; email y contraseña desde `VAQCROW_SUPERADMIN_EMAIL` / `VAQCROW_SUPERADMIN_PASSWORD`; nunca al arrancar la API). El preflight comprueba que exista un `ADMIN` activo.
 
 ### 9.3 RLS
 
@@ -144,4 +144,18 @@ Si el adaptador lanza, el hook registra internamente sólo el nombre del error y
 
 ### 9.8 Email
 
-Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner según [[docs/architecture/environments|environments.md]] §13 — **pendiente** al 2026-10-01. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner en el panel el 2026-10-02 según [[docs/architecture/environments|environments.md]] §13; la entrega real todavía no se observó y se confirma con el primer alta real contra el remoto. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+
+### 9.9 El lado web (Task #379, rama de la Feature #378)
+
+Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
+
+| Pieza | Comportamiento |
+|---|---|
+| Sesión | `@supabase/ssr` guarda la sesión de Supabase Auth en **cookies** (`createBrowserClient` en el navegador). El puerto de sesión (`apps/web/src/application/ports/auth-session-port.ts`) expone sólo `{ role, displayName }`; el token no sale del adaptador salvo para el header `Authorization: Bearer` del cliente HTTP. |
+| Rol | Sale siempre de la **fila propia** de `public.profile`, leída con el JWT del usuario bajo RLS (`profile_select_own`) por el `sub` verificado. Nunca de los claims, del `user_metadata`, de la URL ni del selector «Soy inversor / Soy PyME» del formulario. |
+| Gating en el servidor | `apps/web/src/proxy.ts` (Next.js 16) verifica el token con `getClaims()`, lee el perfil y aplica `gateRoute`: `/portfolio` sólo `INVERSOR`, `/company` sólo `PYME`, anónimo → `/login?role=…`, sesión abierta en `/login`/`/signup` → su home. Tope de 3 s; cualquier fallo cuenta como «sin sesión» y falla cerrado. Detalle en [[docs/architecture/environments|environments.md]] §13.4. |
+| Gating en el cliente | `RouteGate` aplica la misma regla después de cargar y no renderiza nada protegido mientras la sesión carga. Tras el «Cerrar sesión» de la propia pestaña la navegación a `/` del header gana; nunca redirige a la ruta en la que ya está. |
+| Email | Nunca se muestra: el principal no lo lleva, el menú del avatar muestra nombre y chip de rol, y los mensajes de alta e ingreso no lo repiten. |
+| `ADMIN` | Puede ingresar por `/login` y va a `/`; ninguna página pública enlaza a `/admin` (la consola es #386). |
+| Errores | Los del proveedor se reducen a códigos saneados (`invalid_credentials`, `email_not_confirmed`, `network`, `unavailable`, …); el proxy registra sólo `[Proxy] session read failed` con una `cause` saneada. |

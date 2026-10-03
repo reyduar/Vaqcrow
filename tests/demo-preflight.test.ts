@@ -42,7 +42,9 @@ const env = {
   STELLAR_CAMPAIGN_FACTORY_ID: FACTORY,
   STELLAR_PLATFORM_SECRET_KEY: SECRET,
   CORS_ALLOWED_ORIGINS: "https://web.example.test",
-  NEXT_PUBLIC_API_BASE_URL: API
+  NEXT_PUBLIC_API_BASE_URL: API,
+  NEXT_PUBLIC_SUPABASE_URL: SUPABASE,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test"
 };
 
 const options = parseArgs(["--sme", SME, "--investor", INVESTOR]);
