@@ -198,10 +198,13 @@ No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts
 
 `supabase/config.toml` fija `site_url = "http://localhost:3001"`, `enable_signup = true` y `[auth.email] enable_confirmations = true`; los emails van a Mailpit (§4). No hay nada que configurar a mano.
 
-### 13.2 Proyecto remoto — pasos del owner (hechos el 2026-10-02)
+### 13.2 Proyecto remoto — pasos del owner (SMTP propio activo desde el 2026-10-03)
 
 > [!info] Configurado por el owner
-> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. El owner la completó el 2026-10-02, y `GET /auth/v1/settings` del remoto confirma la confirmación de email activa (`mailer_autoconfirm: false`). La entrega real por Resend todavía no se observó: se confirma con el primer alta real contra el remoto.
+> La configuración de Auth del proyecto remoto vive en el dashboard y la clave de Resend la tiene sólo el owner; ninguna sesión de agente puede hacerlo. El 2026-10-02 `GET /auth/v1/settings` del remoto ya confirmaba la confirmación de email activa (`mailer_autoconfirm: false`), pero el SMTP propio **no** estaba activo.
+
+> [!warning] Corrección (2026-10-03)
+> Esta sección decía que el SMTP de Resend quedó configurado el 2026-10-02, y no era así. El primer alta real (2026-10-03, 16:03Z) creó el usuario pero el correo no llegó: los logs de Supabase Auth muestran `mail.send` con `mail_from: noreply@mail.app.supabase.io`, es decir, el mailer por defecto de Supabase. El owner activó **Enable custom SMTP** ese mismo día y el alta siguiente recibió el correo por Resend (prueba del owner + logs de Supabase Auth; detalle en el addendum del documento de evidencia de #378).
 
 En el dashboard de Supabase del proyecto de la demo:
 
@@ -222,6 +225,15 @@ En el dashboard de Supabase del proyecto de la demo:
    - **Site URL**: `https://vaqcrow-web-nine.vercel.app` (la URL de la web en Vercel que cita el `README.md`).
    - **Redirect URLs**: `https://vaqcrow-web-nine.vercel.app/**` y, si se corre la web en local contra el remoto, `http://localhost:3001/**`.
 4. Verificar: dar de alta una cuenta de prueba `PYME`/`INVERSOR` desde la web (o `POST /auth/v1/signup` con la clave publicable) y comprobar que llega el email desde `no-reply@vaqcrow.com` y que el login falla hasta confirmarlo.
+5. Si el correo no llega, mirar el remitente en los logs de Auth (`mail.send`): `noreply@mail.app.supabase.io` significa que el SMTP propio no está activo.
+
+#### Probar la autenticación en un preview de Vercel
+
+La verificación del 2026-10-03 corrió en un preview de Vercel (`https://vaqcrow-<hash>-reyduars-projects.vercel.app`), no en producción. Para que un preview hable con el proyecto remoto:
+
+- **Variables:** `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` tienen que incluir el target **Preview** en Vercel, no sólo Production. Las `NEXT_PUBLIC_*` se incrustan al compilar: después de agregarlas hay que volver a desplegar el preview.
+- **Redirect URLs:** en **Authentication → URL Configuration** sumar `https://vaqcrow-*-reyduars-projects.vercel.app/**`; si no, el enlace del correo (`emailRedirectTo = <origen>/login`) cae en la Site URL.
+- **Resend:** verifica sólo el dominio remitente (`vaqcrow.com`); el origen del preview no importa para enviar.
 
 ### 13.3 Sembrar el superadmin
 

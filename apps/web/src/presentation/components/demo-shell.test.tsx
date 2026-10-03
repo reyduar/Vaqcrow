@@ -70,7 +70,7 @@ describe("DemoShell", () => {
 
     expect(screen.getByText("Sesión de demostración")).toBeInTheDocument();
     expect(screen.getByText("Inversor")).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Tema" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Tema" })).toBeInTheDocument();
 
     // The footer legal row renders the caller-supplied copyright verbatim.
     // `DemoShell` does not export the constant, so the literal is asserted here.

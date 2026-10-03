@@ -268,6 +268,32 @@ describe("SupabaseAuthSession session reads", () => {
     const failing = fakeClient({ signOut: vi.fn().mockResolvedValue({ error: apiError(0) }) });
     expect((await failureOf(new SupabaseAuthSession(failing.client).signOut())).code).toBe("network");
   });
+
+  it("clears the local session and confirms no session survives", async () => {
+    const cleared = fakeClient({ getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }) });
+    await new SupabaseAuthSession(cleared.client).clearLocalSession();
+    expect(cleared.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("treats a local clear as done when the provider reports an error but removed the session", async () => {
+    // auth-js removes the stored session even when the logout request fails.
+    const cleared = fakeClient({
+      signOut: vi.fn().mockResolvedValue({ error: apiError(0) }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null })
+    });
+    await expect(new SupabaseAuthSession(cleared.client).clearLocalSession()).resolves.toBeUndefined();
+  });
+
+  it("rejects a local clear when a session still survives it", async () => {
+    const surviving = fakeClient({ signOut: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")) });
+    expect((await failureOf(new SupabaseAuthSession(surviving.client).clearLocalSession())).code).toBe("unavailable");
+
+    const unreadable = fakeClient({
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: apiError(0) })
+    });
+    expect((await failureOf(new SupabaseAuthSession(unreadable.client).clearLocalSession())).code).toBe("network");
+  });
 });
 
 describe("SupabaseAuthSession.onSessionChange", () => {

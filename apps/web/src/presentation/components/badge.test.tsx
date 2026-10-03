@@ -31,6 +31,21 @@ describe("Badge", () => {
     expect(badge?.className ?? "").toMatch(/trust-success/);
   });
 
+  it("renders the template's 22 px header chip when compact, and the 24 px badge by default", () => {
+    const { container } = render(
+      <>
+        <Badge variant="testnet" label="TESTNET" size="compact" />
+        <Badge variant="testnet" label="Testnet" />
+      </>
+    );
+
+    const [compact, regular] = [...container.querySelectorAll("[data-variant]")];
+    expect(compact?.className ?? "").toMatch(/h-\[22px\]/);
+    expect(compact?.className ?? "").toMatch(/text-\[11px\]/);
+    expect(compact?.className ?? "").not.toMatch(/\bh-6\b/);
+    expect(regular?.className ?? "").toMatch(/\bh-6\b/);
+  });
+
   it("always renders visible label text, never relying on icon or color alone", () => {
     render(<Badge variant="transaction" label="Enviada" />);
 

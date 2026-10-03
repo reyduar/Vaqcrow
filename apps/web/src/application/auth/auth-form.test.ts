@@ -5,6 +5,7 @@ import {
   authHref,
   homeRouteFor,
   roleFromParam,
+  signInRoleMismatch,
   validateAuthForm,
   type AuthFormValues
 } from "./auth-form";
@@ -74,6 +75,35 @@ describe("validateAuthForm", () => {
       valid: false,
       password: "Mínimo 8 caracteres."
     });
+  });
+});
+
+describe("signInRoleMismatch (D14)", () => {
+  function text(message: { title: string; detail?: string } | null) {
+    return message ? [message.title, message.detail].filter(Boolean).join(" ") : null;
+  }
+
+  it("accepts a principal whose role matches the selected toggle", () => {
+    expect(signInRoleMismatch("INVERSOR", "INVERSOR")).toBeNull();
+    expect(signInRoleMismatch("PYME", "PYME")).toBeNull();
+  });
+
+  it("rejects a PyME account signed in with «Soy inversor»", () => {
+    expect(text(signInRoleMismatch("INVERSOR", "PYME"))).toBe("Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.");
+  });
+
+  it("rejects an investor account signed in with «Soy PyME»", () => {
+    expect(text(signInRoleMismatch("PYME", "INVERSOR"))).toBe(
+      "Esta cuenta es de inversor. Elegí «Soy inversor» para ingresar."
+    );
+  });
+
+  it.each(["INVERSOR", "PYME"] as const)("rejects an ADMIN with the neutral sign-in title whatever the toggle (%s)", (selected) => {
+    expect(text(signInRoleMismatch(selected, "ADMIN"))).toBe("No pudimos ingresar.");
+  });
+
+  it("never names the admin role or the admin console", () => {
+    expect(JSON.stringify(signInRoleMismatch("INVERSOR", "ADMIN"))).not.toMatch(/admin/i);
   });
 });
 

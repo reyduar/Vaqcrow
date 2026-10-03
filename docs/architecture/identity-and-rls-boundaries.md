@@ -144,7 +144,7 @@ Si el adaptador lanza, el hook registra internamente sólo el nombre del error y
 
 ### 9.8 Email
 
-Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner en el panel el 2026-10-02 según [[docs/architecture/environments|environments.md]] §13; la entrega real todavía no se observó y se confirma con el primer alta real contra el remoto. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), activado por el owner en el panel el 2026-10-03 según [[docs/architecture/environments|environments.md]] §13.2 (antes figuraba el 2026-10-02, pero los logs de Supabase Auth muestran que el primer alta real salió por el mailer por defecto de Supabase); la entrega real por Resend se observó ese mismo día. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
 
 ### 9.9 El lado web (Task #379, rama de la Feature #378)
 
@@ -153,7 +153,7 @@ Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
 | Pieza | Comportamiento |
 |---|---|
 | Sesión | `@supabase/ssr` guarda la sesión de Supabase Auth en **cookies** (`createBrowserClient` en el navegador). El puerto de sesión (`apps/web/src/application/ports/auth-session-port.ts`) expone sólo `{ role, displayName }`; el token no sale del adaptador salvo para el header `Authorization: Bearer` del cliente HTTP. |
-| Rol | Sale siempre de la **fila propia** de `public.profile`, leída con el JWT del usuario bajo RLS (`profile_select_own`) por el `sub` verificado. Nunca de los claims, del `user_metadata`, de la URL ni del selector «Soy inversor / Soy PyME» del formulario. |
+| Rol | Sale siempre de la **fila propia** de `public.profile`, leída con el JWT del usuario bajo RLS (`profile_select_own`) por el `sub` verificado. Nunca de los claims, del `user_metadata`, de la URL ni del selector «Soy inversor / Soy PyME» del formulario. El selector sólo decide si el ingreso se acepta: si no coincide con el rol verificado, la web cierra la sesión en el acto y muestra el rol correcto; un `ADMIN` no ingresa por `/login` (D14, owner 2026-10-03). |
 | Gating en el servidor | `apps/web/src/proxy.ts` (Next.js 16) verifica el token con `getClaims()`, lee el perfil y aplica `gateRoute`: `/portfolio` sólo `INVERSOR`, `/company` sólo `PYME`, anónimo → `/login?role=…`, sesión abierta en `/login`/`/signup` → su home. Tope de 3 s; cualquier fallo cuenta como «sin sesión» y falla cerrado. Detalle en [[docs/architecture/environments|environments.md]] §13.4. |
 | Gating en el cliente | `RouteGate` aplica la misma regla después de cargar y no renderiza nada protegido mientras la sesión carga. Tras el «Cerrar sesión» de la propia pestaña la navegación a `/` del header gana; nunca redirige a la ruta en la que ya está. |
 | Email | Nunca se muestra: el principal no lo lleva, el menú del avatar muestra nombre y chip de rol, y los mensajes de alta e ingreso no lo repiten. |

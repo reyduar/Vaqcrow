@@ -171,3 +171,14 @@ Revisiones RDD (bitácora): U1+U2 `approved` dos veces; U3+U4 `approved`; correc
 > 1. [#378](https://github.com/reyduar/Vaqcrow/issues/378), desde la rama de #369: login, egreso y shell por rol, y la web enviando `Authorization` sin `actor`.
 > 2. R1-002: resolverlo con [#398](https://github.com/reyduar/Vaqcrow/issues/398) o aceptación explícita del owner.
 > 3. Observar la entrega real del email de confirmación por Resend en el primer alta de #378, y ejercitar sign-in/sign-out para completar el criterio 1.
+
+## Addendum 2026-10-03 — verificación contra el proyecto remoto
+
+> [!info] Fuente y alcance
+> Prueba del owner + logs de Supabase Auth, 2026-10-03, sobre el **preview de Vercel** `https://vaqcrow-a6dmgen8s-reyduars-projects.vercel.app` (rama de la Feature #378 en `c6be7c0`, que incluye #369) contra el proyecto Supabase **remoto** real. No es producción ni `main`: nada de #369/#378 está en `main` todavía. Las secciones anteriores quedan como registro histórico; este addendum no las reescribe. Detalle paso a paso en el addendum de [`account-creation-sign-in-and-role-aware-shell-evidence.md`](./account-creation-sign-in-and-role-aware-shell-evidence.md).
+
+- **Verificado en el remoto:** alta `INVERSOR` y `PYME` desde la web con perfil del rol correcto, correo de confirmación entregado por Resend, confirmación (`GET /verify` 303, intercambio PKCE 200), ingreso con contraseña (`POST /token` 200) y cierre de sesión, con el header según el rol y sin mostrar el email.
+- **Criterio 1** («create an account …, sign in and sign out with real Supabase Auth credentials»): el ingreso y el cierre de sesión, que §8 dejaba para #378, quedan ejercitados contra el remoto, y la entrega real por Resend quedó observada. El criterio pasa a ✅ **CUMPLIDO** (verificado vía #378).
+- **Sigue parcial:** el criterio 2 (no existe la invitación de admin, #390). La accesibilidad de la web no se midió en esta prueba (es criterio de #378).
+- **Corrección del SMTP:** §4.4 y §5 suponían el SMTP de Resend configurado en el remoto el 2026-10-02. **Era incorrecto**: el primer alta real (16:03Z) salió por el mailer por defecto (`mail_from: noreply@mail.app.supabase.io` en `auth_logs`) y no llegó. El owner activó el SMTP propio el 2026-10-03 y la entrega por Resend se observó ese mismo día.
+- La condición 3 de §10 (observar Resend y ejercitar sign-in/sign-out) queda cumplida; las demás condiciones antes de `main` no cambian.

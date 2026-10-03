@@ -34,6 +34,31 @@ describe("DemoNavbar", () => {
     expect(screen.getByText(microcopy.testnetBadge)).toBeInTheDocument();
   });
 
+  it("lets a caller shorten the header's Testnet badge to the template's `TESTNET`", () => {
+    render(<DemoNavbar items={ITEMS} testnetLabel="TESTNET" />);
+
+    expect(screen.getByText("TESTNET", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText(microcopy.testnetBadge)).not.toBeInTheDocument();
+  });
+
+  it("draws the isotipo before the wordmark, hidden from assistive technology", () => {
+    render(<DemoNavbar items={ITEMS} />);
+
+    const brand = screen.getByRole("link", { name: "Vaqcrow, inicio" });
+    const isotipo = brand.querySelector("[data-brand-isotipo]");
+    expect(isotipo).toHaveAttribute("aria-hidden", "true");
+    expect(brand.firstElementChild).toBe(isotipo);
+  });
+
+  it("keeps wrapping by default and stays on one line only when asked", () => {
+    const { unmount } = render(<DemoNavbar items={ITEMS} />);
+    expect(screen.getByRole("navigation", { name: "Principal" }).className).not.toMatch(/@md:flex-nowrap/);
+    unmount();
+
+    render(<DemoNavbar items={ITEMS} singleLineNav />);
+    expect(screen.getByRole("navigation", { name: "Principal" }).className).toMatch(/@md:flex-nowrap/);
+  });
+
   it("renders every caller item as a real link in the primary nav", () => {
     render(<DemoNavbar items={ITEMS} />);
 

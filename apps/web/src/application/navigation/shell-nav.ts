@@ -39,6 +39,14 @@ export const SIGN_OUT_LABEL = "Cerrar sesión";
 /** Shown next to the account menu when signing out fails (owner-visible assumption; not in the template). */
 export const SIGN_OUT_ERROR = "No pudimos cerrar la sesión. Volvé a intentar.";
 
+/**
+ * The fixed header's Testnet badge, as `Vaqcrow Landing.dc.html` and
+ * `Vaqcrow Portafolio.dc.html` write it. `demo-ui.md` §2 asks for a `TESTNET`
+ * badge in the fixed header; the full canonical `microcopy.testnetBadge`
+ * ("TESTNET · Activos sin valor económico") stays in the page footer.
+ */
+export const HEADER_TESTNET_BADGE = "TESTNET";
+
 export function accountMenuLabel(displayName: string): string {
   return `Menú de cuenta de ${displayName}`;
 }

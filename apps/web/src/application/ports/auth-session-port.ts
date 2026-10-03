@@ -96,6 +96,12 @@ export interface AuthSessionPort {
   signIn(input: SignInInput): Promise<SessionPrincipal>;
   /** Rejects with `AuthSessionError`. */
   signOut(): Promise<void>;
+  /**
+   * Drops this browser's session only (no other device), as the fallback when
+   * `signOut()` fails and no session may survive. Resolves once no session is
+   * left locally; rejects with `AuthSessionError` when one still is.
+   */
+  clearLocalSession(): Promise<void>;
   /** Current session and its profile; rejects with `AuthSessionError` when the profile cannot be read. */
   getSession(): Promise<SessionSnapshot>;
   /** The current access token, or `null` when signed out. Never rejects. */

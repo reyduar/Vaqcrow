@@ -43,6 +43,7 @@ export function createLazyAuthSession(factory: () => AuthSessionPort): AuthSessi
     signUp: async (input: SignUpInput): Promise<SignUpOutcome> => required().signUp(input),
     signIn: async (input: SignInInput): Promise<SessionPrincipal> => required().signIn(input),
     signOut: async (): Promise<void> => required().signOut(),
+    clearLocalSession: async (): Promise<void> => required().clearLocalSession(),
     getSession: async (): Promise<SessionSnapshot> => required().getSession(),
     getAccessToken: async (): Promise<string | null> => port()?.getAccessToken() ?? null,
     onSessionChange: (listener: () => void): (() => void) => port()?.onSessionChange(listener) ?? (() => undefined)
