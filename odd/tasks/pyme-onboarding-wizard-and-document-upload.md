@@ -31,13 +31,27 @@ Template exportado por el owner en `docs/design/template/` (directorio ignorado 
 | — | El KYC es simulado, detrás de un puerto; el resultado se guarda con proveedor, referencia y la marca `SIMULADO`. |
 | — | El CUIT se valida sólo como 11 dígitos (sin AFIP/ARCA real). |
 
+## Decisiones del owner sobre la carga de documentos (2026-10-03)
+
+El owner aprobó tal cual («dale a todo») los cinco puntos propuestos:
+
+| # | Decisión |
+|---|---|
+| U1 | **Tres ranuras de documentos fijas y obligatorias** — Declaraciones de ventas, Constancia de CUIT, Estatuto —, un archivo cada una, PDF/JPG/PNG ≤ 10 MB; las tres hacen falta para enviar. |
+| U2 | **Fotos: hasta 4, opcionales.** |
+| U3 | **Subida al elegir el archivo** (con barra de progreso); la referencia se guarda al enviar y el objeto se borra al quitarlo. |
+| U4 | **Orden de fotos con botones «mover ←/→»** (no arrastrar). |
+| U5 | **Copy nuevo:** lo redacta el agente en español neutro (voseo) y el owner lo aprueba en la revisión. |
+
+Asumido y confirmado: las ranuras **reemplazan el mock** «Adjuntar declaraciones (PDF)» del template y la carga vive **dentro del paso 2**, donde el template ubica «Declaraciones de ventas». «Estatuto» = estatuto social (*articles of incorporation*); «Declaraciones de ventas» = los comprobantes que respaldan la grilla de ventas mensuales.
+
 ## Decisiones pendientes del owner (de #398, «Not designed in the template»)
 
 Estas **no se implementan** hasta que el owner decida; se registran como supuestos si hay que avanzar y se marcan para aprobación:
 
-1. UI de carga de fotos (1–4: selector, vista previa, quitar, orden) y ranuras de documentos obligatorios (declaraciones de ventas, constancia de CUIT, estatuto), con estados de progreso, tipo incorrecto, tamaño excedido y fallo de subida.
+1. ~~UI de carga de fotos y ranuras de documentos~~ — resuelta arriba (U1–U5).
 2. Guardar borrador y retomar el wizard (el template es sólo en memoria), y editar tras el envío vía «Revisar lo cargado» / reenviar tras «Requiere cambios».
-3. El banner «Demo: usá datos sintéticos…» y el botón «Completar con datos de ejemplo» frente a la carga real de documentos: si se quedan o se van.
+3. El banner «Demo: usá datos sintéticos…» y el botón «Completar con datos de ejemplo» frente a la carga real de documentos: si se quedan o se van (hoy están, tal cual el template).
 
 ## TDD
 
@@ -69,9 +83,21 @@ Estas **no se implementan** hasta que el owner decida; se registran como supuest
   - RED (`pnpm --filter @vaqcrow/web exec vitest run src/application/pyme-onboarding/registration-step.test.ts` y el `.test.tsx`): módulo inexistente (`no tests`). GREEN: modelo `27 passed`, componente `14 passed`; foco `Test Files 5 passed (5)`, `Tests 71 passed (71)`.
   - Verificación (orquestador, spot-check): foco `Test Files 5 passed (5)`, `Tests 71 passed (71)`. Del writer: suite web `Test Files 137 passed (137)`, `Tests 1305 passed (1305)`; `lint` 0 errores (1 warning previo); `typecheck` sin errores; `pnpm run boundaries` → `no dependency violations found (649 modules, 2092 dependencies cruised)`.
   - Commit: `feat(web): add the PyME registration step with the sales grid`.
+  - Revisión RDD de T2 (2026-10-03): base `a1e72b4`, sólo commits, riesgo `medium` (7 archivos, 1190 líneas); el owner eligió «Revisar este cambio»; una lente (`review-reliability`) sin bloqueantes → `approved`, linaje `review-6fcbdd62cf3abc01`, autoridad `burned`. Consultivos (no bloqueantes, trabajo posterior):
+    - **R3-001** (`registration-step.tsx:139-147`, `WARNING`): `handleSubmit` espera `onSubmit` dentro de `try/finally` sin `catch`; un rechazo se convierte en promesa rechazada sin manejar y no muestra señal de error (indistinguible de un éxito lento). Hoy sólo alcanzable cuando T5 cablee la persistencia; cubrir el camino de rechazo y mostrar un error al cablearlo.
+    - **R3-002** (`registration-step.ts:158-160`, `SUGGESTION`): la regla de ventas cuenta todo lo que no sea string vacío, así que un mes con sólo espacios cuenta para los 6/8 aunque `parseAmount` dé 0. Ajustar a `trim() !== ""` (o documentar) cuando se toque.
 - [ ] **T3 — Persistencia y propiedad (R1-002).** Modelo de empresa de la PyME y propiedad por fila: tabla `businesses` + `owner_user_id`, puerto/adaptador, y el scoping por dueño en las rutas PyME de la API (`POST/GET /sme-requests`, `/businesses/*/sales-periods`, `/revenue-share-distributions*`). Migración local-docker → remoto en la misma unidad. Resuelve la brecha R1-002 de la evidencia de #369/#378.
   - Ruta: delegada (writer acotado; varios archivos de API + migración + pgTAP).
-- [ ] **T4 — Carga real de documentos y fotos.** Bucket privado de Supabase Storage con RLS por propietario (el dueño lee/escribe lo suyo; `ADMIN` lee para revisión), puerto/adaptador de Storage en la API con validación de MIME/magic bytes/tamaño independiente del cliente, nombres saneados, y la UI de carga (sujeta a la decisión pendiente 1). Migración + políticas aplicadas y verificadas en el remoto.
+- [ ] **T4 — Carga real de documentos y fotos.** Bucket privado de Supabase Storage con RLS por propietario, puerto/adaptador de Storage en la API con validación de MIME/magic bytes/tamaño independiente del cliente, nombres saneados, y la UI de carga. Se divide en tres unidades:
+  - **Arquitectura de transporte (decidida por el agente, sujeta a objeción del owner):** la subida es **mediada por la API** (`POST` multipart → la API valida y escribe en el bucket con `service_role`), no directa desde el navegador. Motivos: `CLAUDE.md` (la API es dueña de autorización/permisos y la `service_role` es sólo del servidor), y «validación server-side independiente del cliente» se cumple mejor recibiendo los bytes. **Desvío registrado:** el texto de #398 dice «owner reads/writes own objects»; con este transporte el dueño **lee** lo suyo (RLS) y la API escribe en su nombre con `service_role`. El criterio de aceptación («otro usuario no puede leer los archivos de una PyME; los admin sí») se cumple.
+  - [x] **T4a — Migración + RLS.** Bucket privado `pyme-documents` (`file_size_limit` 10 MB, `allowed_mime_types` PDF/JPEG/PNG) y políticas de `storage.objects`: el dueño lee/escribe su propia ruta (primer segmento = `auth.uid()`), `ADMIN` lee todo (subconsulta a `public.profile`). Ruta: `<user_id>/<kind>/<uuid>-<nombre-saneado>`, `kind ∈ {sales-declarations, cuit, articles-of-incorporation, photo}`. pgTAP local + aplicar al remoto. Ruta: delegada.
+    - Migración `supabase/migrations/20261003120000_create_pyme_documents_bucket.sql` (SHA-256 `304c4ddc…83a9c`), idempotente; 5 políticas (`owner_read/insert/update/delete`, `admin_read`). Test pgTAP `supabase/tests/pyme_documents_bucket.sql` (19 asserts).
+    - **Entorno:** Storage estaba deshabilitado en el perfil docker (`[storage] enabled = false` y `storage-api` excluido en `scripts/local-env.sh`). El owner autorizó habilitarlo; se puso `[storage] enabled = true`, se sacó `storage-api` de `SUPABASE_EXCLUDE` (queda `imgproxy`), se reinició el stack local (Storage S3 en `:54321/storage/v1/s3`) y se alineó `docs/architecture/environments.md` §3.
+    - RED: el pgTAP corría 0/20 antes de aplicar la migración. GREEN: `pnpm run test:db` → `Files=10, Tests=192`, `Result: PASS`. El owner SELECT/INSERT/UPDATE y el `ADMIN` read-all quedaron probados; el DELETE se afirma por existencia porque Storage prohíbe el borrado por SQL (`protect_objects_delete`): **T4b debe borrar por la Storage API, nunca por SQL**.
+    - Remoto (MCP de Supabase, 2026-10-03): `apply_migration` OK; verificado: bucket `public=false`, `file_size_limit=10485760`, MIME PDF/JPEG/PNG, y las 5 políticas presentes.
+    - Commit: `feat(db): add the private pyme-documents bucket and its storage RLS`.
+  - **T4b — API.** Puerto `storage-port` + adaptador Supabase (`service_role`), validación de MIME/magic bytes/tamaño/nombre, rutas `POST /storage/uploads` (multipart, `@fastify/multipart`) y `DELETE /storage/uploads/:id`, con política de ruta `PYME`. Tests de validación + ruta con adaptador falso.
+  - **T4c — UI web.** Puerto de subida + adaptador (multipart por `AxiosHttpClient`), UI de las 3 ranuras + hasta 4 fotos con progreso, tipo inválido, tamaño excedido, fallo con reintento, quitar y orden ←/→; copy nuevo aprobado en la revisión (U5).
 - [ ] **T5 — Cierre de #399.** Paso `Evaluación AI` (banda/checks, sujeto a la decisión de alcance con #402) y paso `Revisión humana` (envío contra el motor existente, wallet obligatoria detrás del puerto de wallet; la conexión real de Freighter es [#406](https://github.com/reyduar/Vaqcrow/issues/406)); estados enviado/no enviado de D12.
 - [ ] **T6 — Verificación.** `pnpm run verify`, `pnpm run test:db`, Playwright offline, `pnpm run boundaries`; y actualizar los documentos que repiten el comportamiento (CLAUDE.md/AGENTS.md gemelos, `docs/planning/DEMO.md`, `docs/design/demo-ui.md`, `docs/architecture/*`).
 

@@ -35,14 +35,16 @@ API_WAIT_SECONDS="${API_WAIT_SECONDS:-60}"
 
 # Containers this profile does not need: the API only talks to kong (the
 # gateway behind SUPABASE_URL) and postgrest (SUPABASE_SERVICE_ROLE_KEY
-# reads/writes through it). Everything below is either UI-only (studio),
-# unused by the demo (storage-api and its imgproxy dependent, realtime,
-# edge-runtime, supavisor pooling), or log/mail infra with no consumer here
-# (logflare, vector). mailpit is deliberately NOT excluded: with email
-# confirmation on (#370) gotrue needs it to deliver signup links locally
-# (`mailpit` replaced the older `inbucket` name in supabase CLI 2.x, confirmed
-# against `supabase start --help`).
-SUPABASE_EXCLUDE="studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor"
+# reads/writes through it). Everything below is either UI-only (studio), unused
+# by the demo (realtime, edge-runtime, supavisor pooling), or log/mail infra
+# with no consumer here (logflare, vector). mailpit is deliberately NOT
+# excluded: with email confirmation on (#370) gotrue needs it to deliver signup
+# links locally (`mailpit` replaced the older `inbucket` name in supabase CLI
+# 2.x, confirmed against `supabase start --help`). storage-api is NOT excluded
+# either, since #398/#399: the PyME wizard uploads real documents to the
+# private `pyme-documents` bucket, so the local stack must run it (imgproxy,
+# only needed for on-the-fly image transforms, stays excluded).
+SUPABASE_EXCLUDE="studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor"
 
 require_docker() {
   if ! docker info >/dev/null 2>&1; then

@@ -47,7 +47,10 @@ enable_signup = true
 enable_confirmations = true
 
 [storage]
-enabled = false
+# Enabled for #398/#399: the PyME onboarding wizard uploads real documents and
+# photos to the private `pyme-documents` bucket, so the local profile must run
+# storage-api to exercise the bucket/RLS migration and the upload path.
+enabled = true
 
 [realtime]
 enabled = false
