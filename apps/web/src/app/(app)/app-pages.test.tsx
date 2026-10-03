@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
@@ -45,7 +45,7 @@ describe("/portfolio", () => {
 });
 
 describe("/company", () => {
-  it("shows the template's PyME title, subtitle and the unwired 'Registrar mi PyME' action", async () => {
+  it("shows the template's PyME title, subtitle and the 'Registrar mi PyME' action that opens the wizard", async () => {
     await renderAs("PYME", "/company", <CompanyPage />);
 
     const main = screen.getByRole("main");
@@ -56,8 +56,11 @@ describe("/company", () => {
       )
     ).toBeInTheDocument();
     const register = within(main).getByRole("button", { name: "Registrar mi PyME" });
-    expect(register).toHaveAttribute("aria-disabled", "true");
+    expect(register).toBeEnabled();
     expect(within(main).queryByRole("link", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+
+    fireEvent.click(register);
+    expect(await screen.findByRole("heading", { level: 1, name: "Verificación de identidad" })).toBeInTheDocument();
   });
 
   it("has no connect-wallet popup", async () => {
