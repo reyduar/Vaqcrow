@@ -15,6 +15,13 @@ import { readSupabaseBrowserConfig, toPrincipal, type ProfileRow } from "./supab
  *   subject — never from JWT claims or the URL.
  * - The claims and profile reads are bounded together (`timeoutMs`, 3 s by
  *   default), so a slow Supabase never holds a navigation indefinitely.
+ * - A timeout does not cancel the in-flight `getClaims()`. A refresh that
+ *   lands after the read settled is dropped whole (no late `request.cookies`
+ *   mutation, no cookie or header on the response); one that landed before
+ *   is kept. A dropped rotation does not strand the browser: Supabase Auth
+ *   answers a refresh with the parent of the active refresh token by
+ *   returning the active one (docs: guides/auth/sessions, "refresh token
+ *   reuse detection"), so the browser's next refresh recovers the session.
  * - Any failure (missing configuration, invalid token, unreadable or
  *   malformed profile, network, timeout) reads as signed out: protected pages
  *   fail closed and the auth pages stay reachable. A failed or timed-out read
@@ -90,6 +97,7 @@ export async function readProxySession(
     }
   });
 
+  let settled = false;
   let config: { url: string; publishableKey: string };
   try {
     config = readSupabaseBrowserConfig(env);
@@ -102,6 +110,9 @@ export async function readProxySession(
       cookies: {
         getAll: () => request.cookies.getAll().map(({ name, value }) => ({ name, value })),
         setAll: (cookies: CookieToSet[], headers?: Record<string, string>) => {
+          // After the bounded read settled, the response is already decided:
+          // a late refresh is dropped whole, never half-applied.
+          if (settled) return;
           for (const cookie of cookies) {
             request.cookies.set(cookie.name, cookie.value);
             pendingCookies.push(cookie);
@@ -146,6 +157,7 @@ export async function readProxySession(
     try {
       return session(await Promise.race([read(), timeout]));
     } finally {
+      settled = true;
       clearTimeout(timer);
     }
   } catch (error) {

@@ -144,7 +144,7 @@ Si el adaptador lanza, el hook registra internamente sólo el nombre del error y
 
 ### 9.8 Email
 
-Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner según [[docs/architecture/environments|environments.md]] §13 — **pendiente** al 2026-10-01. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), configurado por el owner en el panel el 2026-10-02 según [[docs/architecture/environments|environments.md]] §13; la entrega real todavía no se observó y se confirma con el primer alta real contra el remoto. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
 
 ### 9.9 El lado web (Task #379, rama de la Feature #378)
 

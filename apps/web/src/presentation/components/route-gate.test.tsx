@@ -108,6 +108,34 @@ describe("RouteGate", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("keeps rendering the page after this tab's sign-out when it is already on the target", async () => {
+    const fake = await portFor("INVERSOR");
+    const { store } = renderGate(fake, "/");
+    await waitFor(() => expect(store().getState().status).toBe("signed-in"));
+
+    await act(async () => {
+      await store().getState().signOut();
+    });
+
+    expect(store().getState().signedOutByUser).toBe(true);
+    expect(screen.getByText("Contenido protegido")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("sends a protected page to / exactly once after this tab's sign-out", async () => {
+    const fake = await portFor("INVERSOR");
+    const { rerender, store } = renderGate(fake, "/portfolio");
+    await screen.findByText("Contenido protegido");
+
+    await act(async () => {
+      await store().getState().signOut();
+    });
+    rerender();
+
+    expect(replace.mock.calls).toEqual([["/"]]);
+    expect(screen.queryByText("Contenido protegido")).not.toBeInTheDocument();
+  });
+
   it("lets the header's sign-out navigation win on a protected page", async () => {
     pathname.current = "/portfolio";
     const fake = await portFor("INVERSOR");

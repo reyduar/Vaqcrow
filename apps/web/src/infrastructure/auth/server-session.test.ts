@@ -128,6 +128,59 @@ describe("readProxySession", () => {
     expect(consoleError).toHaveBeenCalledWith("[Proxy] session read failed", { cause: "timeout" });
   });
 
+  it("drops a cookie refresh that lands after the timeout instead of applying it late", async () => {
+    let finishClaims!: () => void;
+    let cookies!: CookieAdapter;
+    createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieAdapter }) => {
+      cookies = options.cookies;
+      return {
+        auth: {
+          getClaims: () =>
+            new Promise((resolve) => {
+              finishClaims = () => {
+                cookies.setAll([{ name: "sb-auth", value: "late-refresh", options: { path: "/" } }], {
+                  "cache-control": "private, no-store"
+                });
+                resolve({ data: { claims: { sub: "user-1" } }, error: null });
+              };
+            })
+        },
+        from: () => ({
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: "INVERSOR", display_name: "I" }, error: null }) }) })
+        })
+      };
+    });
+    const req = request();
+
+    const session = await readProxySession(req, ENV, { timeoutMs: 20 });
+    finishClaims();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(session.principal).toBeNull();
+    expect(req.cookies.get("sb-auth")?.value).toBe("abc");
+    const response = session.applyTo(NextResponse.redirect(new URL("https://vaqcrow.test/login")));
+    expect(response.cookies.get("sb-auth")).toBeUndefined();
+    expect(response.headers.get("cache-control")).toBeNull();
+  });
+
+  it("keeps a cookie refresh that landed before the timeout", async () => {
+    createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieAdapter }) => ({
+      auth: {
+        getClaims: async () => {
+          options.cookies.setAll([{ name: "sb-auth", value: "refreshed", options: { path: "/" } }]);
+          return { data: { claims: { sub: "user-1" } }, error: null };
+        }
+      },
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => new Promise(() => {}) }) }) })
+    }));
+
+    const session = await readProxySession(request(), ENV, { timeoutMs: 20 });
+
+    expect(session.principal).toBeNull();
+    const response = session.applyTo(NextResponse.redirect(new URL("https://vaqcrow.test/login")));
+    expect(response.cookies.get("sb-auth")?.value).toBe("refreshed");
+  });
+
   it("bounds the session read to 3 seconds by default", async () => {
     vi.useFakeTimers();
     try {
