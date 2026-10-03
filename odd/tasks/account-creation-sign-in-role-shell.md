@@ -244,6 +244,25 @@ Rama `Vaqcrow#380_Task_Test_account_creation_sign_in_and_the_role_aware_shell`, 
   - GREEN: `pnpm --filter @vaqcrow/web exec playwright test e2e/auth-roles.spec.ts` → `5 passed`; suite completa `pnpm --filter @vaqcrow/web exec playwright test` → `37 passed` (32 previos + 5).
   - Verificación: `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1204 passed (1204)`; `lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores; `build` compila (`/portfolio`, `/company` `○`, `/login`, `/signup` `ƒ`, `ƒ Proxy (Middleware)`); `pnpm run boundaries` → `no dependency violations found (628 modules, 2048 dependencies cruised)`; `pnpm run test:boundaries` → `Test Files 10 passed (10)`, `Tests 152 passed (152)`.
   - Commit: `test(web): add the Playwright auth smoke against a local Supabase double`.
+- Revisión RDD de #380 (2026-10-03): base `e6942af`, sólo commits, riesgo `high` (10 archivos, 678 líneas); el owner eligió «Omitir esta vez» (`declined_this_candidate`).
+- PR [#447](https://github.com/reyduar/Vaqcrow/pull/447) mergeada en la rama de #378 (`3766b09`, 2026-10-03); #380 cerrado a mano.
+
+## Task #381 — Evidencia
+
+Rama `Vaqcrow#381_Task_Document_evidence_for_account_creation_sign_in_and_the_role_aware_shell`, creada desde la rama de #378 (`3766b09`). Sólo documentación (sin RED/GREEN; chequeo estructural más la re-ejecución de las verificaciones).
+
+- Documento: [`docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md`](../../docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md), con los ocho criterios de #378 citados textualmente: cumplidos 2, 4, 6 y 8; parciales 1 y 3 (cumplidos con dobles, pendiente el remoto), 5 (sin prueba de anillo de foco, 44 px, movimiento reducido ni contraste AA) y 7 (supuestos de copy sin aprobación explícita).
+- Ancestría (2026-10-03, `git merge-base --is-ancestor`): `8688136`, `e6942af` y `3766b09` **no** son ancestros de `origin/main` (`aaee084`).
+- Re-ejecutado en el árbol de trabajo (2026-10-03, Node `v24.21.0`):
+  - `pnpm --filter @vaqcrow/web test` → `Test Files 131 passed (131)`, `Tests 1204 passed (1204)` (sin timeouts de jsdom en esta corrida).
+  - `pnpm --filter @vaqcrow/web exec playwright test` → `37 passed` (incluye los 5 de `auth-roles.spec.ts`).
+  - `pnpm run test:db` (stack local del perfil docker) → `Files=9, Tests=173`, `Result: PASS`.
+  - `pnpm run boundaries` → `no dependency violations found (628 modules, 2048 dependencies cruised)`; `pnpm run test:boundaries` → `Test Files 10 passed (10)`, `Tests 152 passed (152)`.
+  - `pnpm --filter @vaqcrow/web lint` → 0 errores, 1 warning previo (`fetch-http-client.ts` `_request`); `typecheck` sin errores; `build` compila (`/`, `/portfolio`, `/company` `○`; `/login`, `/signup` `ƒ`; `ƒ Proxy (Middleware)`).
+- CI consultado con `gh pr checks`: #446 (runs `37113991595`/`37113991593`) y #447 (runs `37130344785`/`37130344747`), todos los jobs `pass`.
+- La revisión `review-be5686dd920f0b8a` (correcciones finales de #379) figura `approved` en la descripción de la PR #446; esta bitácora no tenía su entrada.
+- `docs/planning/demo-tasks-list.md`: #379 y #380 tachadas con «Rama e implementación»; #381 con su rama y el documento; #378 sigue abierta (`In progress`).
+- Commit: `docs(planning): record the evidence for account creation, sign-in and the role-aware shell`.
 
 ## Pronóstico de entrega
 
@@ -276,4 +295,4 @@ Corrida final de `pnpm run verify` sobre `5eac715` (2026-10-03, orquestador, ár
 
 ## Próximo paso
 
-PR única de #379 contra la rama de #378.
+PR de #381 contra la rama de #378; después, el owner decide el cierre de la Feature #378. Antes de llevar #369 + #378 a `main`: resolver R1-002 con #398 (o que el owner lo acepte) y entregar #438 en el mismo merge. Hacer un alta real contra el proyecto remoto para observar la entrega de Resend y ejercitar ingreso y cierre de sesión.
