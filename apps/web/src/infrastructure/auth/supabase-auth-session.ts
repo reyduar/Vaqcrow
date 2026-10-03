@@ -16,7 +16,7 @@ interface SessionLike {
   readonly user: { readonly id: string };
 }
 
-interface ProfileRow {
+export interface ProfileRow {
   readonly role: unknown;
   readonly display_name: unknown;
 }
@@ -53,8 +53,11 @@ export interface SupabaseSessionClient {
 
 const PRINCIPAL_ROLES: readonly PrincipalRole[] = ["PYME", "INVERSOR", "ADMIN"];
 
-/** A profile row becomes a principal only when its role and name are well formed. */
-function toPrincipal(row: ProfileRow | null): SessionPrincipal {
+/**
+ * A profile row becomes a principal only when its role and name are well
+ * formed. Shared with the server proxy's session read (`server-session.ts`).
+ */
+export function toPrincipal(row: ProfileRow | null): SessionPrincipal {
   if (row === null) throw new AuthSessionError("unavailable");
   const { role, display_name: displayName } = row;
   if (typeof role !== "string" || !(PRINCIPAL_ROLES as readonly string[]).includes(role)) {

@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { BrowserSessionProvider } from "@/presentation/components/browser-session-provider";
 
 import "./globals.css";
 
@@ -55,7 +56,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body>{children}</body>
+      {/*
+        One session store for the whole app (per mount, never a module
+        singleton), so the header on `/`, `/portfolio`, `/company` and the
+        auth pages share the real session across client navigations.
+      */}
+      <body>
+        <BrowserSessionProvider>{children}</BrowserSessionProvider>
+      </body>
     </html>
   );
 }

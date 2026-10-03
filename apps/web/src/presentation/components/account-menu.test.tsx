@@ -95,4 +95,58 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("button", { name: /Lucía Fernández/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+
+  describe("avatar variant (role-aware header)", () => {
+    const roleItems: readonly AccountMenuItem[] = [
+      { label: "Mi portafolio", href: "/portfolio" },
+      { label: "Cerrar sesión", onSelect: vi.fn(), separatorBefore: true }
+    ];
+
+    function renderAvatarMenu() {
+      render(
+        <AccountMenu
+          variant="avatar"
+          name="Lucía Fernández"
+          avatarSrc="/avatar-inversor.png"
+          triggerLabel="Menú de cuenta de Lucía Fernández"
+          roleChip={{ label: "INVERSOR" }}
+          items={roleItems}
+        />
+      );
+      return screen.getByRole("button", { name: "Menú de cuenta de Lucía Fernández" });
+    }
+
+    it("shows only the avatar and a chevron in the trigger", () => {
+      const trigger = renderAvatarMenu();
+      expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+      expect(within(trigger).queryByText("Lucía Fernández")).not.toBeInTheDocument();
+      expect(screen.queryByText("INVERSOR")).not.toBeInTheDocument();
+    });
+
+    it("opens a header with the name and the role chip, and a separator before sign-out", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      const menu = screen.getByRole("menu");
+      expect(within(menu).getByText("Lucía Fernández")).toBeInTheDocument();
+      expect(within(menu).getByText("INVERSOR")).toBeInTheDocument();
+      expect(within(menu).queryByText("Sesión de demostración")).not.toBeInTheDocument();
+      expect(within(menu).getByRole("separator")).toBeInTheDocument();
+      expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+        "Mi portafolio",
+        "Cerrar sesión"
+      ]);
+    });
+
+    it("closes on Escape and on an outside pointer interaction", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+
+      fireEvent.click(trigger);
+      fireEvent.pointerDown(document.body);
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    });
+  });
 });
