@@ -56,6 +56,10 @@ const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus
  * calls the store's real sign-out and navigates home only when it succeeded;
  * if it fails, the page stays put, the header keeps showing the session that
  * is still open and a short alert says so next to the menu.
+ *
+ * «Ingresar» and «Crear cuenta» keep the template's 44 px height with 12 and
+ * 14 px side padding (template: 14 and 16) — part of the room `DemoNavbar`
+ * keeps so the header still fits one line when text renders wider.
  */
 export function AppHeader() {
   const pathname = usePathname();
@@ -107,13 +111,13 @@ export function AppHeader() {
       <>
         <Link
           href={SIGN_IN_LINK.href}
-          className={`flex h-11 items-center rounded-control border border-control px-3.5 text-sm font-semibold text-text-primary no-underline hover:bg-page-surface ${FOCUS_RING}`}
+          className={`flex h-11 items-center rounded-control border border-control px-3 text-sm font-semibold text-text-primary no-underline hover:bg-page-surface ${FOCUS_RING}`}
         >
           {SIGN_IN_LINK.label}
         </Link>
         <Link
           href={SIGN_UP_LINK.href}
-          className={`flex h-11 items-center rounded-control bg-brand-accent px-4 text-sm font-semibold text-on-accent no-underline hover:bg-brand-accent-hover ${FOCUS_RING}`}
+          className={`flex h-11 items-center rounded-control bg-brand-accent px-3.5 text-sm font-semibold text-on-accent no-underline hover:bg-brand-accent-hover ${FOCUS_RING}`}
         >
           {SIGN_UP_LINK.label}
         </Link>

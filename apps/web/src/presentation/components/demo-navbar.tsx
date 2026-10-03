@@ -26,10 +26,20 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   wraps its items from the `@md` width up: it takes the free space and
  *   scrolls sideways if it ever runs out. The collapsed narrow-screen
  *   disclosure still wraps. Opt-in, so the six-step journey (more items,
- *   retired by #438) keeps wrapping as before. Deviation, recorded: links use 10 px side padding
- *   and no gap (template: 12 px plus a 4 px gap) so the whole header still
- *   fits the 1264 px container once the theme buttons grow to the 44 px
- *   minimum target (`demo-ui.md` §5.6); text-to-text spacing stays 20 px.
+ *   retired by #438) keeps wrapping as before.
+ * - **Room for wider text (`singleLineNav`).** The 44 px theme buttons
+ *   (`demo-ui.md` §5.6; template 36 px) cost 18 px the template never had,
+ *   and Linux/Windows render the same labels ~4 % wider than macOS (the CI
+ *   runner overflowed the nav by 22 px when the header had ~1 px to spare).
+ *   So the role-aware header keeps ~80 px of free nav width at 1280 px:
+ *   template header chips (`Badge size="compact"`, 22 px), and from the
+ *   `@6xl` container width (the full 1200 px desktop row) 8 px between the
+ *   brand and its badges (template 12), 16 px from them to the nav
+ *   (template 24) and 8 px from the nav to the actions (template 24; the
+ *   nav's own free width sits there, so the visible gap is larger). Links use
+ *   8 px side padding and no gap (template: 12 px plus a 4 px gap; text to
+ *   text 16 px). Below `@6xl` the gaps stay at the template's values, so a
+ *   scrolling nav never runs into the theme switcher.
  * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`
  *   (the six-step journey keeps it); the role-aware header passes the
  *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
@@ -94,8 +104,8 @@ export function DemoNavbar({
       className={`sticky top-0 z-10 border-b border-border bg-canvas ${className ?? ""}`.trim()}
     >
       <div className="@container mx-auto max-w-[1264px] px-8 py-3">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <div className="flex items-center gap-3">
+        <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 ${singleLineNav ? "@6xl:gap-x-2" : ""}`.trim()}>
+          <div className={`flex items-center ${singleLineNav ? "gap-3 @6xl:gap-2" : "gap-3"}`}>
             <Link
               href={brandHref}
               aria-label="Vaqcrow, inicio"
@@ -104,9 +114,10 @@ export function DemoNavbar({
               <BrandIsotipo />
               <span className="text-[19px] font-bold tracking-[-0.02em]">Vaqcrow</span>
             </Link>
-            <Badge variant="demo" label="DEMO" />
+            <Badge variant="demo" label="DEMO" size="compact" />
             <Badge
               variant="testnet"
+              size="compact"
               label={testnetLabel}
               icon={IoGitNetworkOutline}
               lang="es"
@@ -135,7 +146,7 @@ export function DemoNavbar({
             className={`${
               isOpen ? "flex" : "hidden"
             } order-last w-full flex-wrap items-center @md:order-none @md:flex @md:w-auto @md:min-w-0 @md:flex-1 ${
-              singleLineNav ? "gap-0 @md:flex-nowrap @md:overflow-x-auto @md:[scrollbar-width:none]" : "gap-1"
+              singleLineNav ? "gap-0 @6xl:ml-2 @md:flex-nowrap @md:overflow-x-auto @md:[scrollbar-width:none]" : "gap-1"
             }`}
           >
             {items.map((item, index) => (
@@ -143,7 +154,7 @@ export function DemoNavbar({
                 key={`${item.href}-${index}`}
                 href={item.href}
                 {...(item.current ? { "aria-current": "page" as const } : {})}
-                className={`flex h-11 items-center whitespace-nowrap text-sm ${singleLineNav ? "px-2.5" : "px-3"} ${
+                className={`flex h-11 items-center whitespace-nowrap text-sm ${singleLineNav ? "px-2" : "px-3"} ${
                   item.current
                     ? "border-b-2 border-brand-accent font-semibold text-text-primary"
                     : "font-medium text-text-secondary hover:text-text-primary"
