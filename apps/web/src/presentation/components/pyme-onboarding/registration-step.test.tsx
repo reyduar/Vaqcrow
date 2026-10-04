@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEMO_VALUES } from "@/application/pyme-onboarding/registration-step";
 import { FakeUpload } from "@/test/fake-upload";
@@ -207,7 +207,16 @@ describe("RegistrationStep demo values", () => {
     fillDemo();
 
     expect(screen.getByText("Anomalía")).toBeInTheDocument();
-    expect(screen.getByLabelText("Ventas de junio en ARS")).toBeInTheDocument();
+    const juneInput = screen.getByLabelText("Ventas de junio en ARS");
+    expect(juneInput).toBeInTheDocument();
+
+    // The indicator is rendered inside June's own field, the month the computed
+    // `salesAnomaly` flags (its value is >1.5× the average of the demo months).
+    // The other demo months are not anomalous, so exactly one field carries it.
+    const juneField = juneInput.closest("label");
+    expect(juneField).not.toBeNull();
+    expect(within(juneField as HTMLElement).getByText("Anomalía")).toBeInTheDocument();
+    expect(screen.getAllByText("Anomalía")).toHaveLength(1);
   });
 
   it("submits the demo values without an error summary once the documents are uploaded", async () => {

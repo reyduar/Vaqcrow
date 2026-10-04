@@ -26,6 +26,11 @@ const DECIDED_AT = "2026-09-19T12:00:00-03:00";
 const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
 const CORRELATION_ID = "11111111-2222-4333-8444-555555555555";
 
+/** The PyME company the API would own (`T3c`): ids and timestamps stay literal. */
+const BUSINESS_ID = "b1a2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+const OWNER_USER_ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+const BUSINESS_CREATED_AT = "2026-10-04T12:00:00.000Z";
+
 /** Contract-shaped sales history (`salesPeriodSchema` is a strict object). */
 const SALES_PERIODS = Object.freeze([
   { period: "2026-01", amountArs: 3150000, status: "reported", evidenceRef: "sales:2026-01", simuladoLabel: SIMULADO },
@@ -80,6 +85,9 @@ const ASSESSMENT = Object.freeze({
 /** Last submitted request; reset per test via `POST /__reset` for isolation. */
 let currentRequest = null;
 
+/** The PyME's own persisted company (`GET/POST /businesses`); reset per test. */
+let currentBusiness = null;
+
 /** Whether the feed's next period has been recorded (`POST /businesses/:id/sales-periods`). */
 let salesPeriodRecorded = false;
 
@@ -92,7 +100,9 @@ const recordedAssessments = new Map();
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  // `Authorization` is required by the upload and business clients, which attach
+  // the signed-in session's bearer token; without it their CORS preflight fails.
+  "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
 function sendJson(response, status, body) {
@@ -123,6 +133,62 @@ function readJsonBody(request) {
     });
     request.on("error", reject);
   });
+}
+
+/** Boundary of a `multipart/form-data` body, or `null` when absent. */
+function multipartBoundary(contentType) {
+  const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType ?? "");
+  return match ? (match[1] ?? match[2]).trim() : null;
+}
+
+/** The whole request body as one buffer (no JSON parsing). */
+function readRawBody(request) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    request.on("data", (chunk) => chunks.push(chunk));
+    request.on("end", () => resolve(Buffer.concat(chunks)));
+    request.on("error", reject);
+  });
+}
+
+/**
+ * Minimal `multipart/form-data` reader for `POST /storage/uploads`: it recovers
+ * the `kind` field and the file's name, declared content type and byte size.
+ * The body is read as `latin1` so string indices map 1:1 to bytes. This is a
+ * test double, not a hardened parser — the web client re-validates nothing here.
+ */
+async function readMultipartUpload(request) {
+  const boundary = multipartBoundary(request.headers["content-type"]);
+  if (boundary === null) return null;
+
+  const body = (await readRawBody(request)).toString("latin1");
+  const fields = {};
+  let file = null;
+  for (const rawSegment of body.split(`--${boundary}`)) {
+    const segment = rawSegment.startsWith("\r\n") ? rawSegment.slice(2) : rawSegment;
+    const headerEnd = segment.indexOf("\r\n\r\n");
+    if (headerEnd === -1) continue;
+
+    const headerText = segment.slice(0, headerEnd);
+    const nameMatch = /name="([^"]*)"/i.exec(headerText);
+    if (!nameMatch) continue;
+
+    let content = segment.slice(headerEnd + 4);
+    if (content.endsWith("\r\n")) content = content.slice(0, -2);
+
+    const filenameMatch = /filename="([^"]*)"/i.exec(headerText);
+    if (filenameMatch) {
+      const typeMatch = /content-type:\s*([^\r\n]+)/i.exec(headerText);
+      file = {
+        fileName: filenameMatch[1],
+        contentType: (typeMatch?.[1] ?? "application/octet-stream").trim(),
+        size: Buffer.byteLength(content, "latin1")
+      };
+    } else {
+      fields[nameMatch[1]] = content;
+    }
+  }
+  return file === null ? null : { kind: fields["kind"] ?? "upload", ...file };
 }
 
 function recordedOutcome(applied) {
@@ -173,6 +239,7 @@ async function handle(request, response) {
 
   if (request.method === "POST" && pathname === "/__reset") {
     currentRequest = null;
+    currentBusiness = null;
     salesPeriodRecorded = false;
     latestDecision = null;
     recordedAssessments.clear();
@@ -230,6 +297,59 @@ async function handle(request, response) {
       sendJson(response, applied ? 201 : 200, { applied, period: NEXT_SALES_PERIOD });
       return;
     }
+  }
+
+  // API-mediated upload (`T4c`): the browser posts multipart `kind` + `file`
+  // and receives the stored object's descriptor. The bytes are not persisted —
+  // only the shape the web client parses is echoed back.
+  if (request.method === "POST" && pathname === "/storage/uploads") {
+    const upload = await readMultipartUpload(request);
+    if (upload === null || upload.fileName.length === 0) {
+      sendJson(response, 400, { code: "invalid_request" });
+      return;
+    }
+    sendJson(response, 201, {
+      path: `${upload.kind}/${upload.fileName}`,
+      name: upload.fileName,
+      size: upload.size,
+      contentType: upload.contentType
+    });
+    return;
+  }
+
+  // The PyME's own company (`T3c`). Like the real API, the owner is resolved
+  // from the session (ignored here) and a missing company is a truthful 404, so
+  // `ensureMyBusiness` creates exactly one.
+  if (request.method === "GET" && pathname === "/businesses/mine") {
+    if (currentBusiness === null) {
+      sendJson(response, 404, { code: "not_found" });
+      return;
+    }
+    sendJson(response, 200, { business: currentBusiness });
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/businesses") {
+    const body = await readJsonBody(request);
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      sendJson(response, 400, { code: "invalid_request" });
+      return;
+    }
+    currentBusiness = {
+      businessId: BUSINESS_ID,
+      ownerUserId: OWNER_USER_ID,
+      name: String(body.name ?? ""),
+      cuit: String(body.cuit ?? ""),
+      sector: String(body.sector ?? ""),
+      city: String(body.city ?? ""),
+      description: String(body.description ?? ""),
+      goalArs: Number(body.goalArs ?? 0),
+      revenueShare: Number(body.revenueShare ?? 0),
+      createdAt: BUSINESS_CREATED_AT,
+      updatedAt: BUSINESS_CREATED_AT
+    };
+    sendJson(response, 201, { business: currentBusiness });
+    return;
   }
 
   // Test-only seed: an application that already has a recorded assessment (the approval
