@@ -2065,7 +2065,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#400](#^issue-400).
 
-**Rama propuesta.** `Vaqcrow#399_Task_Implement_the_PyME_onboarding_wizard_and_document_upload` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#399_Task_Implement_the_PyME_onboarding_wizard_and_document_upload` (tip `4528564`): T1–T6 (shell + KYC, registro y validaciones, bucket privado + RLS, subida mediada por la API con magic bytes, UI de 3 documentos + 4 fotos, pasos 3/4, verificación y docs) y T3a/T3b/T3c (tabla `businesses`, rutas `/businesses`, scoping por dueño R1-002 y persistencia desde el wizard). **No está en `main`**: la pila #398/#399/#400/#401 llega a `main` después de #369+#378. Evidencia en [`pyme-onboarding-wizard-and-document-upload-evidence.md`](./pyme-onboarding-wizard-and-document-upload-evidence.md).
 
 ### #400 — Probar el wizard de alta de la PyME y la carga de documentos
 
@@ -2077,7 +2077,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#401](#^issue-401).
 
-**Rama propuesta.** `Vaqcrow#400_Task_Test_the_PyME_onboarding_wizard_and_document_upload` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#400_Task_Test_the_PyME_onboarding_wizard_and_document_upload` (commit `1301a53`): smoke de Playwright del wizard completo (KYC → registro con 3 documentos reales → AI → Freighter → envío) contra los dobles locales, con las rutas `GET /businesses/mine`, `POST /businesses` y `POST /storage/uploads` agregadas al stub. El resto de los requisitos de #400 (validaciones, KYC, subida, RLS de Storage) ya estaba cubierto por #399. **No está en `main`.** Evidencia en [`pyme-onboarding-wizard-and-document-upload-evidence.md`](./pyme-onboarding-wizard-and-document-upload-evidence.md).
 
 ### #401 — Documentar evidencia del wizard de alta de la PyME y la carga de documentos
 
@@ -2089,7 +2089,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#398](#^issue-398).
 
-**Rama propuesta.** `Vaqcrow#401_Task_Document_evidence_for_the_PyME_onboarding_wizard_and_document_upload` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#401_Task_Document_evidence_for_the_PyME_onboarding_wizard_and_document_upload`: este documento [`pyme-onboarding-wizard-and-document-upload-evidence.md`](./pyme-onboarding-wizard-and-document-upload-evidence.md), que mapea los ocho criterios de aceptación de #398 a su verificación re-ejecutada. **No está en `main`.**
 
 ### #402 — Chequeo de completitud con IA y envío a revisión humana
 
