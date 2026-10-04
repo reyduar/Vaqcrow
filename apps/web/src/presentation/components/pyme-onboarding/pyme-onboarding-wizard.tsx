@@ -30,12 +30,14 @@ import {
 import { type RegistrationValues } from "@/application/pyme-onboarding/registration-step";
 import { smeReferenceFor } from "@/application/pyme-onboarding/review-step";
 import type { AiEvaluationInput, AiEvaluationPort } from "@/application/ports/ai-evaluation-port";
+import type { BusinessPort } from "@/application/ports/business-port";
 import type { KycDocument, KycPort, KycResult } from "@/application/ports/kyc-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { UploadPort } from "@/application/ports/upload-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { SimulatedAiEvaluationAdapter } from "@/infrastructure/ai-evaluation/simulated-ai-evaluation-adapter";
+import { createBrowserBusinessPort } from "@/infrastructure/business/create-business-port";
 import { createSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { FOCUS_RING } from "../auth-field";
@@ -67,6 +69,8 @@ export interface PymeOnboardingWizardProps {
   readonly wallet?: WalletPort;
   /** SME-request engine for step 4's send; `null` forces «no backend». */
   readonly gateway?: SmeRequestGateway | null;
+  /** Company persistence for step 4's send; optional so tests can inject a double. */
+  readonly business?: BusinessPort;
   /** «Volver» returns to the `/company` dashboard skeleton; the URL never changes. */
   readonly onBack: () => void;
 }
@@ -96,6 +100,7 @@ export function PymeOnboardingWizard({
   ai = defaultAi,
   wallet = defaultWallet,
   gateway = defaultGateway,
+  business,
   onBack
 }: PymeOnboardingWizardProps) {
   const titleId = useId();
@@ -105,7 +110,12 @@ export function PymeOnboardingWizard({
   const [phase, setPhase] = useState<KycPhase>("idle");
   const [result, setResult] = useState<KycResult | null>(null);
   const [registration, setRegistration] = useState<RegistrationValues | null>(null);
+  // Built per mount (like `CompanyWorkspace`'s upload port) so SSR never touches
+  // the browser env or the Supabase client.
+  const [browserBusiness] = useState<BusinessPort>(() => createBrowserBusinessPort());
   const requestRef = useRef(0);
+
+  const businessPort = business ?? browserBusiness;
 
   const outcome = result?.outcome ?? null;
   const busy = phase === "busy";
@@ -346,6 +356,7 @@ export function PymeOnboardingWizard({
         <ReviewStep
           wallet={wallet}
           gateway={gateway}
+          business={businessPort}
           values={registration}
           onEdit={() => setStepIndex(1)}
           onDone={onBack}

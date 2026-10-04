@@ -50,6 +50,7 @@ export const REVIEW_STEP_COPY = Object.freeze({
   // New copy (neutral Spanish, voseo) for the states the template does not draw.
   sendUnavailable: "El servicio de solicitudes no está disponible en esta demostración. No se envió nada.",
   sendFailed: "No pudimos enviar tu solicitud. Probá de nuevo.",
+  businessFailed: "No pudimos guardar los datos de tu empresa. No se envió la solicitud. Probá de nuevo.",
   connectFailed: "No pudimos conectar Freighter. Probá de nuevo."
 });
 

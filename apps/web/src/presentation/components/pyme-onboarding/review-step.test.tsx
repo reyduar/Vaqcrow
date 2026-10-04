@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { BusinessDraft } from "@/application/ports/business-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { DEMO_VALUES } from "@/application/pyme-onboarding/registration-step";
+import { FakeBusiness, fakeBusinessRecord } from "@/test/fake-business";
 import { FakeWallet } from "@/test/fake-wallet";
 import { ReviewStep } from "./review-step";
 
@@ -13,6 +15,16 @@ const REQUEST: SmeRequest = {
   periodStart: "2026-01",
   periodEnd: "2026-08",
   simuladoLabel: "SIMULADO"
+};
+
+const DRAFT: BusinessDraft = {
+  name: "Panadería Horizonte SRL",
+  cuit: "30712345678",
+  sector: "Alimentos",
+  city: "Córdoba",
+  description: DEMO_VALUES.desc,
+  goalArs: 15000000,
+  revenueShare: 4.5
 };
 
 function gateway(overrides: Partial<SmeRequestGateway> = {}): SmeRequestGateway {
@@ -28,8 +40,11 @@ function renderReview(props: Partial<React.ComponentProps<typeof ReviewStep>> = 
   const onDone = vi.fn();
   const wallet = props.wallet ?? new FakeWallet();
   const gw = props.gateway === undefined ? gateway() : props.gateway;
-  render(<ReviewStep wallet={wallet} gateway={gw} values={DEMO_VALUES} onEdit={onEdit} onDone={onDone} {...props} />);
-  return { onEdit, onDone, wallet, gw };
+  const business = props.business ?? new FakeBusiness();
+  render(
+    <ReviewStep wallet={wallet} gateway={gw} business={business} values={DEMO_VALUES} onEdit={onEdit} onDone={onDone} {...props} />
+  );
+  return { onEdit, onDone, wallet, gw, business };
 }
 
 function nextStepRows(): HTMLElement[] {
@@ -157,6 +172,116 @@ describe("ReviewStep send", () => {
       fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
     });
 
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "El servicio de solicitudes no está disponible en esta demostración. No se envió nada."
+    );
+  });
+});
+
+function connectedWallet(): FakeWallet {
+  const wallet = new FakeWallet();
+  wallet.seedAccount("GBXK1234567890ABCD7Q2M");
+  return wallet;
+}
+
+async function connectAndSend(): Promise<void> {
+  fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+  });
+}
+
+describe("ReviewStep company persistence", () => {
+  it("creates the company once and then submits the request", async () => {
+    const business = new FakeBusiness();
+    const gw = gateway();
+    renderReview({ wallet: connectedWallet(), business, gateway: gw });
+
+    await connectAndSend();
+
+    expect(business.getCalls).toBe(1);
+    expect(business.creates).toEqual([DRAFT]);
+    expect(gw.submit).toHaveBeenCalledWith(REQUEST);
+    expect(screen.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeInTheDocument();
+  });
+
+  it("reuses an existing company without creating another", async () => {
+    const business = new FakeBusiness(fakeBusinessRecord(DRAFT));
+    const gw = gateway();
+    renderReview({ wallet: connectedWallet(), business, gateway: gw });
+
+    await connectAndSend();
+
+    expect(business.getCalls).toBe(1);
+    expect(business.creates).toHaveLength(0);
+    expect(gw.submit).toHaveBeenCalledWith(REQUEST);
+  });
+
+  it("blocks the submit with a sanitized message when the company cannot be saved", async () => {
+    const business = new FakeBusiness();
+    business.failNext("create", "unavailable");
+    const gw = gateway();
+    renderReview({ wallet: connectedWallet(), business, gateway: gw });
+
+    await connectAndSend();
+
+    expect(business.creates).toHaveLength(1);
+    expect(gw.submit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "No pudimos guardar los datos de tu empresa. No se envió la solicitud. Probá de nuevo."
+    );
+    expect(screen.queryByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).not.toBeInTheDocument();
+  });
+
+  it("does not create a company when reading it fails for another reason", async () => {
+    const business = new FakeBusiness();
+    business.failNext("get", "unavailable");
+    const gw = gateway();
+    renderReview({ wallet: connectedWallet(), business, gateway: gw });
+
+    await connectAndSend();
+
+    expect(business.getCalls).toBe(1);
+    expect(business.creates).toHaveLength(0);
+    expect(gw.submit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos guardar los datos de tu empresa.");
+  });
+
+  it("never sends an owner from the web", async () => {
+    const business = new FakeBusiness();
+    renderReview({ wallet: connectedWallet(), business, gateway: gateway() });
+
+    await connectAndSend();
+
+    const sentDraft = business.creates[0]!;
+    expect(Object.keys(sentDraft).sort()).toEqual(
+      ["city", "cuit", "description", "goalArs", "name", "revenueShare", "sector"].sort()
+    );
+    expect(JSON.stringify(sentDraft)).not.toContain("owner");
+  });
+
+  it("does not touch the company when no wallet is connected", () => {
+    const business = new FakeBusiness();
+    const gw = gateway();
+    renderReview({ business, gateway: gw });
+
+    fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+
+    expect(business.getCalls).toBe(0);
+    expect(business.creates).toHaveLength(0);
+    expect(gw.submit).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the company when no gateway is configured", async () => {
+    const business = new FakeBusiness();
+    renderReview({ wallet: connectedWallet(), business, gateway: null });
+
+    await connectAndSend();
+
+    expect(business.getCalls).toBe(0);
     expect(screen.getByRole("alert")).toHaveTextContent(
       "El servicio de solicitudes no está disponible en esta demostración. No se envió nada."
     );

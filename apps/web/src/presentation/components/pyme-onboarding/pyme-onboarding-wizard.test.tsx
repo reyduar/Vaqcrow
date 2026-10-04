@@ -3,6 +3,7 @@ import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { FakeAiEvaluation } from "@/test/fake-ai-evaluation";
+import { FakeBusiness } from "@/test/fake-business";
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeUpload } from "@/test/fake-upload";
 import { FakeWallet } from "@/test/fake-wallet";
@@ -292,6 +293,44 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
       current: "step"
     });
     expect(within(current).getByText("Revisión humana")).toBeInTheDocument();
+  });
+
+  it("persists the company and then sends the request from step 4", async () => {
+    const kyc = new FakeKyc();
+    const ai = new FakeAiEvaluation();
+    const business = new FakeBusiness();
+    const gw = gateway();
+    render(
+      <PymeOnboardingWizard
+        kyc={kyc}
+        upload={new FakeUpload()}
+        ai={ai}
+        wallet={new FakeWallet({ publicKey: "GBXK1234567890ABCD7Q2M" })}
+        gateway={gw}
+        business={business}
+        onBack={vi.fn()}
+      />
+    );
+
+    await advanceToRegistration(kyc);
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    await uploadRequiredDocuments();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar a evaluación AI" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continuar/ }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    });
+
+    expect(business.creates).toHaveLength(1);
+    expect(gw.submit).toHaveBeenCalledWith(SAVED_REQUEST);
+    expect(screen.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeInTheDocument();
   });
 
   it("returns to step 2 with Corregir datos and keeps the loaded values", async () => {

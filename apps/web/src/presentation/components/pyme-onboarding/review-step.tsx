@@ -14,6 +14,7 @@ import {
   IoWalletOutline
 } from "react-icons/io5";
 import { submitSmeRequest } from "@/application/evidence/submit-sme-request";
+import { ensureMyBusiness } from "@/application/pyme-onboarding/business-persistence";
 import {
   REVIEW_STEP_COPY,
   reviewNextSteps,
@@ -23,6 +24,7 @@ import {
   type ReviewStepTone
 } from "@/application/pyme-onboarding/review-step";
 import type { RegistrationValues } from "@/application/pyme-onboarding/registration-step";
+import type { BusinessPort } from "@/application/ports/business-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { FOCUS_RING } from "../auth-field";
@@ -37,6 +39,12 @@ import { FOCUS_RING } from "../auth-field";
  *
  * The wallet is behind the existing `WalletPort` (real Freighter is #406); the
  * vault deploy is platform-signed and the PyME signs nothing here.
+ *
+ * T3c: when the send fires it first ensures the sign-in principal owns a
+ * company (`getMyBusiness`, then `createBusiness` only on `not_found`) and only
+ * then submits the SME request. A company failure shows a sanitized message and
+ * submits nothing; a pre-existing company is reused, never duplicated. The
+ * owner is resolved by the API from the session, so it is never sent here.
  */
 
 const STEP_ICONS: Readonly<Record<ReviewStepIcon, IconType>> = {
@@ -67,6 +75,8 @@ type SendPhase = "idle" | "sending" | "sent";
 export interface ReviewStepProps {
   readonly wallet: WalletPort;
   readonly gateway: SmeRequestGateway | null;
+  /** Company persistence; the wizard injects the browser port, tests a double. */
+  readonly business: BusinessPort;
   readonly values: RegistrationValues;
   /** «Revisar lo cargado»: return to step 2. */
   readonly onEdit: () => void;
@@ -74,7 +84,7 @@ export interface ReviewStepProps {
   readonly onDone: () => void;
 }
 
-export function ReviewStep({ wallet, gateway, values, onEdit, onDone }: ReviewStepProps) {
+export function ReviewStep({ wallet, gateway, business, values, onEdit, onDone }: ReviewStepProps) {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [walletTried, setWalletTried] = useState(false);
@@ -112,6 +122,12 @@ export function ReviewStep({ wallet, gateway, values, onEdit, onDone }: ReviewSt
       return;
     }
     setSendPhase("sending");
+    const company = await ensureMyBusiness(business, values);
+    if (!company.ok) {
+      setSendPhase("idle");
+      setSendError(REVIEW_STEP_COPY.businessFailed);
+      return;
+    }
     const result = await submitSmeRequest(gateway, toSmeRequestValues(values), smeReferenceFor(values));
     if (result.ok) {
       setSendPhase("sent");
