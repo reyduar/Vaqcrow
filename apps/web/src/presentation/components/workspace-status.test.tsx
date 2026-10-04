@@ -10,6 +10,7 @@ function createWallet(overrides: Partial<WalletPort> = {}): WalletPort {
     isAvailable: async () => true,
     connect: async () => ({ publicKey: "GABC123" }),
     signTransaction: async () => "signed-xdr",
+    signMessage: async () => "signed-message",
     ...overrides
   };
 }

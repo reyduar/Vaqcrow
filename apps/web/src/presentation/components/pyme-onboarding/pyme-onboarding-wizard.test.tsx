@@ -9,6 +9,18 @@ import { FakeUpload } from "@/test/fake-upload";
 import { FakeWallet } from "@/test/fake-wallet";
 import { PymeOnboardingWizard } from "./pyme-onboarding-wizard";
 
+/**
+ * The wizard does not accept a wallet-connection port (only the review step
+ * does), so this integration test substitutes the browser default with the
+ * deterministic in-memory double — the same double the review-step suite
+ * injects. Without it, the step-4 send would try to persist through the
+ * unconfigured browser port and correctly refuse to send.
+ */
+vi.mock("@/infrastructure/wallet/create-wallet-connection-port", async () => {
+  const { FakeWalletConnection } = await import("@/test/fake-wallet");
+  return { createBrowserWalletConnectionPort: () => new FakeWalletConnection() };
+});
+
 function renderWizard(fake = new FakeKyc()) {
   const onBack = vi.fn();
   render(<PymeOnboardingWizard kyc={fake} onBack={onBack} />);

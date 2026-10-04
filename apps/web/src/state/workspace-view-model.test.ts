@@ -12,6 +12,9 @@ function createWallet(overrides: Partial<WalletPort> = {}): WalletPort {
     signTransaction: async () => {
       throw new Error("not implemented");
     },
+    signMessage: async () => {
+      throw new Error("not implemented");
+    },
     ...overrides
   };
 }

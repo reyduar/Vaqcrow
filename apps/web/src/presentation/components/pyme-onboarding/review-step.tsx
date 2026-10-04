@@ -16,6 +16,10 @@ import {
 import { submitSmeRequest } from "@/application/evidence/submit-sme-request";
 import { ensureMyBusiness } from "@/application/pyme-onboarding/business-persistence";
 import {
+  connectAndStoreWallet,
+  walletConnectFailureCopy
+} from "@/application/pyme-onboarding/wallet-connection";
+import {
   REVIEW_STEP_COPY,
   reviewNextSteps,
   smeReferenceFor,
@@ -26,7 +30,9 @@ import {
 import type { RegistrationValues } from "@/application/pyme-onboarding/registration-step";
 import type { BusinessPort } from "@/application/ports/business-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
+import type { WalletConnection, WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
+import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FOCUS_RING } from "../auth-field";
 
 /**
@@ -39,6 +45,12 @@ import { FOCUS_RING } from "../auth-field";
  *
  * The wallet is behind the existing `WalletPort` (real Freighter is #406); the
  * vault deploy is platform-signed and the PyME signs nothing here.
+ *
+ * T1c (#407): connecting does not just remember a key locally. `connectWallet`
+ * runs `connectAndStoreWallet` — connect, request the API challenge, sign its
+ * message and submit the signature — so the send gate keys on a STORED
+ * connection. A persistence failure shows a sanitized message and blocks the
+ * send; the vault's destination must already be persisted server-side.
  *
  * T3c: when the send fires it first ensures the sign-in principal owns a
  * company (`getMyBusiness`, then `createBusiness` only on `not_found`) and only
@@ -77,6 +89,8 @@ export interface ReviewStepProps {
   readonly gateway: SmeRequestGateway | null;
   /** Company persistence; the wizard injects the browser port, tests a double. */
   readonly business: BusinessPort;
+  /** Wallet persistence; defaults to the browser port, tests inject a double. */
+  readonly connection?: WalletConnectionPort;
   readonly values: RegistrationValues;
   /** «Revisar lo cargado»: return to step 2. */
   readonly onEdit: () => void;
@@ -84,8 +98,10 @@ export interface ReviewStepProps {
   readonly onDone: () => void;
 }
 
-export function ReviewStep({ wallet, gateway, business, values, onEdit, onDone }: ReviewStepProps) {
-  const [publicKey, setPublicKey] = useState<string | null>(null);
+export function ReviewStep({ wallet, gateway, business, connection, values, onEdit, onDone }: ReviewStepProps) {
+  const [browserConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
+  const connectionPort = connection ?? browserConnection;
+  const [stored, setStored] = useState<WalletConnection | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [walletTried, setWalletTried] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -93,26 +109,27 @@ export function ReviewStep({ wallet, gateway, business, values, onEdit, onDone }
   const [sendError, setSendError] = useState<string | null>(null);
 
   const sent = sendPhase === "sent";
-  const walletConnected = publicKey !== null;
-  const steps = reviewNextSteps({ sent, walletConnected, walletTried, publicKey });
+  const walletConnected = stored !== null;
+  const steps = reviewNextSteps({ sent, walletConnected, walletTried, publicKey: stored?.publicKey ?? null });
 
   async function connectWallet(): Promise<void> {
     if (connecting) return;
     setConnecting(true);
     setConnectError(null);
-    try {
-      const account = await wallet.connect();
-      setPublicKey(account.publicKey);
-    } catch {
-      setConnectError(REVIEW_STEP_COPY.connectFailed);
-    } finally {
-      setConnecting(false);
+    const outcome = await connectAndStoreWallet(wallet, connectionPort);
+    if (outcome.ok) {
+      setStored(outcome.connection);
+    } else {
+      setConnectError(walletConnectFailureCopy(outcome));
     }
+    setConnecting(false);
   }
 
   async function sendReview(): Promise<void> {
     if (sendPhase !== "idle") return;
-    if (!publicKey) {
+    // The send gate keys on the STORED connection, not a component-local key:
+    // the vault's destination must already be persisted server-side.
+    if (!stored) {
       setWalletTried(true);
       return;
     }

@@ -31,6 +31,11 @@ const BUSINESS_ID = "b1a2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
 const OWNER_USER_ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 const BUSINESS_CREATED_AT = "2026-10-04T12:00:00.000Z";
 
+/** The PyME wallet connection (`T1c`): one fixed single-use challenge, echoed key. */
+const WALLET_CHALLENGE_ID = "9c1f0a4e-2b3d-4e5f-8a6b-7c8d9e0f1a2b";
+const WALLET_CHALLENGE_MESSAGE =
+  "Vaqcrow wallet connection challenge\n\nSign this message to link your Stellar account (Freighter) to your Vaqcrow PyME profile.\n\nNonce: stub-nonce";
+
 /** Contract-shaped sales history (`salesPeriodSchema` is a strict object). */
 const SALES_PERIODS = Object.freeze([
   { period: "2026-01", amountArs: 3150000, status: "reported", evidenceRef: "sales:2026-01", simuladoLabel: SIMULADO },
@@ -87,6 +92,9 @@ let currentRequest = null;
 
 /** The PyME's own persisted company (`GET/POST /businesses`); reset per test. */
 let currentBusiness = null;
+
+/** The PyME's linked wallet (`GET/POST /profile/wallet`); reset per test. */
+let currentWallet = { publicKey: null, frozen: false };
 
 /** Whether the feed's next period has been recorded (`POST /businesses/:id/sales-periods`). */
 let salesPeriodRecorded = false;
@@ -240,6 +248,7 @@ async function handle(request, response) {
   if (request.method === "POST" && pathname === "/__reset") {
     currentRequest = null;
     currentBusiness = null;
+    currentWallet = { publicKey: null, frozen: false };
     salesPeriodRecorded = false;
     latestDecision = null;
     recordedAssessments.clear();
@@ -349,6 +358,37 @@ async function handle(request, response) {
       updatedAt: BUSINESS_CREATED_AT
     };
     sendJson(response, 201, { business: currentBusiness });
+    return;
+  }
+
+  // The PyME wallet connection (`T1c`). Like the real API, the owner comes from
+  // the session (ignored here), the challenge is single-use, and the submitted
+  // public key is verified and stored — the stub echoes it without verification.
+  if (request.method === "POST" && pathname === "/profile/wallet/challenge") {
+    sendJson(response, 201, { challengeId: WALLET_CHALLENGE_ID, message: WALLET_CHALLENGE_MESSAGE });
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/profile/wallet") {
+    const body = await readJsonBody(request);
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      Array.isArray(body) ||
+      typeof body.challengeId !== "string" ||
+      typeof body.publicKey !== "string" ||
+      typeof body.signature !== "string"
+    ) {
+      sendJson(response, 400, { code: "invalid_request" });
+      return;
+    }
+    currentWallet = { publicKey: body.publicKey, frozen: false };
+    sendJson(response, 200, { publicKey: currentWallet.publicKey, frozen: currentWallet.frozen });
+    return;
+  }
+
+  if (request.method === "GET" && pathname === "/profile/wallet") {
+    sendJson(response, 200, { publicKey: currentWallet.publicKey, frozen: currentWallet.frozen });
     return;
   }
 

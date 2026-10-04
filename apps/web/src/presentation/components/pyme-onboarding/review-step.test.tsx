@@ -5,7 +5,7 @@ import type { BusinessDraft } from "@/application/ports/business-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { DEMO_VALUES } from "@/application/pyme-onboarding/registration-step";
 import { FakeBusiness, fakeBusinessRecord } from "@/test/fake-business";
-import { FakeWallet } from "@/test/fake-wallet";
+import { FakeWallet, FakeWalletConnection } from "@/test/fake-wallet";
 import { ReviewStep } from "./review-step";
 
 const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
@@ -41,10 +41,20 @@ function renderReview(props: Partial<React.ComponentProps<typeof ReviewStep>> = 
   const wallet = props.wallet ?? new FakeWallet();
   const gw = props.gateway === undefined ? gateway() : props.gateway;
   const business = props.business ?? new FakeBusiness();
+  const connection = props.connection ?? new FakeWalletConnection();
   render(
-    <ReviewStep wallet={wallet} gateway={gw} business={business} values={DEMO_VALUES} onEdit={onEdit} onDone={onDone} {...props} />
+    <ReviewStep
+      wallet={wallet}
+      gateway={gw}
+      business={business}
+      connection={connection}
+      values={DEMO_VALUES}
+      onEdit={onEdit}
+      onDone={onDone}
+      {...props}
+    />
   );
-  return { onEdit, onDone, wallet, gw, business };
+  return { onEdit, onDone, wallet, gw, business, connection };
 }
 
 function nextStepRows(): HTMLElement[] {
@@ -92,16 +102,29 @@ describe("ReviewStep wallet gate", () => {
     expect(gw.submit).not.toHaveBeenCalled();
   });
 
-  it("connects Freighter and then sends the mapped request", async () => {
+  it("connects Freighter, persists the key, and then sends the mapped request", async () => {
     const wallet = new FakeWallet();
     wallet.seedAccount("GBXK1234567890ABCD7Q2M");
     const gw = gateway();
-    const { onDone } = renderReview({ wallet, gateway: gw });
+    const connection = new FakeWalletConnection();
+    const { onDone } = renderReview({ wallet, gateway: gw, connection });
 
     fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
     });
+
+    // The key is signed and stored through the connection port, not just held
+    // in component state.
+    expect(connection.submitted).toEqual([
+      {
+        challengeId: expect.any(String),
+        publicKey: "GBXK1234567890ABCD7Q2M",
+        signature: expect.stringContaining("fake-signature")
+      }
+    ]);
+    expect(connection.challengeCalls).toBe(1);
+    expect(wallet.signedMessages).toHaveLength(1);
 
     expect(screen.queryByText("Obligatorio")).not.toBeInTheDocument();
     expect(nextStepRows()[2]).toHaveTextContent("Completo");
@@ -119,7 +142,33 @@ describe("ReviewStep wallet gate", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it("surfaces a friendly message when Freighter cannot be connected", async () => {
+  it("blocks the send and shows a sanitized message when persistence fails", async () => {
+    const wallet = new FakeWallet();
+    wallet.seedAccount("GBXK1234567890ABCD7Q2M");
+    const connection = new FakeWalletConnection();
+    connection.failNextSubmit("unavailable");
+    const gw = gateway();
+    renderReview({ wallet, gateway: gw, connection });
+
+    fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+    });
+
+    expect(screen.getByText(
+      "No pudimos guardar tu wallet. Revisá tu conexión y probá de nuevo."
+    )).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    });
+
+    // No stored key: the wallet row stays obligatory and nothing is submitted.
+    expect(nextStepRows()[2]).toHaveTextContent("Obligatorio");
+    expect(gw.submit).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the honest unavailable state when Freighter is not installed", async () => {
     const wallet = new FakeWallet();
     wallet.failNextConnect("unavailable");
     renderReview({ wallet });
@@ -129,7 +178,22 @@ describe("ReviewStep wallet gate", () => {
       fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
     });
 
-    expect(screen.getByText("No pudimos conectar Freighter. Probá de nuevo.")).toBeInTheDocument();
+    expect(screen.getByText(
+      "No encontramos Freighter en este navegador. Instalá la extensión y creá una wallet para continuar."
+    )).toBeInTheDocument();
+  });
+
+  it("asks for Testnet when Freighter is on another network", async () => {
+    const wallet = new FakeWallet();
+    wallet.failNextConnect("network_mismatch");
+    renderReview({ wallet });
+
+    fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+    });
+
+    expect(screen.getByText("Freighter está en otra red. Cambiá a Stellar Testnet para continuar.")).toBeInTheDocument();
   });
 });
 

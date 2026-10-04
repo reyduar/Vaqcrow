@@ -17,6 +17,8 @@ const WALLET_PASSPHRASE = "synthetic-wallet-passphrase";
 const PUBLIC_KEY = "GDVEU3DDJGBXQKZTPJ7Q2PLZRZXQ4OBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 const XDR = "AAAAAgAAAAA...unsigned";
 const SIGNED_XDR = "AAAAAgAAAAA...signed";
+const MESSAGE = "Vaqcrow wallet connection challenge\n\nNonce: synthetic";
+const SIGNED_MESSAGE = "c2lnbmF0dXJlLWJhc2U2NA==";
 
 const DOCUMENTED_ERRORS = {
   rejected: "The user rejected this request.",
@@ -34,6 +36,10 @@ function createApi(overrides: Partial<FreighterApi> = {}): FreighterApi {
     })),
     signTransaction: vi.fn(async () => ({
       signedTxXdr: SIGNED_XDR,
+      signerAddress: PUBLIC_KEY
+    })),
+    signMessage: vi.fn(async () => ({
+      signedMessage: SIGNED_MESSAGE,
       signerAddress: PUBLIC_KEY
     })),
     ...overrides
@@ -251,5 +257,82 @@ describe("FreighterWallet.signTransaction", () => {
 
     await expect(wallet.signTransaction(XDR, WALLET_PASSPHRASE)).rejects.toBeInstanceOf(WalletError);
     await expect(wallet.signTransaction(XDR, WALLET_PASSPHRASE)).resolves.toBe(SIGNED_XDR);
+  });
+});
+
+describe("FreighterWallet.signMessage", () => {
+  it("returns the base64 message signature on Testnet", async () => {
+    const wallet = new FreighterWallet(createApi());
+
+    await expect(wallet.signMessage(MESSAGE)).resolves.toBe(SIGNED_MESSAGE);
+  });
+
+  it("sends the exact message to the wallet and no key material", async () => {
+    const signMessage = vi.fn(async () => ({ signedMessage: SIGNED_MESSAGE, signerAddress: PUBLIC_KEY }));
+    const wallet = new FreighterWallet(createApi({ signMessage }));
+
+    await wallet.signMessage(MESSAGE);
+
+    expect(signMessage).toHaveBeenCalledExactlyOnceWith(MESSAGE);
+  });
+
+  it("classifies a declined signature as a recoverable rejection", async () => {
+    const wallet = new FreighterWallet(
+      createApi({
+        signMessage: vi.fn(async () => ({
+          signedMessage: null,
+          signerAddress: "",
+          error: { code: -1, message: DOCUMENTED_ERRORS.rejected }
+        }))
+      })
+    );
+
+    const error = await failureFrom(() => wallet.signMessage(MESSAGE));
+
+    expect(error.kind).toBe("rejected");
+    expect(error.recoverable).toBe(true);
+  });
+
+  it("refuses a wallet on another network before asking for a signature", async () => {
+    const signMessage = vi.fn(async () => ({ signedMessage: SIGNED_MESSAGE, signerAddress: PUBLIC_KEY }));
+    const wallet = new FreighterWallet(
+      createApi({
+        getNetwork: vi.fn(async () => ({
+          network: "PUBLIC",
+          networkPassphrase: "synthetic-other-network-passphrase"
+        })),
+        signMessage
+      })
+    );
+
+    const error = await failureFrom(() => wallet.signMessage(MESSAGE));
+
+    expect(error.kind).toBe("network_mismatch");
+    expect(error.recoverable).toBe(true);
+    expect(signMessage).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty message instead of signing nothing", async () => {
+    const signMessage = vi.fn(async () => ({ signedMessage: SIGNED_MESSAGE, signerAddress: PUBLIC_KEY }));
+    const wallet = new FreighterWallet(createApi({ signMessage }));
+
+    await expect(wallet.signMessage("")).rejects.toBeInstanceOf(WalletError);
+    expect(signMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports an internal failure as unavailable", async () => {
+    const wallet = new FreighterWallet(
+      createApi({
+        signMessage: vi.fn(async () => ({
+          signedMessage: null,
+          signerAddress: "",
+          error: { code: -1, message: DOCUMENTED_ERRORS.internal }
+        }))
+      })
+    );
+
+    const error = await failureFrom(() => wallet.signMessage(MESSAGE));
+
+    expect(error.kind).toBe("unavailable");
   });
 });
