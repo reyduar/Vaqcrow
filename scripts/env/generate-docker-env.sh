@@ -11,7 +11,10 @@
 #     written as the browser pair NEXT_PUBLIC_SUPABASE_URL /
 #     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY for apps/web (never the service key).
 #   - Fixed, non-secret local defaults (APP_ENV, PORT, LOG_LEVEL,
-#     NEXT_PUBLIC_API_BASE_URL).
+#     APP_BASE_URL, NEXT_PUBLIC_API_BASE_URL). APP_BASE_URL points at the local
+#     web dev server so email deep links resolve; RESEND_API_KEY is deliberately
+#     left unset — the local profile disables transactional email, and Auth's
+#     own mail goes to Mailpit.
 #   - The `LLM_*` lines, copied verbatim from `.env.cloud` — this profile
 #     does not stand up its own LLM credential; it reuses the demo one.
 #   - The `VAQCROW_SUPERADMIN_*` lines, preserved verbatim from an existing
@@ -190,6 +193,7 @@ umask 077
   echo "APP_ENV=local"
   echo "PORT=3000"
   echo "LOG_LEVEL=info"
+  echo "APP_BASE_URL=http://localhost:3001"
   printf '%s\n' "$STELLAR_LINES"
   echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:3000"
   echo
@@ -209,7 +213,7 @@ chmod 600 "$OUT_FILE"
 
 echo "wrote $OUT_FILE with keys:"
 {
-  echo "APP_ENV PORT LOG_LEVEL NEXT_PUBLIC_API_BASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+  echo "APP_ENV PORT LOG_LEVEL APP_BASE_URL NEXT_PUBLIC_API_BASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
   echo "$STELLAR_KEY_NAMES"
   printf '%s\n' "$LLM_LINES" | cut -d= -f1
   printf '%s\n' "$SUPERADMIN_LINES" | cut -d= -f1

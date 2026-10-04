@@ -4,6 +4,8 @@ import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import { parseCorsConfigResult } from "./cors-config.js";
 import type { CorsConfig } from "./cors-config.js";
+import { parseEmailConfigResult } from "./email-config.js";
+import type { EmailConfig } from "./email-config.js";
 import { invalidIssue, missingIssue, readPresent, unsupportedIssue } from "./env-source.js";
 import type { EnvSource } from "./env-source.js";
 import { parseLlmConfigResult } from "./llm-config.js";
@@ -40,6 +42,7 @@ export type ApiConfig = {
   readonly llm: LlmConfig;
   readonly cors: CorsConfig;
   readonly campaignVault: CampaignVaultConfig;
+  readonly email: EmailConfig;
 };
 
 export function parseApiConfig(env: EnvSource): ApiConfig {
@@ -80,12 +83,18 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...campaignVault.issues);
   }
 
+  const email = parseEmailConfigResult(env);
+  if (!email.ok) {
+    issues.push(...email.issues);
+  }
+
   if (
     !supabase.ok ||
     !stellar.ok ||
     !llm.ok ||
     !cors.ok ||
     !campaignVault.ok ||
+    !email.ok ||
     environment === undefined ||
     port === undefined ||
     logLevel === undefined
@@ -101,7 +110,8 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     stellar: stellar.value,
     llm: llm.value,
     cors: cors.value,
-    campaignVault: campaignVault.value
+    campaignVault: campaignVault.value,
+    email: email.value
   });
 }
 

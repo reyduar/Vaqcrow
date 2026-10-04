@@ -218,6 +218,58 @@ describe("demo preflight: environment names", () => {
   });
 });
 
+describe("demo preflight: email configuration", () => {
+  it("passes with email disabled, reporting the defaults mirrored from the API config", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn));
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("RESEND_API_KEY unset");
+    expect(check?.detail).toContain("no-reply@vaqcrow.com");
+    expect(check?.detail).toContain("http://localhost:3001");
+  });
+
+  it("passes and reports the configured sender and base when the key is present", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(
+      deps(fetchFn, {
+        env: {
+          ...env,
+          RESEND_API_KEY: "resend-key-never-printed",
+          EMAIL_FROM: "Vaqcrow <hola@vaqcrow.com>",
+          APP_BASE_URL: "https://web.example.test"
+        }
+      })
+    );
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("enabled");
+    expect(check?.detail).toContain("hola@vaqcrow.com");
+    expect(check?.detail).toContain("https://web.example.test");
+  });
+
+  it.each([
+    ["APP_BASE_URL", "/portfolio"],
+    ["APP_BASE_URL", "web.example.test"],
+    ["APP_BASE_URL", "ftp://web.example.test"],
+    ["EMAIL_FROM", "not an address"]
+  ])("fails when %s is invalid: %s", async (name, value) => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, [name]: value } }));
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain(name);
+  });
+
+  it("never prints the Resend key in the report", async () => {
+    const key = "resend-key-never-printed";
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, RESEND_API_KEY: key } }));
+    expect(formatReport(report, { json: false })).not.toContain(key);
+    expect(formatReport(report, { json: true })).not.toContain(key);
+  });
+});
+
 describe("demo preflight: service reachability", () => {
   it("passes every service check on the happy path and exits 0", async () => {
     const { fetchFn } = fetchDouble();

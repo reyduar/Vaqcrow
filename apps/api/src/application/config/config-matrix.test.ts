@@ -8,6 +8,7 @@ import {
 } from "./api-config.js";
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
+import { DEFAULT_APP_BASE_URL, DEFAULT_EMAIL_FROM, parseEmailConfig } from "./email-config.js";
 import type { EnvSource } from "./env-source.js";
 import { redactForLog } from "./redaction.js";
 import { REDACTED_MARKER } from "./secret.js";
@@ -35,6 +36,7 @@ import {
 const SERVICE_ROLE_SENTINEL = "svc-role-sentinel-9f3a";
 const PUBLISHABLE_SENTINEL = "pub-sentinel-4c1d";
 const LLM_API_KEY_SENTINEL = "llm-key-sentinel-5a7c";
+const RESEND_API_KEY_SENTINEL = "resend-key-sentinel-2b6f";
 
 const REQUIRED_KEYS = [
   "APP_ENV",
@@ -456,6 +458,83 @@ describe("campaign vault configuration slice (U1)", () => {
     });
 
     expect(JSON.stringify(config)).not.toContain(PLATFORM_SECRET_KEY);
+  });
+});
+
+describe("email configuration slice (optional)", () => {
+  it("is disabled by default, resolving the sender and base to their defaults", () => {
+    expect(parseApiConfig(VALID_ENV).email).toEqual({
+      enabled: false,
+      from: DEFAULT_EMAIL_FROM,
+      appBaseUrl: DEFAULT_APP_BASE_URL
+    });
+  });
+
+  it("adds no required key: the Resend key stays out of the required-name matrix", () => {
+    expect(REQUIRED_KEYS).not.toContain("RESEND_API_KEY");
+  });
+
+  it("enables the slice once the Resend key is set", () => {
+    const config = parseApiConfig({ ...VALID_ENV, RESEND_API_KEY: RESEND_API_KEY_SENTINEL });
+
+    expect(config.email.enabled).toBe(true);
+    if (config.email.enabled) {
+      expect(config.email.apiKey.reveal()).toBe(RESEND_API_KEY_SENTINEL);
+    }
+  });
+
+  it("strips the trailing slash from an explicit APP_BASE_URL", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      RESEND_API_KEY: RESEND_API_KEY_SENTINEL,
+      EMAIL_FROM: "Vaqcrow <hola@vaqcrow.com>",
+      APP_BASE_URL: "https://web.example.test/"
+    });
+
+    expect(config.email.from).toBe("Vaqcrow <hola@vaqcrow.com>");
+    expect(config.email.appBaseUrl).toBe("https://web.example.test");
+  });
+
+  it.each(["/portfolio", "web.example.test", "ftp://web.example.test"])(
+    "refuses a non-absolute APP_BASE_URL: %s",
+    (appBaseUrl) => {
+      expectSingleIssue({ ...VALID_ENV, APP_BASE_URL: appBaseUrl }, "APP_BASE_URL", "invalid");
+    }
+  );
+
+  it.each(["not an address", "Vaqcrow <>"])("refuses a malformed EMAIL_FROM: %s", (emailFrom) => {
+    expectSingleIssue({ ...VALID_ENV, EMAIL_FROM: emailFrom }, "EMAIL_FROM", "invalid");
+  });
+
+  it("never echoes the Resend key in JSON or under the log redactor", () => {
+    const withEmail = { ...VALID_ENV, RESEND_API_KEY: RESEND_API_KEY_SENTINEL };
+
+    const serialised = JSON.stringify(parseApiConfig(withEmail));
+    expect(serialised).not.toContain(RESEND_API_KEY_SENTINEL);
+    expect(serialised).toContain(REDACTED_MARKER);
+
+    const redacted = JSON.stringify(redactForLog(parseApiConfig(withEmail)));
+    expect(redacted).not.toContain(RESEND_API_KEY_SENTINEL);
+    expect(redacted).toContain(REDACTED_MARKER);
+  });
+
+  it("does not reveal the key while reporting another invalid value", () => {
+    const message = catchConfigError({
+      ...VALID_ENV,
+      RESEND_API_KEY: RESEND_API_KEY_SENTINEL,
+      APP_BASE_URL: "not a url"
+    }).message;
+
+    expect(message).toContain("APP_BASE_URL");
+    expect(message).not.toContain(RESEND_API_KEY_SENTINEL);
+  });
+
+  it("parses the slice independently of the rest of the configuration", () => {
+    expect(parseEmailConfig({})).toEqual({
+      enabled: false,
+      from: DEFAULT_EMAIL_FROM,
+      appBaseUrl: DEFAULT_APP_BASE_URL
+    });
   });
 });
 

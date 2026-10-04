@@ -9,6 +9,11 @@ import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import { parseCampaignVaultConfig } from "./campaign-vault-config.js";
 import { LOCAL_DEFAULT_CORS_ALLOWED_ORIGINS } from "./cors-config.js";
+import {
+  DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM,
+  parseEmailConfig
+} from "./email-config.js";
 import type { EnvSource } from "./env-source.js";
 import {
   parseStellarConfig,
@@ -60,6 +65,12 @@ describe("parseApiConfig — accepted configuration", () => {
     expect(config.stellar.network).toBe("testnet");
     expect(config.stellar.horizonUrl).toBe("https://horizon-testnet.stellar.org");
     expect(config.stellar.networkPassphrase).toBe(STELLAR_TESTNET_NETWORK_PASSPHRASE);
+    // The email slice is optional: absent a Resend key it is disabled, but its
+    // sender and deep-link base still resolve to their documented defaults.
+    expect(config.email.enabled).toBe(false);
+    expect(config.email.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.email.appBaseUrl).toBe(DEFAULT_APP_BASE_URL);
+    expect(Object.isFrozen(config.email)).toBe(true);
   });
 
   it("defaults the explorer URL to the canonical Testnet explorer", () => {
@@ -123,6 +134,23 @@ describe("parseApiConfig — accepted configuration", () => {
 
     expect(config.cors.allowedOrigins).toEqual(["https://vaqcrow-web.example.com"]);
   });
+
+  it("enables the email slice only when a Resend key is set, wrapping it as a secret", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      RESEND_API_KEY: "resend-key-fixture",
+      EMAIL_FROM: "Vaqcrow <hola@vaqcrow.com>",
+      APP_BASE_URL: "https://web.example.test/"
+    });
+
+    expect(config.email.enabled).toBe(true);
+    if (config.email.enabled) {
+      expect(config.email.apiKey.reveal()).toBe("resend-key-fixture");
+    }
+    expect(config.email.from).toBe("Vaqcrow <hola@vaqcrow.com>");
+    // Normalised here rather than at every use: the renderer appends the path.
+    expect(config.email.appBaseUrl).toBe("https://web.example.test");
+  });
 });
 
 describe("parseApiConfig — missing configuration fails clearly", () => {
@@ -151,6 +179,8 @@ describe("parseApiConfig — missing configuration fails clearly", () => {
       ].sort()
     );
     expect(issues.every((issue) => issue.code === "missing")).toBe(true);
+    // Email is an optional slice: an absent Resend key must not be a boot failure.
+    expect(issues.map((issue) => issue.key)).not.toContain("RESEND_API_KEY");
     expect((error as ConfigurationError).message).toContain("Invalid API configuration (7 issues)");
   });
 
@@ -216,6 +246,18 @@ describe("parseApiConfig — out-of-scope environments are rejected", () => {
 
   it("rejects a wildcard CORS_ALLOWED_ORIGINS entry", () => {
     expect(issueFor({ ...VALID_ENV, CORS_ALLOWED_ORIGINS: "*" }, "CORS_ALLOWED_ORIGINS")?.code).toBe(
+      "invalid"
+    );
+  });
+
+  it("rejects a non-absolute APP_BASE_URL", () => {
+    expect(issueFor({ ...VALID_ENV, APP_BASE_URL: "web.example.test" }, "APP_BASE_URL")?.code).toBe(
+      "invalid"
+    );
+  });
+
+  it("rejects a malformed EMAIL_FROM", () => {
+    expect(issueFor({ ...VALID_ENV, EMAIL_FROM: "not an address" }, "EMAIL_FROM")?.code).toBe(
       "invalid"
     );
   });
@@ -356,5 +398,15 @@ describe("parseCampaignVaultConfig — slice independence (U1)", () => {
 
     expect(issue?.key).toBe("STELLAR_PLATFORM_SECRET_KEY");
     expect(issue?.code).toBe("missing");
+  });
+});
+
+describe("parseEmailConfig — slice independence", () => {
+  it("resolves the sender and base even while disabled", () => {
+    const config = parseEmailConfig({ APP_BASE_URL: "https://web.example.test" });
+
+    expect(config.enabled).toBe(false);
+    expect(config.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.appBaseUrl).toBe("https://web.example.test");
   });
 });
