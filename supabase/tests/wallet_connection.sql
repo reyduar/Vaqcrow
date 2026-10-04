@@ -1,6 +1,6 @@
 begin;
 
-select plan(42);
+select plan(44);
 
 -- PyME Freighter wallet connection (Feature #406, Task #407 / T1a). This unit is
 -- the database foundation only; the API challenge endpoint and the web
@@ -158,6 +158,40 @@ select throws_ok(
     values (null, 'challenge-nonce-3', now() + interval '5 minutes')$$,
   '23502', null,
   'a challenge must have an owner'
+);
+
+reset role;
+
+-- RLS owner access to the wallet key ------------------------------------------
+-- The key lives on public.profile, whose `profile_select_own` policy scopes a
+-- read to `user_id = auth.uid()`. Assert the owner reads its own stored key and
+-- that another authenticated user cannot. No policy is added for wallets: admin
+-- reads go through the API as service_role, which bypasses RLS by design.
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'f1111111-1111-4111-8111-111111111111', 'role', 'authenticated')::text,
+  true
+);
+
+select is(
+  (select stellar_public_key from public.profile
+    where user_id = 'f1111111-1111-4111-8111-111111111111'),
+  'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+  'the owner reads its own wallet key through RLS'
+);
+
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', 'f8888888-8888-4888-8888-888888888888', 'role', 'authenticated')::text,
+  true
+);
+
+select is(
+  (select count(*)::int from public.profile where stellar_public_key is not null),
+  0,
+  'another authenticated user cannot read the stored wallet key'
 );
 
 reset role;

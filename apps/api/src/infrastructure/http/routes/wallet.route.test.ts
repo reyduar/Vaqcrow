@@ -128,6 +128,44 @@ describe("POST /profile/wallet", () => {
     expect(response.json()).toEqual({ code: "invalid_request" });
   });
 
+  it("answers 400 for an already-consumed challenge (replay) and stores nothing", async () => {
+    const findChallenge = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { ...challenge, consumedAt: "2026-10-04T11:00:00.000Z" }
+    });
+    const consumeChallenge = vi.fn();
+    const writePublicKey = vi.fn();
+
+    const response = await build({ findChallenge, consumeChallenge, writePublicKey }).inject({
+      method: "POST",
+      url: "/profile/wallet",
+      payload: connectBody
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(consumeChallenge).not.toHaveBeenCalled();
+    expect(writePublicKey).not.toHaveBeenCalled();
+  });
+
+  it("answers 400 for an expired challenge and never stores the key", async () => {
+    const findChallenge = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { ...challenge, expiresAt: "2000-01-01T00:00:00.000Z" }
+    });
+    const writePublicKey = vi.fn();
+
+    const response = await build({ findChallenge, writePublicKey }).inject({
+      method: "POST",
+      url: "/profile/wallet",
+      payload: connectBody
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(writePublicKey).not.toHaveBeenCalled();
+  });
+
   it("answers 404 for a challenge that is not the principal's", async () => {
     const findChallenge = vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } });
 

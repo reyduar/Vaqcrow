@@ -59,7 +59,7 @@ describe("CompanyWorkspace", () => {
     const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
     expect(within(card).getByText("STELLAR TESTNET")).toBeInTheDocument();
     expect(within(card).getByText("Saldo disponible")).toBeInTheDocument();
-    expect(within(card).getByText("12.5000000 XLM")).toBeInTheDocument();
+    expect(within(card).getByText("12,5000000 XLM")).toBeInTheDocument();
     expect(within(card).getByText("Activo de prueba sin valor económico")).toBeInTheDocument();
     expect(within(card).getByText("GBXK…7Q2M")).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: /explorador de Stellar Testnet/i })).toHaveAttribute(

@@ -31,11 +31,17 @@ describe("WalletCard", () => {
     expect(screen.getByRole("heading", { name: "Freighter conectada de forma no custodial" })).toBeInTheDocument();
     expect(screen.getByText("STELLAR TESTNET")).toBeInTheDocument();
     expect(screen.getByText("Saldo disponible")).toBeInTheDocument();
-    expect(screen.getByText("0.0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("0,0000000 XLM")).toBeInTheDocument();
     expect(screen.getByText("Activo de prueba sin valor económico")).toBeInTheDocument();
     expect(screen.getByText("GBXK…7Q2M")).toBeInTheDocument();
     // The full key stays available to assistive tech.
     expect(screen.getByText(PUBLIC_KEY)).toBeInTheDocument();
+  });
+
+  it("formats the balance in es-AR with 7 fraction digits, as the template does", () => {
+    renderCard({ balanceXlm: "4120.5" });
+
+    expect(screen.getByText("4.120,5000000 XLM")).toBeInTheDocument();
   });
 
   it("links to the Stellar Testnet explorer in a new tab", () => {

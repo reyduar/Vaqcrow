@@ -29,7 +29,11 @@ export interface WalletCardProps {
   readonly publicKey: string;
   /** `true` once a vault exists: the destination can no longer change. */
   readonly frozen: boolean;
-  /** Already-formatted XLM balance; `null` while it is loading or unavailable. */
+  /**
+   * Raw XLM balance as a dot-decimal string (`"4120.5"`); the card renders it in
+   * `es-AR` with 7 fraction digits, as `Vaqcrow Portafolio.dc.html` does. `null`
+   * while it is loading or unavailable.
+   */
   readonly balanceXlm: string | null;
   /** Caller-supplied Stellar Testnet account URL. */
   readonly explorerUrl: string;
@@ -39,12 +43,27 @@ export interface WalletCardProps {
 
 type CopyState = "idle" | "copied" | "failed";
 
+/**
+ * The template's own `xlm()` formatter: `'es-AR'` with exactly 7 fraction
+ * digits, e.g. `4.120,5000000 XLM`. Stellar/XLM has 7 decimals (stroops).
+ */
+const XLM_FORMATTER = new Intl.NumberFormat("es-AR", {
+  minimumFractionDigits: 7,
+  maximumFractionDigits: 7
+});
+
+function formatBalanceXlm(balanceXlm: string | null): string {
+  if (balanceXlm === null) return "—";
+  const value = Number(balanceXlm);
+  return Number.isFinite(value) ? `${XLM_FORMATTER.format(value)} XLM` : "—";
+}
+
 export function WalletCard({ publicKey, frozen, balanceXlm, explorerUrl, onDisconnect }: WalletCardProps) {
   const headingId = useId();
   const frozenReasonId = useId();
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const shortKey = shortPublicKey(publicKey);
-  const balance = balanceXlm === null ? "—" : `${balanceXlm} XLM`;
+  const balance = formatBalanceXlm(balanceXlm);
 
   function copyAccount(): void {
     const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
