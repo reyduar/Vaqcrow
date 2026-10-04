@@ -122,8 +122,18 @@ describe("issueWalletChallenge", () => {
 describe("connectWallet", () => {
   const body = { challengeId: CHALLENGE_ID, publicKey: PUBLIC_KEY, signature: "c2ln" };
 
-  it("verifies the signature, stores the key, consumes the challenge and reports the key not frozen", async () => {
-    const repo = repository();
+  it("verifies the signature, consumes the challenge before storing the key and reports the key not frozen", async () => {
+    const order: string[] = [];
+    const repo = repository({
+      consumeChallenge: vi.fn().mockImplementation(async () => {
+        order.push("consume");
+        return { ok: true, value: undefined };
+      }),
+      writePublicKey: vi.fn().mockImplementation(async () => {
+        order.push("write");
+        return { ok: true, value: undefined };
+      })
+    });
 
     const result = await connectWallet(
       { repository: repo, signatures: signatures(), now: () => NOW },
@@ -134,6 +144,7 @@ describe("connectWallet", () => {
     expect(repo.findChallenge).toHaveBeenCalledWith({ challengeId: CHALLENGE_ID, ownerUserId: OWNER });
     expect(repo.writePublicKey).toHaveBeenCalledWith({ ownerUserId: OWNER, publicKey: PUBLIC_KEY });
     expect(repo.consumeChallenge).toHaveBeenCalledWith(CHALLENGE_ID);
+    expect(order).toEqual(["consume", "write"]);
   });
 
   it("verifies the exact challenge message for the stored nonce", async () => {
@@ -222,6 +233,36 @@ describe("connectWallet", () => {
     expect(repo.consumeChallenge).not.toHaveBeenCalled();
   });
 
+  it("consumes the challenge before storing the key, so a failed consume stores nothing", async () => {
+    const notFound = repository({
+      consumeChallenge: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+
+    expect(await connectWallet({ repository: notFound, signatures: signatures(), now: () => NOW }, { ownerUserId: OWNER, body }))
+      .toEqual({ ok: false, error: { code: "invalid_request" } });
+    expect(notFound.consumeChallenge).toHaveBeenCalledWith(CHALLENGE_ID);
+    expect(notFound.writePublicKey).not.toHaveBeenCalled();
+
+    const unavailable = repository({
+      consumeChallenge: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+    });
+
+    expect(await connectWallet({ repository: unavailable, signatures: signatures(), now: () => NOW }, { ownerUserId: OWNER, body }))
+      .toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(unavailable.writePublicKey).not.toHaveBeenCalled();
+  });
+
+  it("is unavailable when the frozen check fails, and neither consumes nor stores", async () => {
+    const repo = repository({
+      isFrozen: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+    });
+
+    expect(await connectWallet({ repository: repo, signatures: signatures(), now: () => NOW }, { ownerUserId: OWNER, body }))
+      .toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(repo.consumeChallenge).not.toHaveBeenCalled();
+    expect(repo.writePublicKey).not.toHaveBeenCalled();
+  });
+
   it("refuses to replace a frozen key with 409 semantics and never stores it", async () => {
     const repo = repository({ isFrozen: vi.fn().mockResolvedValue({ ok: true, value: true }) });
 
@@ -242,7 +283,7 @@ describe("connectWallet", () => {
     expect(repo.writePublicKey).not.toHaveBeenCalled();
   });
 
-  it("maps a store invalid_request to invalid_request and an unavailable write to unavailable", async () => {
+  it("maps a store invalid_request to invalid_request and an unavailable write to unavailable, leaving the challenge burned", async () => {
     const invalid = await connectWallet(
       {
         repository: repository({ writePublicKey: vi.fn().mockResolvedValue({ ok: false, error: { code: "invalid_request" } }) }),
@@ -253,15 +294,19 @@ describe("connectWallet", () => {
     );
     expect(invalid).toEqual({ ok: false, error: { code: "invalid_request" } });
 
+    const unavailableRepo = repository({
+      writePublicKey: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+    });
     const unavailable = await connectWallet(
-      {
-        repository: repository({ writePublicKey: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) }),
-        signatures: signatures(),
-        now: () => NOW
-      },
+      { repository: unavailableRepo, signatures: signatures(), now: () => NOW },
       { ownerUserId: OWNER, body }
     );
     expect(unavailable).toEqual({ ok: false, error: { code: "unavailable" } });
+
+    // The challenge was consumed before the failing write: it is burned on
+    // purpose, so the caller must request a fresh one and cannot replay.
+    expect(unavailableRepo.consumeChallenge).toHaveBeenCalledWith(CHALLENGE_ID);
+    expect(unavailableRepo.writePublicKey).toHaveBeenCalledTimes(1);
   });
 });
 

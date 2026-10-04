@@ -30,6 +30,8 @@ const SME_REQUEST_TABLE = "sme_request";
 const CAMPAIGN_TABLE = "campaign";
 
 const POSTGRES_CHECK_VIOLATION = "23514";
+/** PostgREST's "no rows returned" from `.single()` when an update matched none. */
+const POSTGREST_NO_ROWS = "PGRST116";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PUBLIC_KEY_PATTERN = /^G[A-Z2-7]{55}$/;
 
@@ -180,6 +182,11 @@ export class SupabaseWalletRepository implements WalletRepositoryPort {
         .single();
 
       if (error) {
+        // `.single()` reports a zero-row update as PGRST116 rather than a null
+        // row, so this is the real "owner profile not found" signal.
+        if (error.code === POSTGREST_NO_ROWS) {
+          return { ok: false, error: { code: "not_found" } };
+        }
         return this.failure(error);
       }
       if (!data) {

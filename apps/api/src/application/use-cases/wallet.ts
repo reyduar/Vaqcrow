@@ -171,6 +171,14 @@ export async function connectWallet(
     return { ok: false, error: { code: "frozen" } };
   }
 
+  // Burn the single-use challenge before storing the key. If the write later
+  // fails the challenge is already consumed (fail-closed): the caller must
+  // request a fresh challenge, and the stale signature can never be replayed.
+  const consumed = await dependencies.repository.consumeChallenge(challengeId);
+  if (!consumed.ok) {
+    return consumed.error.code === "not_found" ? INVALID : UNAVAILABLE;
+  }
+
   const written = await dependencies.repository.writePublicKey({
     ownerUserId: input.ownerUserId,
     publicKey
@@ -178,11 +186,6 @@ export async function connectWallet(
 
   if (!written.ok) {
     return written.error.code === "invalid_request" ? INVALID : UNAVAILABLE;
-  }
-
-  const consumed = await dependencies.repository.consumeChallenge(challengeId);
-  if (!consumed.ok) {
-    return consumed.error.code === "not_found" ? INVALID : UNAVAILABLE;
   }
 
   return { ok: true, value: { publicKey, frozen: false } };

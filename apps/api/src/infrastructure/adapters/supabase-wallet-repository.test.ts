@@ -296,7 +296,7 @@ describe("SupabaseWalletRepository.writePublicKey", () => {
     expect(result).toEqual({ ok: true, value: undefined });
   });
 
-  it("maps a check violation to invalid_request and anything else to unavailable", async () => {
+  it("maps a check violation to invalid_request, a zero-row update to not_found, and anything else to unavailable", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const violation = fakeClient({ profile: { error: pgError("23514") } });
     expect(
@@ -308,6 +308,14 @@ describe("SupabaseWalletRepository.writePublicKey", () => {
       await new SupabaseWalletRepository(other.client).writePublicKey({ ownerUserId: OWNER, publicKey: PUBLIC_KEY })
     ).toEqual({ ok: false, error: { code: "unavailable" } });
 
+    // A zero-row update makes `.single()` fail with PGRST116, not a null row.
+    const zeroRows = fakeClient({ profile: { error: pgError("PGRST116") } });
+    expect(
+      await new SupabaseWalletRepository(zeroRows.client).writePublicKey({ ownerUserId: OWNER, publicKey: PUBLIC_KEY })
+    ).toEqual({ ok: false, error: { code: "not_found" } });
+
+    // Defensive: a null row with no error (other PostgREST transports) still
+    // maps to not_found rather than being treated as success.
     const missing = fakeClient({ profile: { data: null } });
     expect(
       await new SupabaseWalletRepository(missing.client).writePublicKey({ ownerUserId: OWNER, publicKey: PUBLIC_KEY })
