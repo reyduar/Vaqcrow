@@ -45,13 +45,15 @@ El owner aprobó tal cual («dale a todo») los cinco puntos propuestos:
 
 Asumido y confirmado: las ranuras **reemplazan el mock** «Adjuntar declaraciones (PDF)» del template y la carga vive **dentro del paso 2**, donde el template ubica «Declaraciones de ventas». «Estatuto» = estatuto social (*articles of incorporation*); «Declaraciones de ventas» = los comprobantes que respaldan la grilla de ventas mensuales.
 
-## Decisiones pendientes del owner (de #398, «Not designed in the template»)
+## Decisiones del owner (de #398, «Not designed in the template»)
 
-Estas **no se implementan** hasta que el owner decida; se registran como supuestos si hay que avanzar y se marcan para aprobación:
+| # | Pregunta (issue #398) | Resolución (owner) |
+|---|---|---|
+| 1 | UI de carga de fotos y ranuras de documentos | **U1–U5** (2026-10-03): resuelta e implementada en T4. |
+| 2 | Guardar borrador/retomar y editar tras el envío | **Sólo en memoria (2026-10-04).** No se persiste borrador; la edición queda dentro de la sesión («Revisar lo cargado» vuelve al paso 2 **antes** de enviar). Guardar/retomar y editar o reenviar tras el envío llegan con el flujo de revisión del admin (Features posteriores). Limitación aceptada y documentada; sin cambio de código. |
+| 3 | Banner «Demo: usá datos sintéticos…» y «Completar con datos de ejemplo» | **Se mantienen ambos (2026-10-04).** El banner es una divulgación de seguridad ahora que la carga de documentos es real; el helper acelera la demo. Sin cambio de código (`registration-step.ts:68,70`, ya probados). |
 
-1. ~~UI de carga de fotos y ranuras de documentos~~ — resuelta arriba (U1–U5).
-2. Guardar borrador y retomar el wizard (el template es sólo en memoria), y editar tras el envío vía «Revisar lo cargado» / reenviar tras «Requiere cambios».
-3. El banner «Demo: usá datos sintéticos…» y el botón «Completar con datos de ejemplo» frente a la carga real de documentos: si se quedan o se van (hoy están, tal cual el template).
+Con esto las tres preguntas abiertas de #398 quedan decididas: el criterio 7 pasa de **PARCIAL** a **CUMPLIDO**.
 
 ## TDD
 

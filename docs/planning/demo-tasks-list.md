@@ -2047,10 +2047,10 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#378](#^issue-378) y [#369](#^issue-369).
 - **Objetivo:** Entregar el wizard de tres pasos (KYC simulado → Registro de la PyME → Revisión) y la carga real de documentos y fotos a un bucket privado de Supabase Storage (RLS por propietario, 10 MB, PDF/JPG/PNG).
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
-  - La UI de fotos (1 a 4: selector, vista previa, orden) y los slots de documentos requeridos; progreso, tipo incorrecto, exceso de tamaño y fallo de carga.
-  - Guardar borrador y retomar; editar tras el envío o reenviar tras «Requiere cambios».
+  - **Resuelto (owner, 2026-10-03, U1–U5):** la UI de fotos (hasta 4, orden ←/→) y los 3 slots de documentos obligatorios; subida al elegir con progreso, tipo incorrecto, exceso de tamaño y fallo de carga. Implementado en #399 (T4).
+  - **Resuelto (owner, 2026-10-04, decisión 2):** el wizard queda sólo en memoria; guardar borrador/retomar y editar o reenviar tras el envío llegan con el flujo de revisión del admin.
   - **Resuelto (owner, 2026-10-01):** el deploy de la bóveda lo dispara la aprobación del admin (`factory.deploy` firmado por la plataforma, con la clave pública de la PyME como destino inmutable); la PyME no abre ni firma la bóveda, y el copy del template que diga lo contrario se ajusta a este flujo.
-  - Si el banner «Demo: usá datos sintéticos…» y «Completar con datos de ejemplo» se mantienen frente a la carga real.
+  - **Resuelto (owner, 2026-10-04, decisión 3):** el banner «Demo: usá datos sintéticos…» y «Completar con datos de ejemplo» se mantienen.
 - **Orden:** Desbloquea [#402](#^issue-402) y [#406](#^issue-406).
 
 **Rama propuesta.** `Vaqcrow#398_Feat_Guide_PyMEs_through_simulated_KYC_registration_and_document_upload` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
