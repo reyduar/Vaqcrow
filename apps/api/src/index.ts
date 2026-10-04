@@ -14,6 +14,7 @@ import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.j
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
+import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -38,6 +39,10 @@ const applicationReviewRepository = new SupabaseApplicationReviewRepository(supa
 const salesDataProvider = createSimulatedSalesDataProvider();
 
 const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
+
+// The PyME company (T3b): created and read by owner, and the ownership source
+// the sales-feed route scopes a PyME's series to.
+const businessRepository = new SupabaseBusinessRepository(supabase);
 
 // Built first: the distribution derivation reconciles the campaign from the chain,
 // so it reuses the campaign group's repository and vault chain reader.
@@ -93,7 +98,9 @@ const revenueShareDistribution =
         },
         explorerBaseUrl: config.stellar.explorerUrl,
         derive: deriveDistribution,
-        generateDistributionId: () => parseRevenueShareDistributionId(randomUUID())
+        generateDistributionId: () => parseRevenueShareDistributionId(randomUUID()),
+        // R1-002: the ownership source for the distribution's application.
+        smeRequests: smeRequestRepository
       };
 
 /**
@@ -134,12 +141,13 @@ const app = buildApp({
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
-  salesFeed: { provider: salesDataProvider },
+  salesFeed: { provider: salesDataProvider, businesses: businessRepository },
   smeRequest: {
     repository: smeRequestRepository,
     salesData: salesDataProvider,
     generateApplicationId: () => parseApplicationId(randomUUID())
   },
+  business: { repository: businessRepository },
   // The document/photo transport (#399/T4b): the API validates the bytes and
   // writes to the private `pyme-documents` bucket with `service_role`.
   storage: {

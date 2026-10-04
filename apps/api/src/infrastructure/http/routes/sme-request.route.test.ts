@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
 import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
-import { buildAppAs } from "../test-support/auth.js";
+import { buildAppAs, principalFor } from "../test-support/auth.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
+const OWNER = principalFor("PYME").userId;
+const OTHER_OWNER = "f1111111-1111-4111-8111-111111111111";
 
 const request: SmeRequest = {
   smeReference: "sme:SYN-PH-0001",
@@ -39,8 +41,8 @@ function build(
   app = buildAppAs("PYME", {
     smeRequest: {
       repository: {
-        submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } }),
-        findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request } }),
+        submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true, ownerUserId: OWNER } }),
+        findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
         ...repository
       },
       salesData: {
@@ -65,8 +67,10 @@ describe("POST /sme-requests", () => {
     expect(submit).toHaveBeenCalledWith({
       applicationId: APPLICATION_ID,
       request,
-      // The transport request id doubles as the correlation id.
-      correlationId: response.headers["x-correlation-id"]
+      // The transport request id doubles as the correlation id; the owner is the
+      // verified principal, never part of the body.
+      correlationId: response.headers["x-correlation-id"],
+      ownerUserId: OWNER
     });
   });
 
@@ -163,6 +167,23 @@ describe("GET /sme-requests/:applicationId", () => {
     expect(response.json()).toEqual({ code: "not_found" });
   });
 
+  it("answers 404 (not another owner's data) for a request owned by someone else", async () => {
+    const findByApplicationId = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { applicationId: APPLICATION_ID, request, ownerUserId: OTHER_OWNER }
+    });
+    const getPeriods = vi.fn();
+
+    const response = await build({ findByApplicationId }, { getPeriods }).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(getPeriods).not.toHaveBeenCalled();
+  });
+
   it("answers 503 unavailable when the sales provider is unavailable", async () => {
     const getPeriods = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
 
@@ -194,7 +215,7 @@ describe("GET /sme-requests/:applicationId with the simulated sales feed", () =>
     const unknown = { ...request, smeReference: "sme:UNKNOWN" };
     const findByApplicationId = vi
       .fn()
-      .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: unknown } });
+      .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: unknown, ownerUserId: OWNER } });
 
     const response = await build({ findByApplicationId }, createSimulatedSalesDataProvider()).inject({
       method: "GET",

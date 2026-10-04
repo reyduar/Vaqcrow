@@ -35,7 +35,7 @@ export interface SubmitSmeRequestDependencies {
 
 export async function submitSmeRequest(
   dependencies: SubmitSmeRequestDependencies,
-  input: { readonly body: unknown; readonly correlationId: CorrelationId }
+  input: { readonly body: unknown; readonly correlationId: CorrelationId; readonly ownerUserId: string }
 ): Promise<SubmitSmeRequestResult> {
   const parsed = smeRequestSchema.safeParse(input.body);
 
@@ -49,11 +49,20 @@ export async function submitSmeRequest(
   const result = await dependencies.repository.submit({
     applicationId: dependencies.generateApplicationId(),
     request: parsed.data,
-    correlationId: input.correlationId
+    correlationId: input.correlationId,
+    ownerUserId: input.ownerUserId
   });
 
   if (result.ok) {
-    return { ok: true, value: result.value };
+    // The owner is persistence metadata, not part of the submission result.
+    return {
+      ok: true,
+      value: {
+        applicationId: result.value.applicationId,
+        request: result.value.request,
+        applied: result.value.applied
+      }
+    };
   }
 
   return result.error.code === "invalid_request"

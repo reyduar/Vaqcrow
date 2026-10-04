@@ -13,6 +13,12 @@ export type SmeRequestRepositoryResult<T> =
 export interface SmeRequestRecord {
   readonly applicationId: ApplicationId;
   readonly request: SmeRequest;
+  /**
+   * The profile that submitted the request. Absent on rows that predate
+   * per-row ownership (T3b) — a caller that is not the owner treats an absent
+   * owner as "not yours".
+   */
+  readonly ownerUserId?: string;
 }
 
 export interface SmeRequestSubmissionOutcome extends SmeRequestRecord {
@@ -23,13 +29,16 @@ export interface SmeRequestSubmissionOutcome extends SmeRequestRecord {
 export interface SmeRequestRepositoryPort {
   /**
    * Atomically creates the application (state `awaiting_assessment`) together
-   * with its SME request. Replaying the same correlation id returns the
-   * application it already created instead of creating a second one.
+   * with its SME request, recording `ownerUserId` as the request's owner.
+   * Replaying the same correlation id returns the application it already
+   * created instead of creating a second one.
    */
   submit(input: {
     applicationId: ApplicationId;
     request: SmeRequest;
     correlationId: CorrelationId;
+    /** The authenticated principal; never a client-supplied owner. */
+    ownerUserId: string;
   }): Promise<SmeRequestRepositoryResult<SmeRequestSubmissionOutcome>>;
 
   /** `not_found` means no SME request exists for that application. */

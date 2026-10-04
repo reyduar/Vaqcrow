@@ -12,6 +12,8 @@ import type { ApplicationAssessmentRouteDependencies } from "./routes/applicatio
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
+import { registerBusinessRoute } from "./routes/business.route.js";
+import type { BusinessRouteDependencies } from "./routes/business.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
 import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
@@ -78,6 +80,7 @@ export function buildApp(dependencies: {
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly smeRequest?: SmeRequestRouteDependencies;
   readonly storage?: StorageRouteDependencies;
+  readonly business?: BusinessRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -144,6 +147,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.smeRequest) {
     registerSmeRequestRoute(app, dependencies.smeRequest);
+  }
+  if (dependencies.business) {
+    registerBusinessRoute(app, dependencies.business);
   }
   if (dependencies.storage) {
     // Multipart parsing is only needed by the upload route; registering it here

@@ -17,6 +17,8 @@ import { submitSmeRequest } from "../../../application/use-cases/submit-sme-requ
  *
  * `GET /sme-requests/:applicationId` returns the persisted request with its
  * monthly sales series; a malformed id is `400`, an unknown application `404`.
+ * A request that belongs to another owner is reported as `404` too (R1-002):
+ * the caller's principal scopes every read.
  */
 
 export interface SmeRequestRouteDependencies {
@@ -27,9 +29,14 @@ export interface SmeRequestRouteDependencies {
 
 export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeRequestRouteDependencies): void {
   app.post<{ Body: unknown }>("/sme-requests", async (request, reply) => {
+    const principal = request.principal;
+    if (principal === undefined) {
+      return reply.code(401).send({ code: "unauthenticated" });
+    }
+
     const result = await submitSmeRequest(
       { repository: dependencies.repository, generateApplicationId: dependencies.generateApplicationId },
-      { body: request.body, correlationId: parseCorrelationId(request.id) }
+      { body: request.body, correlationId: parseCorrelationId(request.id), ownerUserId: principal.userId }
     );
 
     if (result.ok) {
@@ -46,6 +53,11 @@ export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeR
   });
 
   app.get<{ Params: { applicationId: string } }>("/sme-requests/:applicationId", async (request, reply) => {
+    const principal = request.principal;
+    if (principal === undefined) {
+      return reply.code(401).send({ code: "unauthenticated" });
+    }
+
     let applicationId;
     try {
       applicationId = parseApplicationId(request.params.applicationId);
@@ -55,7 +67,7 @@ export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeR
 
     const result = await getSmeRequest(
       { repository: dependencies.repository, salesData: dependencies.salesData },
-      { applicationId }
+      { applicationId, ownerUserId: principal.userId }
     );
 
     if (result.ok) {

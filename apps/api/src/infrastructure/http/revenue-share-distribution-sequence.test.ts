@@ -32,7 +32,7 @@ import type {
 import { SupabaseRevenueShareDistributionRepository } from "../adapters/supabase-revenue-share-distribution-repository.js";
 import { ConfirmationScheduler } from "../scheduling/confirmation-scheduler.js";
 import type { ConfirmationPolicy } from "../scheduling/confirmation-policy.js";
-import { buildAppAs } from "./test-support/auth.js";
+import { buildAppAs, principalFor } from "./test-support/auth.js";
 
 /**
  * The revenue-share distribution vertical observed end to end, with a double
@@ -526,7 +526,26 @@ function harness(): Harness {
       network: { network: "testnet", networkPassphrase: STELLAR_TESTNET_NETWORK_PASSPHRASE },
       explorerBaseUrl: EXPLORER_BASE_URL,
       derive: (input) => deriveRevenueShareDistribution(derivationDeps(), input),
-      generateDistributionId: () => DISTRIBUTION_ID
+      generateDistributionId: () => DISTRIBUTION_ID,
+      // The route scopes a PyME to its own application (R1-002): the case the
+      // distribution is derived from belongs to the PYME principal.
+      smeRequests: {
+        findByApplicationId: () =>
+          Promise.resolve({
+            ok: true as const,
+            value: {
+              applicationId: APPLICATION_ID,
+              request: {
+                smeReference: "sme:SYN-PH-0001",
+                declaredTotalArs: 15_000_000,
+                periodStart: "2026-01",
+                periodEnd: "2026-08",
+                simuladoLabel: "SIMULADO" as const
+              },
+              ownerUserId: principalFor("PYME").userId
+            }
+          })
+      }
     }
   });
 

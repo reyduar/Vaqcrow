@@ -1,8 +1,9 @@
 import { parseSalesPeriod } from "@vaqcrow/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { BusinessRecord, BusinessRepositoryPort } from "../../../application/ports/business-repository-port.js";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
-import { buildAppAs } from "../test-support/auth.js";
+import { buildAppAs, principalFor } from "../test-support/auth.js";
 
 /**
  * The HTTP surface of the monthly sales feed (Task #83).
@@ -17,9 +18,35 @@ import { buildAppAs } from "../test-support/auth.js";
 
 const BUSINESS = "panaderia-horizonte";
 const SERIES_URL = `/businesses/${BUSINESS}/sales-periods`;
+const OWNER = principalFor("PYME").userId;
 
-function appWith(provider: SalesDataProviderPort = createSimulatedSalesDataProvider()) {
-  return buildAppAs("PYME", { salesFeed: { provider } });
+const BUSINESS_RECORD: BusinessRecord = {
+  businessId: BUSINESS,
+  ownerUserId: OWNER,
+  name: "Panadería Horizonte",
+  cuit: "20123456789",
+  sector: "Alimentos",
+  city: "CABA",
+  description: "Panadería artesanal de barrio",
+  goalArs: 5_000_000,
+  revenueShare: 5,
+  createdAt: "2026-10-03T12:00:00.000Z",
+  updatedAt: "2026-10-03T12:00:00.000Z"
+};
+
+function businesses(
+  findOwnedById: BusinessRepositoryPort["findOwnedById"] = vi
+    .fn()
+    .mockResolvedValue({ ok: true, value: BUSINESS_RECORD })
+): Pick<BusinessRepositoryPort, "findOwnedById"> {
+  return { findOwnedById };
+}
+
+function appWith(
+  provider: SalesDataProviderPort = createSimulatedSalesDataProvider(),
+  owned: Pick<BusinessRepositoryPort, "findOwnedById"> = businesses()
+) {
+  return buildAppAs("PYME", { salesFeed: { provider, businesses: owned } });
 }
 
 describe("GET /businesses/:businessId/sales-periods", () => {
@@ -63,6 +90,47 @@ describe("GET /businesses/:businessId/sales-periods", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("answers 404 and never serves another owner's business", async () => {
+    const getPeriods = vi.fn();
+    const findOwnedById = vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } });
+
+    const response = await appWith(
+      { getPeriods, recordNextPeriod: vi.fn() } as unknown as SalesDataProviderPort,
+      businesses(findOwnedById)
+    ).inject({ method: "GET", url: SERIES_URL });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(getPeriods).not.toHaveBeenCalled();
+    // The lookup is the caller's own id, never anything from the request.
+    expect(findOwnedById).toHaveBeenCalledWith({ ownerUserId: OWNER, businessId: BUSINESS });
+  });
+
+  it("answers 503 when the ownership check cannot run", async () => {
+    const owned = businesses(vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }));
+
+    const response = await appWith(createSimulatedSalesDataProvider(), owned).inject({
+      method: "GET",
+      url: SERIES_URL
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("lets an ADMIN read without an ownership check, preserving the existing behaviour", async () => {
+    const findOwnedById = vi.fn();
+    const app = buildAppAs("ADMIN", {
+      salesFeed: { provider: createSimulatedSalesDataProvider(), businesses: businesses(findOwnedById) }
+    });
+
+    const response = await app.inject({ method: "GET", url: SERIES_URL });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().periods).toHaveLength(8);
+    expect(findOwnedById).not.toHaveBeenCalled();
   });
 
   it("answers 503 with a sanitized code when the provider is unavailable", async () => {
@@ -147,6 +215,24 @@ describe("POST /businesses/:businessId/sales-periods", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("answers 404 and never records onto another owner's business", async () => {
+    const provider = {
+      getPeriods: vi.fn(),
+      recordNextPeriod: vi.fn()
+    } as unknown as SalesDataProviderPort;
+    const owned = businesses(vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }));
+
+    const response = await appWith(provider, owned).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: {}
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(provider.recordNextPeriod).not.toHaveBeenCalled();
   });
 
   it("answers 503 with a sanitized code when the provider is unavailable", async () => {

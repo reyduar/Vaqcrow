@@ -1,5 +1,6 @@
 import {
   correlationIdSchema,
+  parseApplicationId,
   parseCorrelationId,
   parseRevenueShareDistributionId
 } from "@vaqcrow/contracts";
@@ -22,11 +23,13 @@ import type {
   LedgerPort,
   LedgerResult
 } from "../../../application/ports/ledger-port.js";
-import { buildAppAs } from "../test-support/auth.js";
+import { buildAppAs, principalFor } from "../test-support/auth.js";
 import type { RevenueShareDistributionRouteDependencies } from "./revenue-share-distribution.route.js";
 
 const DISTRIBUTION_ID = "123e4567-e89b-42d3-a456-4266141740ab";
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
+const OWNER = principalFor("PYME").userId;
+const OTHER_OWNER = "f1111111-1111-4111-8111-111111111111";
 const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const CORRELATION_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE_ACCOUNT_ID = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
@@ -217,6 +220,7 @@ function deps(
     xdr?: RevenueShareDistributionXdrPort;
     repository?: RevenueShareDistributionRouteDependencies["repository"];
     derive?: RevenueShareDistributionRouteDependencies["derive"];
+    smeRequests?: RevenueShareDistributionRouteDependencies["smeRequests"];
   } = {}
 ): RevenueShareDistributionRouteDependencies {
   return {
@@ -224,9 +228,34 @@ function deps(
     ledger: overrides.ledger ?? ledgerReturning({ ok: true, value: account }),
     xdr: overrides.xdr ?? xdrDouble(),
     repository: overrides.repository ?? repositoryDouble(),
+    smeRequests: overrides.smeRequests ?? smeRequestsFor(OWNER),
     network: { network: "testnet", networkPassphrase: NETWORK_PASSPHRASE },
     explorerBaseUrl: EXPLORER_BASE_URL,
     generateDistributionId: vi.fn(() => parseRevenueShareDistributionId(DISTRIBUTION_ID))
+  };
+}
+
+const SME_REQUEST = {
+  smeReference: "sme:SYN-PH-0001",
+  declaredTotalArs: 15_000_000,
+  periodStart: "2026-01",
+  periodEnd: "2026-08",
+  simuladoLabel: "SIMULADO" as const
+};
+
+/** An `smeRequests` double whose record carries the given owner. */
+function smeRequestsFor(
+  ownerUserId: string | undefined
+): RevenueShareDistributionRouteDependencies["smeRequests"] {
+  return {
+    findByApplicationId: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        applicationId: parseApplicationId(APPLICATION_ID),
+        request: SME_REQUEST,
+        ...(ownerUserId === undefined ? {} : { ownerUserId })
+      }
+    })
   };
 }
 
@@ -252,6 +281,36 @@ describe("POST /revenue-share-distributions", () => {
     expect(response.json().distribution.derivation).toEqual(derivation);
     expect(typeof response.json().distribution.recipients[0].amountStroops).toBe("string");
     expect(response.json().distribution.recipients[0].amountStroops).toBe(LARGE_AMOUNT);
+  });
+
+  it("answers 404 and never derives when the application belongs to another owner", async () => {
+    const derive = vi.fn();
+    app = buildAppAs("PYME", {
+      revenueShareDistribution: deps({ derive, smeRequests: smeRequestsFor(OTHER_OWNER) })
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/revenue-share-distributions",
+      payload: prepareBody
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(derive).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 when the application has no owner (a row that predates ownership)", async () => {
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ smeRequests: smeRequestsFor(undefined) }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/revenue-share-distributions",
+      payload: prepareBody
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
   });
 
   it("reads the sequence from the ledger and sets a 15-minute lifetime", async () => {
@@ -466,6 +525,25 @@ describe("POST /revenue-share-distributions/:distributionId/submission", () => {
 
     expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({ applied: true, distribution: wireSnapshot });
+  });
+
+  it("answers 404 and never submits when the application belongs to another owner", async () => {
+    const xdr = xdrDouble();
+    const repository = repositoryDouble();
+    app = buildAppAs("PYME", {
+      revenueShareDistribution: deps({ xdr, repository, smeRequests: smeRequestsFor(OTHER_OWNER) })
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}/submission`,
+      payload: submissionBody
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(xdr.verify).not.toHaveBeenCalled();
+    expect(repository.submit).not.toHaveBeenCalled();
   });
 
   it("returns 200 with applied=false for an exact replay", async () => {
@@ -768,6 +846,52 @@ describe("GET /revenue-share-distributions/:distributionId", () => {
 
     expect(repository.findById).toHaveBeenCalledOnce();
     expect(repository.findById).toHaveBeenCalledWith(DISTRIBUTION_ID);
+  });
+
+  it("answers 404 (not another owner's distribution) when the application belongs to someone else", async () => {
+    app = buildAppAs("PYME", {
+      revenueShareDistribution: deps({ smeRequests: smeRequestsFor(OTHER_OWNER) })
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(JSON.stringify(response.json())).not.toContain(TRANSACTION_HASH);
+  });
+
+  it("answers 404 for a distribution with no application to attribute it to", async () => {
+    const repository = repositoryDouble({
+      findById: { ok: true, value: { ...snapshot, applicationId: undefined } }
+    });
+    app = buildAppAs("PYME", { revenueShareDistribution: deps({ repository }) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("lets an ADMIN read any distribution without an ownership lookup", async () => {
+    const smeRequests = smeRequestsFor(OTHER_OWNER);
+    app = buildAppAs("ADMIN", {
+      revenueShareDistribution: deps({ smeRequests })
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/revenue-share-distributions/${DISTRIBUTION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ distribution: wireSnapshot });
+    expect(smeRequests.findByApplicationId).not.toHaveBeenCalled();
   });
 
   it.each([

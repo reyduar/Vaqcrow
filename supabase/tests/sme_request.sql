@@ -1,6 +1,15 @@
 begin;
 
-select plan(23);
+select plan(24);
+
+-- The API role submits as the authenticated principal, so a profile must exist
+-- for the nullable owner foreign key. The auth insert is the Auth service's
+-- path; service_role writes the request itself.
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+values (
+  'e1111111-1111-4111-8111-111111111111', 'sme-owner@example.test',
+  '{"role": "PYME", "display_name": "SME Owner"}'::jsonb, '{}'::jsonb
+);
 
 -- Structure and access control ------------------------------------------------
 
@@ -18,12 +27,12 @@ select is(has_table_privilege('service_role', 'public.sme_request', 'insert'), t
 select is(has_table_privilege('service_role', 'public.sme_request', 'update'), false, 'service role cannot rewrite a submitted request');
 select is(has_table_privilege('service_role', 'public.sme_request', 'delete'), false, 'service role cannot delete a submitted request');
 select is(
-  has_function_privilege('anon', 'public.submit_sme_request(uuid, uuid, text, numeric, text, text)', 'execute'),
+  has_function_privilege('anon', 'public.submit_sme_request(uuid, uuid, uuid, text, numeric, text, text)', 'execute'),
   false,
   'anon cannot call the submit command'
 );
 select is(
-  has_function_privilege('service_role', 'public.submit_sme_request(uuid, uuid, text, numeric, text, text)', 'execute'),
+  has_function_privilege('service_role', 'public.submit_sme_request(uuid, uuid, uuid, text, numeric, text, text)', 'execute'),
   true,
   'service role can call the submit command'
 );
@@ -35,7 +44,7 @@ select is(
     select result_kind
       from public.submit_sme_request(
         'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1',
-        'sme:SYN-PH-0001', 15000000, '2026-01', '2026-08'
+        'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 15000000, '2026-01', '2026-08'
       )
   ),
   'applied',
@@ -55,11 +64,17 @@ select is(
 );
 
 select is(
+  (select owner_user_id::text from public.sme_request where application_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'),
+  'e1111111-1111-4111-8111-111111111111',
+  'the request records the owner the caller supplied'
+);
+
+select is(
   (
     select result_kind || ':' || application_id::text
       from public.submit_sme_request(
         'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1',
-        'sme:SYN-PH-0001', 15000000, '2026-01', '2026-08'
+        'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 15000000, '2026-01', '2026-08'
       )
   ),
   'replayed:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
@@ -77,28 +92,28 @@ select is(
 select throws_ok(
   $$select * from public.submit_sme_request(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3',
-    'sme:SYN-PH-0001', -1, '2026-01', '2026-08')$$,
+    'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', -1, '2026-01', '2026-08')$$,
   '23514', null, 'a negative declared total is rejected'
 );
 
 select throws_ok(
   $$select * from public.submit_sme_request(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3',
-    'sme:SYN-PH-0001', 1, '2026-13', '2026-14')$$,
+    'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 1, '2026-13', '2026-14')$$,
   '23514', null, 'a malformed period is rejected'
 );
 
 select throws_ok(
   $$select * from public.submit_sme_request(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3',
-    'sme:SYN-PH-0001', 1, '2026-08', '2026-01')$$,
+    'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 1, '2026-08', '2026-01')$$,
   '23514', null, 'a period end before the start is rejected'
 );
 
 select throws_ok(
   $$select * from public.submit_sme_request(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3',
-    '', 1, '2026-01', '2026-08')$$,
+    'e1111111-1111-4111-8111-111111111111', '', 1, '2026-01', '2026-08')$$,
   '23514', null, 'an empty SME reference is rejected'
 );
 
@@ -130,7 +145,7 @@ select is(
     select result_kind
       from public.submit_sme_request(
         'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc4',
-        'sme:SYN-PH-0001', 9000000, '2026-01', '2026-06'
+        'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 9000000, '2026-01', '2026-06'
       )
   ),
   'applied',

@@ -6,6 +6,7 @@ import { SupabaseSmeRequestRepository } from "./supabase-sme-request-repository.
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
+const OWNER = "e1111111-1111-4111-8111-111111111111";
 
 const REQUEST: SmeRequest = {
   smeReference: "sme:SYN-PH-0001",
@@ -21,7 +22,8 @@ const ROW = {
   declared_total_ars: 15000000,
   period_start: "2026-01",
   period_end: "2026-08",
-  correlation_id: CORRELATION_ID
+  correlation_id: CORRELATION_ID,
+  owner_user_id: OWNER
 };
 
 interface FakeStep {
@@ -84,7 +86,8 @@ describe("SupabaseSmeRequestRepository.submit", () => {
     const result = await new SupabaseSmeRequestRepository(client).submit({
       applicationId: APPLICATION_ID,
       request: REQUEST,
-      correlationId: CORRELATION_ID
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
     });
 
     expect(rpc).toEqual([
@@ -96,11 +99,12 @@ describe("SupabaseSmeRequestRepository.submit", () => {
           p_sme_reference: "sme:SYN-PH-0001",
           p_declared_total_ars: 15_000_000,
           p_period_start: "2026-01",
-          p_period_end: "2026-08"
+          p_period_end: "2026-08",
+          p_owner_user_id: OWNER
         }
       ]
     ]);
-    expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request: REQUEST, applied: true } });
+    expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request: REQUEST, applied: true, ownerUserId: OWNER } });
   });
 
   it("returns the stored application on a replay, with the numeric total arriving as a string", async () => {
@@ -112,10 +116,11 @@ describe("SupabaseSmeRequestRepository.submit", () => {
     const result = await new SupabaseSmeRequestRepository(client).submit({
       applicationId: APPLICATION_ID,
       request: REQUEST,
-      correlationId: CORRELATION_ID
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
     });
 
-    expect(result).toEqual({ ok: true, value: { applicationId: otherId, request: REQUEST, applied: false } });
+    expect(result).toEqual({ ok: true, value: { applicationId: otherId, request: REQUEST, applied: false, ownerUserId: OWNER } });
   });
 
   it.each([
@@ -129,7 +134,8 @@ describe("SupabaseSmeRequestRepository.submit", () => {
     const result = await new SupabaseSmeRequestRepository(client).submit({
       applicationId: APPLICATION_ID,
       request: REQUEST,
-      correlationId: CORRELATION_ID
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
     });
 
     expect(result).toEqual({ ok: false, error: { code: expected } });
@@ -148,7 +154,8 @@ describe("SupabaseSmeRequestRepository.submit", () => {
       const result = await new SupabaseSmeRequestRepository(client).submit({
         applicationId: APPLICATION_ID,
         request: REQUEST,
-        correlationId: CORRELATION_ID
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
       });
       expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
     }
@@ -163,7 +170,7 @@ describe("SupabaseSmeRequestRepository.findByApplicationId", () => {
 
     expect(from).toEqual(["sme_request"]);
     expect(eq).toEqual([["application_id", APPLICATION_ID]]);
-    expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request: REQUEST } });
+    expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request: REQUEST, ownerUserId: OWNER } });
   });
 
   it("is not_found when no row exists", async () => {

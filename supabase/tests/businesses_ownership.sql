@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(42);
 
 -- PyME company model and per-row ownership (Feature #398, Task #399 / T3a,
 -- owner decision 5 = option A). This unit is the database foundation only; the
@@ -65,27 +65,85 @@ select col_is_null(
 );
 
 -- Behavior --------------------------------------------------------------------
+-- Exercised as service_role, the role the API connects as, so the write grants
+-- the migration actually keeps are the ones under test.
 
 -- A profile is created by the auth.users signup trigger, so the FK is exercised
--- against a real public.profile row.
+-- against a real public.profile row. The auth insert itself is the Auth
+-- service's path, not the API role's (service_role cannot write auth.users).
 insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
 values (
   'e1111111-1111-4111-8111-111111111111', 'business-owner@example.test',
   '{"role": "PYME", "display_name": "Business Owner"}'::jsonb, '{}'::jsonb
 );
 
+set local role service_role;
+
+-- The row is stamped in the past so the trigger's advance is observable within
+-- one transaction: `now()` is the transaction timestamp, so `created_at` and a
+-- freshly triggered `updated_at` would otherwise be identical.
 insert into public.businesses (
-  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share,
+  created_at, updated_at
 ) values (
   'e1111111-1111-4111-8111-111111111111', 'Panadería Sol', '20123456789',
-  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5,
+  timestamptz '2000-01-01 00:00:00+00', timestamptz '2000-01-01 00:00:00+00'
 );
 
 select is(
-  (select count(*)::int from public.businesses
-    where owner_user_id = 'e1111111-1111-4111-8111-111111111111'),
+  (select count(*)::int from public.businesses where name = 'Panadería Sol'),
   1,
   'a valid business is stored for its owner'
+);
+
+update public.businesses set name = 'Panadería Sol Renombrada' where cuit = '20123456789';
+
+select is(
+  (select updated_at > created_at from public.businesses where name = 'Panadería Sol Renombrada'),
+  true,
+  'an UPDATE advances updated_at'
+);
+
+-- The inclusive endpoints of the CHECK ranges are accepted, not only the
+-- obviously valid interior values.
+insert into public.businesses (
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share
+) values (
+  'e1111111-1111-4111-8111-111111111111', 'Revenue Uno', '20123456700',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 1
+);
+
+select is(
+  (select count(*)::int from public.businesses where name = 'Revenue Uno'),
+  1,
+  'a revenue share of exactly 1 is accepted'
+);
+
+insert into public.businesses (
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share
+) values (
+  'e1111111-1111-4111-8111-111111111111', 'Revenue Diez', '20123456701',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 10
+);
+
+select is(
+  (select count(*)::int from public.businesses where name = 'Revenue Diez'),
+  1,
+  'a revenue share of exactly 10 is accepted'
+);
+
+insert into public.businesses (
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share
+) values (
+  'e1111111-1111-4111-8111-111111111111', 'Goal Uno', '20123456702',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 1, 5
+);
+
+select is(
+  (select count(*)::int from public.businesses where name = 'Goal Uno'),
+  1,
+  'a goal of exactly 1 is accepted'
 );
 
 select throws_ok(
@@ -183,9 +241,15 @@ select is(
   'a new sme_request records its owner'
 );
 
--- Deleting the profile cascades the company (on delete cascade) and clears the
--- request's owner (on delete set null), keeping the request row.
+reset role;
+
+-- Deleting the profile is the Auth service's deletion path: it cascades the
+-- company (on delete cascade) and clears the request's owner (on delete set
+-- null), keeping the request row. service_role has no DELETE on auth.users (or
+-- profile), so the API role reads the resulting state below.
 delete from auth.users where id = 'e1111111-1111-4111-8111-111111111111';
+
+set local role service_role;
 
 select is(
   (select count(*)::int from public.businesses
@@ -207,6 +271,8 @@ select is(
   1,
   'the request row survives its owner''s deletion'
 );
+
+reset role;
 
 select * from finish();
 

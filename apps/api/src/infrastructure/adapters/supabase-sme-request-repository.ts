@@ -20,6 +20,7 @@ interface SmeRequestColumns {
   readonly declared_total_ars?: unknown;
   readonly period_start?: unknown;
   readonly period_end?: unknown;
+  readonly owner_user_id?: unknown;
 }
 
 interface SubmitRpcRow extends SmeRequestColumns {
@@ -33,11 +34,13 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
     applicationId: ApplicationId;
     request: SmeRequest;
     correlationId: CorrelationId;
+    ownerUserId: string;
   }): Promise<SmeRequestRepositoryResult<SmeRequestSubmissionOutcome>> {
     try {
       const { data, error } = await this.client.rpc(SUBMIT_SME_REQUEST_FUNCTION, {
         p_application_id: input.applicationId,
         p_correlation_id: input.correlationId,
+        p_owner_user_id: input.ownerUserId,
         p_sme_reference: input.request.smeReference,
         p_declared_total_ars: input.request.declaredTotalArs,
         p_period_start: input.request.periodStart,
@@ -102,7 +105,8 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
         periodStart: row.period_start,
         periodEnd: row.period_end,
         simuladoLabel: "SIMULADO"
-      })
+      }),
+      ...(typeof row.owner_user_id === "string" ? { ownerUserId: row.owner_user_id } : {})
     };
   }
 

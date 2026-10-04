@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { BusinessRepositoryPort } from "../../../application/ports/business-repository-port.js";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 
 /**
@@ -18,6 +19,11 @@ import type { SalesDataProviderPort } from "../../../application/ports/sales-dat
  * other provider failure — internal detail stays server-side and only the
  * typed code reaches the wire.
  *
+ * R1-002: a `PYME` may only read or record the sales of a business it owns. The
+ * business is checked against the authenticated principal before the provider
+ * is called, and a business the caller does not own is reported as `404` (never
+ * another owner's data). `ADMIN` keeps its existing unrestricted read.
+ *
  * Paths follow the sub-resource convention of
  * `/application-reviews/:applicationId/decisions`.
  */
@@ -27,6 +33,8 @@ const RECORD_BODY_KEYS: ReadonlySet<string> = new Set();
 
 export interface SalesFeedRouteDependencies {
   readonly provider: SalesDataProviderPort;
+  /** The ownership check the `PYME` path runs before serving any series. */
+  readonly businesses: Pick<BusinessRepositoryPort, "findOwnedById">;
 }
 
 function hasExactBodyKeys(
@@ -41,6 +49,42 @@ function hasExactBodyKeys(
   return keys.length === allowed.size && keys.every((key) => allowed.has(key));
 }
 
+interface OwnershipDenial {
+  readonly status: 401 | 404 | 503;
+  readonly body: { readonly code: "unauthenticated" | "not_found" | "unavailable" };
+}
+
+/**
+ * Returns `undefined` when the caller may serve the business, or the sanitized
+ * denial when it may not. An absent owner or a `not_found` ownership read is a
+ * `404`; an unavailable check is a `503`; a missing principal is a `401`.
+ */
+async function ownershipDenial(
+  dependencies: SalesFeedRouteDependencies,
+  principal: { readonly userId: string; readonly role: string } | undefined,
+  businessId: string
+): Promise<OwnershipDenial | undefined> {
+  if (principal === undefined) {
+    return { status: 401, body: { code: "unauthenticated" } };
+  }
+  if (principal.role !== "PYME") {
+    return undefined;
+  }
+
+  const owned = await dependencies.businesses.findOwnedById({
+    ownerUserId: principal.userId,
+    businessId
+  });
+
+  if (owned.ok) {
+    return undefined;
+  }
+
+  return owned.error.code === "not_found"
+    ? { status: 404, body: { code: "not_found" } }
+    : { status: 503, body: { code: "unavailable" } };
+}
+
 export function registerSalesFeedRoute(
   app: FastifyInstance,
   dependencies: SalesFeedRouteDependencies
@@ -48,6 +92,15 @@ export function registerSalesFeedRoute(
   app.get<{ Params: { businessId: string } }>(
     "/businesses/:businessId/sales-periods",
     async (request, reply) => {
+      const denial = await ownershipDenial(
+        dependencies,
+        request.principal,
+        request.params.businessId
+      );
+      if (denial !== undefined) {
+        return reply.code(denial.status).send(denial.body);
+      }
+
       const result = await dependencies.provider.getPeriods(request.params.businessId);
 
       if (result.ok) {
@@ -74,6 +127,15 @@ export function registerSalesFeedRoute(
     async (request, reply) => {
       if (!hasExactBodyKeys(request.body, RECORD_BODY_KEYS)) {
         return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      const denial = await ownershipDenial(
+        dependencies,
+        request.principal,
+        request.params.businessId
+      );
+      if (denial !== undefined) {
+        return reply.code(denial.status).send(denial.body);
       }
 
       const result = await dependencies.provider.recordNextPeriod(request.params.businessId);
