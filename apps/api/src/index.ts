@@ -5,11 +5,13 @@ import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
+import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
+import { StellarWalletSignature } from "./infrastructure/adapters/stellar-wallet-signature.js";
 import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
@@ -18,6 +20,7 @@ import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-b
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
+import { SupabaseWalletRepository } from "./infrastructure/adapters/supabase-wallet-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./infrastructure/scheduling/confirmation-policy.js";
@@ -148,6 +151,16 @@ const app = buildApp({
     generateApplicationId: () => parseApplicationId(randomUUID())
   },
   business: { repository: businessRepository },
+  // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
+  // challenge proves account ownership before the key is stored on the profile.
+  // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).
+  wallet: {
+    repository: new SupabaseWalletRepository(supabase),
+    signatures: new StellarWalletSignature(),
+    generateChallengeId: () => randomUUID(),
+    generateNonce: () => randomUUID(),
+    ttlSeconds: WALLET_CHALLENGE_TTL_SECONDS
+  },
   // The document/photo transport (#399/T4b): the API validates the bytes and
   // writes to the private `pyme-documents` bucket with `service_role`.
   storage: {

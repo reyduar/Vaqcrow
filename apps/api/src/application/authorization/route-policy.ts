@@ -26,6 +26,12 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /businesses": only("PYME"),
   "GET /businesses/mine": only("PYME"),
 
+  // Freighter wallet connection (#407/T1b): issue and consume a single-use
+  // challenge, then read the stored key and its frozen state.
+  "POST /profile/wallet/challenge": only("PYME"),
+  "POST /profile/wallet": only("PYME"),
+  "GET /profile/wallet": only("PYME"),
+
   "POST /storage/uploads": only("PYME"),
   "DELETE /storage/uploads": only("PYME"),
 
