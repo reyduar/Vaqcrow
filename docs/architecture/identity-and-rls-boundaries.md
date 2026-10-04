@@ -6,14 +6,14 @@ tags:
   - supabase
   - rls
 date: 2026-09-28
-updated: 2026-10-01
+updated: 2026-10-03
 status: accepted
 ---
 
 # Vaqcrow — Límites de identidad y RLS
 
 > [!important] Actualización 2026-10-01: el modelo de identidad ya existe, en la rama de la Feature
-> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación vive en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y todavía no está en `main`**: llega junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) en una entrega apilada. Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen `main` y el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6).
+> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación vive en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y todavía no está en `main`**: llega junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) en una entrega apilada. Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen `main` y el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6). Encima de esa pila, la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) agrega el bucket privado `pyme-documents` y sus políticas de `storage.objects` (§9.10), tampoco en `main`.
 
 > [!info] Objetivo
 > Registrar la decisión que resuelve el issue [#196](https://github.com/reyduar/Vaqcrow/issues/196): qué se hace con las dos tablas que hoy tienen RLS habilitada y cero políticas —`public.application_review` y `public.human_decision`—, por qué **todavía no** se escriben políticas de fila, y qué las desbloquea. Complementa [[docs/planning/supabase-schema-and-persistence-evidence|la evidencia del esquema y la persistencia]] (#13) y [[docs/planning/human-assessment-and-approval-evidence|la evidencia de la evaluación y aprobación humana]] (#19), que difieren este trabajo acá.
@@ -94,7 +94,7 @@ Cuando eso ocurra, las políticas se escriben como una **Task bajo la Feature qu
 ## 7. Lo que este documento no afirma
 
 - **No afirma que exista autenticación en `main`.** La implementación (§9) está en la rama de la Feature #369, apilada con #378, y no se fusionó a `main`.
-- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas son las de `profile` (§9.3).
+- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas en el esquema `public` son las de `profile` (§9.3); en la rama de #398/#399 se agregan las de `storage.objects` (§9.10).
 - **No afirma que la demo exponga estas tablas.** No hay hoy ninguna ruta, pantalla ni endpoint que las lea o escriba para un rol distinto de `service_role`.
 - **No afirma que el estado actual sea producto de una política.** Lo que deniega es el GRANT (§2).
 
@@ -159,3 +159,12 @@ Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
 | Email | Nunca se muestra: el principal no lo lleva, el menú del avatar muestra nombre y chip de rol, y los mensajes de alta e ingreso no lo repiten. |
 | `ADMIN` | Puede ingresar por `/login` y va a `/`; ninguna página pública enlaza a `/admin` (la consola es #386). |
 | Errores | Los del proveedor se reducen a códigos saneados (`invalid_credentials`, `email_not_confirmed`, `network`, `unavailable`, …); el proxy registra sólo `[Proxy] session read failed` con una `cause` saneada. |
+
+### 9.10 El bucket privado de documentos de la PyME (rama de #398/#399)
+
+En la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) —apilada, **no en `main`**— el wizard de alta de la PyME carga documentos y fotos a un bucket **privado** `pyme-documents` de Supabase Storage (`file_size_limit` 10 MB, `allowed_mime_types` PDF/JPEG/PNG). Las políticas viven en `storage.objects`, tabla gestionada por Storage que ya trae RLS y sus propios grants; a diferencia de las migraciones de `public`, la migración sólo agrega políticas y no toca `REVOKE`/`GRANT`. Quedan dos políticas de lectura:
+
+- `pyme_documents_owner_read`: el dueño lee los objetos cuyo primer segmento de ruta es su propio `auth.uid()`. La ruta es `<user_id>/<kind>/<uuid>-<nombre-saneado>`, con `kind ∈ {sales-declarations, cuit, articles-of-incorporation, photo}`.
+- `pyme_documents_admin_read`: un `ADMIN` (`public.profile.role = 'ADMIN'`) lee todo el bucket.
+
+Las escrituras son **mediadas por la API**: el navegador manda los bytes a `POST /storage/uploads`, la API valida MIME/magic bytes/tamaño/nombre y escribe con `service_role` (que hace bypass de RLS). Las políticas de escritura del dueño que creaba la primera migración se eliminaron en `20261003130000_restrict_pyme_documents_to_api_writes.sql` para que no quede un camino de escritura directa que saltee la validación. El borrado (`DELETE /storage/uploads?path=`) también pasa por la API; por SQL no se puede, porque Storage instala `protect_objects_delete` (el test pgTAP lo afirma contra `42501`). Prueba: `supabase/tests/pyme_documents_bucket.sql` (20 asserts). Ambas rutas exigen rol `PYME` (`route-policy.ts`).
