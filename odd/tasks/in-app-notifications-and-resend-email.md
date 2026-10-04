@@ -32,7 +32,7 @@ Template exportado por el owner en `docs/design/template/` (directorio ignorado 
 | b | Copy de notificaciones de PyME/inversor y plantillas de email (asunto, cuerpo, remitente, idioma) | **El agente redacta el borrador** en español neutro (voseo); **el owner lo aprueba**. Cubre los textos de los eventos de PyME/inversor (el template solo diseña los 4 de admin) y el email. Remitente candidato: `Vaqcrow <no-reply@vaqcrow.com>` (dominio verificado en Resend). |
 | c | Preferencias, baja (unsubscribe), agrupación (batching) y página completa | **Solo el modal.** Sin panel de preferencias, sin unsubscribe (email transaccional), sin batching (un email por evento), sin página `/notifications`. |
 
-## Catálogo de eventos (14; lo define el owner, issue #382)
+## Catálogo de eventos (13; lo define el owner, issue #382)
 
 | Rol destinatario | Evento |
 |---|---|
@@ -60,8 +60,13 @@ Template exportado por el owner en `docs/design/template/` (directorio ignorado 
 ## Tareas
 
 - [ ] **T1 (#383) — Implementar.**
-  - [ ] **T1a — Migración + pgTAP.** Tabla de notificaciones + RLS + idempotencia. Local → remoto.
-  - [ ] **T1b — API puertos/adaptadores/config.** `NotificationPublisher` + `EmailPort`, catálogo, repositorio Supabase, `ResendEmailAdapter`, slice `email-config` + espejo en preflight. Tests con dobles.
+  - [x] **T1a — Migración + pgTAP.** `supabase/migrations/20261004200000_create_notifications.sql` (84 líneas) + `supabase/tests/notifications.sql` (204 líneas, `plan(57)`). `public.notification`: `id uuid`, `recipient_user_id → profile.user_id on delete cascade`, `event_key`, `event_type` (sin `CHECK` a propósito: el catálogo evoluciona y se valida en la aplicación), `title`, `body`, `cta_label`, `cta_href`, `read_at`, `email_sent_at`, `created_at`; `unique (event_key, recipient_user_id)` (idempotencia in-app) + índice `(recipient_user_id, created_at desc)` y parcial de no leídas. RLS on con **una** política (`notification_select_own`, SELECT para `authenticated` scoped a `recipient_user_id = auth.uid()`); escrituras solo `service_role`; sin grants por defecto a `anon`/`authenticated`. Ruta: delegada (writer acotado; migración + pgTAP).
+    - RED (`pnpm run test:db` antes de aplicar): `relation "public.notification" does not exist`, `Tests: 34 Failed: 34`. GREEN: `pnpm run test:db` → `Files=13, Tests=337`, `Result: PASS`; `supabase db advisors --local` → `No issues found`.
+    - **Remoto (MCP de Supabase, 2026-10-04):** `apply_migration` OK; historial reconciliado de `20261004233452` a `20261004200000`. Verificado: `rls_on=true`, 1 política, 11 columnas, `anon` sin SELECT, `authenticated` con SELECT y sin INSERT, `service_role` con INSERT.
+    - Commit: `ff24d68 feat(db): add the notifications table with per-recipient RLS`.
+  - [ ] **T1b — API puertos/adaptadores/config.** Se divide en dos unidades:
+    - [ ] **T1b-1 — Config + puertos + catálogo.** Slice `email-config` (+ `api-config` + `config-matrix` + espejo en `scripts/demo/preflight`), `EmailPort`, `notification-repository-port`, `notification-publisher-port`, y el catálogo puro (13 eventos: copy, audiencia, render in-app y de email). Tests.
+    - [ ] **T1b-2 — Adaptadores + caso de uso.** `SupabaseNotificationRepository`, `ResendEmailAdapter` y el caso de uso `NotificationPublisher` (resuelve destinatarios por rol/usuario, persiste idempotente por `(event_key, recipient)`, dispara el email best-effort sin bloquear la acción de origen). Dobles + tests.
   - [ ] **T1c — API rutas.** Listar / contador / marcar una / marcar todas + política y tests pinneados. Cableado en `build-app`/`index.ts`.
   - [ ] **T1d — Web campana + modal.** Componente fiel al template, puerto/adaptador, montaje en `AppHeader` para PYME/INVERSOR. Tests.
 - [ ] **T2 (#384) — Probar.** Cobertura determinista: evento→destinatario por cada entrada del catálogo, idempotencia en replay, aislamiento del fallo de email, contador de no leídas, marcar una/todas, accesibilidad del modal (`aria-expanded`, foco) y RLS (un usuario no lee lo ajeno).
@@ -69,4 +74,4 @@ Template exportado por el owner en `docs/design/template/` (directorio ignorado 
 
 ## Próximo paso
 
-Arranca **T1a (#383)**: migración de notificaciones + RLS + idempotencia, local-docker → remoto, con pgTAP RED→GREEN.
+Arranca **T1b (#383)**: puertos `NotificationPublisher` + `EmailPort`, catálogo de eventos, repositorio Supabase de notificaciones, `ResendEmailAdapter` y el slice `email-config` + espejo en preflight, con tests que usan dobles (nunca Resend vivo).
