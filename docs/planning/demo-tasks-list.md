@@ -2157,7 +2157,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
   - En qué paso del wizard va la conexión (el template solo la ubica en los próximos pasos de cuenta creada).
 - **Orden:** Requerida por [#410](#^issue-410), [#422](#^issue-422) y [#434](#^issue-434).
 
-**Rama propuesta.** `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (`762460a`) es la rama de integración y seguimiento del Feature, creada desde la punta del wizard (#401); la implementación se entrega mediante sus Tasks en la pila `#406 → #407 → #408 → #409`. **No está en `main`**: la pila del wizard (#398–#401) y esta pila llegan a `main` después de #369+#378. Evidencia en [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md).
 
 ### #407 — Implementar la conexión de la wallet Freighter de la PyME
 
@@ -2169,7 +2169,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#408](#^issue-408).
 
-**Rama propuesta.** `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` (tip `8509e5e`): T1a (migración `profile.stellar_public_key` + `wallet_challenge`, commit `7e75d5c`), T1b (rutas `POST /profile/wallet/challenge`, `POST /profile/wallet` y `GET /profile/wallet`; puertos de repositorio y firma; SEP-53; inmutabilidad, commit `d111ba4`, corrección `d208a50`) y T1c (`WalletPort.signMessage`, `FreighterWallet`, wallet card del template, cableado en el paso 4 del wizard y en `/company`, commit `578aa92`). **No está en `main`.**
 
 ### #408 — Probar la conexión de la wallet Freighter de la PyME
 
@@ -2181,7 +2181,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#409](#^issue-409).
 
-**Rama propuesta.** `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` (tip `67e76d1`, commit `4128ad8`): cierra el formato `es-AR` del saldo en la wallet card (7 decimales), agrega replay/expiración a nivel ruta y dos aserciones pgTAP de RLS del perfil. **No está en `main`.**
 
 ### #409 — Documentar evidencia de la conexión de la wallet Freighter de la PyME
 
@@ -2193,7 +2193,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#406](#^issue-406).
 
-**Rama propuesta.** `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection`: este documento [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md), que mapea los siete criterios de aceptación de #406 a su verificación re-ejecutada. **No está en `main`.**
 
 ### #434 — Mi campaña de la PyME
 
