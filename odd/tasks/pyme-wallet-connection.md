@@ -33,7 +33,10 @@ Que la PyME conecte (o cree) Freighter, la app obtenga su public key y la **guar
 
 ## Tareas
 
-- [ ] **T1 (#407) — Implementar.** Migración + API (challenge, perfil, inmutabilidad) + wallet card + cableado del wizard. Ruta: por definir.
+- [ ] **T1 (#407) — Implementar.** Migración + API (challenge, perfil, inmutabilidad) + wallet card + cableado del wizard.
+  - [x] **T1a — Migración + pgTAP.** `supabase/migrations/20261004120000_add_profile_wallet_and_challenge.sql`: `profile.stellar_public_key text` (nullable, `check ^G[A-Z2-7]{55}$`) y `public.wallet_challenge` (`challenge_id`, `owner_user_id → profile` cascade, `nonce`, `created_at`, `expires_at`, `consumed_at`) service_role-only (RLS on, 0 políticas, grants explícitos). pgTAP `supabase/tests/wallet_connection.sql` (plan 42). RED: test falla sin migración aplicada; GREEN: `pnpm run test:db` → `Files=12, Tests=278, PASS`. Remoto (MCP, 2026-10-04): `apply_migration` OK; historial reconciliado de `20261004180651` a `20261004120000`; verificado columna presente, RLS on, 0 políticas, grants de `service_role` OK y `authenticated` sin acceso. Commit `feat(db): add the profile wallet key and single-use challenge`.
+  - [ ] **T1b — API.** Emitir/verificar el challenge firmado de un solo uso (SEP-53 `signMessage` con `Keypair.fromPublicKey(...).verify` en `infrastructure/`), puerto/repositorio de perfil + adaptador Supabase, rechazo por red equivocada, guardar tras verificar, guarda de inmutabilidad (existe campaña del dueño) y precondición del envío.
+  - [ ] **T1c — Web.** Pedir y firmar el challenge con el `WalletPort` existente; persistir la key por un puerto; wallet card fiel al template (`Vaqcrow Portafolio.dc.html:116-137`); cablearlo en `review-step` (paso 4) y en `/company`.
 - [ ] **T2 (#408) — Probar.** Pruebas deterministas de #406. Ruta: por definir.
 - [ ] **T3 (#409) — Evidencia.** `docs/planning/pyme-wallet-connection-evidence.md`. Ruta: por definir.
 
