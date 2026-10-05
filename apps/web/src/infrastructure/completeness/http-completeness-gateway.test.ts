@@ -75,6 +75,18 @@ describe("HttpCompletenessGateway.check", () => {
     expect(calls[0]!.config?.["headers"]).toEqual({});
   });
 
+  it("omits the Authorization header when the token is malformed", async () => {
+    const { client, calls } = fakeClient({});
+    // A space or CR/LF is outside RFC 6750's b64token, so it must never reach a header.
+    const gateway = new HttpCompletenessGateway(client, async () => "bad token\r\nInjected: x");
+
+    const outcome = await gateway.check(INPUT);
+
+    expect(outcome).toEqual({ ok: true, result: WIRE_RESULT });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.config?.["headers"]).toEqual({});
+  });
+
   it("maps the API's 400 errors envelope to invalid_request", async () => {
     const { client } = fakeClient({ post: { status: 400, data: { errors: [{ field: "salesMonths", code: "invalid" }] } } });
 
@@ -93,13 +105,18 @@ describe("HttpCompletenessGateway.check", () => {
     expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: false, code: "unavailable" });
   });
 
-  it("drops a finding with an unknown code or severity instead of rendering it", async () => {
+  it("answers unavailable when a finding is outside the vocabulary", async () => {
+    const validFinding = { code: "missing_document", severity: "gap", detail: "Falta un documento obligatorio: Estatuto." };
     for (const bad of [
       { code: "made_up", severity: "gap", detail: "x" },
       { code: "missing_document", severity: "critical", detail: "x" },
       { code: "missing_document", severity: "gap", detail: "" }
     ]) {
-      const { client } = fakeClient({ post: { status: 200, data: { result: { complete: false, findings: [bad] } } } });
+      const { client } = fakeClient({
+        post: { status: 200, data: { result: { complete: false, findings: [validFinding, bad] } } }
+      });
+      // Fail-closed: the whole envelope collapses, so the valid finding is
+      // never partially trusted alongside an unverifiable one.
       expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: false, code: "unavailable" });
     }
   });

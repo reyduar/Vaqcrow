@@ -52,6 +52,30 @@ describe("AiStep", () => {
     });
   });
 
+  it("shows the completeness loading copy while the check is in flight, then the resolved result", async () => {
+    const port = new FakeAiEvaluation();
+    const releaseEvaluation = port.holdNextEvaluate();
+    const completeness = new FakeCompleteness();
+    completeness.seedResult(completenessResult());
+    const releaseCheck = completeness.holdNextCheck();
+    renderStep(port, completeness);
+
+    expect(screen.getByText("Revisando faltantes y anomalías…")).toBeInTheDocument();
+    expect(screen.queryByText("No encontramos faltantes ni anomalías.")).not.toBeInTheDocument();
+    expect(completeness.calls).toEqual([COMPLETENESS_INPUT]);
+
+    await act(async () => {
+      releaseCheck();
+    });
+
+    expect(await screen.findByText("No encontramos faltantes ni anomalías.")).toBeInTheDocument();
+    expect(screen.queryByText("Revisando faltantes y anomalías…")).not.toBeInTheDocument();
+
+    await act(async () => {
+      releaseEvaluation();
+    });
+  });
+
   it("renders the heading and the subtitle, with no simulated marker before the band lands", () => {
     const port = new FakeAiEvaluation();
     port.holdNextEvaluate();
