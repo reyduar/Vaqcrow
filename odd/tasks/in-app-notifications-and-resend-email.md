@@ -76,6 +76,32 @@ Template exportado por el owner en `docs/design/template/` (directorio ignorado 
 - [ ] **T2 (#384) — Probar.** Cobertura determinista: evento→destinatario por cada entrada del catálogo, idempotencia en replay, aislamiento del fallo de email, contador de no leídas, marcar una/todas, accesibilidad del modal (`aria-expanded`, foco) y RLS (un usuario no lee lo ajeno).
 - [ ] **T3 (#385) — Evidencia.** `docs/planning/in-app-notifications-and-resend-email-evidence.md` (en español), con cada criterio de aceptación citado textualmente y su fuente de verificación. Alinear `CLAUDE.md`/`AGENTS.md` (gemelos), `docs/architecture/environments.md` y `docs/planning/DEMO.md`.
 
+## Revisión RDD (2026-10-04)
+
+El rango completo de T1 (42 archivos / 4618 líneas) **superó el presupuesto de contexto del revisor** (`lens_context_budget_exceeded`, sin autoridad creada). Se dividió en tres candidatos, cada uno revisado en un worktree aislado y aprobado con autoridad `burned`.
+
+| Candidato | Unidades | Base → head | Riesgo | Líneas | Lentes | Linaje | Resultado |
+|---|---|---|---|---|---|---|---|
+| c1 | T1a + T1b-1 | `dbc5fff` → `f1366d4` | high | 1449 (16 archivos) | 4 (risk, resilience, readability, reliability) | `review-65e45503120982ab` | `approved` |
+| c2 | T1b-2 | `f1366d4` → `181bec2` | medium | 1496 (6 archivos) | 1 (reliability) | `review-b3b6d23785f0cfce` | `approved` |
+| c3 | T1c + T1d | `f6ad839` → `653b97a` | medium | 1755 (26 archivos) | 1 (reliability) | `review-273a2e6da95c1f6e` | `approved` |
+
+Transporte del reviewer: en c1 la lente `readability` devolvió vacío dos veces y capturó al 3.º intento; en c3 la lente `reliability` falló una vez (`opencode_reviewer_result_refused`) y capturó en el reintento. El resto capturó a la primera.
+
+**Hallazgos no bloqueantes** (todos `informational`, ninguno abrió corrección; quedan como trabajo posterior):
+
+- **c1/R4-1** (`email-config.ts:36`, WARNING): `DEFAULT_APP_BASE_URL` apunta al loopback y no tiene guarda por `APP_ENV`; un deploy con `RESEND_API_KEY` pero sin `APP_BASE_URL` arma los links de email contra `localhost`.
+- **c1/R4-2** (`email-config.ts:74-80`, WARNING): un `EMAIL_FROM`/`APP_BASE_URL` inválido hace fallar el arranque **aunque el email esté deshabilitado**, contradiciendo el contrato "el email nunca debe impedir el boot".
+- **c1/R2-001 + R3-001** (`preflight.mjs:62-72`, WARNING/SUGGESTION): el preflight **duplica** los defaults y la regex de `email-config.ts`, unidos solo por un comentario "keep in sync"; ya deriva (el preflight no normaliza la barra final de `APP_BASE_URL`).
+- **c1/R2-002 + R3-002** (`notification-publisher-port.ts:20-22`, SUGGESTION): `NotificationEvent` lleva el tipo dos veces (`type` y `payload.type`) y la invariante "deben coincidir" no la expresa el tipo.
+- **c2/R3-skip-failure-conflation** (`notification-publisher.ts:61-69`, WARNING): `PublishSummary.skipped` confunde un fallo real de inserción con un replay idempotente.
+- **c2/R3-email-directory-cap-truncation** (`supabase-notification-repository.ts:281-302`, SUGGESTION): `listEmailsById` corta a 50 páginas (>10.000 usuarios) en silencio.
+- **c2/R3-body-read-outside-deadline** (`resend-email-adapter.ts:81-99`, SUGGESTION): el timeout cubre el `fetch` pero no la lectura del cuerpo de la respuesta.
+- **c3/R3-BELL-LOAD-FAILURE** (`notification-bell.tsx:72`, WARNING): la campana no consume `loadFailed`; una carga fallida se ve igual que una bandeja vacía ("0 sin leer" / "Todo leído").
+- **c3/R3-LOAD-PARTIAL-FAILURE** (`use-notifications.ts:40-43`, SUGGESTION): `load` trata lista y contador como una sola lectura atómica; si falla el contador se pierde la lista ya obtenida.
+
+**Gaps residuales ya registrados en T1c** (fuera del alcance de la revisión): `listByRecipient`/`countUnread`/`markRead`/`markAllRead` siguen devolviendo vacío/0/false ante un fallo del proveedor.
+
 ## Próximo paso
 
-**T2 (#384)**: cobertura determinista — mapeo evento→destinatario por cada entrada del catálogo, idempotencia en replay, aislamiento del fallo de email, contador de no leídas, marcar una/todas, accesibilidad del modal y RLS. Luego **T3 (#385)** (evidencia) y la alineación de docs.
+**T2 (#384)**: cobertura determinista — mapeo evento→destinatario por cada entrada del catálogo, idempotencia en replay, aislamiento del fallo de email, contador de no leídas, marcar una/todas, accesibilidad del modal y RLS. Luego **T3 (#385)** (evidencia) y la alineación de docs. Los hallazgos no bloqueantes de la revisión quedan como trabajo posterior (candidatos a una unidad de endurecimiento).
