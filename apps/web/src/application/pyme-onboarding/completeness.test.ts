@@ -50,6 +50,14 @@ function photo(uploaded: boolean, index: number): PhotoState {
   };
 }
 
+describe("COMPLETENESS_COPY", () => {
+  it("uses the owner-approved title and error copy, with no simulated marker", () => {
+    expect(COMPLETENESS_COPY.title).toBe("Información completa");
+    expect(COMPLETENESS_COPY.errorMessage).toBe("No pudimos revisar la información. Podés continuar igual.");
+    expect(Object.keys(COMPLETENESS_COPY)).not.toContain("simulado");
+  });
+});
+
 describe("buildCompletenessInput", () => {
   it("reports every mandatory document slot with its presence", () => {
     const input = buildCompletenessInput(["", "", "", "", "", "", "", ""], documentsState(true, true, false), []);

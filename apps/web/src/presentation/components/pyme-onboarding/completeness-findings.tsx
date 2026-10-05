@@ -14,9 +14,10 @@ import type {
  *
  * It runs `CompletenessCheckPort` once on mount — the wizard mounts it when
  * step 2's valid submit advances — and renders the API's concise list of
- * faltantes/anomalías with the `SIMULADO` marker. An incomplete result warns
- * (owner decision 2) but never blocks: the parent's «Continuar» stays enabled
- * and the human reviewer decides.
+ * faltantes/anomalías. The check is real and deterministic, so the section
+ * carries no `SIMULADO` marker (only the simulated risk band does). An
+ * incomplete result warns (owner decision 2) but never blocks: the parent's
+ * «Continuar» stays enabled and the human reviewer decides.
  *
  * Accessibility: each finding is a visible label plus its API `detail`, with an
  * icon; no meaning is carried by colour alone. The section has no live region,
@@ -72,14 +73,9 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
       aria-labelledby={titleId}
       className="flex flex-col gap-3 rounded-card border border-page-border bg-page-surface p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={titleId} className="m-0 text-[15px] font-[650]">
-          {COMPLETENESS_COPY.title}
-        </h2>
-        <span className="inline-flex h-[22px] items-center rounded-pill border border-dashed border-text-secondary px-2 text-[11px] font-[650] tracking-[0.06em] text-text-secondary">
-          {COMPLETENESS_COPY.simulado}
-        </span>
-      </div>
+      <h2 id={titleId} className="m-0 text-[15px] font-[650]">
+        {COMPLETENESS_COPY.title}
+      </h2>
 
       {phase === "loading" ? (
         <p aria-busy="true" className="m-0 text-sm text-text-secondary">

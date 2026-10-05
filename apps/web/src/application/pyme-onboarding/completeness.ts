@@ -22,12 +22,11 @@ import { SALES_MONTHS, parseAmount } from "./registration-step";
  */
 
 export const COMPLETENESS_COPY = Object.freeze({
-  simulado: "SIMULADO",
-  title: "Completitud de la solicitud",
+  title: "Información completa",
   loading: "Revisando faltantes y anomalías…",
   incompleteNotice: "Faltan datos o hay anomalías. Podés enviar la solicitud igual: la persona revisora decide.",
   emptyNotice: "No encontramos faltantes ni anomalías.",
-  errorMessage: "No pudimos revisar la completitud. Podés continuar igual."
+  errorMessage: "No pudimos revisar la información. Podés continuar igual."
 });
 
 /**

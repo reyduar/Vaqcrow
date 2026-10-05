@@ -52,13 +52,13 @@ describe("AiStep", () => {
     });
   });
 
-  it("renders the heading, the SIMULADO marker and the subtitle", () => {
+  it("renders the heading and the subtitle, with no simulated marker before the band lands", () => {
     const port = new FakeAiEvaluation();
     port.holdNextEvaluate();
     renderStep(port);
 
     expect(screen.getByRole("heading", { level: 1, name: "Evaluación AI" })).toBeInTheDocument();
-    expect(screen.getAllByText("SIMULADO").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("SIMULADO")).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "La IA ordena la evidencia que cargaste, marca faltantes y anomalías y propone una banda de riesgo. No aprueba ni rechaza: la decisión la toma una persona en el paso siguiente."
@@ -83,8 +83,9 @@ describe("AiStep", () => {
     expect(await screen.findByText("Banda de riesgo propuesta")).toBeInTheDocument();
     expect(screen.getByText("Sujeta a revisión humana")).toBeInTheDocument();
     expect(screen.getByText("Riesgo medio")).toBeInTheDocument();
+    expect(screen.getByText("SIMULADO")).toBeInTheDocument();
 
-    expect(screen.getByText("Completitud de la solicitud")).toBeInTheDocument();
+    expect(screen.getByText("Información completa")).toBeInTheDocument();
     expect(screen.getByText("Falta un documento obligatorio: Estatuto.")).toBeInTheDocument();
     expect(screen.getByText("Faltante:")).toBeInTheDocument();
     expect(completeness.calls).toEqual([COMPLETENESS_INPUT]);
@@ -108,12 +109,12 @@ describe("AiStep", () => {
     completeness.seedResult(completenessResult());
     renderStep(new FakeAiEvaluation(), completeness);
 
-    expect(await screen.findByText("Completitud de la solicitud")).toBeInTheDocument();
+    expect(await screen.findByText("Información completa")).toBeInTheDocument();
     expect(screen.queryByText(/Podés enviar la solicitud igual/)).not.toBeInTheDocument();
     expect(screen.getByText(/No encontramos faltantes ni anomalías/)).toBeInTheDocument();
   });
 
-  it("lists every API finding detail with its label inside the SIMULADO-marked section", async () => {
+  it("lists every API finding detail with its label in the findings section, without a simulated marker", async () => {
     const completeness = new FakeCompleteness();
     completeness.seedResult({
       complete: true,
@@ -132,12 +133,12 @@ describe("AiStep", () => {
     });
     const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
 
-    const heading = await screen.findByRole("heading", { name: "Completitud de la solicitud" });
+    const heading = await screen.findByRole("heading", { name: "Información completa" });
     const section = heading.closest("section");
     expect(section).not.toBeNull();
     const findings = within(section as HTMLElement);
 
-    expect(findings.getAllByText("SIMULADO").length).toBeGreaterThanOrEqual(1);
+    expect(findings.queryAllByText("SIMULADO")).toHaveLength(0);
     expect(
       findings.getByText("Las ventas de Agosto superan ampliamente el promedio declarado.")
     ).toBeInTheDocument();
@@ -154,7 +155,7 @@ describe("AiStep", () => {
     completeness.failNext("network");
     const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
 
-    expect(await screen.findByText(/No pudimos revisar la completitud/)).toBeInTheDocument();
+    expect(await screen.findByText(/No pudimos revisar la información/)).toBeInTheDocument();
     const continueButton = screen.getByRole("button", { name: /Continuar/ });
     expect(continueButton).toBeEnabled();
     fireEvent.click(continueButton);

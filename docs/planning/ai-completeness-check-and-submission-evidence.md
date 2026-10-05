@@ -56,11 +56,11 @@ Fuente: bitácora (T1a/T1b/T1c, T2, 2026-10-05) y lectura del código en `a35ef6
 - **Puerto** (`apps/web/src/application/ports/completeness-check-port.ts`): `check(input): Promise<Result>`, vendor-free y React-free. `input` es exactamente el body de la API; códigos saneados `invalid_request | unavailable | network`.
 - **Adaptador HTTP** (`apps/web/src/infrastructure/completeness/http-completeness-gateway.ts`): `POST /completeness-check` con `Authorization: Bearer` de la sesión; nunca manda owner. Desenvuelve `200 { result }` y **valida el vocabulario** de findings (código y severidad): un código/severidad/`detail` desconocido o vacío colapsa a `unavailable`, nunca llega a pantalla. `400`→`invalid_request`; resto→`unavailable`; transporte→`network`. Factory + null-object espejo de `business/`.
 - **Modelo puro** (`apps/web/src/application/pyme-onboarding/completeness.ts`): `buildCompletenessInput(sales, documents, photos)` mapea la evidencia que ya tenía el paso 2 (los 3 slots con `present`, fotos **cargadas**, 8 meses con `null` para vacío — nunca `0`), `findingLabel` (Faltante / Aviso / Anomalía) y `completenessNotice`. **Las reglas viven una sola vez, en la API**: el cliente no las re-deriva.
-- **Paso 3**: `CompletenessFindings` (`completeness-findings.tsx`) corre el puerto en paralelo con la evaluación IA y renderiza la lista concisa de faltantes/anomalías con el marcador `SIMULADO`, etiqueta visible por finding + icono, y un aviso **no bloqueante** cuando `complete === false`. La banda de riesgo simulada se conserva. Se retiraron los cuatro checks mock de la plantilla (`AI_SIMULATED_CHECKS`), que eran el placeholder del chequeo.
+- **Paso 3**: `CompletenessFindings` (`completeness-findings.tsx`) corre el puerto en paralelo con la evaluación IA y renderiza la lista concisa de faltantes/anomalías **sin marcador** (el chequeo es real y determinista; corrección del 2026-10-05), etiqueta visible por finding + icono, y un aviso **no bloqueante** cuando `complete === false`. La banda de riesgo simulada se conserva y es la única que lleva el marcador `SIMULADO`. Se retiraron los cuatro checks mock de la plantilla (`AI_SIMULATED_CHECKS`), que eran el placeholder del chequeo.
 - **Evidencia de completitud:** `RegistrationStep.onSubmit` recibe un segundo argumento con el `CompletenessCheckInput` construido en el momento del envío; el wizard lo guarda y lo pasa a `AiStep`.
 - **Tolerancia al `409 wallet_required`:** `toSmeSubmitError` mapea `409 + wallet_required` a un mensaje honesto de wallet, sin caer en el genérico ni crashear (defensa del rechazo server-side de T1b; la UI ya bloquea sin clave almacenada).
 
-**Copy nueva (owner-pending, §5.3):** título «Completitud de la solicitud»; aviso incompleto «Faltan datos o hay anomalías. Podés enviar la solicitud igual: la persona revisora decide.»; completo «No encontramos faltantes ni anomalías.»; error «No pudimos revisar la completitud. Podés continuar igual.»; wallet «El servidor no tiene tu wallet Freighter registrada. Volvé a conectar Freighter y enviá la solicitud de nuevo.». Los `detail` por finding vienen de la API y se renderizan verbatim.
+**Copy aprobada por el owner (2026-10-05, §6):** título «Información completa» (se retira el calco «completitud» de la UI; los identificadores de código siguen en inglés); aviso incompleto «Faltan datos o hay anomalías. Podés enviar la solicitud igual: la persona revisora decide.»; completo «No encontramos faltantes ni anomalías.»; error «No pudimos revisar la información. Podés continuar igual.»; wallet «El servidor no tiene tu wallet Freighter registrada. Volvé a conectar Freighter y enviá la solicitud de nuevo.». Los `detail` por finding vienen de la API y se renderizan verbatim.
 
 ### 3.4 Pruebas (T2, `a35ef61`)
 
@@ -68,7 +68,7 @@ Auditoría de la cobertura ya escrita en T1 y cierre de tres asserts de aceptaci
 
 - `sme-request.test.ts` (30): un rechazo sin clave **no publica** el evento.
 - `sme-request.route.test.ts` (17): un `201` publica **una sola vez**.
-- `ai-step.test.tsx`: la sección lista **cada** `detail` de la API con su etiqueta, dentro de la sección marcada `SIMULADO`, con el botón «Continuar» habilitado.
+- `ai-step.test.tsx`: la sección lista **cada** `detail` de la API con su etiqueta, dentro de la sección de información completa (sin marcador `SIMULADO`), con el botón «Continuar» habilitado.
 
 **No hay fixtures de prompt-injection nuevas** porque esta Feature **no agrega ninguna entrada de modelo**: el chequeo es determinista y solo recibe metadatos declarados (booleanos/enteros/`number|null`), nunca contenido libre de documentos (§8, criterio 2).
 
@@ -122,7 +122,7 @@ $ pnpm run test:boundaries
 | `findByOwner` lee/ordena/mapea, lista vacía y errores saneados | `supabase-sme-request-repository.test.ts` (12) | Re-ejecutado (suite API) |
 | Gateway web: valida vocabulario de findings; no-200 mapea a código saneado; la factory cae al null-object sin `NEXT_PUBLIC_API_BASE_URL` | `http-completeness-gateway.test.ts`, `create-completeness-port.test.ts` | Re-ejecutado (suite web) |
 | Modelo puro web: mapeo del input (fotos cargadas, `null` para vacío), etiquetas y noticias | `apps/web/src/application/pyme-onboarding/completeness.test.ts` | Re-ejecutado (suite web) |
-| Paso 3: lista cada `detail`/etiqueta dentro de la sección `SIMULADO`, aviso no bloqueante, «Continuar» habilitado aun incompleto/fallido | `ai-step.test.tsx`, `pyme-onboarding-wizard.test.tsx` | Re-ejecutado (suite web); test nuevo de T2 |
+| Paso 3: lista cada `detail`/etiqueta dentro de la sección de información completa (sin marcador), aviso no bloqueante, «Continuar» habilitado aun incompleto/fallido; la banda simulada conserva el `SIMULADO` | `ai-step.test.tsx`, `pyme-onboarding-wizard.test.tsx` | Re-ejecutado (suite web); tests de copy/marcador actualizados el 2026-10-05 |
 | `409 wallet_required` → mensaje honesto de wallet | `sme-request-errors.test.ts`, `review-step.test.tsx` | Re-ejecutado (suite web) |
 | Motor de riesgo existente (banda/confianza/razones/versión/correlation) y prompt-injection como no confiable | `packages/ai/src/*` (incl. `ai-assessment.golden.test.ts`) | Re-ejecutado (suite API, que incluye `packages/ai`); **pre-existente**, no modificado por #402 |
 
@@ -136,7 +136,7 @@ $ pnpm run test:boundaries
 
 1. **Relevancia por contenido (visión) diferida (decisión 5, 2026-10-05).** El owner quiere, por sobre todo, que el chequeo detecte documentos **irrelevantes** (p. ej. una foto de Pikachu donde va la Constancia de CUIT). Queda **fuera de esta Feature** y requiere las tres cosas, registradas honestamente: (a) extender el motor de IA a **multimodal** + un **modelo con visión**; (b) que la API **lea los bytes** de los documentos (`StoragePort.downloadObject`, que hoy no existe); (c) **persistir las rutas** de los documentos del lado servidor. El chequeo actual es, por diseño, **determinista y de metadatos**.
 2. **Idempotencia secuencial.** La guarda por dueño+contenido no es atómica: dos reintentos concurrentes podrían crear dos aplicaciones (§3.2). Un índice único acotado sería la defensa definitiva; evaluado y diferido.
-3. **Copy nueva owner-pending.** Todo el copy de UI de §3.3 es **redactado por el agente** (el template no diseña pantalla de faltantes) y queda **pendiente de aprobación del owner**. En particular, la sección mantiene el marcador `SIMULADO` por la regla de producto; si el owner considera el chequeo determinista como "real", esa etiqueta merece una decisión explícita.
+3. **Copy aprobada y marcador decidido (2026-10-05).** El copy de UI de §3.3 fue redactado por el agente (el template no diseña pantalla de faltantes) y **aprobado por el owner**: título «Información completa» y error «No pudimos revisar la información. Podés continuar igual.». El owner resolvió además que el chequeo determinista es real, así que la sección **no** lleva el marcador `SIMULADO`; éste se separó y viaja con la banda de riesgo simulada, única parte simulada del paso 3.
 4. **La banda de riesgo del paso 3 sigue simulada.** El motor real es ADMIN-only y corre sobre `/application-reviews/:id/assessments`; el wizard muestra hoy una banda simulada detrás de `AiEvaluationPort`. #402 no cablea el motor real al display del wizard.
 5. **Revisión RDD no corrida.** No existe linaje de revisión para los commits de #402 (§7): el cierre queda sin veredicto de lente independiente. No se inventó aprobación.
 6. **Sin migración / remoto intacto.** #402 no agregó ni cambió migraciones; el proyecto remoto no se tocó y no se re-verificó.
@@ -148,7 +148,7 @@ Decisiones del owner registradas durante la Feature (bitácora, 2026-10-05):
 
 | # | Pregunta (issue #402, «Not designed in the template») | Resolución |
 |---|---|---|
-| 1 | Cómo ve la PyME el resultado de completitud | **Lista concisa de faltantes/anomalías en el paso 3**, con marcador `SIMULADO`. |
+| 1 | Cómo ve la PyME el resultado de completitud | **Lista concisa de faltantes/anomalías en el paso 3**, sin marcador `SIMULADO` (corrección del 2026-10-05: el chequeo es real y determinista; el marcador viaja con la banda de riesgo simulada). |
 | 2 | ¿Incompleto bloquea o solo advierte? ¿La PyME ve la banda? | **Incompleto advierte pero no bloquea**; la PyME **sí** ve la banda en el paso 3. |
 | 3 | Carga/fallo/reintento y cómo se leen los documentos | Reutiliza el patrón del paso 3 de #399; la lectura de documentos (visión) queda diferida (decisión 5). |
 | 4 | Alcance del chequeo (2026-10-05) | **Acotado:** datos declarados + presencia de documentos (metadatos): 3 documentos obligatorios, 1–4 fotos, ≥6 de 8 meses, coherencia. |
@@ -172,8 +172,8 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 | 3 | "Submission is idempotent, rejected without a stored public key, and publishes the admin event once." | ✅ **CUMPLIDO.** Un replay por dueño+contenido devuelve la aplicación existente con `applied:false`, sin `submit` ni publicación; sin clave almacenada → `409 wallet_required`; en `applied:true` el evento `admin.new_application` se publica exactamente una vez. | `sme-request.test.ts` (30) + `sme-request.route.test.ts` (17) re-ejecutados; §4.2 |
 | 4 | "The AI cannot approve, compute obligations or move funds; this is enforced by the absence of such capabilities and covered by tests." | ✅ **CUMPLIDO por construcción.** El chequeo es una función pura sin I/O ni herramientas; no hay ruta nueva que apruebe, calcule obligaciones ni mueva fondos; la submission solo persiste y publica un evento best-effort. La aprobación y el cálculo siguen siendo humanos/determinísticos del motor existente. | Lectura de `completeness-check.ts`/`submit-sme-request.ts`; suites API re-ejecutadas |
 | 5 | "Required evidence and failure behavior are covered." | ✅ **CUMPLIDO.** Fallos cubiertos: check `400`/`401`/`503` saneados; envío `409` sin clave y `503` ante fallo de wallet o de idempotencia; publisher que lanza no rompe el envío; web muestra un aviso no bloqueante ante error del chequeo y un mensaje honesto ante `409`. Este documento es la evidencia. | Suites API/web re-ejecutadas; §4.2; §5 |
-| 6 | "Every item under \"Not designed in the template (open question)\" is decided by the owner before it is implemented; none is invented." | ✅ **CUMPLIDO.** Las seis preguntas se decidieron el 2026-10-05 (§6) antes de implementar (resultado de completitud, bloqueo vs. aviso, carga/fallo/reintento, alcance del chequeo, visión diferida, regla de fotos). La única copy nueva queda explícitamente owner-pending (§5.3), no inventada como aprobada. | Bitácora §Decisiones; §6 |
-| 7 | "No unsupported production claims or secrets are introduced." | ✅ **CUMPLIDO.** Sin valores de variables, keys ni PII; el chequeo se rotula `SIMULADO`; la relevancia visual no se ejerce y se declara diferida; nada afirma disponibilidad, legalidad ni valor económico. | Revisión de este documento; suites re-ejecutadas |
+| 6 | "Every item under \"Not designed in the template (open question)\" is decided by the owner before it is implemented; none is invented." | ✅ **CUMPLIDO.** Las seis preguntas se decidieron el 2026-10-05 (§6) antes de implementar (resultado de completitud, bloqueo vs. aviso, carga/fallo/reintento, alcance del chequeo, visión diferida, regla de fotos). La copy nueva quedó además **aprobada por el owner** (2026-10-05, título «Información completa» y error corregido; §5.3), no inventada. | Bitácora §Decisiones; §6 |
+| 7 | "No unsupported production claims or secrets are introduced." | ✅ **CUMPLIDO.** Sin valores de variables, keys ni PII; el chequeo es real y determinista y **no** se rotula `SIMULADO` (solo la banda de riesgo simulada conserva el rótulo); la relevancia visual no se ejerce y se declara diferida; nada afirma disponibilidad, legalidad ni valor económico. | Revisión de este documento; suites re-ejecutadas |
 
 ## 9. Riesgos, contradicciones y limitaciones aceptadas
 
@@ -181,7 +181,7 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 - **Revisión RDD pendiente.** No hay veredicto de lente independiente (§7). La verificación de este documento es la re-ejecución de §4.1.
 - **Criterio 1 medido en dos mitades.** La completitud es nueva; el riesgo es el motor pre-existente. No es un olvido: es el alcance decidido (§3.5).
 - **Visión de documentos diferida.** El chequeo no detecta todavía documentos irrelevantes por contenido (§5.1); es la brecha más visible para el owner.
-- **Copy sin aprobar.** §5.3 queda owner-pending, incluida la etiqueta `SIMULADO` de la sección.
+- **Copy aprobada; marcador separado.** §5.3 quedó aprobado por el owner (2026-10-05); el marcador `SIMULADO` se retiró de la sección de completitud y viaja con la banda de riesgo simulada.
 - **Idempotencia no atómica.** §5.2.
 
 ## 10. Estado de entrega y próximos pasos
@@ -190,7 +190,7 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 - La Feature #402 **no está en `main`** y no se cierra sola.
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402
-> 1. Aprobar (o ajustar) el copy de UI de §3.3, incluida la etiqueta `SIMULADO` de la sección de completitud (§5.3).
+> 1. ✅ **Resuelto (2026-10-05).** Copy de UI de §3.3 aprobado por el owner (título «Información completa», error «No pudimos revisar la información. Podés continuar igual.») y etiqueta `SIMULADO` **retirada** de la sección de completitud; la banda de riesgo simulada la conserva (§5.3).
 > 2. Correr la revisión RDD de los commits de #402 (`997ab08` → `a35ef61`) y reconocerla (§7).
 > 3. Decidir y planificar el chequeo de **relevancia por contenido (visión)** con sus tres bloqueos (§5.1).
 > 4. Evaluar la defensa atómica de idempotencia si la concurrencia importa (§5.2).

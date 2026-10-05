@@ -19,7 +19,7 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 
 | # | Pregunta (issue #402, «Not designed in the template») | Resolución |
 |---|---|---|
-| 1 | Cómo ve la PyME el resultado de completitud | **Lista concisa de faltantes/anomalías en el paso 3**, con marcador `SIMULADO` (el template no diseña pantalla de faltantes; el dato ya existe). |
+| 1 | Cómo ve la PyME el resultado de completitud | **Lista concisa de faltantes/anomalías en el paso 3**, sin marcador `SIMULADO` (corrección del 2026-10-05: el chequeo es real y determinista; el marcador viaja con la banda de riesgo simulada). El template no diseña pantalla de faltantes; el dato ya existe. |
 | 2 | ¿Incompleto bloquea o solo advierte? ¿La PyME ve la banda? | **Incompleto advierte pero no bloquea el envío** (la persona decide; el admin ve el detalle). La PyME **sí** ve la banda en el paso 3. |
 | 3 | Carga/fallo/reintento y cómo se leen los documentos | Reutiliza el patrón del paso 3 de #399. |
 | 4 | **Alcance del chequeo (2026-10-05)** | **Acotado por ahora:** completitud sobre **datos declarados + presencia de documentos** (metadatos): los 3 documentos obligatorios, 1–4 fotos, ≥6 de 8 meses, coherencia. |
@@ -187,10 +187,12 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
   reglas viven **una sola vez**, en la API: el cliente no las re-deriva.
 - **Paso 3**: `CompletenessFindings` corre el puerto en paralelo con la
   evaluación IA (montado junto al bloque busy, no dentro del done) y renderiza la
-  lista concisa de faltantes/anomalías con el marcador `SIMULADO`, etiqueta
-  visible por finding (`Faltante`/`Aviso`/`Anomalía`) + icono, y un aviso **no
-  bloqueante** cuando `complete === false`. La banda de riesgo simulada se
-  conserva. Sin región viva propia: no compite con el `role="status"` de análisis.
+  lista concisa de faltantes/anomalías **sin marcador** (el chequeo es real y
+  determinista; corrección del 2026-10-05), etiqueta visible por finding
+  (`Faltante`/`Aviso`/`Anomalía`) + icono, y un aviso **no bloqueante** cuando
+  `complete === false`. La banda de riesgo simulada se conserva y es la única que
+  lleva el marcador `SIMULADO`. Sin región viva propia: no compite con el
+  `role="status"` de análisis.
 - **Retiro de duplicado:** el paso 3 ya no muestra los cuatro checks mock de la
   plantilla (`AI_SIMULATED_CHECKS`): eran el placeholder del chequeo y mostraban
   un faltante inventado. Se quitaron de `ai-evaluation-port.ts`,
@@ -207,12 +209,15 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
   wallet (copy nueva, pendiente de aprobación del owner), sin caer en el genérico
   ni crashear. Es defensa del rechazo server-side de T1b (la UI ya bloquea sin
   clave almacenada).
-- **Copy nueva (owner-pending):** título «Completitud de la solicitud», aviso
-  incompleto «Faltan datos o hay anomalías. Podés enviar la solicitud igual: la
-  persona revisora decide.», completo «No encontramos faltantes ni anomalías.»,
-  error «No pudimos revisar la completitud. Podés continuar igual.» y el mensaje
-  de wallet «El servidor no tiene tu wallet Freighter registrada. Volvé a
-  conectar Freighter y enviá la solicitud de nuevo.».
+- **Copy final (aprobada por el owner, 2026-10-05):** título «Información
+  completa», aviso incompleto «Faltan datos o hay anomalías. Podés enviar la
+  solicitud igual: la persona revisora decide.», completo «No encontramos
+  faltantes ni anomalías.», error «No pudimos revisar la información. Podés
+  continuar igual.» y el mensaje de wallet «El servidor no tiene tu wallet
+  Freighter registrada. Volvé a conectar Freighter y enviá la solicitud de
+  nuevo.». El título retira el calco «completitud» de la UI; los identificadores
+  de código (`CompletenessCheckPort`, `checkCompleteness`, la ruta
+  `/completeness-check`) siguen en inglés.
 - **TDD:** RED observado (módulos inexistentes + 6 asserts fallando en 5
   archivos) antes del GREEN. Tests: gateway HTTP (8), factory/null-object (5),
   modelo puro (4 describe), `ai-step` UI (8), wizard (13, con el input construido
@@ -223,3 +228,25 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
   archivos); `typecheck`, `lint` (0 errores; 1 warning preexistente en
   `fetch-http-client.ts`) y `boundaries` (790 módulos, 0 violaciones) limpios.
   `apps/web` only; sin tocar la API ni migraciones.
+
+### Corrección de copy y del marcador `SIMULADO` (2026-10-05)
+
+**Unidad de trabajo:** `feat(web): rename the completeness section and drop its simulated marker`.
+
+- **Copy aprobada.** La sección pasa de «Completitud de la solicitud» a
+  **«Información completa»** (se retira el calco inglés «completitud» de toda la
+  UI) y el error pasa a «No pudimos revisar la información. Podés continuar
+  igual.». El resto del copy no cambia. Sin cambios de identificadores de código
+  ni de API.
+- **Marcador `SIMULADO`.** El chequeo es real y determinista, así que la sección
+  de completitud **ya no lleva el marcador**; éste se separó y ahora viaja con la
+  **banda de riesgo simulada**, única parte simulada del paso 3.
+  `COMPLETENESS_COPY.simulado` se retiró; `AI_STEP_COPY.simulado` se conserva y se
+  movió del encabezado del paso a la fila de la banda.
+- **TDD:** RED observado (6 asserts fallando: 5 en `ai-step.test.tsx`, 1 nuevo en
+  `completeness.test.ts`) antes del GREEN.
+- **Verificación (este árbol):** enfocado `vitest run
+  src/presentation/components/pyme-onboarding src/application/pyme-onboarding` →
+  171/171; suite web completa → 161 archivos / 1521 tests; `rg -n "completitud"
+  apps/web/src` → sin coincidencias; `typecheck`, `lint` (0 errores; 1 warning
+  preexistente) y `boundaries` (790 módulos, 0 violaciones) limpios.

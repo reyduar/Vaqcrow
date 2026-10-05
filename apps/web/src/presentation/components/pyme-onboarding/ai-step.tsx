@@ -28,11 +28,13 @@ import { CompletenessFindings } from "./completeness-findings";
  * 2's valid submit advances — and renders the template's busy block, then the
  * risk band and the API completeness findings (Feature #402).
  *
- * The band is simulated behind `AiEvaluationPort`; the findings are real and
- * come from `CompletenessCheckPort`. Both are named in text and carry an icon,
- * never colour alone, and an incomplete result warns without blocking: the
- * human review in step 4 decides. «Corregir datos» leaves the evidence
- * untouched and returns to step 2; «Continuar» goes to step 4.
+ * The band is simulated behind `AiEvaluationPort` and carries the `SIMULADO`
+ * marker; the findings are real and deterministic, come from
+ * `CompletenessCheckPort`, and carry no marker (owner decision, 2026-10-05).
+ * Both are named in text and carry an icon, never colour alone, and an
+ * incomplete result warns without blocking: the human review in step 4 decides.
+ * «Corregir datos» leaves the evidence untouched and returns to step 2;
+ * «Continuar» goes to step 4.
  */
 
 const BAND_TONES: Readonly<Record<AiRiskBand, string>> = {
@@ -91,11 +93,6 @@ export function AiStep({
   return (
     <section aria-labelledby={titleId} className="mx-auto flex w-full max-w-[720px] flex-col gap-6">
       <div className="flex flex-col gap-2.5">
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex h-[22px] items-center rounded-pill border border-dashed border-text-secondary px-2 text-[11px] font-[650] tracking-[0.06em] text-text-secondary">
-            {AI_STEP_COPY.simulado}
-          </span>
-        </div>
         <h1
           id={titleId}
           className="m-0 text-[clamp(30px,3.6vw,40px)] leading-[1.15] font-bold tracking-[-0.025em]"
@@ -132,12 +129,17 @@ export function AiStep({
             <span className="text-[13px] font-semibold text-text-secondary">{AI_STEP_COPY.riskLabel}</span>
             <span className="text-[13px] text-text-secondary">{AI_STEP_COPY.riskSubject}</span>
           </div>
-          <span
-            className={`inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-sm font-[650] ${BAND_TONES[result.riskBand]}`}
-          >
-            <IoSpeedometerOutline aria-hidden="true" focusable="false" className="text-[16px]" />
-            {riskBandLabel(result.riskBand)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-sm font-[650] ${BAND_TONES[result.riskBand]}`}
+            >
+              <IoSpeedometerOutline aria-hidden="true" focusable="false" className="text-[16px]" />
+              {riskBandLabel(result.riskBand)}
+            </span>
+            <span className="inline-flex h-[22px] items-center rounded-pill border border-dashed border-text-secondary px-2 text-[11px] font-[650] tracking-[0.06em] text-text-secondary">
+              {AI_STEP_COPY.simulado}
+            </span>
+          </div>
         </div>
       ) : null}
 
