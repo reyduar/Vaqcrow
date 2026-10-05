@@ -46,7 +46,7 @@ Fuente: bitácora (T1a/T1b/T1c, T2, 2026-10-05) y lectura del código en `a35ef6
 ### 3.2 API — envío a revisión (T1b, `3d8553e`)
 
 - **Precondición de wallet server-side.** `submitSmeRequest` lee `readPublicKey(ownerUserId)` —el principal verificado, **nunca** el body— antes de persistir. Sin clave → `{ code: "wallet_required" }` y la ruta responde **`409 { code: "wallet_required" }`**; un fallo de lectura → `503` saneado. **Cierra el seam registrado de #406.** La clave la escribe la Feature de wallet (#406/#407); acá se prueba con un doble.
-- **Idempotencia.** Hallazgo: el RPC `submit_sme_request` **ya** es idempotente sobre `correlation_id`, pero ese id se derivaba del `request.id` del transporte (nuevo en cada request), así que un reintento del cliente creaba una segunda aplicación. Se agrega una guarda de aplicación: `SmeRequestRepositoryPort.findByOwner` (índice existente `sme_request_owner_user_id_idx`) y, antes de `submit`, se compara el pedido entrante con los ya enviados del mismo dueño (referencia, total y período). Coincidencia → se devuelve la aplicación existente con `applied: false`, sin `submit`. Un fallo de la lectura → `503` (no se arriesga un duplicado). **Sin migración.**
+- **Idempotencia.** Hallazgo: el RPC `submit_sme_request` **ya** es idempotente sobre `correlation_id`, pero ese id se derivaba del `request.id` del transporte (nuevo en cada request), así que un reintento del cliente creaba una segunda aplicación. Se agrega una guarda de aplicación: `SmeRequestRepositoryPort.findByOwner` (índice existente `sme_request_owner_user_id_idx`) y, antes de `submit`, se compara el pedido entrante con los ya enviados del mismo dueño (referencia, total y período). Coincidencia → se devuelve la aplicación existente con `applied: false`, sin `submit`. Un fallo de la lectura → `503`. **R3-1 (2026-10-05):** la misma regla dueño+contenido se movió **dentro del RPC `submit_sme_request`**, bajo `pg_advisory_xact_lock` sobre el dueño, así que dos reintentos **concurrentes** ya no crean dos aplicaciones (migración `20261005172145_atomic_submit_sme_request_owner_content.sql`, aplicada local y remota); el `findByOwner` queda como fast path secuencial. Sin constraint de datos: el lock serializa sin bloquear resubmisiones legítimas.
   - Límite conocido (§5.2): la guarda es secuencial; dos reintentos concurrentes podrían pasar ambos la lectura. Un índice único acotado por dueño+contenido sería la defensa definitiva (evaluado y diferido).
 - **Publicación del evento.** Solo cuando `submit` devuelve `applied: true` (un replay por correlación no publica) se llama `notifications.publish({ eventKey: "application:<id>:submitted", type: "admin.new_application", smeName })`. `smeName` sale de `businesses.findByOwner(ownerUserId)`; si no se resuelve (o lanza) se publica con la etiqueta neutra `"PyME"`. Todo el bloque está envuelto para que un publisher que lance **no** haga fallar el envío (best-effort). **Primer call-site de producción del puerto de #382.**
 - **Cableado:** `SmeRequestRouteDependencies` gana `wallet`, `businesses`, `notifications`; `index.ts` reutiliza una única instancia de `SupabaseWalletRepository` (la misma que usa la ruta de wallet) y quita el `void notificationPublisher` provisional.
@@ -85,11 +85,14 @@ Rama de #402, `HEAD = a35ef61`, Node `v24.21.0`. Sin stack local ni Testnet: est
 ```sh
 $ pnpm --filter @vaqcrow/api test
  Test Files  78 passed (78)
-      Tests  1810 passed (1810)
+      Tests  1812 passed (1812)
 
 $ pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4
  Test Files  161 passed (161)
-      Tests  1520 passed (1520)
+      Tests  1523 passed (1523)
+
+$ pnpm run test:db
+ Files=13, Tests=339, ...  Result: PASS   (pgTAP local; +2 por el replay dueño+contenido de R3-1)
 
 $ pnpm run lint
  Tasks:    5 successful, 5 total
@@ -106,7 +109,7 @@ $ pnpm run test:boundaries
       Tests  162 passed (162)
 ```
 
-**No re-ejecutado aquí:** `pnpm run test:db` (esta Feature **no toca ninguna migración**), la suite de integración de `apps/api` (`test:integration`, credential-gated, nunca parte de `pnpm run test`) y el recorrido Playwright. Ninguno es tocado por #402.
+**No re-ejecutado aquí:** la suite de integración de `apps/api` (`test:integration`, credential-gated, nunca parte de `pnpm run test`) y el recorrido Playwright. `pnpm run test:db` **sí** se corrió tras la migración de R3-1 (§4.1).
 
 ### 4.2 Qué cubre cada suite
 
@@ -135,7 +138,7 @@ $ pnpm run test:boundaries
 ## 5. Límites y brechas vigentes
 
 1. **Relevancia por contenido (visión) diferida (decisión 5, 2026-10-05).** El owner quiere, por sobre todo, que el chequeo detecte documentos **irrelevantes** (p. ej. una foto de Pikachu donde va la Constancia de CUIT). Queda **fuera de esta Feature** y requiere las tres cosas, registradas honestamente: (a) extender el motor de IA a **multimodal** + un **modelo con visión**; (b) que la API **lea los bytes** de los documentos (`StoragePort.downloadObject`, que hoy no existe); (c) **persistir las rutas** de los documentos del lado servidor. El chequeo actual es, por diseño, **determinista y de metadatos**.
-2. **Idempotencia secuencial.** La guarda por dueño+contenido no es atómica: dos reintentos concurrentes podrían crear dos aplicaciones (§3.2). Un índice único acotado sería la defensa definitiva; evaluado y diferido.
+2. ~~**Idempotencia secuencial.**~~ **Resuelto (R3-1, 2026-10-05):** la guarda dueño+contenido se movió al RPC bajo un advisory lock sobre el dueño, así que la idempotencia ya es **atómica** frente a reintentos concurrentes (§3.2).
 3. **Copy aprobada y marcador decidido (2026-10-05).** El copy de UI de §3.3 fue redactado por el agente (el template no diseña pantalla de faltantes) y **aprobado por el owner**: título «Información completa» y error «No pudimos revisar la información. Podés continuar igual.». El owner resolvió además que el chequeo determinista es real, así que la sección **no** lleva el marcador `SIMULADO`; éste se separó y viaja con la banda de riesgo simulada, única parte simulada del paso 3.
 4. **La banda de riesgo del paso 3 sigue simulada.** El motor real es ADMIN-only y corre sobre `/application-reviews/:id/assessments`; el wizard muestra hoy una banda simulada detrás de `AiEvaluationPort`. #402 no cablea el motor real al display del wizard.
 5. **Revisión RDD corrida y reconocida.** Los dos slices de #402 fueron **aprobados** y su autoridad **quemada** (§7). Quedan tres hallazgos **no bloqueantes** como trabajo posterior (§9); no se inventó aprobación.
@@ -166,7 +169,17 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 - **Slice API** (`997ab08` → `3d8553e`, 22 archivos / 1652 líneas), linaje `review-4eadb69e7edc06ae`. Dos hallazgos **no bloqueantes**: **R3-1** (WARNING) la guarda de idempotencia por dueño+contenido no es atómica; **R3-2** (SUGGESTION) el test del borde 1.5× no coloca un valor exactamente en el umbral.
 - **Slice web + docs** (`3d8553e` → `122f713`, 33 archivos / 1654 líneas), linaje `review-446cc780cc8e4358`. Tres hallazgos **no bloqueantes**: **R3-001** (WARNING) `parseResult` colapsa todo el sobre ante un finding fuera del vocabulario, mientras el comentario del módulo dice «dropped» (documentación y código difieren); **R3-002** (SUGGESTION) la rama `loading` de la sección no está asertada; **R3-003** (SUGGESTION) la rama de rechazo del patrón de token Bearer no está probada.
 
-Ningún hallazgo abrió una corrección ni reabre la revisión: quedan como **trabajo posterior** (§9). El transporte del reviewer devolvió vacío/rechazado en los primeros intentos de cada slice y se relanzó cuando el STATUS de la misma línea reofreció el slot.
+Ningún hallazgo abrió una corrección ni reabre la revisión. El transporte del reviewer devolvió vacío/rechazado en los primeros intentos de cada slice y se relanzó cuando el STATUS de la misma línea reofreció el slot.
+
+**Cierre de los hallazgos (2026-10-05).** Los cinco hallazgos se cerraron como trabajo posterior, con commits propios:
+
+- **R3-1** (idempotencia atómica): la regla dueño+contenido se movió al RPC `submit_sme_request` bajo `pg_advisory_xact_lock` sobre el dueño (migración `20261005172145_atomic_submit_sme_request_owner_content.sql`; pgTAP 337→339; aplicada local y remota, historial remoto reconciliado). Commit `9359a95`.
+- **R3-2** (borde 1.5×): tests de caracterización en el umbral exacto (`[100,300]` → no marca) y justo arriba (`[100,301]` → marca); la regla de producción ya usaba `>` estricto, así que fue cobertura, no cambio. Commit `e3669ae`.
+- **R3-001** (doc/código): se mantuvo el comportamiento **fail-closed** y se alinearon el comentario del módulo y el nombre del test a que el **sobre entero** colapsa a `unavailable`; el test ahora alimenta `[finding válido, finding malo]` para distinguir «colapsa» de «descarta». Commit `be498f5`.
+- **R3-002** (rama `loading`): test que retiene el chequeo con `holdNextCheck`, aserta «Revisando faltantes y anomalías…» y luego el estado resuelto. Commit `53d6e9a`.
+- **R3-003** (token Bearer): test que prueba que un token malformado (con espacio/CR-LF) **no** agrega `Authorization`, y el request igual sale con headers vacíos. Commit `53d6e9a`.
+
+Tras el cierre: API `1812`, web `1523`, pgTAP `339`, typecheck/lint/boundaries limpios. Los tests R3-2/R3-002/R3-003 son de **caracterización** (el comportamiento ya existía); el RED real de esta ronda fue el pgTAP de R3-1.
 
 ## 8. Mapeo de criterios de aceptación
 
@@ -183,11 +196,12 @@ Ningún hallazgo abrió una corrección ni reabre la revisión: quedan como **tr
 ## 9. Riesgos, contradicciones y limitaciones aceptadas
 
 - **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el cierre de #403/#404/#405 y de #402 lo decide el owner. Ninguno está en `main`.
-- **Revisión RDD corrida; hallazgos no bloqueantes como trabajo posterior.** Los dos slices quedaron aprobados (§7). Los hallazgos R3-1 / R3-2 / R3-001 / R3-002 / R3-003 no bloquean la entrega y quedan para después. La verificación de este documento es la re-ejecución de §4.1.
+- **Revisión RDD corrida; hallazgos cerrados.** Los dos slices quedaron aprobados (§7) y los cinco hallazgos no bloqueantes (R3-1 / R3-2 / R3-001 / R3-002 / R3-003) se **cerraron** como trabajo posterior el 2026-10-05 (§7). La verificación de este documento es la re-ejecución de §4.1.
 - **Criterio 1 medido en dos mitades.** La completitud es nueva; el riesgo es el motor pre-existente. No es un olvido: es el alcance decidido (§3.5).
 - **Visión de documentos diferida.** El chequeo no detecta todavía documentos irrelevantes por contenido (§5.1); es la brecha más visible para el owner.
 - **Copy aprobada; marcador separado.** §5.3 quedó aprobado por el owner (2026-10-05); el marcador `SIMULADO` se retiró de la sección de completitud y viaja con la banda de riesgo simulada.
-- **Idempotencia no atómica.** §5.2.
+- **Idempotencia atómica.** Resuelta por R3-1 (§3.2, §5.2).
+- **Deriva de historial remoto (pre-existente).** Seis migraciones tempranas (previas a `20260923183356_create_campaign_persistence`) no coinciden fila a fila entre el repo y el remoto; es anterior a #402, no se reescribió, y queda como reconciliación acotada a decidir por el owner.
 
 ## 10. Estado de entrega y próximos pasos
 
@@ -196,7 +210,7 @@ Ningún hallazgo abrió una corrección ni reabre la revisión: quedan como **tr
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402
 > 1. ✅ **Resuelto (2026-10-05).** Copy de UI de §3.3 aprobado por el owner (título «Información completa», error «No pudimos revisar la información. Podés continuar igual.») y etiqueta `SIMULADO` **retirada** de la sección de completitud; la banda de riesgo simulada la conserva (§5.3).
-> 2. ✅ **Resuelto (2026-10-05).** Revisión RDD de #402 corrida en dos slices (`review-4eadb69e7edc06ae`, `review-446cc780cc8e4358`) y **reconocida**; ambos aprobados (§7).
+> 2. ✅ **Resuelto (2026-10-05).** Revisión RDD de #402 corrida en dos slices (`review-4eadb69e7edc06ae`, `review-446cc780cc8e4358`) y **reconocida**; ambos aprobados (§7). Los cinco hallazgos no bloqueantes quedaron **cerrados** (§7).
 > 3. Decidir y planificar el chequeo de **relevancia por contenido (visión)** con sus tres bloqueos (§5.1).
 > 4. Evaluar la defensa atómica de idempotencia si la concurrencia importa (§5.2).
 > 5. Confirmar el primer envío real por Resend de la notificación `admin.new_application` cuando la pila llegue a la demo.

@@ -250,3 +250,37 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
   171/171; suite web completa → 161 archivos / 1521 tests; `rg -n "completitud"
   apps/web/src` → sin coincidencias; `typecheck`, `lint` (0 errores; 1 warning
   preexistente) y `boundaries` (790 módulos, 0 violaciones) limpios.
+
+### Revisión RDD y cierre de los 5 hallazgos (2026-10-05)
+
+**Revisión.** Corrida en **dos slices** porque el candidato entero (52 archivos /
+3282 líneas) excedía el presupuesto del reviewer (`lens_context_budget_exceeded`,
+sin autoridad creada): API `997ab08`→`3d8553e` (linaje `review-4eadb69e7edc06ae`)
+y web+docs `3d8553e`→`122f713` (linaje `review-446cc780cc8e4358`), ambos con la
+lente `review-reliability`, **aprobados** y su autoridad **quemada**
+(`review-acknowledged/v1`). El transporte del reviewer falló al principio
+(`task_output_empty` / `result_refused`) y se relanzó cuando el STATUS de la
+misma línea reofreció el slot.
+
+**Cierre de los cinco hallazgos no bloqueantes:**
+
+- **R3-1** — idempotencia atómica: la regla dueño+contenido se movió al RPC
+  `submit_sme_request` bajo `pg_advisory_xact_lock` sobre el dueño (sin
+  constraint de datos). Migración
+  `20261005172145_atomic_submit_sme_request_owner_content.sql`; pgTAP 337→339;
+  aplicada local y remota, historial remoto reconciliado. Commit `9359a95`.
+- **R3-2** — borde 1.5×: tests en el umbral exacto (`[100,300]` → no marca) y
+  justo arriba (`[100,301]` → marca); la regla ya usaba `>` estricto, así que es
+  cobertura de caracterización. Commit `e3669ae`.
+- **R3-001** — doc/código: se mantuvo **fail-closed** y se alinearon comentario y
+  nombre del test a que el sobre entero colapsa a `unavailable`; el test ahora
+  distingue «colapsa» de «descarta». Commit `be498f5`.
+- **R3-002** — rama `loading`: test con `holdNextCheck` que aserta la copia de
+  carga y luego el estado resuelto. Commit `53d6e9a`.
+- **R3-003** — token Bearer: test de que un token malformado (espacio/CR-LF) no
+  agrega `Authorization`. Commit `53d6e9a`.
+
+**Verificación tras el cierre:** API `1812`, web `1523`, pgTAP `339`,
+`typecheck`/`lint`/`boundaries` limpios. Hallazgo lateral registrado: **deriva
+pre-existente** de seis migraciones tempranas entre repo y remoto (anterior a
+#402, no reescrita) — reconciliación acotada a decidir por el owner.
