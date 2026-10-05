@@ -30,8 +30,8 @@ import { useNotifications } from "@/state/use-notifications";
  *
  * The template designs no load-failure state; when `loadFailed` is set the bell
  * announces `Notificaciones no disponibles` and the modal says
- * `No pudimos cargar tus notificaciones.` (owner-pending copy, see the inline
- * comment), so a failed load never masquerades as a genuinely empty inbox.
+ * `No pudimos cargar tus notificaciones.` (owner-approved copy, 2026-10-05), so
+ * a failed load never masquerades as a genuinely empty inbox.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -76,8 +76,8 @@ export function NotificationBell({ port }: NotificationBellProps = {}) {
   const [resolvedPort] = useState<NotificationPort>(() => port ?? createBrowserNotificationPort());
   const { notifications, unread, markRead, markAllRead, loadFailed } = useNotifications(resolvedPort);
 
-  // Newly drafted copy: the template designs no failure state, so these two
-  // strings are owner-pending and confined to this branch (no other state is
+  // Owner-approved failure copy (2026-10-05): the template designs no failure
+  // state, so these two strings are confined to this branch (no other state is
   // invented here).
   const bellLabel = loadFailed ? "Notificaciones no disponibles" : `Notificaciones, ${unread} sin leer`;
 
