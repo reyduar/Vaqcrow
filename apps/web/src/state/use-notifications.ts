@@ -38,9 +38,14 @@ class NotificationError extends Error {
 
 async function load(port: NotificationPort): Promise<NotificationsState> {
   const [list, count] = await Promise.all([port.list(), port.countUnread()]);
+  // A list failure is the real load failure: nothing can be shown honestly.
   if (!list.ok) throw new NotificationError(list.code);
-  if (!count.ok) throw new NotificationError(count.code);
-  return { notifications: [...list.notifications], unread: count.unread };
+  // A count failure is tolerated: keep the list the port did return and derive
+  // the badge from the items, so the bell shows the inbox instead of discarding
+  // it over a secondary request.
+  const notifications = [...list.notifications];
+  const unread = count.ok ? count.unread : notifications.filter((item) => item.readAt === null).length;
+  return { notifications, unread };
 }
 
 /** Marks one item read, decrementing the badge only when it was unread. */

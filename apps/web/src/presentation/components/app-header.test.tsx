@@ -23,7 +23,9 @@ async function renderHeader(role: PrincipalRole | null, path = "/") {
   pathname.current = path;
   // The header mounts the notification bell for PYME/INVERSOR. With no API base
   // URL its default port is the null object, so these tests never touch the
-  // network; the stub pins that regardless of the shell environment.
+  // network; the stub pins that regardless of the shell environment. That port
+  // answers `unavailable`, so the bell surfaces the load failure (#382 finding
+  // g) rather than pretending the inbox is empty.
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
   const fake = new FakeAuthSession();
   if (role) {
@@ -138,7 +140,7 @@ describe("AppHeader INVERSOR", () => {
     expect(within(nav).getByRole("link", { name: "Mi portafolio" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Explorar PyMEs" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("link", { name: "Ingresar" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Notificaciones, 0 sin leer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificaciones no disponibles" })).toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
   });
 
@@ -237,7 +239,7 @@ describe("AppHeader PYME", () => {
     expect(
       within(screen.getByRole("navigation", { name: "Principal" })).getByRole("link", { name: "Mi campaña" })
     ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: "Notificaciones, 0 sin leer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificaciones no disponibles" })).toBeInTheDocument();
 
     const menu = openMenu("PYME");
     expect(within(menu).getByText("PYME")).toBeInTheDocument();

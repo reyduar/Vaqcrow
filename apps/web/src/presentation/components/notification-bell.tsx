@@ -27,6 +27,11 @@ import { useNotifications } from "@/state/use-notifications";
  * The per-row icon is the generic notifications glyph: the API contract carries
  * no icon field, and the template's four Admin icons do not cover the other
  * roles' events, so inventing a mapping is avoided.
+ *
+ * The template designs no load-failure state; when `loadFailed` is set the bell
+ * announces `Notificaciones no disponibles` and the modal says
+ * `No pudimos cargar tus notificaciones.` (owner-pending copy, see the inline
+ * comment), so a failed load never masquerades as a genuinely empty inbox.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -69,7 +74,12 @@ export interface NotificationBellProps {
 
 export function NotificationBell({ port }: NotificationBellProps = {}) {
   const [resolvedPort] = useState<NotificationPort>(() => port ?? createBrowserNotificationPort());
-  const { notifications, unread, markRead, markAllRead } = useNotifications(resolvedPort);
+  const { notifications, unread, markRead, markAllRead, loadFailed } = useNotifications(resolvedPort);
+
+  // Newly drafted copy: the template designs no failure state, so these two
+  // strings are owner-pending and confined to this branch (no other state is
+  // invented here).
+  const bellLabel = loadFailed ? "Notificaciones no disponibles" : `Notificaciones, ${unread} sin leer`;
 
   const [isOpen, setIsOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -105,7 +115,7 @@ export function NotificationBell({ port }: NotificationBellProps = {}) {
       <button
         ref={bellRef}
         type="button"
-        aria-label={`Notificaciones, ${unread} sin leer`}
+        aria-label={bellLabel}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         onClick={() => setIsOpen(true)}
@@ -139,7 +149,13 @@ export function NotificationBell({ port }: NotificationBellProps = {}) {
                 <h2 id={titleId} className="m-0 text-xl font-bold text-text-primary">
                   Notificaciones
                 </h2>
-                <div className="text-[13px] text-text-secondary">{unread > 0 ? `${unread} sin leer` : "Todo leído"}</div>
+                <div className="text-[13px] text-text-secondary">
+                  {loadFailed
+                    ? "No pudimos cargar tus notificaciones."
+                    : unread > 0
+                      ? `${unread} sin leer`
+                      : "Todo leído"}
+                </div>
               </div>
               <button
                 ref={closeRef}

@@ -1,7 +1,23 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 import type { NotificationItem, NotificationPort } from "@/application/ports/notification-port";
 import { NotificationBell } from "./notification-bell";
+
+/**
+ * A fresh SWR provider per render keeps each case on its own cache; without it
+ * the module-level cache carries a successful `notifications` result into later
+ * cases, so a failing port would never be fetched.
+ */
+const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
+
+function renderIsolated(port: NotificationPort) {
+  return render(
+    <SWRConfig value={SWR_ISOLATED}>
+      <NotificationBell port={port} />
+    </SWRConfig>
+  );
+}
 
 function todayAt(hours: number, minutes: number): string {
   const date = new Date();
@@ -46,7 +62,7 @@ function fakePort(notifications: readonly NotificationItem[] = [UNREAD, READ]) {
 }
 
 async function renderBell(port: NotificationPort) {
-  const view = render(<NotificationBell port={port} />);
+  const view = renderIsolated(port);
   const bell = await screen.findByRole("button", { name: /^Notificaciones, \d+ sin leer$/ });
   return { view, bell };
 }
@@ -151,5 +167,25 @@ describe("NotificationBell", () => {
     const dialog = screen.getByRole("dialog", { name: "Notificaciones" });
     expect(within(dialog).getByText("Todo leído")).toBeInTheDocument();
     expect(within(dialog).queryByText("NUEVA")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the load failure instead of claiming an empty inbox", async () => {
+    const port: NotificationPort = {
+      list: vi.fn().mockResolvedValue({ ok: false, code: "network" }),
+      countUnread: vi.fn().mockResolvedValue({ ok: true, unread: 0 }),
+      markRead: vi.fn().mockResolvedValue({ ok: false, code: "unavailable" }),
+      markAllRead: vi.fn().mockResolvedValue({ ok: false, code: "unavailable" })
+    };
+
+    renderIsolated(port);
+
+    const bell = await screen.findByRole("button", { name: "Notificaciones no disponibles" });
+    expect(bell).not.toHaveAttribute("aria-label", "Notificaciones, 0 sin leer");
+
+    fireEvent.click(bell);
+    const dialog = screen.getByRole("dialog", { name: "Notificaciones" });
+    expect(within(dialog).getByText("No pudimos cargar tus notificaciones.")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Todo leído")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/\d+ sin leer/)).not.toBeInTheDocument();
   });
 });

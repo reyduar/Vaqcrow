@@ -132,4 +132,19 @@ describe("useNotifications", () => {
     expect(result.current.notifications).toEqual([]);
     expect(result.current.unread).toBe(0);
   });
+
+  it("keeps the list and derives the unread count when only the count fails", async () => {
+    const port: NotificationPort = {
+      list: vi.fn().mockResolvedValue({ ok: true, notifications: [item(), READ_ITEM] }),
+      countUnread: vi.fn().mockResolvedValue({ ok: false, code: "network" }),
+      markRead: vi.fn().mockResolvedValue({ ok: true }),
+      markAllRead: vi.fn().mockResolvedValue({ ok: true, updated: 0 })
+    };
+
+    const { result } = renderHook(() => useNotifications(port), { wrapper });
+
+    await waitFor(() => expect(result.current.notifications).toHaveLength(2));
+    expect(result.current.unread).toBe(1);
+    expect(result.current.loadFailed).toBe(false);
+  });
 });
