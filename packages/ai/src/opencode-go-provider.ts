@@ -145,8 +145,8 @@ export function createOpenCodeGoProvider(
   };
 }
 
-/** Reads `choices[0].message.content`, or `undefined` if the shape is not there. */
-function readMessageContent(payload: unknown): string | undefined {
+/** Reads `choices[0].message.content`, or `undefined` if the shape is not there. Exported so the vision adapter reuses the same dialect reader. */
+export function readMessageContent(payload: unknown): string | undefined {
   if (typeof payload !== "object" || payload === null) {
     return undefined;
   }
@@ -165,7 +165,8 @@ function readMessageContent(payload: unknown): string | undefined {
   return typeof content === "string" ? content : undefined;
 }
 
-function isTimeout(error: unknown): boolean {
+/** Exported so the vision adapter maps a transport abort to `timeout` identically. */
+export function isTimeout(error: unknown): boolean {
   const name = (error as { name?: unknown } | null)?.name;
   return name === "TimeoutError" || name === "AbortError";
 }

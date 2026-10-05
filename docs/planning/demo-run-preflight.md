@@ -39,7 +39,7 @@ El perfil que corre la demo real es `.env.cloud` (API en Railway, web en Vercel;
 
 | Grupo | Nombres | Dónde vive |
 |---|---|---|
-| Perfil local (`.env.cloud`) | `APP_ENV`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `STELLAR_NETWORK` | En el archivo local del repositorio (valores no secretos) |
+| Perfil local (`.env.cloud`) | `APP_ENV`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_VISION_MODEL`, `LLM_API_KEY`, `STELLAR_NETWORK` | En el archivo local del repositorio (valores no secretos) |
 | Servicio hosteado de la API (Railway) | `STELLAR_CAMPAIGN_FACTORY_ID` + `STELLAR_PLATFORM_SECRET_KEY` (estas dos **como par**: sin ambas no se registran las rutas de campaña) y `CORS_ALLOWED_ORIGINS` (debe incluir el origen de Vercel) | Variables del servicio en Railway; el repositorio nunca guarda el secreto |
 | Host de la web (Vercel) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (las dos de Supabase sostienen la sesión real de la web desde la Task #379; la clave es la publicable, nunca la `service_role`) | Variables del proyecto en Vercel (sólo `production`, por decisión §5.2 de la evidencia). El chequeo `env-web` exige las tres |
 | **Opcionales** con default canónico | `STELLAR_HORIZON_URL` y `STELLAR_RPC_URL` | Si faltan, tanto la API como el preflight usan los endpoints canónicos de Testnet (`https://horizon-testnet.stellar.org` y `https://soroban-testnet.stellar.org`) |

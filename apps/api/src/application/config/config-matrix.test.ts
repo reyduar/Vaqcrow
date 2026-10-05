@@ -45,6 +45,7 @@ const REQUIRED_KEYS = [
   "STELLAR_NETWORK",
   "LLM_PROVIDER",
   "LLM_MODEL",
+  "LLM_VISION_MODEL",
   "LLM_API_KEY"
 ];
 
@@ -56,6 +57,7 @@ const VALID_ENV: EnvSource = {
   STELLAR_NETWORK: "testnet",
   LLM_PROVIDER: "opencode-go",
   LLM_MODEL: "deepseek-v4-pro",
+  LLM_VISION_MODEL: "deepseek-v4-flash-vision-exp",
   LLM_API_KEY: LLM_API_KEY_SENTINEL
 };
 
@@ -592,6 +594,7 @@ describe("determinism and purity", () => {
       APP_ENV: "local",
       LLM_API_KEY: LLM_API_KEY_SENTINEL,
       LLM_MODEL: "deepseek-v4-pro",
+      LLM_VISION_MODEL: "deepseek-v4-flash-vision-exp",
       LLM_PROVIDER: "opencode-go"
     });
 

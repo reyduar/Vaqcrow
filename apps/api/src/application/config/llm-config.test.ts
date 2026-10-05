@@ -23,10 +23,11 @@ const API_KEY_SENTINEL = "llm-key-sentinel-7b2e";
 const VALID_ENV: EnvSource = {
   LLM_PROVIDER: "opencode-go",
   LLM_MODEL: "deepseek-v4-pro",
+  LLM_VISION_MODEL: "deepseek-v4-flash-vision-exp",
   LLM_API_KEY: API_KEY_SENTINEL
 };
 
-const REQUIRED_KEYS = ["LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY"];
+const REQUIRED_KEYS = ["LLM_PROVIDER", "LLM_MODEL", "LLM_VISION_MODEL", "LLM_API_KEY"];
 
 function without(key: string): EnvSource {
   const clone: Record<string, string | undefined> = { ...VALID_ENV };
@@ -87,7 +88,12 @@ describe("required keys", () => {
   it("reports every missing key at once rather than one per run", () => {
     const issues = issuesFrom({});
 
-    expect(issues.map((issue) => issue.key)).toEqual(["LLM_PROVIDER", "LLM_MODEL", "LLM_API_KEY"]);
+    expect(issues.map((issue) => issue.key)).toEqual([
+      "LLM_PROVIDER",
+      "LLM_MODEL",
+      "LLM_VISION_MODEL",
+      "LLM_API_KEY"
+    ]);
   });
 });
 
@@ -138,6 +144,42 @@ describe("the model has no default", () => {
       expect(parseLlmConfig({ ...VALID_ENV, LLM_MODEL: value }).model).toBe(value);
     }
   );
+});
+
+describe("the vision model has no default", () => {
+  it("requires a vision model rather than falling back to the text model", () => {
+    expect(issuesFrom(without("LLM_VISION_MODEL"))).toEqual([
+      { key: "LLM_VISION_MODEL", code: "missing", detail: "required but not set" }
+    ]);
+  });
+
+  it("exposes the configured vision model, separate from the text model", () => {
+    const config = parseLlmConfig(VALID_ENV);
+
+    expect(config.model).toBe("deepseek-v4-pro");
+    expect(config.visionModel).toBe("deepseek-v4-flash-vision-exp");
+  });
+
+  it("explains the OpenCode config prefix instead of accepting it", () => {
+    const issue = expectSingleIssue(
+      { ...VALID_ENV, LLM_VISION_MODEL: "opencode-go/deepseek-v4-flash-vision-exp" },
+      "LLM_VISION_MODEL",
+      "invalid"
+    );
+
+    expect(issue.detail).toContain("bare model id");
+  });
+
+  it.each(["DeepSeek-V4-Flash-Vision-Exp", "deepseek v4", "-vision", "a".repeat(65)])(
+    "rejects the malformed vision model id %s",
+    (value) => {
+      expectSingleIssue({ ...VALID_ENV, LLM_VISION_MODEL: value }, "LLM_VISION_MODEL", "invalid");
+    }
+  );
+
+  it("accepts the documented vision model id shape", () => {
+    expect(parseLlmConfig(VALID_ENV).visionModel).toBe("deepseek-v4-flash-vision-exp");
+  });
 });
 
 describe("base URL", () => {

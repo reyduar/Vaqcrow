@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createOpenCodeGoProvider } from "@vaqcrow/ai";
+import { createOpenCodeGoProvider, createOpenCodeGoVisionProvider } from "@vaqcrow/ai";
 import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
@@ -131,6 +131,24 @@ const assessmentProvider = createOpenCodeGoProvider({
   apiKey: config.llm.apiKey.reveal(),
   timeoutMs: config.llm.timeoutMs
 });
+
+/**
+ * The content-relevance vision engine (Feature #402, U3). Constructed here but
+ * not consumed by any route yet: the content-aware completeness check (U5) is
+ * the first caller, and it resolves documents, rasterizes PDFs and calls this
+ * provider. Wiring it now proves the composition root holds a vision provider
+ * without changing the deterministic check that runs today.
+ *
+ * `void` keeps the placeholder honest — it is deliberately unconsumed — the
+ * same convention `auditLog` used before its callers landed.
+ */
+const visionProvider = createOpenCodeGoVisionProvider({
+  baseUrl: config.llm.baseUrl,
+  model: config.llm.visionModel,
+  apiKey: config.llm.apiKey.reveal(),
+  timeoutMs: config.llm.timeoutMs
+});
+void visionProvider; // first consumer arrives with U5
 
 // Identity and audit (Task #370). The audit log is wired here so its first
 // callers (#410, #390) only have to consume the port; no route appends yet.

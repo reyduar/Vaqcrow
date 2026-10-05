@@ -43,6 +43,7 @@ const env = {
   SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
   LLM_PROVIDER: "openai",
   LLM_MODEL: "model",
+  LLM_VISION_MODEL: "vision-model",
   LLM_API_KEY: LLM_KEY,
   STELLAR_NETWORK: "testnet",
   STELLAR_HORIZON_URL: HORIZON,
@@ -209,6 +210,10 @@ describe("demo preflight: environment names", () => {
   it("keeps the optional Stellar endpoints out of the required-name list", () => {
     expect(REQUIRED_API_ENV).not.toContain("STELLAR_HORIZON_URL");
     expect(REQUIRED_API_ENV).not.toContain("STELLAR_RPC_URL");
+  });
+
+  it("mirrors the API's required vision model: it is a journey-critical name", () => {
+    expect(REQUIRED_API_ENV).toContain("LLM_VISION_MODEL");
   });
 
   it("exports the canonical Testnet endpoints mirrored from the API config", () => {

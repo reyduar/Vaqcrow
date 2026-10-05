@@ -32,6 +32,7 @@ const VALID_ENV: EnvSource = {
   STELLAR_NETWORK: "testnet",
   LLM_PROVIDER: "opencode-go",
   LLM_MODEL: "deepseek-v4-pro",
+  LLM_VISION_MODEL: "deepseek-v4-flash-vision-exp",
   LLM_API_KEY: "llm-key-fixture"
 };
 
@@ -65,6 +66,9 @@ describe("parseApiConfig — accepted configuration", () => {
     expect(config.stellar.network).toBe("testnet");
     expect(config.stellar.horizonUrl).toBe("https://horizon-testnet.stellar.org");
     expect(config.stellar.networkPassphrase).toBe(STELLAR_TESTNET_NETWORK_PASSPHRASE);
+    // The LLM slice requires both models, with no fallback between them.
+    expect(config.llm.model).toBe("deepseek-v4-pro");
+    expect(config.llm.visionModel).toBe("deepseek-v4-flash-vision-exp");
     // The email slice is optional: absent a Resend key it is disabled, but its
     // sender and deep-link base still resolve to their documented defaults.
     expect(config.email.enabled).toBe(false);
@@ -175,13 +179,14 @@ describe("parseApiConfig — missing configuration fails clearly", () => {
         "SUPABASE_URL",
         "LLM_API_KEY",
         "LLM_MODEL",
+        "LLM_VISION_MODEL",
         "LLM_PROVIDER"
       ].sort()
     );
     expect(issues.every((issue) => issue.code === "missing")).toBe(true);
     // Email is an optional slice: an absent Resend key must not be a boot failure.
     expect(issues.map((issue) => issue.key)).not.toContain("RESEND_API_KEY");
-    expect((error as ConfigurationError).message).toContain("Invalid API configuration (7 issues)");
+    expect((error as ConfigurationError).message).toContain("Invalid API configuration (8 issues)");
   });
 
   it("treats a blank value as absent", () => {

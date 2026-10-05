@@ -52,3 +52,24 @@ export type { AssessmentMessage } from "./assessment-prompt.js";
 
 export { createOpenCodeGoProvider, REASONING_EFFORTS } from "./opencode-go-provider.js";
 export type { OpenCodeGoProviderOptions, ReasoningEffort } from "./opencode-go-provider.js";
+
+export { parseVisionRelevance, visionRelevanceSchema } from "./vision-relevance.js";
+export type { VisionRelevance } from "./vision-relevance.js";
+
+export { VISION_KINDS, visionMetadataSchema } from "./vision-provider-port.js";
+export type {
+  VisionKind,
+  VisionMetadata,
+  VisionOutcome,
+  VisionProviderFailure,
+  VisionProviderPort
+} from "./vision-provider-port.js";
+
+export {
+  VISION_PROMPT_VERSION,
+  VISION_SYSTEM_PROMPT,
+  buildVisionQuestion
+} from "./vision-prompt.js";
+
+export { createOpenCodeGoVisionProvider } from "./opencode-go-vision-provider.js";
+export type { OpenCodeGoVisionProviderOptions } from "./opencode-go-vision-provider.js";
