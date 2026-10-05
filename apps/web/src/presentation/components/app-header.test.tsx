@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import { SessionStoreProvider } from "@/state/session-store-provider";
 import { FakeAuthSession } from "@/test/fake-auth-session";
@@ -21,6 +21,10 @@ const NAMES: Record<PrincipalRole, string> = {
 
 async function renderHeader(role: PrincipalRole | null, path = "/") {
   pathname.current = path;
+  // The header mounts the notification bell for PYME/INVERSOR. With no API base
+  // URL its default port is the null object, so these tests never touch the
+  // network; the stub pins that regardless of the shell environment.
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
   const fake = new FakeAuthSession();
   if (role) {
     fake.seedAccount({ email: EMAIL, password: PASSWORD, role, displayName: NAMES[role] });
@@ -58,6 +62,10 @@ beforeEach(() => {
   push.mockReset();
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("AppHeader signed out", () => {
   it("shows the public nav, the badges, the theme switcher and the auth actions", async () => {
     const { view } = await renderHeader(null);
@@ -76,6 +84,7 @@ describe("AppHeader signed out", () => {
     expect(screen.getByText("TESTNET", { exact: true })).toBeInTheDocument();
     expect(screen.queryByText("TESTNET · Activos sin valor económico")).not.toBeInTheDocument();
     expect(within(screen.getByRole("group", { name: "Tema" })).getAllByRole("button")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /^Notificaciones,/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Menú de cuenta/ })).not.toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
   });
@@ -129,6 +138,7 @@ describe("AppHeader INVERSOR", () => {
     expect(within(nav).getByRole("link", { name: "Mi portafolio" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Explorar PyMEs" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("link", { name: "Ingresar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificaciones, 0 sin leer" })).toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
   });
 
@@ -227,6 +237,7 @@ describe("AppHeader PYME", () => {
     expect(
       within(screen.getByRole("navigation", { name: "Principal" })).getByRole("link", { name: "Mi campaña" })
     ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Notificaciones, 0 sin leer" })).toBeInTheDocument();
 
     const menu = openMenu("PYME");
     expect(within(menu).getByText("PYME")).toBeInTheDocument();
@@ -249,6 +260,8 @@ describe("AppHeader ADMIN", () => {
     const { view } = await renderHeader("ADMIN");
     const menu = openMenu("ADMIN");
     expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Cerrar sesión"]);
+    // The bell is a PYME/INVERSOR surface; the Admin console (#386) is its home.
+    expect(screen.queryByRole("button", { name: /^Notificaciones,/ })).not.toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
   });
 });

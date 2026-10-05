@@ -28,6 +28,7 @@ import {
 import { useSession, useSessionStoreApi } from "@/state/session-store-provider";
 import { AccountMenu, type AccountMenuItem } from "./account-menu";
 import { DemoNavbar } from "./demo-navbar";
+import { NotificationBell } from "./notification-bell";
 import { ThemeSwitcher } from "./theme-switcher";
 
 const MENU_ICONS: Readonly<Record<ShellMenuIcon, IconType>> = {
@@ -69,6 +70,10 @@ export function AppHeader() {
   const principal = useSession((state) => state.principal);
   const view = shellViewFor(principal?.role ?? null);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  // The bell is a PYME/INVERSOR surface: ADMIN's entry is the console (#386)
+  // and a signed-out visitor has no notifications.
+  const showNotifications =
+    status === "signed-in" && (principal?.role === "PYME" || principal?.role === "INVERSOR");
 
   const items = view.nav.map((link) => ({
     label: link.label,
@@ -132,6 +137,7 @@ export function AppHeader() {
       singleLineNav
       actions={
         <>
+          {showNotifications ? <NotificationBell /> : null}
           <ThemeSwitcher />
           {account}
         </>
