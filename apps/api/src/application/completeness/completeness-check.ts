@@ -3,12 +3,16 @@ import type { DocumentKind } from "../storage/document-upload.js";
 /**
  * The application completeness check (Feature #402, Task #403 / T1a).
  *
- * Scoped by the owner on 2026-10-05 to **declared data and document presence**,
- * not document content: the wizard already collects the three mandatory
- * documents, up to four photos and the eight-month sales series, so the check
- * is a pure function of that metadata. Vision (reading the bytes to detect an
- * irrelevant document) is deferred; nothing here touches storage, the model or
- * the network.
+ * This module is the **pure, deterministic half**: the three mandatory
+ * documents, the photo count and the eight-month sales series, as a function of
+ * declared metadata. It stays side-effect free (no clock, no randomness, no I/O)
+ * and is the reference the content-aware checker composes.
+ *
+ * The **content pass** — reading the persisted bytes through vision to detect an
+ * irrelevant document — is a separate implementation of `CompletenessCheckPort`
+ * (`infrastructure/adapters/content-aware-completeness-check-adapter.ts`), which
+ * calls `checkCompleteness` first and appends its own findings. The finding
+ * vocabulary below is shared by both, so the wire shape cannot drift.
  *
  * The result is advisory: gaps *warn*, they never block. The PyME sees the
  * findings in wizard step 3 and the human reviewer decides.
@@ -26,12 +30,20 @@ export const COMPLETENESS_DOCUMENT_KINDS: readonly CompletenessDocumentKind[] = 
   "articles-of-incorporation"
 ]);
 
-/** The Spanish label each missing document is named by, interface voice. */
+/** Spanish label for every uploadable slot, photos included (D7), used by content findings. */
+export const COMPLETENESS_CONTENT_LABELS: Readonly<Record<DocumentKind, string>> = Object.freeze({
+  "sales-declarations": "Declaraciones de ventas",
+  cuit: "Constancia de CUIT",
+  "articles-of-incorporation": "Estatuto",
+  photo: "Foto del negocio"
+});
+
+/** The three mandatory slots' labels, as a missing-document finding names them. */
 export const COMPLETENESS_DOCUMENT_LABELS: Readonly<Record<CompletenessDocumentKind, string>> =
   Object.freeze({
-    "sales-declarations": "Declaraciones de ventas",
-    cuit: "Constancia de CUIT",
-    "articles-of-incorporation": "Estatuto"
+    "sales-declarations": COMPLETENESS_CONTENT_LABELS["sales-declarations"],
+    cuit: COMPLETENESS_CONTENT_LABELS.cuit,
+    "articles-of-incorporation": COMPLETENESS_CONTENT_LABELS["articles-of-incorporation"]
   });
 
 export interface CompletenessDocument {
@@ -54,7 +66,9 @@ export type CompletenessFindingCode =
   | "missing_document"
   | "insufficient_photos"
   | "missing_sales_month"
-  | "sales_anomaly";
+  | "sales_anomaly"
+  | "content_irrelevant"
+  | "content_unverified";
 
 /**
  * `gap` is a blocking-for-completeness finding (the human still decides whether

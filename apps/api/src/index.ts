@@ -21,7 +21,8 @@ import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-b
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
-import { createDeterministicCompletenessCheckAdapter } from "./infrastructure/adapters/deterministic-completeness-check-adapter.js";
+import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
+import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -133,14 +134,13 @@ const assessmentProvider = createOpenCodeGoProvider({
 });
 
 /**
- * The content-relevance vision engine (Feature #402, U3). Constructed here but
- * not consumed by any route yet: the content-aware completeness check (U5) is
- * the first caller, and it resolves documents, rasterizes PDFs and calls this
- * provider. Wiring it now proves the composition root holds a vision provider
- * without changing the deterministic check that runs today.
- *
- * `void` keeps the placeholder honest — it is deliberately unconsumed — the
- * same convention `auditLog` used before its callers landed.
+ * The content-relevance vision engine (Feature #402, U3) and the completeness
+ * check it now powers (U5). The checker composes the pure declared-data rules
+ * with a content pass: it resolves the owner's persisted `pyme_document` rows,
+ * reads the bytes, rasterizes a PDF's first page and asks the vision provider
+ * whether the image is the document it claims to be. An irrelevant document is a
+ * `gap` that warns but never blocks; a failure to judge one is an honest
+ * `warning`, never a silent pass.
  */
 const visionProvider = createOpenCodeGoVisionProvider({
   baseUrl: config.llm.baseUrl,
@@ -148,7 +148,6 @@ const visionProvider = createOpenCodeGoVisionProvider({
   apiKey: config.llm.apiKey.reveal(),
   timeoutMs: config.llm.timeoutMs
 });
-void visionProvider; // first consumer arrives with U5
 
 // Identity and audit (Task #370). The audit log is wired here so its first
 // callers (#410, #390) only have to consume the port; no route appends yet.
@@ -167,9 +166,21 @@ const notificationPublisher = new NotificationPublisher({
   appBaseUrl: config.email.appBaseUrl
 });
 
-// The completeness check (#402/T1a): deterministic and declared-data only — the
-// owner deferred content/vision reading, so no model or storage read is wired.
-const completenessCheck = createDeterministicCompletenessCheckAdapter();
+// The persistence + storage bindings the upload route and the content-aware
+// check share: each object is written once and read back through the same
+// service_role client.
+const storageAdapter = new SupabaseStorageAdapter(supabase);
+const pymeDocumentRepository = new SupabasePymeDocumentRepository(supabase);
+
+// The completeness check (#402/T1a, extended by U5): the declared rules run
+// first, then the persisted documents are read and judged. Gaps warn, they never
+// block the send.
+const completenessCheck = createContentAwareCompletenessCheckAdapter({
+  documents: pymeDocumentRepository,
+  storage: storageAdapter,
+  rasterizer: createPdfiumPdfRasterizerAdapter(),
+  vision: visionProvider
+});
 
 const app = buildApp({
   auth,
@@ -201,7 +212,8 @@ const app = buildApp({
   business: { repository: businessRepository },
   // The in-app notification bell (#382/T1c): the signed-in user's own rows.
   notification: { repository: notificationRepository },
-  // The completeness check (#402/T1a): gaps warn, they never block the send.
+  // The completeness check (#402/T1a, U5): declared gaps and content findings
+  // warn, they never block the send.
   completenessCheck: { checker: completenessCheck },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
@@ -217,8 +229,8 @@ const app = buildApp({
   // writes to the private `pyme-documents` bucket with `service_role`, recording
   // the row the content-relevance check (U5) will resolve server-side.
   storage: {
-    storage: new SupabaseStorageAdapter(supabase),
-    documents: new SupabasePymeDocumentRepository(supabase),
+    storage: storageAdapter,
+    documents: pymeDocumentRepository,
     generateObjectId: () => randomUUID()
   },
   cors: config.cors

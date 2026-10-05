@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompletenessCheckPort } from "../../../application/ports/completeness-check-port.js";
 import { createDeterministicCompletenessCheckAdapter } from "../../adapters/deterministic-completeness-check-adapter.js";
-import { buildAppAs } from "../test-support/auth.js";
+import { buildAppAs, principalFor } from "../test-support/auth.js";
 
 const VALID_BODY = {
   documents: [
@@ -41,12 +41,15 @@ describe("POST /completeness-check", () => {
     expect(response.json()).toEqual({ result: { complete: true, findings: [] } });
   });
 
-  it("passes the strictly parsed input to the port", async () => {
+  it("passes the strictly parsed body and the verified owner to the port", async () => {
     const checker = { check: vi.fn().mockResolvedValue({ complete: true, findings: [] }) };
 
     await build(checker).inject({ method: "POST", url: "/completeness-check", payload: VALID_BODY });
 
-    expect(checker.check).toHaveBeenCalledExactlyOnceWith(VALID_BODY);
+    expect(checker.check).toHaveBeenCalledExactlyOnceWith({
+      ownerUserId: principalFor("PYME").userId,
+      input: VALID_BODY
+    });
   });
 
   it("returns an incomplete result with 200: a gap warns, it never blocks", async () => {
@@ -82,7 +85,31 @@ describe("POST /completeness-check", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(checker.check).toHaveBeenCalledWith({ ...VALID_BODY, documents: [] });
+    expect(checker.check).toHaveBeenCalledWith({
+      ownerUserId: principalFor("PYME").userId,
+      input: { ...VALID_BODY, documents: [] }
+    });
+  });
+
+  it("takes the owner from the verified principal, never from the body", async () => {
+    const checker = { check: vi.fn().mockResolvedValue({ complete: true, findings: [] }) };
+
+    // A body carrying an attempted owner is refused outright by strict validation.
+    const forged = await build(checker).inject({
+      method: "POST",
+      url: "/completeness-check",
+      payload: { ...VALID_BODY, ownerUserId: "attacker" }
+    });
+
+    expect(forged.statusCode).toBe(400);
+    expect(checker.check).not.toHaveBeenCalled();
+
+    // And an ordinary body always carries the principal's id, never the body's.
+    await build(checker).inject({ method: "POST", url: "/completeness-check", payload: VALID_BODY });
+    expect(checker.check).toHaveBeenCalledWith({
+      ownerUserId: principalFor("PYME").userId,
+      input: VALID_BODY
+    });
   });
 
   it("answers 503 { code: unavailable } and never echoes the failure when the port throws", async () => {

@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { CompletenessCheckInput } from "../../application/completeness/completeness-check.js";
 import { createDeterministicCompletenessCheckAdapter } from "./deterministic-completeness-check-adapter.js";
 
+const OWNER = "11111111-1111-4111-8111-111111111111";
+
+function command(input: CompletenessCheckInput): { ownerUserId: string; input: CompletenessCheckInput } {
+  return { ownerUserId: OWNER, input };
+}
+
 const COMPLETE_INPUT: CompletenessCheckInput = {
   documents: [
     { kind: "sales-declarations", present: true },
@@ -23,15 +29,15 @@ describe("createDeterministicCompletenessCheckAdapter", () => {
   it("implements the port and resolves the pure check result", async () => {
     const adapter = createDeterministicCompletenessCheckAdapter();
 
-    await expect(adapter.check(COMPLETE_INPUT)).resolves.toEqual({ complete: true, findings: [] });
+    await expect(adapter.check(command(COMPLETE_INPUT))).resolves.toEqual({ complete: true, findings: [] });
   });
 
   it("is deterministic: the same input yields the same result", async () => {
     const adapter = createDeterministicCompletenessCheckAdapter();
     const incomplete: CompletenessCheckInput = { ...COMPLETE_INPUT, photoCount: 0 };
 
-    const first = await adapter.check(incomplete);
-    const second = await adapter.check(incomplete);
+    const first = await adapter.check(command(incomplete));
+    const second = await adapter.check(command(incomplete));
 
     expect(first).toEqual(second);
     expect(first.complete).toBe(false);

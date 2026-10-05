@@ -38,7 +38,11 @@ export function registerCompletenessCheckRoute(
     }
 
     try {
-      const result = await dependencies.checker.check(validated.value);
+      const result = await dependencies.checker.check({
+        // Server-owned: the owner is the verified principal, never a body field.
+        ownerUserId: principal.userId,
+        input: validated.value
+      });
       return reply.code(200).send({ result });
     } catch (error) {
       // Fastify's logger is disabled, so this follows the adapters' and the
