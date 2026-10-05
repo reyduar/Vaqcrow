@@ -53,14 +53,14 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 
 - [ ] **T1 (#403) — Implementar.**
   - [x] **T1a — Chequeo de completitud (API).** `CompletenessCheckPort` + adaptador determinista + tests con dobles.
-  - [ ] **T1b — Envío a revisión (API).** Precondición de wallet server-side, idempotencia, y publicación del evento `admin.new_application` (cableado en `index.ts`/`build-app`).
+  - [x] **T1b — Envío a revisión (API).** Precondición de wallet server-side, idempotencia, y publicación del evento `admin.new_application` (cableado en `index.ts`/`build-app`).
   - [x] **T1c — Web.** Cablear el resultado de completitud al paso 3 (faltantes/anomalías; incompleto advierte).
-- [ ] **T2 (#404) — Probar.** Golden fixtures (completa, documento faltante, meses faltantes, anomalía), prompt-injection, validación de schema, idempotencia del envío, rechazo sin clave, evento publicado una sola vez.
-- [ ] **T3 (#405) — Evidencia.** `docs/planning/ai-completeness-check-and-submission-evidence.md` (español) + alineación de docs.
+- [x] **T2 (#404) — Probar.** Golden fixtures (completa, documento faltante, meses faltantes, anomalía), validación de schema, idempotencia del envío, rechazo sin clave, evento publicado una sola vez. **No se agregaron fixtures de prompt-injection** porque la Feature no agrega una entrada de modelo nueva: el chequeo es determinista y solo recibe metadatos declarados; la cobertura de inyección del motor de riesgo es la pre-existente (`ai-assessment.golden.test.ts`). Commit `a35ef61`.
+- [x] **T3 (#405) — Evidencia.** `docs/planning/ai-completeness-check-and-submission-evidence.md` (español), con cada criterio de aceptación de #402 citado textualmente y su fuente de verificación. Alineados `CLAUDE.md`/`AGENTS.md` (gemelos, `diff` vacío) y `docs/planning/DEMO.md` (pasos 1/3/5 y matriz); `docs/architecture/environments.md` **no** cambia (el chequeo no agrega variable de entorno ni check de preflight). Commands observados en este árbol: `pnpm --filter @vaqcrow/api test` → `78 passed / 1810 passed`; `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → `161 passed / 1520 passed`; `pnpm run lint` → `5 successful, 5 total` (0 errores, 1 warning preexistente); `pnpm run typecheck` → `8 successful, 8 total`; `pnpm run boundaries` → `no dependency violations found (790 modules, 2505 dependencies cruised)`; `pnpm run test:boundaries` → `10 passed / 162 passed`. Revisión RDD de #402 pendiente (sin linaje).
 
 ## Próximo paso
 
-**T2**: golden fixtures (completa, documento faltante, meses faltantes, anomalía), idempotencia y evento publicado una sola vez.
+**Cierre.** T1a/T1b/T1c, T2 y T3 están completos; la evidencia vive en `docs/planning/ai-completeness-check-and-submission-evidence.md` y los documentos que repetían el comportamiento quedaron alineados. La Feature **no está en `main`** (Opción A) y no se cierra sola: el cierre lo decide el owner. Antes del merge de la pila: aprobar el copy de UI, correr y reconocer la revisión RDD de #402, decidir/planificar el chequeo de relevancia por contenido (visión) y confirmar el primer envío real por Resend.
 
 ## Bitácora de implementación
 
