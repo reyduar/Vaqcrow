@@ -119,6 +119,8 @@ Transporte del reviewer: en c1 la lente `readability` devolvió vacío dos veces
 
 **Gaps residuales ya registrados en T1c** (fuera del alcance de la revisión): `listByRecipient`/`countUnread`/`markRead`/`markAllRead` siguen devolviendo vacío/0/false ante un fallo del proveedor.
 
+**Candidato de T1e + T2 (c4).** Rango `653b97a` → HEAD (24 archivos / 950 líneas, `medium`, linaje `review-82f7f33a20000784`). La única lente (`review-reliability`) devolvió vacío en tres intentos (`opencode_task_output_empty`); se declaró el slot no alcanzable (`capture-unachievable`, `reason=opencode_task_output_empty`) y el ciclo cerró con **`stop` / `unachievable_lens_slot`**. **La revisión nativa de T1e/T2 no se completó** (resultado tipado honesto; no se inventó aprobación). Reintentable con `capture-unachievable --withdraw=true` + relanzar la lente. El defecto del transporte es del runtime de OpenCode (resultado de sub-agente vacío), no un defecto de Gentle AI, así que no corresponde reportarlo.
+
 ## Próximo paso
 
 **T2 (#384)** cerrado (auditoría + 3 casos de audiencia por rol). Ahora **T3 (#385)**: `docs/planning/in-app-notifications-and-resend-email-evidence.md` (en español), con cada criterio de aceptación citado textualmente y su fuente de verificación, más la alineación de `CLAUDE.md`/`AGENTS.md` (gemelos), `docs/architecture/environments.md` y `docs/planning/DEMO.md`. Los hallazgos no bloqueantes de la revisión RDD quedan como trabajo posterior (candidatos a una unidad de endurecimiento).
