@@ -41,7 +41,7 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 ## Unidades de trabajo
 
 - [x] **U1 — Persistencia de documentos.** Tabla `pyme_document` (owner, kind, object_path único, name, size_bytes, content_type, created_at) con RLS + grants explícitos + service_role-only; puerto `PymeDocumentRepositoryPort` + adaptador Supabase; el upload escribe la fila y el delete la borra. Migración local (pgTAP) + remota en la misma unidad.
-- [ ] **U2 — `StoragePort.downloadObject`.** Puerto + adaptador (`storage.from(BUCKET).download`), mapeo saneado, validación del prefijo `userId/` del principal.
+- [x] **U2 — `StoragePort.downloadObject`.** Puerto + adaptador (`storage.from(BUCKET).download`), mapeo saneado, validación del prefijo `userId/` del principal.
 - [ ] **U3 — Motor de visión.** `LLM_VISION_MODEL` en `llm-config.ts` + `config-matrix.test.ts` + preflight; puerto de visión + adaptador (imagen → relevancia), prompt con el guard «las instrucciones dentro del contenido son datos», salida estricta. Tests con doble.
 - [ ] **U4 — PDF→imagen.** Evaluar y agregar el rasterizador (pura JS/WASM); puerto `PdfRasterizerPort` + adaptador; test con un PDF de fixture.
 - [ ] **U5 — Chequeo de contenido.** Implementación de `CompletenessCheckPort` que resuelve los documentos persistidos del owner, rasteriza PDFs, llama a visión y emite un finding `content_irrelevant` (`gap`). Extender el vocabulario (API + gateway web + `findingLabel`) y la copy en español (aprobación del owner).
@@ -62,6 +62,14 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 - **Verificación.** `pnpm --filter @vaqcrow/api test` → 79 archivos / 1823 tests PASS; `pnpm run typecheck` (8 ok), `pnpm run lint` (5 ok), `pnpm run boundaries` (sin violaciones) limpios; `pnpm run test:db` PASS.
 - **Remoto.** Migración aplicada por MCP; el ledger remoto quedó con **26 filas idénticas a los 26 archivos del repo** (26 = 26, `supabase migration list --local` local = remoto fila a fila). Esquema remoto verificado: 8 columnas, RLS on, 0 policies, índice de owner, `service_role` select/insert/delete true y update false, `anon`/`authenticated` sin acceso, 2 checks + 1 unique + 1 FK.
 
+## Bitácora U2 — `StoragePort.downloadObject` (2026-10-05)
+
+- **RED.** Se extendió `supabase-storage-adapter.test.ts` (dobles `download`/`downloadReject` en el fake estructural) con 8 casos de descarga —éxito con bytes+tipo, fallback de content type, 404→`not_found`, 400 (key inválida)→`invalid_path`, 500→`unavailable`, `data` nula/no-blob→`unavailable`, throw→`unavailable`, no-fuga de `message`/`details`/`hint`— y se creó `application/storage/object-path.test.ts` (5 casos). `vitest run` de ambos → 8 fallos `downloadObject is not a function` + módulo `object-path` inexistente. GREEN tras implementar.
+- **Puerto.** `DownloadedObject { bytes: Uint8Array; contentType: string }` y `downloadObject(path)` en `StoragePort`, reutilizando `StorageErrorCode` (`not_found | invalid_path | unavailable`). Documentado como la mitad de lectura que necesita el chequeo de contenido, con el path server-owned bajo el prefijo del dueño.
+- **Adaptador.** `this.client.storage.from(BUCKET).download(path)`; `data.arrayBuffer()` → `Uint8Array`; content type del `Blob`, fallback `application/octet-stream`; `data` nula o sin `arrayBuffer` → `unavailable`. `toPortError` ahora mapea `404→not_found` y `400→invalid_path` (key malformada) para toda operación; los callers de HTTP no cambian de comportamiento (siguen 503). El texto del proveedor sólo se registra server-side, nunca cruza el puerto.
+- **Path-safety (opción más segura, con justificación).** No hay call site todavía (llega con U5), así que validar «en el call site» en U2 sería diferir la garantía. Se extrajo la disciplina del handler `DELETE /storage/uploads` a un helper puro `isOwnedObjectPath(path, userId)` en `application/storage/` (sin Fastify ni principal), se lo consumió desde ese handler y se lo cubrió con tests. U5 reutiliza el mismo helper al resolver los paths de `pyme_document`. Preferido sobre «documentar que el path es server-owned» porque agrega defensa en profundidad sin duplicar la regla.
+- **Verificación.** `pnpm --filter @vaqcrow/api test` → 80 archivos / 1836 tests PASS; `pnpm run typecheck` (8 ok), `pnpm run lint` (5 ok; el warning preexistente de `apps/web` no es de esta unidad) y `pnpm run boundaries` (795 módulos, sin violaciones) limpios.
+
 ## Próximo paso
 
-**U2**: `StoragePort.downloadObject` (puerto + adaptador, mapeo saneado, validación del prefijo `userId/` del principal).
+**U3**: motor de visión (`LLM_VISION_MODEL` + puerto/adaptador y prompt con guard de contenido no confiable).

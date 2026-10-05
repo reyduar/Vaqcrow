@@ -60,6 +60,10 @@ function fakeStorage(overrides: Partial<StoragePort> = {}): FakeStorage {
       removed.push(path);
       return { ok: true, value: undefined };
     },
+    downloadObject: async () => ({
+      ok: true,
+      value: { bytes: new Uint8Array(), contentType: "application/octet-stream" }
+    }),
     ...overrides
   };
   return { port, uploaded, removed };

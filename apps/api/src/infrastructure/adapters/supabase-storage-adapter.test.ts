@@ -14,11 +14,18 @@ interface RemoveProviderResult {
   readonly error: unknown;
 }
 
+interface DownloadProviderResult {
+  readonly data: unknown;
+  readonly error: unknown;
+}
+
 interface Fake {
   readonly upload?: UploadProviderResult;
   readonly uploadReject?: Error;
   readonly remove?: RemoveProviderResult;
   readonly removeReject?: Error;
+  readonly download?: DownloadProviderResult;
+  readonly downloadReject?: Error;
 }
 
 /** A hand-written structural client: no network, no Supabase. */
@@ -26,6 +33,7 @@ function fakeClient(fake: Fake) {
   const calls = {
     upload: [] as Array<{ path: string; options: unknown }>,
     remove: [] as string[][],
+    download: [] as string[],
     bucket: [] as string[]
   };
   const bucket = {
@@ -40,6 +48,12 @@ function fakeClient(fake: Fake) {
       return fake.removeReject
         ? Promise.reject(fake.removeReject)
         : Promise.resolve(fake.remove ?? { error: null });
+    },
+    download: (path: string) => {
+      calls.download.push(path);
+      return fake.downloadReject
+        ? Promise.reject(fake.downloadReject)
+        : Promise.resolve(fake.download ?? { data: new Blob([BYTES], { type: "application/pdf" }), error: null });
     }
   };
   const client = {
@@ -175,5 +189,99 @@ describe("SupabaseStorageAdapter.removeObject", () => {
     const result = await new SupabaseStorageAdapter(client).removeObject(PATH);
 
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+});
+
+describe("SupabaseStorageAdapter.downloadObject", () => {
+  it("returns the object bytes and content type from the provider", async () => {
+    const { client, calls } = fakeClient({});
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(Array.from(result.value.bytes)).toEqual(Array.from(BYTES));
+      expect(result.value.contentType).toBe("application/pdf");
+    }
+    expect(calls.download).toEqual([PATH]);
+    expect(calls.bucket).toContain("pyme-documents");
+  });
+
+  it("falls back to application/octet-stream when the provider omits a content type", async () => {
+    const { client } = fakeClient({ download: { data: new Blob([BYTES]), error: null } });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result).toEqual({ ok: true, value: { bytes: BYTES, contentType: "application/octet-stream" } });
+  });
+
+  it("maps a provider 404 to not_found", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({
+      download: { data: null, error: { message: "Object not found", statusCode: "404" } }
+    });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+  });
+
+  it("maps a provider 400 (malformed key) to invalid_path", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({
+      download: { data: null, error: { message: "Invalid key", statusCode: "400" } }
+    });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result).toEqual({ ok: false, error: { code: "invalid_path" } });
+  });
+
+  it("maps any other provider error to unavailable", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({
+      download: { data: null, error: { message: "boom", statusCode: "500" } }
+    });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+
+  it("answers unavailable for a null or non-blob data", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const data of [null, { not: "a blob" }]) {
+      const { client } = fakeClient({ download: { data, error: null } });
+
+      const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    }
+  });
+
+  it("answers unavailable when the provider throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ downloadReject: new Error("ECONNRESET") });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+
+  it("never lets a provider message, details or hint cross the port", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({
+      download: {
+        data: null,
+        error: { message: "secret message", details: "secret details", hint: "secret hint", statusCode: "500" }
+      }
+    });
+
+    const result = await new SupabaseStorageAdapter(client).downloadObject(PATH);
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("secret message");
+    expect(serialized).not.toContain("secret details");
+    expect(serialized).not.toContain("secret hint");
   });
 });

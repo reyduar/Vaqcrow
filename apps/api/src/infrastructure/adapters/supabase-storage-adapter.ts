@@ -8,6 +8,8 @@ import type {
 /** The private bucket created by 20261003120000_create_pyme_documents_bucket.sql. */
 const BUCKET = "pyme-documents";
 const NOT_FOUND = "404";
+const BAD_REQUEST = "400";
+const DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
 /**
  * Supabase Storage implementation of `StoragePort` (Feature #398, Task #399 /
@@ -63,6 +65,29 @@ export class SupabaseStorageAdapter implements StoragePort {
     }
   }
 
+  async downloadObject(path: string): Promise<StorageResult<{ bytes: Uint8Array; contentType: string }>> {
+    try {
+      const { data, error } = await this.client.storage.from(BUCKET).download(path);
+
+      if (error) {
+        return { ok: false, error: this.toPortError(error, "download") };
+      }
+
+      // `download` answers a Blob; anything else is a provider contract we do
+      // not understand, so it stays `unavailable` rather than surfacing.
+      if (data === null || typeof (data as { arrayBuffer?: unknown }).arrayBuffer !== "function") {
+        return { ok: false, error: { code: "unavailable" } };
+      }
+
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      const contentType = typeof data.type === "string" && data.type.length > 0 ? data.type : DEFAULT_CONTENT_TYPE;
+      return { ok: true, value: { bytes, contentType } };
+    } catch (cause) {
+      this.logUnexpected("download", cause);
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   private toPortError(
     error: { readonly message: string; readonly statusCode?: string | undefined },
     operation: string
@@ -73,7 +98,12 @@ export class SupabaseStorageAdapter implements StoragePort {
       message: error.message
     });
 
-    return error.statusCode === NOT_FOUND ? { code: "not_found" } : { code: "unavailable" };
+    if (error.statusCode === NOT_FOUND) return { code: "not_found" };
+    // Storage answers `400` for a malformed object key, on any operation. The
+    // HTTP routes already reject unowned paths before reaching the adapter, so
+    // this code only affects callers that inspect the error, never a leak.
+    if (error.statusCode === BAD_REQUEST) return { code: "invalid_path" };
+    return { code: "unavailable" };
   }
 
   private logUnexpected(operation: string, cause: unknown): void {

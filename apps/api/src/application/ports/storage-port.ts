@@ -22,10 +22,24 @@ export interface UploadObjectInput {
   readonly contentType: string;
 }
 
+export interface DownloadedObject {
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
+}
+
 export interface StoragePort {
   /** Writes `bytes` at `path` with the given content type. Never upserts: a path collision is a failure. */
   uploadObject(input: UploadObjectInput): Promise<StorageResult<{ readonly path: string }>>;
 
   /** Removes the object at `path`. Removing a missing object is not an error (idempotent). */
   removeObject(path: string): Promise<StorageResult<void>>;
+
+  /**
+   * Reads the object at `path` as its raw bytes plus its stored content type —
+   * the read half of the storage boundary the content-relevance check needs.
+   * The path is server-owned: it must sit under the caller's own `userId/`
+   * prefix (see `isOwnedObjectPath`), never a value trusted from a request body.
+   * A missing object is `not_found`; a malformed key is `invalid_path`.
+   */
+  downloadObject(path: string): Promise<StorageResult<DownloadedObject>>;
 }

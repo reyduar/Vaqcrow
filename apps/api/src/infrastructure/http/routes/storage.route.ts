@@ -3,6 +3,7 @@ import type { PymeDocumentRepositoryPort } from "../../../application/ports/pyme
 import type { StoragePort } from "../../../application/ports/storage-port.js";
 import { validateDocumentUpload } from "../../../application/storage/document-upload.js";
 import type { UploadRejectionCode } from "../../../application/storage/document-upload.js";
+import { isOwnedObjectPath } from "../../../application/storage/object-path.js";
 
 /**
  * The HTTP surface for PyME document uploads (Feature #398, Task #399 / T4b;
@@ -149,17 +150,9 @@ export function registerStorageRoute(app: FastifyInstance, dependencies: Storage
     }
 
     // service_role bypasses RLS, so ownership is enforced here and nowhere else.
-    const prefix = `${principal.userId}/`;
-    if (!path.startsWith(prefix) || path.length <= prefix.length) {
-      return reply.code(403).send({ code: "forbidden" });
-    }
-
-    // A string prefix alone is not enough: `..`, `.` and empty segments would
-    // let a path that starts with the caller's own prefix resolve elsewhere in
-    // the bucket (or to the bucket root), so any such segment is refused before
-    // the adapter is asked to remove anything.
-    const remainder = path.slice(prefix.length);
-    if (remainder.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
+    // The check lives in one place (`isOwnedObjectPath`) so the content-relevance
+    // download reuses the exact same discipline before reading object bytes.
+    if (!isOwnedObjectPath(path, principal.userId)) {
       return reply.code(403).send({ code: "forbidden" });
     }
 
