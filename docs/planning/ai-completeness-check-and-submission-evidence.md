@@ -138,7 +138,7 @@ $ pnpm run test:boundaries
 2. **Idempotencia secuencial.** La guarda por dueño+contenido no es atómica: dos reintentos concurrentes podrían crear dos aplicaciones (§3.2). Un índice único acotado sería la defensa definitiva; evaluado y diferido.
 3. **Copy aprobada y marcador decidido (2026-10-05).** El copy de UI de §3.3 fue redactado por el agente (el template no diseña pantalla de faltantes) y **aprobado por el owner**: título «Información completa» y error «No pudimos revisar la información. Podés continuar igual.». El owner resolvió además que el chequeo determinista es real, así que la sección **no** lleva el marcador `SIMULADO`; éste se separó y viaja con la banda de riesgo simulada, única parte simulada del paso 3.
 4. **La banda de riesgo del paso 3 sigue simulada.** El motor real es ADMIN-only y corre sobre `/application-reviews/:id/assessments`; el wizard muestra hoy una banda simulada detrás de `AiEvaluationPort`. #402 no cablea el motor real al display del wizard.
-5. **Revisión RDD no corrida.** No existe linaje de revisión para los commits de #402 (§7): el cierre queda sin veredicto de lente independiente. No se inventó aprobación.
+5. **Revisión RDD corrida y reconocida.** Los dos slices de #402 fueron **aprobados** y su autoridad **quemada** (§7). Quedan tres hallazgos **no bloqueantes** como trabajo posterior (§9); no se inventó aprobación.
 6. **Sin migración / remoto intacto.** #402 no agregó ni cambió migraciones; el proyecto remoto no se tocó y no se re-verificó.
 7. **La clave de wallet real es de #406.** La precondición se prueba con un doble; el adaptador de wallet existe en la pila de #406, compartido por `index.ts`.
 
@@ -161,7 +161,12 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 
 **Correcciones de implementación:** (a) se retiraron los cuatro checks mock `AI_SIMULATED_CHECKS` del paso 3 (duplicaban el chequeo y mostraban un faltante inventado); (b) se agregó la guarda de idempotencia por dueño+contenido, porque el RPC por `correlation_id` no cubría un reintento del cliente (§3.2); (c) T2 agregó tres asserts de aceptación que faltaban (no publica en rechazo, publica una vez en `201`, la lista muestra cada `detail`), sin cambio de producción.
 
-**Estado RDD (revisión nativa pendiente).** El rango de la Feature es `997ab08` → `a35ef61`; código (sin docs): **47 archivos / +2580 −233**. **No hay transacción de revisión registrada** para estos commits ni en la bitácora ni en el repositorio: la revisión RDD **no se corrió** al cerrar esta unidad. Por lo tanto, **no hay veredicto de lente independiente y no se declara aprobación**. El cierre honesto es: Feature entregada y probada, con revisión RDD pendiente.
+**Estado RDD (revisión nativa corrida y reconocida).** El rango de la Feature es `997ab08` → `122f713`; código (sin docs): **47 archivos / +2580 −233**. La revisión nativa **se corrió** el 2026-10-05, partida en **dos rebanadas** porque el candidato entero (52 archivos / 3282 líneas) excedía el presupuesto de contexto del reviewer (`lens_context_budget_exceeded`, sin autoridad creada). Ambas rebanadas usaron la lente `review-reliability`, quedaron **aprobadas** y su autoridad se **quemó** con `review-acknowledged/v1`:
+
+- **Slice API** (`997ab08` → `3d8553e`, 22 archivos / 1652 líneas), linaje `review-4eadb69e7edc06ae`. Dos hallazgos **no bloqueantes**: **R3-1** (WARNING) la guarda de idempotencia por dueño+contenido no es atómica; **R3-2** (SUGGESTION) el test del borde 1.5× no coloca un valor exactamente en el umbral.
+- **Slice web + docs** (`3d8553e` → `122f713`, 33 archivos / 1654 líneas), linaje `review-446cc780cc8e4358`. Tres hallazgos **no bloqueantes**: **R3-001** (WARNING) `parseResult` colapsa todo el sobre ante un finding fuera del vocabulario, mientras el comentario del módulo dice «dropped» (documentación y código difieren); **R3-002** (SUGGESTION) la rama `loading` de la sección no está asertada; **R3-003** (SUGGESTION) la rama de rechazo del patrón de token Bearer no está probada.
+
+Ningún hallazgo abrió una corrección ni reabre la revisión: quedan como **trabajo posterior** (§9). El transporte del reviewer devolvió vacío/rechazado en los primeros intentos de cada slice y se relanzó cuando el STATUS de la misma línea reofreció el slot.
 
 ## 8. Mapeo de criterios de aceptación
 
@@ -178,7 +183,7 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 ## 9. Riesgos, contradicciones y limitaciones aceptadas
 
 - **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el cierre de #403/#404/#405 y de #402 lo decide el owner. Ninguno está en `main`.
-- **Revisión RDD pendiente.** No hay veredicto de lente independiente (§7). La verificación de este documento es la re-ejecución de §4.1.
+- **Revisión RDD corrida; hallazgos no bloqueantes como trabajo posterior.** Los dos slices quedaron aprobados (§7). Los hallazgos R3-1 / R3-2 / R3-001 / R3-002 / R3-003 no bloquean la entrega y quedan para después. La verificación de este documento es la re-ejecución de §4.1.
 - **Criterio 1 medido en dos mitades.** La completitud es nueva; el riesgo es el motor pre-existente. No es un olvido: es el alcance decidido (§3.5).
 - **Visión de documentos diferida.** El chequeo no detecta todavía documentos irrelevantes por contenido (§5.1); es la brecha más visible para el owner.
 - **Copy aprobada; marcador separado.** §5.3 quedó aprobado por el owner (2026-10-05); el marcador `SIMULADO` se retiró de la sección de completitud y viaja con la banda de riesgo simulada.
@@ -191,7 +196,7 @@ Ninguna se inventó; todas se decidieron antes de implementar.
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402
 > 1. ✅ **Resuelto (2026-10-05).** Copy de UI de §3.3 aprobado por el owner (título «Información completa», error «No pudimos revisar la información. Podés continuar igual.») y etiqueta `SIMULADO` **retirada** de la sección de completitud; la banda de riesgo simulada la conserva (§5.3).
-> 2. Correr la revisión RDD de los commits de #402 (`997ab08` → `a35ef61`) y reconocerla (§7).
+> 2. ✅ **Resuelto (2026-10-05).** Revisión RDD de #402 corrida en dos slices (`review-4eadb69e7edc06ae`, `review-446cc780cc8e4358`) y **reconocida**; ambos aprobados (§7).
 > 3. Decidir y planificar el chequeo de **relevancia por contenido (visión)** con sus tres bloqueos (§5.1).
 > 4. Evaluar la defensa atómica de idempotencia si la concurrencia importa (§5.2).
 > 5. Confirmar el primer envío real por Resend de la notificación `admin.new_application` cuando la pila llegue a la demo.
