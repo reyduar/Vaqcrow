@@ -35,7 +35,9 @@ const FINDING_CODES: readonly CompletenessFinding["code"][] = Object.freeze([
   "missing_document",
   "insufficient_photos",
   "missing_sales_month",
-  "sales_anomaly"
+  "sales_anomaly",
+  "content_irrelevant",
+  "content_unverified"
 ]);
 
 const FINDING_SEVERITIES: readonly CompletenessFinding["severity"][] = Object.freeze(["gap", "warning"]);

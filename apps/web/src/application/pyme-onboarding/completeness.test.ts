@@ -105,6 +105,11 @@ describe("findingLabel", () => {
     expect(findingLabel({ code: "insufficient_photos", severity: "warning" })).toBe("Aviso");
     expect(findingLabel({ code: "sales_anomaly", severity: "warning" })).toBe("Anomalía");
   });
+
+  it("names the content-relevance findings visibly: a gap is a Faltante, a warning an Aviso", () => {
+    expect(findingLabel({ code: "content_irrelevant", severity: "gap" })).toBe("Faltante");
+    expect(findingLabel({ code: "content_unverified", severity: "warning" })).toBe("Aviso");
+  });
 });
 
 describe("completenessNotice", () => {

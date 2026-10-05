@@ -174,6 +174,44 @@ describe("AiStep", () => {
     expect(onContinue).not.toHaveBeenCalled();
   });
 
+  it("renders the content-relevance findings with visible labels and keeps Continuar available", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({
+      complete: false,
+      findings: [
+        {
+          code: "content_irrelevant",
+          severity: "gap",
+          detail: "El contenido de «Constancia de CUIT» no parece corresponder a ese documento."
+        },
+        {
+          code: "content_unverified",
+          severity: "warning",
+          detail: "No pudimos verificar el contenido de «Foto del negocio»."
+        }
+      ]
+    });
+    const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
+
+    const heading = await screen.findByRole("heading", { name: "Información completa" });
+    const section = heading.closest("section");
+    expect(section).not.toBeNull();
+    const findings = within(section as HTMLElement);
+
+    expect(
+      findings.getByText("El contenido de «Constancia de CUIT» no parece corresponder a ese documento.")
+    ).toBeInTheDocument();
+    expect(findings.getByText("No pudimos verificar el contenido de «Foto del negocio».")).toBeInTheDocument();
+    expect(findings.getByText("Faltante:")).toBeInTheDocument();
+    expect(findings.getByText("Aviso:")).toBeInTheDocument();
+
+    // A content gap warns; it never blocks the send (owner decision D2).
+    const continueButton = screen.getByRole("button", { name: /Continuar/ });
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps Continuar available when the completeness check fails", async () => {
     const completeness = new FakeCompleteness();
     completeness.failNext("network");

@@ -105,6 +105,45 @@ describe("HttpCompletenessGateway.check", () => {
     expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: false, code: "unavailable" });
   });
 
+  it("accepts the content-relevance findings the API now emits, without collapsing the result", async () => {
+    const result = {
+      complete: false,
+      findings: [
+        { code: "missing_document", severity: "gap", detail: "Falta un documento obligatorio: Estatuto." },
+        {
+          code: "content_irrelevant",
+          severity: "gap",
+          detail: "El contenido de «Constancia de CUIT» no parece corresponder a ese documento."
+        },
+        {
+          code: "content_unverified",
+          severity: "warning",
+          detail: "No pudimos verificar el contenido de «Estatuto»."
+        }
+      ]
+    };
+    const { client } = fakeClient({ post: { status: 200, data: { result } } });
+
+    // A valid content finding must render, not blank the whole section.
+    expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: true, result });
+  });
+
+  it("still collapses the result when a code is outside the vocabulary", async () => {
+    const { client } = fakeClient({
+      post: {
+        status: 200,
+        data: {
+          result: {
+            complete: false,
+            findings: [{ code: "content_made_up", severity: "gap", detail: "x" }]
+          }
+        }
+      }
+    });
+
+    expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: false, code: "unavailable" });
+  });
+
   it("answers unavailable when a finding is outside the vocabulary", async () => {
     const validFinding = { code: "missing_document", severity: "gap", detail: "Falta un documento obligatorio: Estatuto." };
     for (const bad of [

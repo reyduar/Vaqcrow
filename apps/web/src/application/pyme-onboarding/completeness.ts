@@ -64,12 +64,25 @@ export function buildCompletenessInput(
 
 /**
  * Visible label for a finding, so meaning is never carried by colour alone.
- * A sales anomaly is always named «Anomalía»; the other codes are a
- * «Faltante» when they are a gap and an «Aviso» when informational.
+ * The label is keyed on the code, not inferred: a content-relevance finding
+ * keeps its meaning (an irrelevant document is still a «Faltante») while a
+ * sales anomaly is always «Anomalía» and an oversized photo set is an
+ * «Aviso». Only `insufficient_photos` depends on its severity — a gap when no
+ * photo was added, a warning when there are too many.
  */
 export function findingLabel(finding: Pick<CompletenessFinding, "code" | "severity">): string {
-  if (finding.code === "sales_anomaly") return "Anomalía";
-  return finding.severity === "gap" ? "Faltante" : "Aviso";
+  switch (finding.code) {
+    case "sales_anomaly":
+      return "Anomalía";
+    case "content_unverified":
+      return "Aviso";
+    case "insufficient_photos":
+      return finding.severity === "gap" ? "Faltante" : "Aviso";
+    case "missing_document":
+    case "missing_sales_month":
+    case "content_irrelevant":
+      return "Faltante";
+  }
 }
 
 /**

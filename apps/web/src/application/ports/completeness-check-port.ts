@@ -40,7 +40,9 @@ export type CompletenessFindingCode =
   | "missing_document"
   | "insufficient_photos"
   | "missing_sales_month"
-  | "sales_anomaly";
+  | "sales_anomaly"
+  | "content_irrelevant"
+  | "content_unverified";
 
 /** `gap` is a completeness shortfall; `warning` is informational. */
 export type CompletenessFindingSeverity = "gap" | "warning";
