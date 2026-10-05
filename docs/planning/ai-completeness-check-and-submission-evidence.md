@@ -9,7 +9,7 @@
 
 La Feature #402 cierra la última pieza del **paso 3 del wizard de la PyME** y del **envío a revisión humana**: un **chequeo de completitud** que devuelve faltantes y anomalías estructurados, la **precondición de wallet** verificada del lado servidor, el **envío idempotente** de la solicitud y la **primera publicación real** por el puerto de notificaciones de #382 (evento `admin.new_application`, in-app + email). La IA sigue siendo **solo asesora**: no aprueba, no calcula obligaciones y no mueve fondos.
 
-Alcance acotado por el owner (decisión 4, 2026-10-05): el chequeo es sobre **datos declarados y presencia de documentos** (metadatos), **determinista, sin LLM**. La **relevancia por contenido (visión)** queda **diferida** (§5.1). El motor de riesgo del paso 2 **no se re-define**: es el motor existente que corre el admin (§3.5).
+Alcance acotado por el owner (decisión 4, 2026-10-05): el chequeo es sobre **datos declarados y presencia de documentos** (metadatos), **determinista, sin LLM**. La **relevancia por contenido (visión)** quedó **diferida** en el cierre de #402 y se implementó después, en la misma rama, como una brecha propia: ver [[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]]. El motor de riesgo del paso 2 **no se re-define**: es el motor existente que corre el admin (§3.5).
 
 | Task | Rama | Estado del issue (2026-10-05) |
 |---|---|---|
@@ -24,7 +24,7 @@ La Feature #402 **no está en `main`** y no se cierra sola: su cierre lo decide 
 - **Dos fuentes, siempre nombradas.** (a) **Re-ejecutado** — un comando corrido el 2026-10-05 en este árbol de trabajo (rama de #402), con su línea de salida real (§4.1). (b) **Bitácora** — una entrada fechada de [[odd/tasks/ai-completeness-check-and-submission]]; se cita, **no** se re-ejecutó aquí.
 - **Dobles, no proveedores.** Ninguna prueba de esta Feature habla con un LLM vivo, con Resend, con Supabase remoto ni con Testnet. El chequeo es determinista (sin LLM); el wallet se prueba con un doble de `readPublicKey`; la notificación se prueba con un doble del publisher de #382; el risk band del wizard sigue detrás de `AiEvaluationPort` (doble).
 - **Sin secretos.** Ningún email, contraseña, API key, token ni identificador de proyecto aparece en este documento; las variables se nombran, nunca sus valores.
-- **Sin claims de producción.** El chequeo es asistencia de demo etiquetada `SIMULADO` en pantalla; el contenido es declarado o sintético; nada aquí afirma disponibilidad, SLA ni valor económico. La relevancia visual de documentos **no** se ejercita.
+- **Sin claims de producción.** El chequeo es asistencia de demo real y determinista (la banda de riesgo simulada conserva el rótulo `SIMULADO`); el contenido es declarado o sintético; nada aquí afirma disponibilidad, SLA ni valor económico. La relevancia visual de documentos **no** se ejercitaba en el cierre de #402 y se implementó después, en la brecha propia documentada en [[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]].
 
 ## 3. Qué quedó implementado (Tasks #403 y #404)
 
@@ -133,11 +133,11 @@ $ pnpm run test:boundaries
 
 - Ninguna. #402 no toca el remoto (no hay migración), no llama a un LLM vivo, no llama a Resend y no toca Testnet.
 
-**Nunca ejercitado:** una llamada viva al motor de IA desde el paso 3 del wizard; un chequeo de **relevancia visual** de documentos; un envío real por Resend desde la notificación de submission; el flujo de wallet real de #406 conectado al `409` (acá se prueba con doble).
+**Nunca ejercitado:** una llamada viva al motor de IA desde el paso 3 del wizard; ~~un chequeo de relevancia visual de documentos~~ (implementado y verificado en [[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]]); un envío real por Resend desde la notificación de submission; el flujo de wallet real de #406 conectado al `409` (acá se prueba con doble).
 
 ## 5. Límites y brechas vigentes
 
-1. **Relevancia por contenido (visión) diferida (decisión 5, 2026-10-05).** El owner quiere, por sobre todo, que el chequeo detecte documentos **irrelevantes** (p. ej. una foto de Pikachu donde va la Constancia de CUIT). Queda **fuera de esta Feature** y requiere las tres cosas, registradas honestamente: (a) extender el motor de IA a **multimodal** + un **modelo con visión**; (b) que la API **lea los bytes** de los documentos (`StoragePort.downloadObject`, que hoy no existe); (c) **persistir las rutas** de los documentos del lado servidor. El chequeo actual es, por diseño, **determinista y de metadatos**.
+1. ~~**Relevancia por contenido (visión) diferida (decisión 5, 2026-10-05).**~~ **Resuelto (2026-10-05, unidad posterior en la misma rama).** El owner quería, por sobre todo, que el chequeo detectara documentos **irrelevantes** (p. ej. una foto de Pikachu donde va la Constancia de CUIT); quedó fuera del alcance determinista de #402 y requería tres cosas: (a) extender el motor de IA a **multimodal** + un **modelo con visión**; (b) que la API **leyera los bytes** (`StoragePort.downloadObject`); (c) **persistir las rutas** server-side. Las tres se resolvieron y el chequeo content-aware se implementó como brecha propia: [[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]] (U1–U7). El alcance determinista de esta Feature no cambia.
 2. ~~**Idempotencia secuencial.**~~ **Resuelto (R3-1, 2026-10-05):** la guarda dueño+contenido se movió al RPC bajo un advisory lock sobre el dueño, así que la idempotencia ya es **atómica** frente a reintentos concurrentes (§3.2).
 3. **Copy aprobada y marcador decidido (2026-10-05).** El copy de UI de §3.3 fue redactado por el agente (el template no diseña pantalla de faltantes) y **aprobado por el owner**: título «Información completa» y error «No pudimos revisar la información. Podés continuar igual.». El owner resolvió además que el chequeo determinista es real, así que la sección **no** lleva el marcador `SIMULADO`; éste se separó y viaja con la banda de riesgo simulada, única parte simulada del paso 3.
 4. **La banda de riesgo del paso 3 sigue simulada.** El motor real es ADMIN-only y corre sobre `/application-reviews/:id/assessments`; el wizard muestra hoy una banda simulada detrás de `AiEvaluationPort`. #402 no cablea el motor real al display del wizard.
@@ -153,9 +153,9 @@ Decisiones del owner registradas durante la Feature (bitácora, 2026-10-05):
 |---|---|---|
 | 1 | Cómo ve la PyME el resultado de completitud | **Lista concisa de faltantes/anomalías en el paso 3**, sin marcador `SIMULADO` (corrección del 2026-10-05: el chequeo es real y determinista; el marcador viaja con la banda de riesgo simulada). |
 | 2 | ¿Incompleto bloquea o solo advierte? ¿La PyME ve la banda? | **Incompleto advierte pero no bloquea**; la PyME **sí** ve la banda en el paso 3. |
-| 3 | Carga/fallo/reintento y cómo se leen los documentos | Reutiliza el patrón del paso 3 de #399; la lectura de documentos (visión) queda diferida (decisión 5). |
+| 3 | Carga/fallo/reintento y cómo se leen los documentos | Reutiliza el patrón del paso 3 de #399; la lectura de documentos (visión) quedó diferida en #402 y se implementó después ([[docs/planning/content-relevance-vision-evidence]]). |
 | 4 | Alcance del chequeo (2026-10-05) | **Acotado:** datos declarados + presencia de documentos (metadatos): 3 documentos obligatorios, 1–4 fotos, ≥6 de 8 meses, coherencia. |
-| 5 | Relevancia por contenido (visión) | **Diferida** a una unidad posterior, con los tres bloqueos de §5.1. |
+| 5 | Relevancia por contenido (visión) | **Diferida** en #402, con los tres bloqueos de §5.1; **implementada después** en la misma rama ([[docs/planning/content-relevance-vision-evidence]]). |
 | 6 | Fotos: ¿opcionales o 1–4 obligatorias? (conflicto #402 vs. U2 de #399) | **Exigir 1–4 fotos** (owner, 2026-10-05): el issue #402 gana sobre U2 para este chequeo. Sin cambio de código. |
 
 Ninguna se inventó; todas se decidieron antes de implementar.
@@ -198,7 +198,7 @@ Tras el cierre: API `1812`, web `1523`, pgTAP `339`, typecheck/lint/boundaries l
 - **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el cierre de #403/#404/#405 y de #402 lo decide el owner. Ninguno está en `main`.
 - **Revisión RDD corrida; hallazgos cerrados.** Los dos slices quedaron aprobados (§7) y los cinco hallazgos no bloqueantes (R3-1 / R3-2 / R3-001 / R3-002 / R3-003) se **cerraron** como trabajo posterior el 2026-10-05 (§7). La verificación de este documento es la re-ejecución de §4.1.
 - **Criterio 1 medido en dos mitades.** La completitud es nueva; el riesgo es el motor pre-existente. No es un olvido: es el alcance decidido (§3.5).
-- **Visión de documentos diferida.** El chequeo no detecta todavía documentos irrelevantes por contenido (§5.1); es la brecha más visible para el owner.
+- **Visión de documentos implementada después.** El chequeo de esta Feature no detectaba documentos irrelevantes por contenido (§5.1); una unidad posterior en la misma rama lo resolvió ([[docs/planning/content-relevance-vision-evidence]]). Se mantiene como nota histórica del alcance con el que se cerró #402.
 - **Copy aprobada; marcador separado.** §5.3 quedó aprobado por el owner (2026-10-05); el marcador `SIMULADO` se retiró de la sección de completitud y viaja con la banda de riesgo simulada.
 - **Idempotencia atómica.** Resuelta por R3-1 (§3.2, §5.2).
 - ~~**Deriva de historial remoto (pre-existente).**~~ **Resuelto (2026-10-05).** Siete filas tempranas del ledger del remoto (previas a `20260923183356_create_campaign_persistence`) tenían versiones/nombres distintos al repo, más un duplicado de `create_application_review`; el **esquema** ya coincidía (verificado sobre `application_review`), así que era solo el registro. Se reconcilió el ledger del remoto (6 updates de versión + 1 delete del duplicado) y ahora sus **25 filas coinciden exactamente** con los 25 archivos del repo.
@@ -211,6 +211,6 @@ Tras el cierre: API `1812`, web `1523`, pgTAP `339`, typecheck/lint/boundaries l
 > [!todo] Condiciones antes del merge a `main` de la pila de #402
 > 1. ✅ **Resuelto (2026-10-05).** Copy de UI de §3.3 aprobado por el owner (título «Información completa», error «No pudimos revisar la información. Podés continuar igual.») y etiqueta `SIMULADO` **retirada** de la sección de completitud; la banda de riesgo simulada la conserva (§5.3).
 > 2. ✅ **Resuelto (2026-10-05).** Revisión RDD de #402 corrida en dos slices (`review-4eadb69e7edc06ae`, `review-446cc780cc8e4358`) y **reconocida**; ambos aprobados (§7). Los cinco hallazgos no bloqueantes quedaron **cerrados** (§7).
-> 3. Decidir y planificar el chequeo de **relevancia por contenido (visión)** con sus tres bloqueos (§5.1).
+> 3. ✅ **Resuelto (2026-10-05).** El chequeo de **relevancia por contenido (visión)** con sus tres bloqueos se implementó en la misma rama ([[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]]); queda sujeta a la deuda operativa de `LLM_VISION_MODEL`.
 > 4. Evaluar la defensa atómica de idempotencia si la concurrencia importa (§5.2).
 > 5. Confirmar el primer envío real por Resend de la notificación `admin.new_application` cuando la pila llegue a la demo.

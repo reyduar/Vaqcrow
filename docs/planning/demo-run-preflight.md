@@ -52,6 +52,9 @@ El perfil que corre la demo real es `.env.cloud` (API en Railway, web en Vercel;
 > [!tip] Horizon y RPC no son obligatorios
 > `STELLAR_HORIZON_URL` y `STELLAR_RPC_URL` **no** son variables requeridas: cuando faltan, el preflight sondea los endpoints canónicos de Testnet y lo indica en el resultado. La API hace lo mismo al arrancar (ver `apps/api/src/application/config/stellar-config.ts`).
 
+> [!important] `LLM_VISION_MODEL` es obligatoria y sin default
+> El chequeo de contenido (relevancia por visión, Feature #402) necesita su propio modelo multimodal en `LLM_VISION_MODEL`. Es **requerido sin default**, como `LLM_MODEL` (`apps/api/src/application/config/llm-config.ts`), y su ausencia **detiene el arranque de la API**: no hay fallback silencioso. Debe estar en `.env.cloud`/`.env.docker` **y** en las variables del servicio en Railway. El chequeo `env-api` del preflight ya lo exige (`REQUIRED_API_ENV`). Si la API no arranca en la corrida, revisar esta variable primero.
+
 ### 2.3 Fábrica desplegada y migraciones
 
 - La fábrica de campañas debe estar desplegada en Testnet y su id configurado en `STELLAR_CAMPAIGN_FACTORY_ID`.

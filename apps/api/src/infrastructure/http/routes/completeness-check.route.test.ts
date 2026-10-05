@@ -1,7 +1,15 @@
+import type { VisionOutcome, VisionProviderPort } from "@vaqcrow/ai";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CompletenessCheckPort } from "../../../application/ports/completeness-check-port.js";
+import type { PdfRasterizerPort } from "../../../application/ports/pdf-rasterizer-port.js";
+import type {
+  PymeDocumentRecord,
+  PymeDocumentRepositoryPort
+} from "../../../application/ports/pyme-document-repository-port.js";
+import type { StoragePort } from "../../../application/ports/storage-port.js";
 import { createDeterministicCompletenessCheckAdapter } from "../../adapters/deterministic-completeness-check-adapter.js";
+import { createContentAwareCompletenessCheckAdapter } from "../../adapters/content-aware-completeness-check-adapter.js";
 import { buildAppAs, principalFor } from "../test-support/auth.js";
 
 const VALID_BODY = {
@@ -130,6 +138,101 @@ describe("POST /completeness-check", () => {
     expect(response.body).not.toContain(sentinel);
     expect(logged).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(logged.mock.calls)).not.toContain(sentinel);
+  });
+
+  describe("content-aware path, composed end to end (U7)", () => {
+    const OWNER = principalFor("PYME").userId;
+
+    function persistedDocument(overrides: Partial<PymeDocumentRecord> = {}): PymeDocumentRecord {
+      return {
+        documentId: "doc-cuit",
+        ownerUserId: OWNER,
+        kind: "cuit",
+        objectPath: `${OWNER}/cuit/abc-constancia.pdf`,
+        name: "constancia.pdf",
+        sizeBytes: 8,
+        contentType: "application/pdf",
+        createdAt: "2026-10-05T00:00:00.000Z",
+        ...overrides
+      };
+    }
+
+    /**
+     * Composes the route with the real content-aware adapter and the real
+     * declared-data rules; only the three I/O collaborators are doubles. This is
+     * the one test that proves the verified principal's id reaches the content
+     * pass end to end, and that a PDF gap still answers a non-blocking 200.
+     */
+    it("rasterizes the owner's persisted PDF and returns content_irrelevant as a 200", async () => {
+      const cuit = persistedDocument();
+      const listByOwner = vi.fn(async () => ({ ok: true as const, value: [cuit] }));
+      const documents = {
+        listByOwner,
+        create: vi.fn(),
+        deleteByObjectPath: vi.fn()
+      } as unknown as PymeDocumentRepositoryPort;
+      const downloadObject = vi.fn(async () => ({
+        ok: true as const,
+        value: { bytes: Uint8Array.from([1, 2, 3]), contentType: "application/pdf" }
+      }));
+      const storage = {
+        uploadObject: vi.fn(),
+        removeObject: vi.fn(),
+        downloadObject
+      } as unknown as StoragePort;
+      const rasterize = vi.fn(async () => ({
+        ok: true as const,
+        value: { bytes: Uint8Array.from([4, 5]), contentType: "image/png" }
+      }));
+      const rasterizer = { rasterize } as unknown as PdfRasterizerPort;
+      const assessRelevance = vi.fn(async (): Promise<VisionOutcome> => ({
+        ok: true,
+        value: { relevant: false, reason: "No parece una Constancia de CUIT." },
+        metadata: {
+          model: "test-vision",
+          promptVersion: "vision-v1",
+          generatedAt: "2026-10-05T00:00:00.000Z",
+          source: "simulated"
+        }
+      }));
+      const vision = { assessRelevance } as unknown as VisionProviderPort;
+
+      const checker = createContentAwareCompletenessCheckAdapter({
+        documents,
+        storage,
+        rasterizer,
+        vision
+      });
+
+      const response = await build(checker).inject({
+        method: "POST",
+        url: "/completeness-check",
+        payload: VALID_BODY
+      });
+
+      // The declared rules passed, so the only finding is the content one — and
+      // a gap warns, it never blocks the send.
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        result: {
+          complete: false,
+          findings: [
+            {
+              code: "content_irrelevant",
+              severity: "gap",
+              detail: expect.stringContaining("Constancia de CUIT")
+            }
+          ]
+        }
+      });
+      // The owner is the verified principal end to end, never a body field.
+      expect(listByOwner).toHaveBeenCalledExactlyOnceWith(OWNER);
+      // A PDF is rasterized before the vision provider sees it.
+      expect(rasterize).toHaveBeenCalledTimes(1);
+      expect(assessRelevance).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "cuit", contentType: "image/png" })
+      );
+    });
   });
 
   describe("strict body validation", () => {
