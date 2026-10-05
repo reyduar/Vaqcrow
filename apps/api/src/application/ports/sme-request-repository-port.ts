@@ -43,4 +43,12 @@ export interface SmeRequestRepositoryPort {
 
   /** `not_found` means no SME request exists for that application. */
   findByApplicationId(applicationId: ApplicationId): Promise<SmeRequestRepositoryResult<SmeRequestRecord>>;
+
+  /**
+   * The owner's own submitted requests, newest first; an empty array when the
+   * owner has none. This is the read that makes a replayed submission idempotent
+   * across transport requests: the RPC's correlation id is per-request, so the
+   * use case compares the incoming request against the owner's stored ones.
+   */
+  findByOwner(ownerUserId: string): Promise<SmeRequestRepositoryResult<readonly SmeRequestRecord[]>>;
 }

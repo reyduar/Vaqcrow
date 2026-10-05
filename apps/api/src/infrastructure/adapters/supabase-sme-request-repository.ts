@@ -90,6 +90,27 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
     }
   }
 
+  async findByOwner(ownerUserId: string): Promise<SmeRequestRepositoryResult<readonly SmeRequestRecord[]>> {
+    try {
+      const { data, error } = await this.client
+        .from(TABLE)
+        .select()
+        .eq("owner_user_id", ownerUserId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error) };
+      }
+      if (!Array.isArray(data)) {
+        return { ok: false, error: { code: "unavailable" } };
+      }
+
+      return { ok: true, value: data.map((row) => this.toRecord(row as SmeRequestColumns)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   /**
    * Rebuilds the record through the shared contract parsers, so a malformed
    * stored row throws (caught by the callers as `unavailable`) instead of

@@ -109,3 +109,53 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 - **TDD:** RED observado (módulos inexistentes + policy/coverage fallando);
   GREEN: `pnpm --filter @vaqcrow/api test` 1793/1793, `typecheck`, `lint` y
   `boundaries` limpios.
+
+### T1b — Envío a revisión (API)
+
+**Unidad de trabajo:** `feat(api): require the wallet key and publish the submission notification`.
+
+- **Precondición de wallet (`SubmitSmeRequestDependencies.wallet`).**
+  `submitSmeRequest` lee `readPublicKey(ownerUserId)` —el principal verificado,
+  nunca el body— antes de persistir. Sin clave almacenada →
+  `{ code: "wallet_required" }`; la ruta responde `409 { code: "wallet_required" }`.
+  Un fallo de lectura → `503` sanitizado. Cierra el seam registrado de #406.
+- **Idempotencia.** Hallazgo: el RPC `submit_sme_request` **ya** es idempotente
+  sobre `correlation_id` (lock de asesoría + `unique (correlation_id)` + rama
+  `replayed`, cubierto por `supabase/tests/sme_request.sql`), pero la ruta deriva
+  ese id del `request.id` del transporte, que es nuevo en cada request HTTP: un
+  reintento del cliente creaba una segunda aplicación. Se agrega una guarda de
+  aplicación: `SmeRequestRepositoryPort.findByOwner` (usa el índice existente
+  `sme_request_owner_user_id_idx`) y, antes de `submit`, se compara el pedido
+  entrante con los ya enviados del mismo dueño (referencia, total y período).
+  Coincidencia → se devuelve la aplicación existente con `applied: false`, sin
+  `submit`. Un fallo de la lectura → `503` (no se arriesga un duplicado). **Sin
+  migración.**
+  - Límite conocido: la guarda es secuencial; dos reintentos concurrentes podrían
+    pasar ambos la lectura. Un índice único acotado por dueño+contenido sería la
+    defensa definitiva si la concurrencia importa (evaluado y diferido: el demo
+    reintenta en serie y una restricción demasiado amplia bloquearía casos
+    legítimos).
+- **Publicación del evento.** Solo cuando `submit` devuelve `applied: true` (un
+  replay por correlación no publica) se llama
+  `notifications.publish({ eventKey: "application:<id>:submitted", type:
+  "admin.new_application", smeName })`. `smeName` sale de
+  `businesses.findByOwner(ownerUserId)`; si no se puede resolver (o lanza) se
+  publica con la etiqueta neutra `"PyME"` —notificar al admin es el objetivo, y la
+  etiqueta no filtra datos—. Todo el bloque está envuelto para que un publisher que
+  lance no haga fallar el envío (best-effort).
+- **Cableado:** `SmeRequestRepositoryPort.findByOwner` + adaptador Supabase
+  (`select…eq(owner_user_id).order(created_at desc)`); `SmeRequestRouteDependencies`
+  gana `wallet`, `businesses`, `notifications`; `index.ts` reutiliza una única
+  instancia de `SupabaseWalletRepository` y quita el `void notificationPublisher`
+  (primer call-site de producción).
+- **Tests (TDD, RED observado antes del GREEN):**
+  - `sme-request.test.ts` (30): sin clave → `wallet_required`; fallo de wallet →
+    `unavailable`; replay por dueño+contenido no llama `submit` ni publica; lectura
+    de idempotencia caída → `unavailable`; publica en aplicado con nombre resuelto;
+    no publica en replay; fallback `"PyME"`; publisher que lanza no falla el envío.
+  - `sme-request.route.test.ts` (17): `409 wallet_required`; `201` publica; `200` en
+    replay no publica.
+  - `supabase-sme-request-repository.test.ts` (12): `findByOwner` lee/ordena/mapea,
+    lista vacía y errores sanitizados.
+- **Verificación:** `pnpm --filter @vaqcrow/api test` 1810/1810; `typecheck`, `lint`
+  y `boundaries` limpios. Sin migración, por lo que no se tocó el remoto.

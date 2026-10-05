@@ -1,15 +1,21 @@
 import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
-import type { SalesPeriodContract, SmeRequest } from "@vaqcrow/contracts";
+import type { ApplicationId, SalesPeriodContract, SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { BusinessRecord, BusinessRepositoryPort } from "../ports/business-repository-port.js";
+import type { NotificationPublisherPort } from "../ports/notification-publisher-port.js";
 import type { SalesDataProviderPort } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
+import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
 import { getSmeRequest } from "./get-sme-request.js";
 import { submitSmeRequest } from "./submit-sme-request.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
+const EXISTING_ID = parseApplicationId("33333333-3333-4333-8333-333333333333");
 const CORRELATION_ID = parseCorrelationId("22222222-2222-4222-8222-222222222222");
 const OWNER = "e1111111-1111-4111-8111-111111111111";
 const OTHER_OWNER = "f1111111-1111-4111-8111-111111111111";
+/** A syntactically valid Freighter key; the use case only cares that one exists. */
+const WALLET_KEY = `G${"A".repeat(55)}`;
 
 const request: SmeRequest = {
   smeReference: "sme:SYN-PH-0001",
@@ -27,6 +33,22 @@ const period: SalesPeriodContract = {
   simuladoLabel: "SIMULADO"
 };
 
+const business: BusinessRecord = {
+  businessId: "b1111111-1111-4111-8111-111111111111",
+  ownerUserId: OWNER,
+  name: "Panadería Sur",
+  cuit: "30-12345678-9",
+  sector: "Alimentos",
+  city: "Córdoba",
+  description: "Panadería de barrio",
+  goalArs: 15_000_000,
+  revenueShare: 5,
+  createdAt: "2026-10-05T00:00:00.000Z",
+  updatedAt: "2026-10-05T00:00:00.000Z"
+};
+
+const summary = { recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false };
+
 function repository(overrides: Partial<SmeRequestRepositoryPort> = {}): SmeRequestRepositoryPort {
   return {
     submit: vi
@@ -35,6 +57,38 @@ function repository(overrides: Partial<SmeRequestRepositoryPort> = {}): SmeReque
     findByApplicationId: vi
       .fn()
       .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
+    findByOwner: vi.fn().mockResolvedValue({ ok: true, value: [] }),
+    ...overrides
+  };
+}
+
+interface SubmitDeps {
+  readonly repository: SmeRequestRepositoryPort;
+  readonly wallet: Pick<WalletRepositoryPort, "readPublicKey">;
+  readonly businesses: Pick<BusinessRepositoryPort, "findByOwner">;
+  readonly notifications: Pick<NotificationPublisherPort, "publish">;
+  readonly generateApplicationId: () => ApplicationId;
+}
+
+function wallet(overrides: Partial<Pick<WalletRepositoryPort, "readPublicKey">> = {}): Pick<WalletRepositoryPort, "readPublicKey"> {
+  return { readPublicKey: vi.fn().mockResolvedValue({ ok: true, value: WALLET_KEY }), ...overrides };
+}
+
+function businesses(overrides: Partial<Pick<BusinessRepositoryPort, "findByOwner">> = {}): Pick<BusinessRepositoryPort, "findByOwner"> {
+  return { findByOwner: vi.fn().mockResolvedValue({ ok: true, value: business }), ...overrides };
+}
+
+function notifications(overrides: Partial<Pick<NotificationPublisherPort, "publish">> = {}): Pick<NotificationPublisherPort, "publish"> {
+  return { publish: vi.fn().mockResolvedValue(summary), ...overrides };
+}
+
+function deps(overrides: Partial<SubmitDeps> = {}): SubmitDeps {
+  return {
+    repository: repository(),
+    wallet: wallet(),
+    businesses: businesses(),
+    notifications: notifications(),
+    generateApplicationId: () => APPLICATION_ID,
     ...overrides
   };
 }
@@ -44,10 +98,11 @@ describe("submitSmeRequest", () => {
     const repo = repository();
     const generateApplicationId = vi.fn().mockReturnValue(APPLICATION_ID);
 
-    const result = await submitSmeRequest(
-      { repository: repo, generateApplicationId },
-      { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-    );
+    const result = await submitSmeRequest(deps({ repository: repo, generateApplicationId }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
 
     expect(repo.submit).toHaveBeenCalledWith({ applicationId: APPLICATION_ID, request, correlationId: CORRELATION_ID, ownerUserId: OWNER });
     expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
@@ -59,11 +114,146 @@ describe("submitSmeRequest", () => {
     });
 
     const result = await submitSmeRequest(
-      { repository: repo, generateApplicationId: () => parseApplicationId("99999999-9999-4999-8999-999999999999") },
+      deps({ repository: repo, generateApplicationId: () => parseApplicationId("99999999-9999-4999-8999-999999999999") }),
       { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER }
     );
 
     expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: false } });
+  });
+
+  it("rejects a submission when the principal has no stored wallet key", async () => {
+    const repo = repository();
+    const readPublicKey = vi.fn().mockResolvedValue({ ok: true, value: null });
+
+    const result = await submitSmeRequest(deps({ repository: repo, wallet: wallet({ readPublicKey }) }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(readPublicKey).toHaveBeenCalledWith(OWNER);
+    expect(result).toEqual({ ok: false, error: { code: "wallet_required" } });
+    expect(repo.findByOwner).not.toHaveBeenCalled();
+    expect(repo.submit).not.toHaveBeenCalled();
+  });
+
+  it.each(["unavailable", "invalid_request", "not_found"] as const)(
+    "is unavailable when the wallet read fails with %s",
+    async (code) => {
+      const readPublicKey = vi.fn().mockResolvedValue({ ok: false, error: { code } });
+
+      const result = await submitSmeRequest(deps({ wallet: wallet({ readPublicKey }) }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable", fieldErrors: [] } });
+    }
+  );
+
+  it("returns the existing application for a replayed submission without applying again", async () => {
+    const repo = repository({
+      findByOwner: vi.fn().mockResolvedValue({ ok: true, value: [{ applicationId: EXISTING_ID, request, ownerUserId: OWNER }] })
+    });
+    const publish = vi.fn().mockResolvedValue(summary);
+
+    const result = await submitSmeRequest(deps({ repository: repo, notifications: notifications({ publish }) }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(repo.findByOwner).toHaveBeenCalledWith(OWNER);
+    expect(repo.submit).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, value: { applicationId: EXISTING_ID, request, applied: false } });
+  });
+
+  it("ignores another owner's stored request when checking for a replay", async () => {
+    const repo = repository({
+      findByOwner: vi.fn().mockResolvedValue({
+        ok: true,
+        value: [{ applicationId: EXISTING_ID, request, ownerUserId: OTHER_OWNER }]
+      })
+    });
+
+    await submitSmeRequest(deps({ repository: repo }), { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER });
+
+    // The guard only ever sees the principal's own rows; this row would be
+    // filtered by the adapter, and the use case does not match it by content alone.
+    expect(repo.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("is unavailable when the idempotency read fails, instead of risking a duplicate", async () => {
+    const repo = repository({ findByOwner: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+
+    const result = await submitSmeRequest(deps({ repository: repo }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable", fieldErrors: [] } });
+    expect(repo.submit).not.toHaveBeenCalled();
+  });
+
+  it("publishes admin.new_application once on a real apply", async () => {
+    const publish = vi.fn().mockResolvedValue(summary);
+
+    const result = await submitSmeRequest(deps({ notifications: notifications({ publish }) }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(result.ok).toBe(true);
+    expect(publish).toHaveBeenCalledWith({
+      eventKey: `application:${APPLICATION_ID}:submitted`,
+      type: "admin.new_application",
+      smeName: "Panadería Sur"
+    });
+  });
+
+  it("does not publish when the repository reports an idempotent transport replay", async () => {
+    const repo = repository({
+      submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: false } })
+    });
+    const publish = vi.fn().mockResolvedValue(summary);
+
+    await submitSmeRequest(deps({ repository: repo, notifications: notifications({ publish }) }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("publishes with a neutral fallback when the business cannot be resolved", async () => {
+    const publish = vi.fn().mockResolvedValue(summary);
+    const findByOwner = vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } });
+
+    const result = await submitSmeRequest(
+      deps({ businesses: businesses({ findByOwner }), notifications: notifications({ publish }) }),
+      { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({ smeName: "PyME" }));
+  });
+
+  it("still succeeds when the publisher throws (best-effort)", async () => {
+    const publish = vi.fn().mockRejectedValue(new Error("SECRET delivery failure"));
+
+    const result = await submitSmeRequest(deps({ notifications: notifications({ publish }) }), {
+      body: request,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
+
+    expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
+    expect(JSON.stringify(result)).not.toContain("SECRET");
   });
 
   it.each([
@@ -75,20 +265,18 @@ describe("submitSmeRequest", () => {
   ])("rejects %s with a sanitized field error and never touches the repository", async (_name, body, expected) => {
     const repo = repository();
 
-    const result = await submitSmeRequest(
-      { repository: repo, generateApplicationId: () => APPLICATION_ID },
-      { body, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-    );
+    const result = await submitSmeRequest(deps({ repository: repo }), {
+      body,
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
 
     expect(result).toEqual({ ok: false, error: { code: "invalid_request", fieldErrors: [expected] } });
     expect(repo.submit).not.toHaveBeenCalled();
   });
 
   it("rejects a non-object body", async () => {
-    const result = await submitSmeRequest(
-      { repository: repository(), generateApplicationId: () => APPLICATION_ID },
-      { body: null, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-    );
+    const result = await submitSmeRequest(deps(), { body: null, correlationId: CORRELATION_ID, ownerUserId: OWNER });
 
     expect(result).toEqual({
       ok: false,
@@ -99,10 +287,11 @@ describe("submitSmeRequest", () => {
   it("maps a root-level issue (unknown key, empty path) to the body field as invalid, not required", async () => {
     const repo = repository();
 
-    const result = await submitSmeRequest(
-      { repository: repo, generateApplicationId: () => APPLICATION_ID },
-      { body: { ...request, extra: true }, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-    );
+    const result = await submitSmeRequest(deps({ repository: repo }), {
+      body: { ...request, extra: true },
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
 
     expect(result).toEqual({
       ok: false,
@@ -112,10 +301,11 @@ describe("submitSmeRequest", () => {
   });
 
   it("keeps field errors next to a root-level issue, root reported as invalid", async () => {
-    const result = await submitSmeRequest(
-      { repository: repository(), generateApplicationId: () => APPLICATION_ID },
-      { body: { ...request, declaredTotalArs: -1, extra: true }, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-    );
+    const result = await submitSmeRequest(deps(), {
+      body: { ...request, declaredTotalArs: -1, extra: true },
+      correlationId: CORRELATION_ID,
+      ownerUserId: OWNER
+    });
 
     expect(result).toEqual({
       ok: false,
@@ -134,10 +324,11 @@ describe("submitSmeRequest", () => {
     async (code) => {
       const repo = repository({ submit: vi.fn().mockResolvedValue({ ok: false, error: { code } }) });
 
-      const result = await submitSmeRequest(
-        { repository: repo, generateApplicationId: () => APPLICATION_ID },
-        { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER }
-      );
+      const result = await submitSmeRequest(deps({ repository: repo }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
 
       expect(result).toEqual({ ok: false, error: { code: code === "invalid_request" ? "invalid_request" : "unavailable", fieldErrors: [] } });
     }

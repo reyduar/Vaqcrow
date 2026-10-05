@@ -48,8 +48,14 @@ const salesDataProvider = createSimulatedSalesDataProvider();
 const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
 
 // The PyME company (T3b): created and read by owner, and the ownership source
-// the sales-feed route scopes a PyME's series to.
+// the sales-feed route scopes a PyME's series to. It also resolves the company
+// name the submission notification carries.
 const businessRepository = new SupabaseBusinessRepository(supabase);
+
+// The PyME Freighter wallet (#406/#407): one binding shared by the connect route
+// and the submission precondition (#402/T1b), so the presence check reads the
+// same stored key the connection wrote.
+const walletRepository = new SupabaseWalletRepository(supabase);
 
 // Built first: the distribution derivation reconciles the campaign from the chain,
 // so it reuses the campaign group's repository and vault chain reader.
@@ -132,16 +138,15 @@ const auditLog = new SupabaseAuditLog(supabase);
 void auditLog; // not consumed by any route yet
 
 // Notifications (#382/T1c). The repository backs the bell routes below; the
-// publisher is wired here so its first caller (#402, submission → admin) only
-// has to consume the port — no production call site publishes yet. Email is
-// optional config: with no Resend key the port is a null object, not a misconfig.
+// publisher's first production call site is the submission below (#402/T1b),
+// which publishes `admin.new_application` best-effort. Email is optional config:
+// with no Resend key the port is a null object, not a misconfig.
 const notificationRepository = new SupabaseNotificationRepository(supabase);
 const notificationPublisher = new NotificationPublisher({
   repository: notificationRepository,
   email: createEmailPort(config.email),
   appBaseUrl: config.email.appBaseUrl
 });
-void notificationPublisher; // no production call site publishes yet (#402)
 
 // The completeness check (#402/T1a): deterministic and declared-data only — the
 // owner deferred content/vision reading, so no model or storage read is wired.
@@ -168,6 +173,10 @@ const app = buildApp({
   smeRequest: {
     repository: smeRequestRepository,
     salesData: salesDataProvider,
+    // The submission precondition (#406 seam) and the admin notification.
+    wallet: walletRepository,
+    businesses: businessRepository,
+    notifications: notificationPublisher,
     generateApplicationId: () => parseApplicationId(randomUUID())
   },
   business: { repository: businessRepository },
@@ -179,7 +188,7 @@ const app = buildApp({
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).
   wallet: {
-    repository: new SupabaseWalletRepository(supabase),
+    repository: walletRepository,
     signatures: new StellarWalletSignature(),
     generateChallengeId: () => randomUUID(),
     generateNonce: () => randomUUID(),

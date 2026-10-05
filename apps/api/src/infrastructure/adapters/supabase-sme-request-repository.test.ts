@@ -36,20 +36,30 @@ function fakeClient(step: FakeStep): {
   client: SupabaseClient;
   rpc: Array<readonly [string, unknown]>;
   eq: Array<readonly [string, unknown]>;
+  order: Array<readonly [string, unknown]>;
   from: string[];
 } {
   const rpc: Array<readonly [string, unknown]> = [];
   const eq: Array<readonly [string, unknown]> = [];
+  const order: Array<readonly [string, unknown]> = [];
   const from: string[] = [];
   const result = () =>
     step.reject ? Promise.reject(step.reject) : Promise.resolve({ data: step.data ?? null, error: step.error ?? null });
+  // Supabase's builder is thenable, so an awaited `select().eq().order()` chain
+  // resolves through `then` exactly as `maybeSingle()` would.
   const builder = {
     select: () => builder,
     eq: (column: string, value: unknown) => {
       eq.push([column, value]);
       return builder;
     },
-    maybeSingle: () => result()
+    order: (column: string, options: unknown) => {
+      order.push([column, options]);
+      return builder;
+    },
+    maybeSingle: () => result(),
+    then: (onFulfilled: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) =>
+      result().then(onFulfilled, onRejected)
   };
   return {
     client: {
@@ -64,6 +74,7 @@ function fakeClient(step: FakeStep): {
     } as unknown as SupabaseClient,
     rpc,
     eq,
+    order,
     from
   };
 }
@@ -187,6 +198,39 @@ describe("SupabaseSmeRequestRepository.findByApplicationId", () => {
     for (const step of [{ error: pgError("XX000") }, { data: { ...ROW, declared_total_ars: "abc" } }]) {
       const { client } = fakeClient(step);
       expect(await new SupabaseSmeRequestRepository(client).findByApplicationId(APPLICATION_ID)).toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+    }
+  });
+});
+
+describe("SupabaseSmeRequestRepository.findByOwner", () => {
+  it("reads the owner's requests newest first and maps them", async () => {
+    const { client, eq, order, from } = fakeClient({ data: [ROW] });
+
+    const result = await new SupabaseSmeRequestRepository(client).findByOwner(OWNER);
+
+    expect(from).toEqual(["sme_request"]);
+    expect(eq).toEqual([["owner_user_id", OWNER]]);
+    expect(order).toEqual([["created_at", { ascending: false }]]);
+    expect(result).toEqual({
+      ok: true,
+      value: [{ applicationId: APPLICATION_ID, request: REQUEST, ownerUserId: OWNER }]
+    });
+  });
+
+  it("returns an empty list when the owner has no requests", async () => {
+    const { client } = fakeClient({ data: [] });
+
+    expect(await new SupabaseSmeRequestRepository(client).findByOwner(OWNER)).toEqual({ ok: true, value: [] });
+  });
+
+  it("is unavailable on a Postgres error, a null payload or a malformed stored row", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const step of [{ error: pgError("XX000") }, { data: null }, { data: [{ ...ROW, declared_total_ars: "abc" }] }]) {
+      const { client } = fakeClient(step);
+      expect(await new SupabaseSmeRequestRepository(client).findByOwner(OWNER)).toEqual({
         ok: false,
         error: { code: "unavailable" }
       });
