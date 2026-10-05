@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Role } from "../ports/auth-port.js";
 import type { EmailMessage, EmailPort, EmailSendResult } from "../ports/email-port.js";
 import type {
   NewNotification,
@@ -19,8 +20,28 @@ const NEW_APPLICATION_EVENT: NotificationEvent = {
   smeName: "Panadería Horizonte SRL"
 };
 
+/**
+ * A PyME event and an investor event: the publisher must resolve each against
+ * its own `NOTIFICATION_AUDIENCE` role. The catalogue asserts the map in
+ * isolation; these cases prove the use case actually fans out by it, so a
+ * regression in `publish` (e.g. resolving always as ADMIN) cannot hide behind a
+ * correct map.
+ */
+const PYME_APPROVED_EVENT: NotificationEvent = {
+  eventKey: "application:22222222-2222-4222-8222-222222222222:approved",
+  type: "pyme.approved_published"
+};
+
+const INVESTOR_CONTRIBUTION_EVENT: NotificationEvent = {
+  eventKey: "contribution:33333333-3333-4333-8333-333333333333:confirmed",
+  type: "investor.contribution_confirmed",
+  smeName: "Panadería Horizonte SRL"
+};
+
 class InMemoryNotificationRepository implements NotificationRepositoryPort {
   recipients: readonly NotificationRecipient[] = [];
+  /** Every role the publisher asked the directory for, in order. */
+  readonly resolvedRoles: Role[] = [];
   throwOnResolve = false;
   resolveFailure = false;
   insertFailure = false;
@@ -31,9 +52,10 @@ class InMemoryNotificationRepository implements NotificationRepositoryPort {
   readonly stored = new Map<string, { id: string; notification: NewNotification }>();
   private sequence = 0;
 
-  async resolveRecipientsByRole(): Promise<
+  async resolveRecipientsByRole(role: Role): Promise<
     { readonly ok: true; readonly recipients: readonly NotificationRecipient[] } | { readonly ok: false; readonly code: "unavailable" }
   > {
+    this.resolvedRoles.push(role);
     if (this.throwOnResolve) {
       throw new Error("directory unavailable");
     }
@@ -258,5 +280,53 @@ describe("NotificationPublisher.publish", () => {
     expect(summary).toEqual({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
     expect(email.messages).toHaveLength(1);
     expect(repository.markedSent).toHaveLength(0);
+  });
+});
+
+describe("NotificationPublisher.publish audience resolution", () => {
+  const CASES = [
+    {
+      label: "PyME",
+      event: PYME_APPROVED_EVENT,
+      role: "PYME" as Role,
+      title: "Tu campaña fue aprobada y publicada",
+      ctaHref: "/company"
+    },
+    {
+      label: "investor",
+      event: INVESTOR_CONTRIBUTION_EVENT,
+      role: "INVERSOR" as Role,
+      title: "Tu aporte se confirmó",
+      ctaHref: "/portfolio"
+    }
+  ] as const;
+
+  it.each(CASES)("resolves the $role audience and persists its own copy for a $label event", async (entry) => {
+    const { repository, email, publisher } = setup();
+    repository.recipients = [{ userId: ADMIN, email: "recipient@example.test" }];
+
+    const summary = await publisher.publish(entry.event);
+
+    expect(repository.resolvedRoles).toEqual([entry.role]);
+    expect(summary).toEqual({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
+    expect(repository.inserted[0]).toMatchObject({
+      recipientUserId: ADMIN,
+      eventKey: entry.event.eventKey,
+      eventType: entry.event.type,
+      title: entry.title,
+      ctaHref: entry.ctaHref
+    });
+    expect(email.messages[0]?.text).toContain(`${APP_BASE_URL}${entry.ctaHref}`);
+  });
+
+  it("resolves each role from the event it is given, independently per publish", async () => {
+    const { repository, publisher } = setup();
+    repository.recipients = [{ userId: ADMIN, email: "recipient@example.test" }];
+
+    await publisher.publish(INVESTOR_CONTRIBUTION_EVENT);
+    await publisher.publish(PYME_APPROVED_EVENT);
+    await publisher.publish(NEW_APPLICATION_EVENT);
+
+    expect(repository.resolvedRoles).toEqual(["INVERSOR", "PYME", "ADMIN"]);
   });
 });
