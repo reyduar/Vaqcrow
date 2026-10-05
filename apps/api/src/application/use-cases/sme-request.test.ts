@@ -124,17 +124,22 @@ describe("submitSmeRequest", () => {
   it("rejects a submission when the principal has no stored wallet key", async () => {
     const repo = repository();
     const readPublicKey = vi.fn().mockResolvedValue({ ok: true, value: null });
+    const publish = vi.fn().mockResolvedValue(summary);
 
-    const result = await submitSmeRequest(deps({ repository: repo, wallet: wallet({ readPublicKey }) }), {
-      body: request,
-      correlationId: CORRELATION_ID,
-      ownerUserId: OWNER
-    });
+    const result = await submitSmeRequest(
+      deps({ repository: repo, wallet: wallet({ readPublicKey }), notifications: notifications({ publish }) }),
+      {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      }
+    );
 
     expect(readPublicKey).toHaveBeenCalledWith(OWNER);
     expect(result).toEqual({ ok: false, error: { code: "wallet_required" } });
     expect(repo.findByOwner).not.toHaveBeenCalled();
     expect(repo.submit).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it.each(["unavailable", "invalid_request", "not_found"] as const)(
@@ -208,6 +213,7 @@ describe("submitSmeRequest", () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(publish).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith({
       eventKey: `application:${APPLICATION_ID}:submitted`,
       type: "admin.new_application",

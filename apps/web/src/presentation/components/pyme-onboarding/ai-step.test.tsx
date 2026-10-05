@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AiEvaluationInput } from "@/application/ports/ai-evaluation-port";
 import type { CompletenessCheckInput } from "@/application/ports/completeness-check-port";
@@ -111,6 +111,42 @@ describe("AiStep", () => {
     expect(await screen.findByText("Completitud de la solicitud")).toBeInTheDocument();
     expect(screen.queryByText(/Podés enviar la solicitud igual/)).not.toBeInTheDocument();
     expect(screen.getByText(/No encontramos faltantes ni anomalías/)).toBeInTheDocument();
+  });
+
+  it("lists every API finding detail with its label inside the SIMULADO-marked section", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({
+      complete: true,
+      findings: [
+        {
+          code: "sales_anomaly",
+          severity: "warning",
+          detail: "Las ventas de Agosto superan ampliamente el promedio declarado."
+        },
+        {
+          code: "insufficient_photos",
+          severity: "warning",
+          detail: "Subiste 5 fotos: el máximo sugerido es 4."
+        }
+      ]
+    });
+    const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
+
+    const heading = await screen.findByRole("heading", { name: "Completitud de la solicitud" });
+    const section = heading.closest("section");
+    expect(section).not.toBeNull();
+    const findings = within(section as HTMLElement);
+
+    expect(findings.getAllByText("SIMULADO").length).toBeGreaterThanOrEqual(1);
+    expect(
+      findings.getByText("Las ventas de Agosto superan ampliamente el promedio declarado.")
+    ).toBeInTheDocument();
+    expect(findings.getByText("Subiste 5 fotos: el máximo sugerido es 4.")).toBeInTheDocument();
+    expect(findings.getByText("Anomalía:")).toBeInTheDocument();
+    expect(findings.getByText("Aviso:")).toBeInTheDocument();
+    expect(screen.queryByText(/Podés enviar la solicitud igual/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continuar/ })).toBeEnabled();
+    expect(onContinue).not.toHaveBeenCalled();
   });
 
   it("keeps Continuar available when the completeness check fails", async () => {

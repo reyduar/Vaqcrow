@@ -116,6 +116,7 @@ describe("POST /sme-requests", () => {
     });
 
     expect(response.statusCode).toBe(201);
+    expect(publish).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith({
       eventKey: `application:${APPLICATION_ID}:submitted`,
       type: "admin.new_application",
@@ -141,8 +142,9 @@ describe("POST /sme-requests", () => {
   it("answers 409 wallet_required when the principal has no stored key", async () => {
     const submit = vi.fn();
     const readPublicKey = vi.fn().mockResolvedValue({ ok: true, value: null });
+    const publish = vi.fn().mockResolvedValue(summary);
 
-    const response = await build({ submit }, {}, { wallet: { readPublicKey } }).inject({
+    const response = await build({ submit }, {}, { wallet: { readPublicKey }, notifications: { publish } }).inject({
       method: "POST",
       url: "/sme-requests",
       payload: request
@@ -152,6 +154,7 @@ describe("POST /sme-requests", () => {
     expect(response.json()).toEqual({ code: "wallet_required" });
     expect(readPublicKey).toHaveBeenCalledWith(OWNER);
     expect(submit).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it("answers 200 with the same shape on an idempotent replay", async () => {
