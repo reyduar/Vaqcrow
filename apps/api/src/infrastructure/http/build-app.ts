@@ -16,6 +16,8 @@ import { registerBusinessRoute } from "./routes/business.route.js";
 import type { BusinessRouteDependencies } from "./routes/business.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
 import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
+import { registerCompletenessCheckRoute } from "./routes/completeness-check.route.js";
+import type { CompletenessCheckRouteDependencies } from "./routes/completeness-check.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
@@ -87,6 +89,7 @@ export function buildApp(dependencies: {
   readonly business?: BusinessRouteDependencies;
   readonly wallet?: WalletRouteDependencies;
   readonly notification?: NotificationRouteDependencies;
+  readonly completenessCheck?: CompletenessCheckRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -171,6 +174,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.notification) {
     registerNotificationRoute(app, dependencies.notification);
+  }
+  if (dependencies.completenessCheck) {
+    registerCompletenessCheckRoute(app, dependencies.completenessCheck);
   }
   return app;
 }

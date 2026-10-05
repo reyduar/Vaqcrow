@@ -51,7 +51,7 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 ## Tareas
 
 - [ ] **T1 (#403) — Implementar.**
-  - [ ] **T1a — Chequeo de completitud (API).** `CompletenessCheckPort` + adaptador determinista + tests con dobles.
+  - [x] **T1a — Chequeo de completitud (API).** `CompletenessCheckPort` + adaptador determinista + tests con dobles.
   - [ ] **T1b — Envío a revisión (API).** Precondición de wallet server-side, idempotencia, y publicación del evento `admin.new_application` (cableado en `index.ts`/`build-app`).
   - [ ] **T1c — Web.** Cablear el resultado de completitud al paso 3 (faltantes/anomalías; incompleto advierte).
 - [ ] **T2 (#404) — Probar.** Golden fixtures (completa, documento faltante, meses faltantes, anomalía), prompt-injection, validación de schema, idempotencia del envío, rechazo sin clave, evento publicado una sola vez.
@@ -60,3 +60,52 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 ## Próximo paso
 
 **T1a**: puerto + adaptador determinista del chequeo de completitud, con tests.
+
+## Bitácora de implementación
+
+### T1a — Chequeo de completitud (API)
+
+**Unidad de trabajo:** `feat(api): add the application completeness check`.
+
+- **Reglas puras** (`apps/api/src/application/completeness/completeness-check.ts`):
+  `checkCompleteness(input)` + tipos. Sin vendor, sin Fastify/Supabase, sin I/O.
+  Los `kind` de documento reutilizan `DocumentKind` de
+  `../storage/document-upload.ts` con `Exclude<DocumentKind, "photo">`, para que
+  el vocabulario del wizard y el del chequeo no diverjan.
+- **Decisiones de las reglas:**
+  - Documento obligatorio omitido o con `present: false` → `gap`
+    (`missing_document`), con copia en español que lo nombra ("Declaraciones de
+    ventas", "Constancia de CUIT", "Estatuto").
+  - 0 fotos → `gap`; 5+ fotos → `warning` (`insufficient_photos`). El exceso no
+    bloquea; la falta sí.
+  - Mes sin valor (`null`/no finito) con menos de 6 declarados → **un finding
+    por mes** (`missing_sales_month`, `gap`), para poder nombrarlo como lo hace
+    la notificación del template ("La IA marcó un faltante (abril)"). `0` cuenta
+    como valor. Si el total declarado es menor a 6 y el faltante no es
+    atribuible a meses nombrados, un `gap` agregado cubre el resto. Justificación:
+    el detalle nombrado es más accionable para la PyME y coincide con el diseño.
+  - Mes por encima de 1.5× el promedio de los meses positivos →
+    `sales_anomaly` `warning`, espejo exacto de `salesAnomaly` en
+    `apps/web/src/application/pyme-onboarding/registration-step.ts`.
+  - `complete = no hay findings con severity "gap"`: **incompleto advierte, no
+    bloquea** (decisión 2 del owner).
+- **Puerto** (`apps/api/src/application/ports/completeness-check-port.ts`):
+  `check(input): Promise<result>`, sin vendor.
+- **Adaptador** (`apps/api/src/infrastructure/adapters/deterministic-completeness-check-adapter.ts`):
+  implementa el puerto delegando en las reglas puras. Sin LLM: el alcance es
+  datos declarados (decisión 4).
+- **Ruta** (`apps/api/src/infrastructure/http/routes/completeness-check.route.ts`):
+  `POST /completeness-check`, `only("PYME")`, validación estricta del body
+  (claves exactas, sin duplicados, rangos) en
+  `apps/api/src/application/completeness/completeness-request.ts`; responde
+  `200 { result }` para un body válido (aunque `complete` sea `false`) y
+  `400 { errors: [{ field, code }] }` / `503 { code: "unavailable" }` sanitizados.
+  Sin propietario tomado del body.
+- **Cableado:** `route-policy.ts`, `build-app.ts` (dependencia opcional) e
+  `index.ts` (adaptador determinista).
+- **Tests pinneados actualizados:** `route-policy.test.ts`,
+  `authorization.test.ts` (fila MATRIX + `completenessCheck: stub`),
+  `build-app.test.ts` (registro de la ruta).
+- **TDD:** RED observado (módulos inexistentes + policy/coverage fallando);
+  GREEN: `pnpm --filter @vaqcrow/api test` 1793/1793, `typecheck`, `lint` y
+  `boundaries` limpios.

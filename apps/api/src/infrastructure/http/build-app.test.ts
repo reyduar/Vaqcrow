@@ -219,6 +219,40 @@ describe("buildApp", () => {
     });
   });
 
+  describe("completeness check dependency", () => {
+    it("registers POST /completeness-check when the dependency is present", async () => {
+      const checker = {
+        check: async () => ({ complete: true, findings: [] })
+      };
+      app = buildApp({ auth: { port: fakeAuthPort() }, completenessCheck: { checker } });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/completeness-check",
+        headers: bearer("PYME"),
+        payload: {
+          documents: [
+            { kind: "sales-declarations", present: true },
+            { kind: "cuit", present: true },
+            { kind: "articles-of-incorporation", present: true }
+          ],
+          photoCount: 1,
+          salesMonths: [
+            { month: "Enero", valueArs: 1 },
+            { month: "Febrero", valueArs: 1 },
+            { month: "Marzo", valueArs: 1 },
+            { month: "Abril", valueArs: 1 },
+            { month: "Mayo", valueArs: 1 },
+            { month: "Junio", valueArs: 1 }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ result: { complete: true, findings: [] } });
+    });
+  });
+
   describe("CORS", () => {
     const ALLOWED_ORIGIN = "https://vaqcrow-web.example.com";
     const DISALLOWED_ORIGIN = "https://not-allowed.example.com";

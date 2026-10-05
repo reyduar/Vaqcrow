@@ -26,6 +26,10 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /businesses": only("PYME"),
   "GET /businesses/mine": only("PYME"),
 
+  // Application completeness check (#402/T1a): the PyME checks the metadata its
+  // own wizard declares before sending the application to human review.
+  "POST /completeness-check": only("PYME"),
+
   // Freighter wallet connection (#407/T1b): issue and consume a single-use
   // challenge, then read the stored key and its frozen state.
   "POST /profile/wallet/challenge": only("PYME"),

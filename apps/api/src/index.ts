@@ -20,6 +20,7 @@ import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapte
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
+import { createDeterministicCompletenessCheckAdapter } from "./infrastructure/adapters/deterministic-completeness-check-adapter.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -142,6 +143,10 @@ const notificationPublisher = new NotificationPublisher({
 });
 void notificationPublisher; // no production call site publishes yet (#402)
 
+// The completeness check (#402/T1a): deterministic and declared-data only — the
+// owner deferred content/vision reading, so no model or storage read is wired.
+const completenessCheck = createDeterministicCompletenessCheckAdapter();
+
 const app = buildApp({
   auth,
   applicationReviewRepository,
@@ -168,6 +173,8 @@ const app = buildApp({
   business: { repository: businessRepository },
   // The in-app notification bell (#382/T1c): the signed-in user's own rows.
   notification: { repository: notificationRepository },
+  // The completeness check (#402/T1a): gaps warn, they never block the send.
+  completenessCheck: { checker: completenessCheck },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

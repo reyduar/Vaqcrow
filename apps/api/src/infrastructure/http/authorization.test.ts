@@ -12,6 +12,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
+  // Application completeness check (#402/T1a): declared-data check for the PyME.
+  ["POST", "/completeness-check", ["PYME"]],
   ["POST", "/businesses", ["PYME"]],
   ["GET", "/businesses/mine", ["PYME"]],
   ["POST", "/profile/wallet/challenge", ["PYME"]],
@@ -73,6 +75,7 @@ function buildFullApp(auth?: AuthDependency): {
     business: stub,
     wallet: stub,
     notification: stub,
+    completenessCheck: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

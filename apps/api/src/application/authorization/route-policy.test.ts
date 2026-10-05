@@ -16,6 +16,13 @@ describe("resolveRoutePolicy", () => {
     }
   });
 
+  it("restricts the completeness check to PYME", () => {
+    expect(resolveRoutePolicy("POST", "/completeness-check")).toEqual({
+      kind: "roles",
+      roles: ["PYME"]
+    });
+  });
+
   it("lists the notification routes as authenticated for every role", () => {
     const routes = [
       "GET /notifications",
