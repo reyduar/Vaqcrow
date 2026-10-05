@@ -201,7 +201,7 @@ Tras el cierre: API `1812`, web `1523`, pgTAP `339`, typecheck/lint/boundaries l
 - **Visión de documentos diferida.** El chequeo no detecta todavía documentos irrelevantes por contenido (§5.1); es la brecha más visible para el owner.
 - **Copy aprobada; marcador separado.** §5.3 quedó aprobado por el owner (2026-10-05); el marcador `SIMULADO` se retiró de la sección de completitud y viaja con la banda de riesgo simulada.
 - **Idempotencia atómica.** Resuelta por R3-1 (§3.2, §5.2).
-- **Deriva de historial remoto (pre-existente).** Seis migraciones tempranas (previas a `20260923183356_create_campaign_persistence`) no coinciden fila a fila entre el repo y el remoto; es anterior a #402, no se reescribió, y queda como reconciliación acotada a decidir por el owner.
+- ~~**Deriva de historial remoto (pre-existente).**~~ **Resuelto (2026-10-05).** Siete filas tempranas del ledger del remoto (previas a `20260923183356_create_campaign_persistence`) tenían versiones/nombres distintos al repo, más un duplicado de `create_application_review`; el **esquema** ya coincidía (verificado sobre `application_review`), así que era solo el registro. Se reconcilió el ledger del remoto (6 updates de versión + 1 delete del duplicado) y ahora sus **25 filas coinciden exactamente** con los 25 archivos del repo.
 
 ## 10. Estado de entrega y próximos pasos
 

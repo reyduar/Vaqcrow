@@ -281,6 +281,8 @@ misma línea reofreció el slot.
   agrega `Authorization`. Commit `53d6e9a`.
 
 **Verificación tras el cierre:** API `1812`, web `1523`, pgTAP `339`,
-`typecheck`/`lint`/`boundaries` limpios. Hallazgo lateral registrado: **deriva
-pre-existente** de seis migraciones tempranas entre repo y remoto (anterior a
-#402, no reescrita) — reconciliación acotada a decidir por el owner.
+`typecheck`/`lint`/`boundaries` limpios. Hallazgo lateral: **deriva de historial
+remoto** (siete filas tempranas del ledger con versiones distintas + un
+duplicado de `create_application_review`; el esquema ya coincidía) —
+**reconciliada el 2026-10-05** (6 updates de versión + 1 delete; el remoto quedó
+con 25 filas idénticas a los 25 archivos del repo).
