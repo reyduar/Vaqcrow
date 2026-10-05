@@ -1,6 +1,6 @@
 begin;
 
-select plan(24);
+select plan(26);
 
 -- The API role submits as the authenticated principal, so a profile must exist
 -- for the nullable owner foreign key. The auth insert is the Auth service's
@@ -85,6 +85,30 @@ select is(
   (select count(*)::int from public.application_review where application_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'),
   0,
   'a replay creates no second application'
+);
+
+-- Owner+content idempotency (RDD R3-1). A retry mints a fresh correlation id
+-- per transport request, so the correlation replay above is not what makes a
+-- client retry idempotent. A second submission with a *new* correlation id but
+-- identical owner and declared content must replay the application the first
+-- one created. The owner-scoped advisory lock makes this check race-free; this
+-- sequential pair is the equivalent the lock guarantees.
+select is(
+  (
+    select result_kind || ':' || application_id::text
+      from public.submit_sme_request(
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5', 'cccccccc-cccc-4ccc-8ccc-ccccccccccc5',
+        'e1111111-1111-4111-8111-111111111111', 'sme:SYN-PH-0001', 15000000, '2026-01', '2026-08'
+      )
+  ),
+  'replayed:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+  'an identical submission with a new correlation id replays by owner and content'
+);
+
+select is(
+  (select count(*)::int from public.application_review where application_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5'),
+  0,
+  'the owner+content replay creates no second application'
 );
 
 -- Constraint checks ----------------------------------------------------------

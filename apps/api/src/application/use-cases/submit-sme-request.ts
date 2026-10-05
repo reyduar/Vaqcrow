@@ -74,10 +74,12 @@ export async function submitSmeRequest(
     return { ok: false, error: { code: "wallet_required" } };
   }
 
-  // A replayed submission returns the application it already created instead of
-  // creating a second one. The RPC also de-duplicates a replayed correlation id,
-  // but that id is minted per transport request, so the owner-scoped content
-  // check is what makes a client retry idempotent.
+  // Fast path: the common sequential retry short-circuits here without reaching
+  // the RPC. This read is awaited *before* `submit`, so it is not the
+  // authoritative guard — two concurrent retries can both miss it. The RPC
+  // `submit_sme_request` re-checks owner+content inside its own transaction under
+  // an owner-scoped advisory lock, which is what makes the retry idempotent under
+  // concurrency; this lookup only saves a round trip.
   const existing = await dependencies.repository.findByOwner(input.ownerUserId);
   if (!existing.ok) {
     return { ok: false, error: { code: "unavailable", fieldErrors: [] } };

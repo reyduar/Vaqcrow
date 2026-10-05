@@ -30,8 +30,11 @@ export interface SmeRequestRepositoryPort {
   /**
    * Atomically creates the application (state `awaiting_assessment`) together
    * with its SME request, recording `ownerUserId` as the request's owner.
-   * Replaying the same correlation id returns the application it already
-   * created instead of creating a second one.
+   * Replaying the same correlation id — or re-submitting identical owner and
+   * declared content under a fresh correlation id — returns the application
+   * already created instead of creating a second one. The owner+content check
+   * runs inside the RPC transaction under an owner-scoped advisory lock, so it
+   * holds under concurrent retries, not only sequential ones.
    */
   submit(input: {
     applicationId: ApplicationId;
@@ -46,9 +49,11 @@ export interface SmeRequestRepositoryPort {
 
   /**
    * The owner's own submitted requests, newest first; an empty array when the
-   * owner has none. This is the read that makes a replayed submission idempotent
-   * across transport requests: the RPC's correlation id is per-request, so the
-   * use case compares the incoming request against the owner's stored ones.
+   * owner has none. The submit use case reads this as a fast path for the common
+   * sequential retry; the authoritative idempotency guard lives inside the
+   * `submit_sme_request` RPC, which re-checks owner+content atomically under an
+   * owner-scoped advisory lock (the RPC's correlation id is per-request, so on
+   * its own it does not de-duplicate a client retry).
    */
   findByOwner(ownerUserId: string): Promise<SmeRequestRepositoryResult<readonly SmeRequestRecord[]>>;
 }
