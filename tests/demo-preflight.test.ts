@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM,
   DEFAULT_THRESHOLDS_XLM,
   REQUIRED_API_ENV,
   REQUIRED_WEB_ENV,
@@ -8,9 +10,15 @@ import {
   STELLAR_TESTNET_RPC_URL,
   exitCodeFor,
   formatReport,
+  isValidEmailFrom,
   parseArgs,
   runPreflight
 } from "../scripts/demo/preflight/preflight.mjs";
+import {
+  DEFAULT_APP_BASE_URL as API_DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM as API_DEFAULT_EMAIL_FROM,
+  parseEmailConfigResult
+} from "../apps/api/src/application/config/email-config.js";
 
 const TESTNET = "Test SDF Network ; September 2015";
 const SECRET = "SSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET0000";
@@ -267,6 +275,50 @@ describe("demo preflight: email configuration", () => {
     const report = await runPreflight(deps(fetchFn, { env: { ...env, RESEND_API_KEY: key } }));
     expect(formatReport(report, { json: false })).not.toContain(key);
     expect(formatReport(report, { json: true })).not.toContain(key);
+  });
+
+  it("normalises APP_BASE_URL like the API: a trailing slash is stripped from the detail", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(
+      deps(fetchFn, {
+        env: {
+          ...env,
+          RESEND_API_KEY: "resend-key-never-printed",
+          APP_BASE_URL: "https://web.example.test/"
+        }
+      })
+    );
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("links https://web.example.test)");
+    expect(check?.detail).not.toContain("https://web.example.test/");
+  });
+});
+
+describe("demo preflight: mirrors the API email config", () => {
+  it("keeps the exported sender and base equal to the API module's constants", () => {
+    expect(DEFAULT_EMAIL_FROM).toBe(API_DEFAULT_EMAIL_FROM);
+    expect(DEFAULT_APP_BASE_URL).toBe(API_DEFAULT_APP_BASE_URL);
+  });
+
+  it("validates the sender exactly as the API does once the slice is enabled", () => {
+    const values = [
+      "Vaqcrow <no-reply@vaqcrow.com>",
+      "hola@vaqcrow.com",
+      "not an address",
+      "Vaqcrow <>",
+      "vaqcrow.com",
+      "Name <broken@>",
+      "Vaqcrow\nBcc: attacker@example.test <no-reply@vaqcrow.com>"
+    ];
+
+    for (const value of values) {
+      const api = parseEmailConfigResult(
+        { RESEND_API_KEY: "sentinel", APP_ENV: "local", EMAIL_FROM: value },
+        "local"
+      );
+      expect(isValidEmailFrom(value)).toBe(api.ok);
+    }
   });
 });
 

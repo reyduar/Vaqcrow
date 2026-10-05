@@ -16,7 +16,7 @@ const APP_BASE_URL = "http://localhost:3001";
 const NEW_APPLICATION_EVENT: NotificationEvent = {
   eventKey: "application:11111111-1111-4111-8111-111111111111:submitted",
   type: "admin.new_application",
-  payload: { type: "admin.new_application", smeName: "Panadería Horizonte SRL" }
+  smeName: "Panadería Horizonte SRL"
 };
 
 class InMemoryNotificationRepository implements NotificationRepositoryPort {
@@ -25,6 +25,7 @@ class InMemoryNotificationRepository implements NotificationRepositoryPort {
   resolveFailure = false;
   insertFailure = false;
   throwOnInsert = false;
+  throwOnMarkEmailSent = false;
   readonly inserted: NewNotification[] = [];
   readonly markedSent: Array<{ id: string; sentAt: string }> = [];
   readonly stored = new Map<string, { id: string; notification: NewNotification }>();
@@ -64,23 +65,34 @@ class InMemoryNotificationRepository implements NotificationRepositoryPort {
   }
 
   async markEmailSent(id: string, sentAt: string): Promise<void> {
+    if (this.throwOnMarkEmailSent) {
+      throw new Error("stamp unavailable");
+    }
     this.markedSent.push({ id, sentAt });
   }
 
-  async listByRecipient(): Promise<readonly StoredNotification[]> {
-    return [];
+  async listByRecipient(): Promise<
+    { readonly ok: true; readonly notifications: readonly StoredNotification[] } | { readonly ok: false; readonly code: "unavailable" }
+  > {
+    return { ok: true, notifications: [] };
   }
 
-  async countUnread(): Promise<number> {
-    return 0;
+  async countUnread(): Promise<
+    { readonly ok: true; readonly unread: number } | { readonly ok: false; readonly code: "unavailable" }
+  > {
+    return { ok: true, unread: 0 };
   }
 
-  async markRead(): Promise<boolean> {
-    return false;
+  async markRead(): Promise<
+    { readonly ok: true; readonly changed: boolean } | { readonly ok: false; readonly code: "unavailable" }
+  > {
+    return { ok: true, changed: false };
   }
 
-  async markAllRead(): Promise<number> {
-    return 0;
+  async markAllRead(): Promise<
+    { readonly ok: true; readonly updated: number } | { readonly ok: false; readonly code: "unavailable" }
+  > {
+    return { ok: true, updated: 0 };
   }
 }
 
@@ -234,14 +246,17 @@ describe("NotificationPublisher.publish", () => {
     });
   });
 
-  it("throws when the event type disagrees with its payload (a programming error)", async () => {
-    const { publisher } = setup();
-    const mismatched = {
-      eventKey: "x",
-      type: "admin.new_application",
-      payload: { type: "pyme.approved_published" }
-    } as unknown as NotificationEvent;
+  it("still counts a delivered email when the markEmailSent stamp throws", async () => {
+    const { repository, email, publisher } = setup();
+    repository.recipients = [{ userId: ADMIN, email: "admin@example.test" }];
+    repository.throwOnMarkEmailSent = true;
 
-    await expect(publisher.publish(mismatched)).rejects.toThrow(/type mismatch/);
+    const summary = await publisher.publish(NEW_APPLICATION_EVENT);
+
+    // The email was accepted by the provider: a failed bookkeeping stamp must
+    // not turn that delivery into a failure the caller sees.
+    expect(summary).toEqual({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
+    expect(email.messages).toHaveLength(1);
+    expect(repository.markedSent).toHaveLength(0);
   });
 });

@@ -60,6 +60,27 @@ export interface StoredNotification {
   readonly createdAt: string;
 }
 
+/**
+ * The read/write outcomes (T1e). A provider failure is `unavailable`, distinct
+ * from a genuinely empty or unchanged result, so a caller can never answer 200
+ * with empty data when the lookup actually broke.
+ */
+export type ListByRecipientResult =
+  | { readonly ok: true; readonly notifications: readonly StoredNotification[] }
+  | { readonly ok: false; readonly code: "unavailable" };
+
+export type CountUnreadResult =
+  | { readonly ok: true; readonly unread: number }
+  | { readonly ok: false; readonly code: "unavailable" };
+
+export type MarkReadResult =
+  | { readonly ok: true; readonly changed: boolean }
+  | { readonly ok: false; readonly code: "unavailable" };
+
+export type MarkAllReadResult =
+  | { readonly ok: true; readonly updated: number }
+  | { readonly ok: false; readonly code: "unavailable" };
+
 export interface NotificationRepositoryPort {
   /** Every active profile with the given role and an email (one or more recipients). */
   resolveRecipientsByRole(role: Role): Promise<ResolveRecipientsResult>;
@@ -75,14 +96,17 @@ export interface NotificationRepositoryPort {
   markEmailSent(id: string, sentAt: string): Promise<void>;
 
   /** The recipient's notifications, newest first (the bell dropdown). */
-  listByRecipient(recipientUserId: string): Promise<readonly StoredNotification[]>;
+  listByRecipient(recipientUserId: string): Promise<ListByRecipientResult>;
 
   /** The unread badge count. */
-  countUnread(recipientUserId: string): Promise<number>;
+  countUnread(recipientUserId: string): Promise<CountUnreadResult>;
 
-  /** Marks one notification read, scoped to its owner. Returns false when none matched. */
-  markRead(recipientUserId: string, id: string): Promise<boolean>;
+  /**
+   * Marks one notification read, scoped to its owner. Success carries whether
+   * a row changed, so the route can answer 404 when none matched.
+   */
+  markRead(recipientUserId: string, id: string): Promise<MarkReadResult>;
 
   /** Marks every unread notification read, scoped to its owner. Returns the count changed. */
-  markAllRead(recipientUserId: string): Promise<number>;
+  markAllRead(recipientUserId: string): Promise<MarkAllReadResult>;
 }

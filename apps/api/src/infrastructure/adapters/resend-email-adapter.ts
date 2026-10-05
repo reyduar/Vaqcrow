@@ -46,28 +46,6 @@ export class ResendEmailAdapter implements EmailPort {
   }
 
   async send(message: EmailMessage): Promise<EmailSendResult> {
-    try {
-      const response = await this.post(message);
-      const status = response.status;
-
-      if (status === 200 || status === 201) {
-        const id = readId(await safeJson(response));
-        return id === undefined ? { ok: false, code: "unavailable" } : { ok: true, id };
-      }
-
-      if (status === 400 || status === 422) {
-        return { ok: false, code: "invalid" };
-      }
-
-      // 401/403/429/5xx and anything unexpected: the message was not accepted.
-      return { ok: false, code: "unavailable" };
-    } catch {
-      // A throw or a timeout is a transport failure, never a caller failure.
-      return { ok: false, code: "network" };
-    }
-  }
-
-  private async post(message: EmailMessage): Promise<EmailHttpResponse> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
@@ -78,7 +56,7 @@ export class ResendEmailAdapter implements EmailPort {
     });
 
     try {
-      return await Promise.race([
+      const response = await Promise.race([
         this.options.fetch(RESEND_ENDPOINT, {
           method: "POST",
           headers: {
@@ -95,6 +73,25 @@ export class ResendEmailAdapter implements EmailPort {
         }),
         deadline
       ]);
+
+      const status = response.status;
+
+      if (status === 200 || status === 201) {
+        // The deadline covers the body read too: the response status arriving in
+        // time is not enough if reading its body then stalls indefinitely.
+        const id = readId(await Promise.race([safeJson(response), deadline]));
+        return id === undefined ? { ok: false, code: "unavailable" } : { ok: true, id };
+      }
+
+      if (status === 400 || status === 422) {
+        return { ok: false, code: "invalid" };
+      }
+
+      // 401/403/429/5xx and anything unexpected: the message was not accepted.
+      return { ok: false, code: "unavailable" };
+    } catch {
+      // A throw or a timeout is a transport failure, never a caller failure.
+      return { ok: false, code: "network" };
     } finally {
       clearTimeout(timer);
     }

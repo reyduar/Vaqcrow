@@ -30,7 +30,9 @@ interface CapturedCall {
   };
 }
 
-function fakeFetch(outcome: { status: number; body?: unknown } | { reject: Error } | { pending: true }) {
+function fakeFetch(
+  outcome: { status: number; body?: unknown } | { status: number; pendingBody: true } | { reject: Error } | { pending: true }
+) {
   const calls: CapturedCall[] = [];
   const fetchImpl: EmailFetch = (url, init) => {
     calls.push({ url, init });
@@ -39,6 +41,13 @@ function fakeFetch(outcome: { status: number; body?: unknown } | { reject: Error
     }
     if ("pending" in outcome) {
       return new Promise<EmailHttpResponse>(() => undefined);
+    }
+    if ("pendingBody" in outcome) {
+      // The response arrives, but reading its body never settles.
+      return Promise.resolve({
+        status: outcome.status,
+        json: () => new Promise<unknown>(() => undefined)
+      });
     }
     return Promise.resolve({ status: outcome.status, json: () => Promise.resolve(outcome.body ?? {}) });
   };
@@ -105,6 +114,13 @@ describe("ResendEmailAdapter.send", () => {
 
     const pending = fakeFetch({ pending: true });
     expect(await adapter(pending.fetchImpl, 5).send(MESSAGE)).toEqual({ ok: false, code: "network" });
+  });
+
+  it("bounds the body read with the same deadline, not only the fetch", async () => {
+    // The response status arrives in time, but the body never settles; the
+    // deadline must cover the read too, or `send` hangs forever.
+    const stalled = fakeFetch({ status: 200, pendingBody: true });
+    expect(await adapter(stalled.fetchImpl, 5).send(MESSAGE)).toEqual({ ok: false, code: "network" });
   });
 
   it("never returns the key or a provider message", async () => {

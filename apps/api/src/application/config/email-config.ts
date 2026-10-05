@@ -1,6 +1,6 @@
 import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
-import { invalidIssue, readPresent } from "./env-source.js";
+import { invalidIssue, missingIssue, readPresent } from "./env-source.js";
 import type { EnvSource, ParseResult } from "./env-source.js";
 import { Secret } from "./secret.js";
 
@@ -15,9 +15,12 @@ import { Secret } from "./secret.js";
  * credential exists.
  *
  * `EMAIL_FROM` and `APP_BASE_URL` always resolve to a value (a default each),
- * because the email renderer needs both even to describe a disabled slice. The
- * key is wrapped as a `Secret`, so it cannot reach a log line or a serialised
- * response through ordinary formatting.
+ * because the email renderer needs both even to describe a disabled slice. They
+ * are only validated while the slice is enabled: with no key, a malformed pair
+ * resolves leniently and never gates boot. When enabled, `APP_BASE_URL` is
+ * required outside `local`, so a hosted run cannot fall back to loopback links.
+ * The key is wrapped as a `Secret`, so it cannot reach a log line or a
+ * serialised response through ordinary formatting.
  *
  * This is the Resend HTTP API, distinct from the SMTP that Supabase Auth uses
  * for account confirmation (`no-reply@vaqcrow.com` is the shared verified
@@ -59,7 +62,11 @@ export type EmailConfig =
 
 /** Standalone entry point, matching `parseSupabaseConfig`'s slice-independence pattern. */
 export function parseEmailConfig(env: EnvSource): EmailConfig {
-  const result = parseEmailConfigResult(env);
+  // A standalone entry point (used directly by adapter tests, not only through
+  // `parseApiConfig`), so it reads `APP_ENV` from the same bag rather than
+  // requiring a second argument only `api-config.ts` can supply — the same
+  // choice `parseStellarConfig` makes.
+  const result = parseEmailConfigResult(env, readPresent(env, "APP_ENV") ?? "");
 
   if (!result.ok) {
     throw new ConfigurationError("Email configuration", result.issues);
@@ -68,12 +75,27 @@ export function parseEmailConfig(env: EnvSource): EmailConfig {
   return result.value;
 }
 
-export function parseEmailConfigResult(env: EnvSource): ParseResult<EmailConfig> {
+/**
+ * `environment` is a plain string, not `DeploymentEnvironment`, so this module
+ * has no import edge back to `api-config.ts` (which imports it), mirroring
+ * `parseStellarConfigResult`/`parseCorsConfigResult`.
+ *
+ * Validation is scoped to the enabled slice: with no Resend key the sender and
+ * the deep-link base resolve leniently and never gate boot. When enabled, an
+ * absent `APP_BASE_URL` is required outside `local`, so a hosted run cannot
+ * silently build emails that point at loopback.
+ */
+export function parseEmailConfigResult(
+  env: EnvSource,
+  environment: string
+): ParseResult<EmailConfig> {
   const issues: ConfigIssue[] = [];
 
   const apiKey = readPresent(env, "RESEND_API_KEY");
-  const from = resolveFrom(env, issues);
-  const appBaseUrl = resolveAppBaseUrl(env, issues);
+  const enabled = apiKey !== undefined;
+
+  const from = resolveFrom(env, enabled, issues);
+  const appBaseUrl = resolveAppBaseUrl(env, environment, enabled, issues);
 
   if (issues.length > 0) {
     return { ok: false, issues };
@@ -94,7 +116,7 @@ export function emailEnabled(config: EmailConfig): boolean {
   return config.enabled;
 }
 
-function resolveFrom(env: EnvSource, issues: ConfigIssue[]): string {
+function resolveFrom(env: EnvSource, enabled: boolean, issues: ConfigIssue[]): string {
   const configured = readPresent(env, "EMAIL_FROM");
 
   if (configured === undefined) {
@@ -102,12 +124,16 @@ function resolveFrom(env: EnvSource, issues: ConfigIssue[]): string {
   }
 
   if (!isValidFromAddress(configured)) {
-    issues.push(
-      invalidIssue(
-        "EMAIL_FROM",
-        'must be a single-line address such as "Vaqcrow <no-reply@vaqcrow.com>"'
-      )
-    );
+    // A malformed sender only matters when the slice can actually send; while
+    // disabled it resolves leniently so it cannot gate boot.
+    if (enabled) {
+      issues.push(
+        invalidIssue(
+          "EMAIL_FROM",
+          'must be a single-line address such as "Vaqcrow <no-reply@vaqcrow.com>"'
+        )
+      );
+    }
     return DEFAULT_EMAIL_FROM;
   }
 
@@ -118,11 +144,24 @@ function resolveFrom(env: EnvSource, issues: ConfigIssue[]): string {
  * A trailing slash is stripped rather than tolerated: the renderer appends a
  * path (`/portfolio`, `/company`), and a base that kept its slash would produce
  * a doubled separator in every link.
+ *
+ * Outside `local` an unset base is required once the slice is enabled: the
+ * loopback default is honest for a local run, but a hosted run must not build
+ * every deep link against it. While disabled the default stays valid and no
+ * issue is emitted.
  */
-function resolveAppBaseUrl(env: EnvSource, issues: ConfigIssue[]): string {
+function resolveAppBaseUrl(
+  env: EnvSource,
+  environment: string,
+  enabled: boolean,
+  issues: ConfigIssue[]
+): string {
   const configured = readPresent(env, "APP_BASE_URL");
 
   if (configured === undefined) {
+    if (enabled && environment !== "local") {
+      issues.push(missingIssue("APP_BASE_URL"));
+    }
     return DEFAULT_APP_BASE_URL;
   }
 
@@ -130,12 +169,17 @@ function resolveAppBaseUrl(env: EnvSource, issues: ConfigIssue[]): string {
   try {
     parsed = new URL(configured);
   } catch {
-    issues.push(invalidIssue("APP_BASE_URL", "must be an absolute URL"));
+    if (enabled) {
+      issues.push(invalidIssue("APP_BASE_URL", "must be an absolute URL"));
+    }
     return DEFAULT_APP_BASE_URL;
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    issues.push(invalidIssue("APP_BASE_URL", "must use http or https"));
+    if (enabled) {
+      issues.push(invalidIssue("APP_BASE_URL", "must use http or https"));
+    }
+    return DEFAULT_APP_BASE_URL;
   }
 
   return configured.replace(/\/+$/, "");

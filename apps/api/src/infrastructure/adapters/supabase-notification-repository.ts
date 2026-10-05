@@ -2,7 +2,11 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Role } from "../../application/ports/auth-port.js";
 import type {
+  CountUnreadResult,
   InsertIfAbsentResult,
+  ListByRecipientResult,
+  MarkAllReadResult,
+  MarkReadResult,
   NewNotification,
   NotificationRecipient,
   NotificationRepositoryPort,
@@ -160,7 +164,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
     }
   }
 
-  async listByRecipient(recipientUserId: string): Promise<readonly StoredNotification[]> {
+  async listByRecipient(recipientUserId: string): Promise<ListByRecipientResult> {
     try {
       const { data, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -172,7 +176,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("listByRecipient", error);
-        return [];
+        return { ok: false, code: "unavailable" };
       }
 
       const rows = Array.isArray(data) ? (data as NotificationColumns[]) : [];
@@ -185,14 +189,14 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
         }
         notifications.push(mapped);
       }
-      return notifications;
+      return { ok: true, notifications };
     } catch (cause) {
       this.logUnexpected("listByRecipient", cause);
-      return [];
+      return { ok: false, code: "unavailable" };
     }
   }
 
-  async countUnread(recipientUserId: string): Promise<number> {
+  async countUnread(recipientUserId: string): Promise<CountUnreadResult> {
     try {
       const { count, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -202,17 +206,17 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("countUnread", error);
-        return 0;
+        return { ok: false, code: "unavailable" };
       }
 
-      return typeof count === "number" ? count : 0;
+      return { ok: true, unread: typeof count === "number" ? count : 0 };
     } catch (cause) {
       this.logUnexpected("countUnread", cause);
-      return 0;
+      return { ok: false, code: "unavailable" };
     }
   }
 
-  async markRead(recipientUserId: string, id: string): Promise<boolean> {
+  async markRead(recipientUserId: string, id: string): Promise<MarkReadResult> {
     try {
       const { data, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -224,17 +228,17 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("markRead", error);
-        return false;
+        return { ok: false, code: "unavailable" };
       }
 
-      return Array.isArray(data) && data.length > 0;
+      return { ok: true, changed: Array.isArray(data) && data.length > 0 };
     } catch (cause) {
       this.logUnexpected("markRead", cause);
-      return false;
+      return { ok: false, code: "unavailable" };
     }
   }
 
-  async markAllRead(recipientUserId: string): Promise<number> {
+  async markAllRead(recipientUserId: string): Promise<MarkAllReadResult> {
     try {
       const { data, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -245,13 +249,13 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("markAllRead", error);
-        return 0;
+        return { ok: false, code: "unavailable" };
       }
 
-      return Array.isArray(data) ? data.length : 0;
+      return { ok: true, updated: Array.isArray(data) ? data.length : 0 };
     } catch (cause) {
       this.logUnexpected("markAllRead", cause);
-      return 0;
+      return { ok: false, code: "unavailable" };
     }
   }
 
@@ -282,9 +286,14 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
    * Reads the Auth directory's emails, paginated like the superadmin seed, and
    * returns `id → email`. A failure yields `undefined`, so the caller reports
    * `unavailable` rather than fanning out to no one (or half the recipients).
+   *
+   * A full last page at the cap means there may be recipients beyond it, so the
+   * map is not known to be complete: it yields `undefined` (unavailable) rather
+   * than a silently partial directory.
    */
   private async listEmailsById(): Promise<Map<string, string> | undefined> {
     const byId = new Map<string, string>();
+    let complete = false;
     try {
       for (let page = 1; page <= LIST_MAX_PAGES; page += 1) {
         const { data, error } = await this.client.auth.admin.listUsers({
@@ -305,6 +314,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
         }
 
         if (users.length < LIST_PAGE_SIZE) {
+          complete = true;
           break;
         }
       }
@@ -313,7 +323,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
       return undefined;
     }
 
-    return byId;
+    return complete ? byId : undefined;
   }
 
   private toStoredNotification(row: NotificationColumns): StoredNotification | undefined {

@@ -13,9 +13,10 @@ import type { NotificationRepositoryPort } from "../../../application/ports/noti
  * so a caller can only ever touch its own rows.
  *
  * Every failure is a sanitized body: the repository adapter already returns no
- * provider text, and this route never adds any. An unknown or foreign id is a
- * plain `404 { error: "not_found" }`, distinguishable from a malformed id's
- * `400 { code: "invalid_request" }`.
+ * provider text, and this route never adds any. A repository read/write that
+ * reports `unavailable` is a `503 { code: "unavailable" }`, never a 200 with
+ * empty data. An unknown or foreign id is a plain `404 { error: "not_found" }`,
+ * distinguishable from a malformed id's `400 { code: "invalid_request" }`.
  */
 
 export interface NotificationRouteDependencies {
@@ -38,8 +39,12 @@ export function registerNotificationRoute(
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const notifications = await dependencies.repository.listByRecipient(principal.userId);
-    return reply.code(200).send({ notifications });
+    const result = await dependencies.repository.listByRecipient(principal.userId);
+    if (!result.ok) {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+
+    return reply.code(200).send({ notifications: result.notifications });
   });
 
   app.get("/notifications/unread-count", async (request, reply) => {
@@ -48,8 +53,12 @@ export function registerNotificationRoute(
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const unread = await dependencies.repository.countUnread(principal.userId);
-    return reply.code(200).send({ unread });
+    const result = await dependencies.repository.countUnread(principal.userId);
+    if (!result.ok) {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+
+    return reply.code(200).send({ unread: result.unread });
   });
 
   app.post<{ Params: { notificationId: string } }>(
@@ -67,8 +76,11 @@ export function registerNotificationRoute(
 
       // Scoped to the principal: a row that is not the caller's is a 404, never
       // a silent success or a 403 that would confirm the row exists.
-      const read = await dependencies.repository.markRead(principal.userId, notificationId);
-      if (!read) {
+      const result = await dependencies.repository.markRead(principal.userId, notificationId);
+      if (!result.ok) {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+      if (!result.changed) {
         return reply.code(404).send({ error: "not_found" });
       }
 
@@ -82,7 +94,11 @@ export function registerNotificationRoute(
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const updated = await dependencies.repository.markAllRead(principal.userId);
-    return reply.code(200).send({ updated });
+    const result = await dependencies.repository.markAllRead(principal.userId);
+    if (!result.ok) {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+
+    return reply.code(200).send({ updated: result.updated });
   });
 }

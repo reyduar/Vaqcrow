@@ -496,14 +496,43 @@ describe("email configuration slice (optional)", () => {
   });
 
   it.each(["/portfolio", "web.example.test", "ftp://web.example.test"])(
-    "refuses a non-absolute APP_BASE_URL: %s",
+    "refuses a non-absolute APP_BASE_URL once enabled: %s",
     (appBaseUrl) => {
-      expectSingleIssue({ ...VALID_ENV, APP_BASE_URL: appBaseUrl }, "APP_BASE_URL", "invalid");
+      expectSingleIssue(
+        { ...VALID_ENV, RESEND_API_KEY: RESEND_API_KEY_SENTINEL, APP_BASE_URL: appBaseUrl },
+        "APP_BASE_URL",
+        "invalid"
+      );
     }
   );
 
-  it.each(["not an address", "Vaqcrow <>"])("refuses a malformed EMAIL_FROM: %s", (emailFrom) => {
-    expectSingleIssue({ ...VALID_ENV, EMAIL_FROM: emailFrom }, "EMAIL_FROM", "invalid");
+  it.each(["not an address", "Vaqcrow <>"])(
+    "refuses a malformed EMAIL_FROM once enabled: %s",
+    (emailFrom) => {
+      expectSingleIssue(
+        { ...VALID_ENV, RESEND_API_KEY: RESEND_API_KEY_SENTINEL, EMAIL_FROM: emailFrom },
+        "EMAIL_FROM",
+        "invalid"
+      );
+    }
+  );
+
+  it("does not gate boot on a malformed sender or base while disabled", () => {
+    const config = parseApiConfig({ ...VALID_ENV, EMAIL_FROM: "not an address", APP_BASE_URL: "not a url" });
+
+    expect(config.email).toEqual({
+      enabled: false,
+      from: DEFAULT_EMAIL_FROM,
+      appBaseUrl: DEFAULT_APP_BASE_URL
+    });
+  });
+
+  it("fails closed outside local when enabled without an APP_BASE_URL", () => {
+    expectSingleIssue(
+      { ...VALID_ENV, APP_ENV: "demo", RESEND_API_KEY: RESEND_API_KEY_SENTINEL },
+      "APP_BASE_URL",
+      "missing"
+    );
   });
 
   it("never echoes the Resend key in JSON or under the log redactor", () => {

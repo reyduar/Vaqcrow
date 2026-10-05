@@ -215,6 +215,21 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
     expect(result).toEqual({ ok: true, recipients: [] });
   });
 
+  it("reports unavailable when the Auth listing exhausts its page cap with a full last page", async () => {
+    const fullPage = Array.from({ length: 200 }, (_v, index) => ({ id: `u${index}`, email: `u${index}@example.test` }));
+    const { client, userCalls } = fakeClient(
+      () => ({ data: [{ user_id: ADMIN }], error: null }),
+      () => ({ data: { users: fullPage }, error: null })
+    );
+
+    const result = await new SupabaseNotificationRepository(client).resolveRecipientsByRole("ADMIN");
+
+    // A full page at the cap means there may be recipients beyond it, so a
+    // partial map must not be returned as if it were complete.
+    expect(result).toEqual({ ok: false, code: "unavailable" });
+    expect(userCalls).toHaveLength(50);
+  });
+
   it("returns no recipients without listing Auth users when the role has no active profile", async () => {
     const { client, userCalls } = fakeClient(() => ({ data: [], error: null }));
 
@@ -369,20 +384,23 @@ describe("SupabaseNotificationRepository.listByRecipient", () => {
 
     const result = await new SupabaseNotificationRepository(client).listByRecipient(ADMIN);
 
-    expect(result).toEqual([
-      {
-        id: NOTIFICATION_ID,
-        recipientUserId: ADMIN,
-        eventKey: NEW_NOTIFICATION.eventKey,
-        eventType: "admin.new_application",
-        title: NEW_NOTIFICATION.title,
-        body: NEW_NOTIFICATION.body,
-        ctaLabel: "Revisar solicitud",
-        ctaHref: "/admin",
-        readAt: null,
-        createdAt: "2026-10-04T12:00:00.000Z"
-      }
-    ]);
+    expect(result).toEqual({
+      ok: true,
+      notifications: [
+        {
+          id: NOTIFICATION_ID,
+          recipientUserId: ADMIN,
+          eventKey: NEW_NOTIFICATION.eventKey,
+          eventType: "admin.new_application",
+          title: NEW_NOTIFICATION.title,
+          body: NEW_NOTIFICATION.body,
+          ctaLabel: "Revisar solicitud",
+          ctaHref: "/admin",
+          readAt: null,
+          createdAt: "2026-10-04T12:00:00.000Z"
+        }
+      ]
+    });
     expect(ops[0]?.filters).toEqual([{ column: "recipient_user_id", value: ADMIN }]);
     expect(ops[0]?.order).toEqual({ column: "created_at", options: { ascending: false } });
   });
@@ -395,19 +413,26 @@ describe("SupabaseNotificationRepository.listByRecipient", () => {
 
     const result = await new SupabaseNotificationRepository(client).listByRecipient(ADMIN);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: NOTIFICATION_ID, ctaLabel: null, ctaHref: null });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected an ok result");
+    expect(result.notifications).toHaveLength(1);
+    expect(result.notifications[0]).toMatchObject({ id: NOTIFICATION_ID, ctaLabel: null, ctaHref: null });
   });
 
-  it("answers empty on a provider error or a throw, without leaking it", async () => {
+  it("reports unavailable on a provider error or a throw, without leaking it", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const errored = fakeClient(() => ({ data: null, error: pgError("XX000") }));
-    noSecret(await new SupabaseNotificationRepository(errored.client).listByRecipient(ADMIN));
+    const erroredResult = await new SupabaseNotificationRepository(errored.client).listByRecipient(ADMIN);
+    expect(erroredResult).toEqual({ ok: false, code: "unavailable" });
+    noSecret(erroredResult);
 
     const thrown = fakeClient(() => {
       throw new Error("network SECRET");
     });
-    expect(await new SupabaseNotificationRepository(thrown.client).listByRecipient(ADMIN)).toEqual([]);
+    expect(await new SupabaseNotificationRepository(thrown.client).listByRecipient(ADMIN)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
   });
 });
 
@@ -415,7 +440,7 @@ describe("SupabaseNotificationRepository.countUnread", () => {
   it("counts the recipient's unread rows with an exact head count", async () => {
     const { client, ops } = fakeClient(() => ({ count: 3, error: null }));
 
-    expect(await new SupabaseNotificationRepository(client).countUnread(ADMIN)).toBe(3);
+    expect(await new SupabaseNotificationRepository(client).countUnread(ADMIN)).toEqual({ ok: true, unread: 3 });
     expect(ops[0]?.selectOptions).toEqual({ count: "exact", head: true });
     expect(ops[0]?.filters).toEqual([
       { column: "recipient_user_id", value: ADMIN },
@@ -423,18 +448,27 @@ describe("SupabaseNotificationRepository.countUnread", () => {
     ]);
   });
 
-  it("answers zero on an error, a null count or a throw", async () => {
+  it("reports unavailable on an error or a throw, and a null count as zero", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const errored = fakeClient(() => ({ count: null, error: pgError("42501") }));
-    expect(await new SupabaseNotificationRepository(errored.client).countUnread(ADMIN)).toBe(0);
+    expect(await new SupabaseNotificationRepository(errored.client).countUnread(ADMIN)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
 
     const nullCount = fakeClient(() => ({ count: null, error: null }));
-    expect(await new SupabaseNotificationRepository(nullCount.client).countUnread(ADMIN)).toBe(0);
+    expect(await new SupabaseNotificationRepository(nullCount.client).countUnread(ADMIN)).toEqual({
+      ok: true,
+      unread: 0
+    });
 
     const thrown = fakeClient(() => {
       throw new Error("network SECRET");
     });
-    expect(await new SupabaseNotificationRepository(thrown.client).countUnread(ADMIN)).toBe(0);
+    expect(await new SupabaseNotificationRepository(thrown.client).countUnread(ADMIN)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
   });
 });
 
@@ -442,7 +476,10 @@ describe("SupabaseNotificationRepository.markRead", () => {
   it("marks one owned, unread row read and reports the change", async () => {
     const { client, ops } = fakeClient(() => ({ data: [{ id: NOTIFICATION_ID }], error: null }));
 
-    expect(await new SupabaseNotificationRepository(client).markRead(ADMIN, NOTIFICATION_ID)).toBe(true);
+    expect(await new SupabaseNotificationRepository(client).markRead(ADMIN, NOTIFICATION_ID)).toEqual({
+      ok: true,
+      changed: true
+    });
 
     expect(ops[0]?.action).toBe("update");
     const payload = ops[0]?.payload as { read_at?: unknown };
@@ -455,20 +492,29 @@ describe("SupabaseNotificationRepository.markRead", () => {
     ]);
   });
 
-  it("answers false when no owned unread row changed", async () => {
+  it("reports changed=false when no owned unread row changed", async () => {
     const { client } = fakeClient(() => ({ data: [], error: null }));
-    expect(await new SupabaseNotificationRepository(client).markRead(ADMIN, NOTIFICATION_ID)).toBe(false);
+    expect(await new SupabaseNotificationRepository(client).markRead(ADMIN, NOTIFICATION_ID)).toEqual({
+      ok: true,
+      changed: false
+    });
   });
 
-  it("answers false on an error or a throw, never leaking the provider error", async () => {
+  it("reports unavailable on an error or a throw, never leaking the provider error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const errored = fakeClient(() => ({ data: null, error: pgError("42501") }));
-    expect(await new SupabaseNotificationRepository(errored.client).markRead(ADMIN, NOTIFICATION_ID)).toBe(false);
+    expect(await new SupabaseNotificationRepository(errored.client).markRead(ADMIN, NOTIFICATION_ID)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
 
     const thrown = fakeClient(() => {
       throw new Error("network SECRET");
     });
-    expect(await new SupabaseNotificationRepository(thrown.client).markRead(ADMIN, NOTIFICATION_ID)).toBe(false);
+    expect(await new SupabaseNotificationRepository(thrown.client).markRead(ADMIN, NOTIFICATION_ID)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
   });
 });
 
@@ -476,7 +522,7 @@ describe("SupabaseNotificationRepository.markAllRead", () => {
   it("marks every unread owned row read and returns the count", async () => {
     const { client, ops } = fakeClient(() => ({ data: [{ id: "a" }, { id: "b" }], error: null }));
 
-    expect(await new SupabaseNotificationRepository(client).markAllRead(ADMIN)).toBe(2);
+    expect(await new SupabaseNotificationRepository(client).markAllRead(ADMIN)).toEqual({ ok: true, updated: 2 });
     expect(ops[0]?.action).toBe("update");
     expect(ops[0]?.filters).toEqual([
       { column: "recipient_user_id", value: ADMIN },
@@ -484,14 +530,20 @@ describe("SupabaseNotificationRepository.markAllRead", () => {
     ]);
   });
 
-  it("answers zero on an error or a throw", async () => {
+  it("reports unavailable on an error or a throw", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const errored = fakeClient(() => ({ data: null, error: pgError("42501") }));
-    expect(await new SupabaseNotificationRepository(errored.client).markAllRead(ADMIN)).toBe(0);
+    expect(await new SupabaseNotificationRepository(errored.client).markAllRead(ADMIN)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
 
     const thrown = fakeClient(() => {
       throw new Error("network SECRET");
     });
-    expect(await new SupabaseNotificationRepository(thrown.client).markAllRead(ADMIN)).toBe(0);
+    expect(await new SupabaseNotificationRepository(thrown.client).markAllRead(ADMIN)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
   });
 });

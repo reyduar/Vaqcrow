@@ -66,8 +66,12 @@ export const DEFAULT_APP_BASE_URL = "http://localhost:3001";
  * Mirrors `EMAIL_FROM`'s validation in `email-config.ts`: a single-line display
  * name plus address, or a bare address. The explicit newline check matters
  * because `$` also matches before a trailing newline in a JS regex.
+ *
+ * Exported so `tests/demo-preflight.test.ts` can cross-check it against the API
+ * parser: a future divergence fails the test instead of silently letting the
+ * preflight pass a sender the API would reject.
  */
-function isValidEmailFrom(value) {
+export function isValidEmailFrom(value) {
   if (/[\r\n]/.test(value)) return false;
   return /^(?:[^<>\r\n]+<[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)$/.test(value);
 }
@@ -342,7 +346,9 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
       () => {
         const key = get("RESEND_API_KEY");
         const from = get("EMAIL_FROM") ?? DEFAULT_EMAIL_FROM;
-        const base = get("APP_BASE_URL") ?? DEFAULT_APP_BASE_URL;
+        // Normalised exactly as `email-config.ts` does: a base that kept its
+        // trailing slash would report a value the API would have stripped.
+        const base = trimSlash(get("APP_BASE_URL") ?? DEFAULT_APP_BASE_URL);
 
         if (!isValidEmailFrom(from)) {
           return {

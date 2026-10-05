@@ -250,16 +250,39 @@ describe("parseApiConfig — out-of-scope environments are rejected", () => {
     );
   });
 
-  it("rejects a non-absolute APP_BASE_URL", () => {
-    expect(issueFor({ ...VALID_ENV, APP_BASE_URL: "web.example.test" }, "APP_BASE_URL")?.code).toBe(
-      "invalid"
-    );
+  it("rejects a non-absolute APP_BASE_URL once email is enabled", () => {
+    expect(
+      issueFor(
+        { ...VALID_ENV, RESEND_API_KEY: "resend-key-fixture", APP_BASE_URL: "web.example.test" },
+        "APP_BASE_URL"
+      )?.code
+    ).toBe("invalid");
   });
 
-  it("rejects a malformed EMAIL_FROM", () => {
-    expect(issueFor({ ...VALID_ENV, EMAIL_FROM: "not an address" }, "EMAIL_FROM")?.code).toBe(
-      "invalid"
+  it("rejects a malformed EMAIL_FROM once email is enabled", () => {
+    expect(
+      issueFor(
+        { ...VALID_ENV, RESEND_API_KEY: "resend-key-fixture", EMAIL_FROM: "not an address" },
+        "EMAIL_FROM"
+      )?.code
+    ).toBe("invalid");
+  });
+
+  it("fails closed outside local: an enabled slice without APP_BASE_URL is missing it", () => {
+    const issue = issueFor(
+      { ...VALID_ENV, APP_ENV: "demo", RESEND_API_KEY: "resend-key-fixture" },
+      "APP_BASE_URL"
     );
+
+    expect(issue?.code).toBe("missing");
+  });
+
+  it("tolerates a malformed sender and base while email is disabled", () => {
+    const config = parseApiConfig({ ...VALID_ENV, EMAIL_FROM: "not an address", APP_BASE_URL: "not a url" });
+
+    expect(config.email.enabled).toBe(false);
+    expect(config.email.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.email.appBaseUrl).toBe(DEFAULT_APP_BASE_URL);
   });
 });
 

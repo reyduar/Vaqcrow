@@ -83,7 +83,7 @@ export function parseApiConfig(env: EnvSource): ApiConfig {
     issues.push(...campaignVault.issues);
   }
 
-  const email = parseEmailConfigResult(env);
+  const email = parseEmailConfigResult(env, environment ?? "");
   if (!email.ok) {
     issues.push(...email.issues);
   }

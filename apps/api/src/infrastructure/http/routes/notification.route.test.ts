@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 import type {
+  CountUnreadResult,
+  ListByRecipientResult,
+  MarkAllReadResult,
+  MarkReadResult,
   NotificationRecipient,
   NotificationRepositoryPort,
   StoredNotification
@@ -47,21 +51,21 @@ function fakeRepository(overrides: Partial<NotificationRepositoryPort> = {}): Fa
       { readonly ok: true; readonly inserted: boolean; readonly id: string } | { readonly ok: false; readonly code: "unavailable" }
     > => ({ ok: true, inserted: true, id: NOTIFICATION_ID }),
     markEmailSent: async () => undefined,
-    listByRecipient: async (recipientUserId) => {
+    listByRecipient: async (recipientUserId): Promise<ListByRecipientResult> => {
       listCalls.push(recipientUserId);
-      return [STORED_NOTIFICATION];
+      return { ok: true, notifications: [STORED_NOTIFICATION] };
     },
-    countUnread: async (recipientUserId) => {
+    countUnread: async (recipientUserId): Promise<CountUnreadResult> => {
       countCalls.push(recipientUserId);
-      return 2;
+      return { ok: true, unread: 2 };
     },
-    markRead: async (recipientUserId, id) => {
+    markRead: async (recipientUserId, id): Promise<MarkReadResult> => {
       markReadCalls.push({ userId: recipientUserId, id });
-      return true;
+      return { ok: true, changed: true };
     },
-    markAllRead: async (recipientUserId) => {
+    markAllRead: async (recipientUserId): Promise<MarkAllReadResult> => {
       markAllCalls.push(recipientUserId);
-      return 3;
+      return { ok: true, updated: 3 };
     },
     ...overrides
   };
@@ -100,6 +104,16 @@ describe("GET /notifications", () => {
     expect(fake.listCalls).toEqual([CALLER_ID]);
     expect(fake.listCalls).not.toContain(OTHER_ID);
   });
+
+  it("answers 503 instead of an empty 200 when the repository is unavailable", async () => {
+    const fake = fakeRepository({ listByRecipient: async () => ({ ok: false, code: "unavailable" }) });
+    app = buildAppAs("PYME", { notification: deps(fake.repository) });
+
+    const response = await app.inject({ method: "GET", url: "/notifications" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+  });
 });
 
 describe("GET /notifications/unread-count", () => {
@@ -112,6 +126,16 @@ describe("GET /notifications/unread-count", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ unread: 2 });
     expect(fake.countCalls).toEqual([principalFor("INVERSOR").userId]);
+  });
+
+  it("answers 503 instead of a zero 200 when the repository is unavailable", async () => {
+    const fake = fakeRepository({ countUnread: async () => ({ ok: false, code: "unavailable" }) });
+    app = buildAppAs("INVERSOR", { notification: deps(fake.repository) });
+
+    const response = await app.inject({ method: "GET", url: "/notifications/unread-count" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });
 
@@ -152,13 +176,23 @@ describe("POST /notifications/:notificationId/read", () => {
   });
 
   it("answers 404 when the row does not exist or is not the caller's", async () => {
-    const fake = fakeRepository({ markRead: async () => false });
+    const fake = fakeRepository({ markRead: async () => ({ ok: true, changed: false }) });
     app = buildAppAs("PYME", { notification: deps(fake.repository) });
 
     const response = await app.inject({ method: "POST", url: `/notifications/${NOTIFICATION_ID}/read`, payload: {} });
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ error: "not_found" });
+  });
+
+  it("answers 503 when the repository reports unavailable", async () => {
+    const fake = fakeRepository({ markRead: async () => ({ ok: false, code: "unavailable" }) });
+    app = buildAppAs("PYME", { notification: deps(fake.repository) });
+
+    const response = await app.inject({ method: "POST", url: `/notifications/${NOTIFICATION_ID}/read`, payload: {} });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });
 
@@ -186,5 +220,15 @@ describe("POST /notifications/read-all", () => {
 
     expect(fake.markAllCalls).toEqual([CALLER_ID]);
     expect(fake.markAllCalls).not.toContain(OTHER_ID);
+  });
+
+  it("answers 503 instead of a zero 200 when the repository is unavailable", async () => {
+    const fake = fakeRepository({ markAllRead: async () => ({ ok: false, code: "unavailable" }) });
+    app = buildAppAs("PYME", { notification: deps(fake.repository) });
+
+    const response = await app.inject({ method: "POST", url: "/notifications/read-all", payload: {} });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });

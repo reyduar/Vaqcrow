@@ -28,9 +28,9 @@ import type {
  * summary and never thrown, so the caller can tell a real repository failure
  * from an audience with nobody in it.
  *
- * The only failure that throws is a programming error: the event's `type` and
- * its payload's `type` disagreeing, which is a defect in the producer, not a
- * delivery failure to swallow.
+ * The event carries its own payload (`NotificationEvent` is `{ eventKey } &
+ * NotificationPayload`), so there is no producer defect left to throw on: the
+ * type the catalogue switches on is the payload's type by construction.
  */
 export class NotificationPublisher implements NotificationPublisherPort {
   constructor(
@@ -42,12 +42,6 @@ export class NotificationPublisher implements NotificationPublisherPort {
   ) {}
 
   async publish(event: NotificationEvent): Promise<PublishSummary> {
-    if (event.type !== event.payload.type) {
-      throw new Error(
-        `notification event type mismatch: ${event.type} !== ${event.payload.type}`
-      );
-    }
-
     const role = NOTIFICATION_AUDIENCE[event.type];
     const resolved = await this.resolveRecipients(role);
     if (!resolved.ok) {
@@ -55,8 +49,8 @@ export class NotificationPublisher implements NotificationPublisherPort {
     }
     const recipients = resolved.recipients;
 
-    const inApp = renderInApp(event.payload);
-    const email = renderEmail(event.payload, this.dependencies.appBaseUrl);
+    const inApp = renderInApp(event);
+    const email = renderEmail(event, this.dependencies.appBaseUrl);
     const sentAt = new Date().toISOString();
 
     let inserted = 0;

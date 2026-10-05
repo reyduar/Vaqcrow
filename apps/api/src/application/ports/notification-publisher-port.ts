@@ -1,7 +1,4 @@
-import type {
-  NotificationEventType,
-  NotificationPayload
-} from "../notifications/notification-catalogue.js";
+import type { NotificationPayload } from "../notifications/notification-catalogue.js";
 
 /**
  * The port Features call to raise a notification (Feature #382, Task #383 /
@@ -14,13 +11,16 @@ import type {
  * key is the idempotency anchor for a retry.
  */
 
-export interface NotificationEvent {
+/**
+ * The event and its payload are one object: the discriminant `type` is derived
+ * from `NotificationPayload`, so the event type can never disagree with the
+ * payload's. The catalogue renders directly from the event (`renderInApp(event)`),
+ * and a mismatched pair is now unrepresentable rather than a runtime check.
+ */
+export type NotificationEvent = {
   /** Stable identifier of the event instance, e.g. `application:<uuid>:submitted`. */
   readonly eventKey: string;
-  readonly type: NotificationEventType;
-  /** Discriminated by its own `type`, which must agree with `type` above. */
-  readonly payload: NotificationPayload;
-}
+} & NotificationPayload;
 
 export interface PublishSummary {
   /** How many recipients the audience resolved to (0 when the lookup failed). */

@@ -23,10 +23,12 @@ import { REDACTED_MARKER } from "./secret.js";
 
 const API_KEY_SENTINEL = "resend-key-sentinel-4d1a";
 
-const VALID_ENV: EnvSource = { RESEND_API_KEY: API_KEY_SENTINEL };
+// A complete enabled slice. The environment is explicit in the parser, but the
+// standalone entry point reads APP_ENV from the same bag, so it is present here.
+const VALID_ENV: EnvSource = { RESEND_API_KEY: API_KEY_SENTINEL, APP_ENV: "local" };
 
-function issuesFrom(env: EnvSource): readonly ConfigIssue[] {
-  const result = parseEmailConfigResult(env);
+function issuesFrom(env: EnvSource, environment = "local"): readonly ConfigIssue[] {
+  const result = parseEmailConfigResult(env, environment);
 
   if (result.ok) {
     throw new Error("expected the parser to reject this environment");
@@ -35,8 +37,13 @@ function issuesFrom(env: EnvSource): readonly ConfigIssue[] {
   return result.issues;
 }
 
-function expectSingleIssue(env: EnvSource, key: string, code: ConfigIssue["code"]): ConfigIssue {
-  const issues = issuesFrom(env);
+function expectSingleIssue(
+  env: EnvSource,
+  key: string,
+  code: ConfigIssue["code"],
+  environment = "local"
+): ConfigIssue {
+  const issues = issuesFrom(env, environment);
 
   expect(issues).toHaveLength(1);
   const issue = issues[0];
@@ -59,7 +66,7 @@ describe("optional slice", () => {
       appBaseUrl: DEFAULT_APP_BASE_URL
     });
     expect(emailEnabled(config)).toBe(false);
-    expect(parseEmailConfigResult({})).toEqual({
+    expect(parseEmailConfigResult({}, "local")).toEqual({
       ok: true,
       value: { enabled: false, from: DEFAULT_EMAIL_FROM, appBaseUrl: DEFAULT_APP_BASE_URL }
     });
@@ -67,6 +74,22 @@ describe("optional slice", () => {
 
   it.each(["", "   "])("treats a blank RESEND_API_KEY (%j) as absent", (blank) => {
     expect(parseEmailConfig({ RESEND_API_KEY: blank }).enabled).toBe(false);
+  });
+
+  it("does not fail boot on a malformed sender or base while disabled", () => {
+    // The whole point of the optional slice: with no Resend key, neither value
+    // gates boot — a malformed pair resolves leniently to the defaults.
+    for (const environment of ["local", "ci", "preview", "demo"]) {
+      expect(
+        parseEmailConfigResult(
+          { EMAIL_FROM: "not an address", APP_BASE_URL: "not a url" },
+          environment
+        )
+      ).toEqual({
+        ok: true,
+        value: { enabled: false, from: DEFAULT_EMAIL_FROM, appBaseUrl: DEFAULT_APP_BASE_URL }
+      });
+    }
   });
 
   it("enables the slice and wraps the credential when the key is present", () => {
@@ -133,6 +156,34 @@ describe("APP_BASE_URL", () => {
       expectSingleIssue({ ...VALID_ENV, APP_BASE_URL: value }, "APP_BASE_URL", "invalid");
     }
   );
+
+  it("requires APP_BASE_URL outside local once the slice is enabled", () => {
+    const issue = expectSingleIssue(
+      { RESEND_API_KEY: API_KEY_SENTINEL, APP_ENV: "demo" },
+      "APP_BASE_URL",
+      "missing",
+      "demo"
+    );
+
+    expect(issue.detail).toBe("required but not set");
+  });
+
+  it("keeps the loopback default outside local only while disabled", () => {
+    expect(parseEmailConfig({ APP_ENV: "demo" }).appBaseUrl).toBe(DEFAULT_APP_BASE_URL);
+    expect(
+      parseEmailConfig({ RESEND_API_KEY: API_KEY_SENTINEL, APP_ENV: "local" }).appBaseUrl
+    ).toBe(DEFAULT_APP_BASE_URL);
+  });
+
+  it("accepts an explicit base outside local when enabled", () => {
+    expect(
+      parseEmailConfig({
+        RESEND_API_KEY: API_KEY_SENTINEL,
+        APP_ENV: "demo",
+        APP_BASE_URL: "https://web.example.test/"
+      }).appBaseUrl
+    ).toBe("https://web.example.test");
+  });
 });
 
 describe("the credential stays wrapped", () => {
@@ -153,7 +204,7 @@ describe("the credential stays wrapped", () => {
   });
 
   it("never echoes the key while reporting another invalid value", () => {
-    const result = parseEmailConfigResult({ ...VALID_ENV, APP_BASE_URL: "not a url" });
+    const result = parseEmailConfigResult({ ...VALID_ENV, APP_BASE_URL: "not a url" }, "local");
 
     if (result.ok) {
       throw new Error("expected a rejection");

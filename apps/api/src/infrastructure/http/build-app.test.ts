@@ -205,10 +205,10 @@ describe("buildApp", () => {
         resolveRecipientsByRole: async () => ({ ok: true as const, recipients: [] }),
         insertIfAbsent: async () => ({ ok: true as const, inserted: true, id: "notification-1" }),
         markEmailSent: async () => undefined,
-        listByRecipient: async () => [],
-        countUnread: async () => 0,
-        markRead: async () => false,
-        markAllRead: async () => 0
+        listByRecipient: async () => ({ ok: true as const, notifications: [] }),
+        countUnread: async () => ({ ok: true as const, unread: 0 }),
+        markRead: async () => ({ ok: true as const, changed: false }),
+        markAllRead: async () => ({ ok: true as const, updated: 0 })
       };
       app = buildApp({ auth: { port: fakeAuthPort() }, notification: { repository } });
 
