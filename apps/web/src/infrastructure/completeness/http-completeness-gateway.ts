@@ -18,8 +18,9 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * `Authorization: Bearer` token. The body is exactly the input's three fields;
  * the owner is resolved by the API from the token, so this adapter never sends
  * one. A `200 { result }` is unwrapped and validated against the finding
- * vocabulary, so an unknown code or severity collapses to `unavailable`
- * instead of reaching the screen.
+ * vocabulary: an unknown code, an unknown severity or an empty `detail`
+ * collapses the WHOLE result to `unavailable`, rather than dropping just that
+ * finding and rendering a partially-trusted list.
  *
  * Failures are the sanitized `{ code }` the API sends, a status-derived code,
  * or `network` when the transport itself fails — provider messages and response
@@ -68,7 +69,12 @@ async function headersFor(provider: AccessTokenProvider | undefined): Promise<Re
   return typeof token === "string" && BEARER_TOKEN_PATTERN.test(token) ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Narrows `{ result }` to a result, dropping any finding outside the vocabulary. */
+/**
+ * Narrows `{ result }` to a result. Fail-closed: a finding outside the
+ * vocabulary is not dropped from an otherwise-trusted result — the whole
+ * result is `undefined`, and the caller answers `unavailable` instead of
+ * rendering unverified data.
+ */
 function parseResult(data: unknown): CompletenessResult | undefined {
   if (typeof data !== "object" || data === null) return undefined;
   const candidate = (data as { result?: unknown }).result;
