@@ -1,24 +1,32 @@
 import type { FastifyInstance } from "fastify";
+import type { PymeDocumentRepositoryPort } from "../../../application/ports/pyme-document-repository-port.js";
 import type { StoragePort } from "../../../application/ports/storage-port.js";
 import { validateDocumentUpload } from "../../../application/storage/document-upload.js";
 import type { UploadRejectionCode } from "../../../application/storage/document-upload.js";
 
 /**
- * The HTTP surface for PyME document uploads (Feature #398, Task #399 / T4b).
+ * The HTTP surface for PyME document uploads (Feature #398, Task #399 / T4b;
+ * server-side persistence, content-relevance/vision feature U1).
  *
  * The browser sends the file here; the API validates the bytes and only then
  * writes to the private `pyme-documents` bucket. `POST /storage/uploads` takes a
  * multipart `file` part plus a `kind` field and answers `201` with the stored
- * descriptor. `DELETE /storage/uploads?path=` removes one object, but only after
- * checking the path is under the authenticated caller's own `userId/` prefix —
- * the adapter writes with `service_role`, which bypasses RLS, so this check is
- * the API's responsibility.
+ * descriptor, recording the row the content-relevance check will resolve.
+ * `DELETE /storage/uploads?path=` removes one object, but only after checking
+ * the path is under the authenticated caller's own `userId/` prefix — the
+ * adapter writes with `service_role`, which bypasses RLS, so this check is the
+ * API's responsibility. The same request removes the descriptor row.
+ *
+ * The document owner, kind and path are derived server-side from the principal
+ * and the validated upload, never trusted from the body.
  *
  * Every failure is a sanitized `{ code }`: no provider text, no filename echo.
  */
 
 export interface StorageRouteDependencies {
   readonly storage: StoragePort;
+  /** Records the row that makes an uploaded object queryable server-side. */
+  readonly documents: PymeDocumentRepositoryPort;
   /** Injected so tests are deterministic; `index.ts` passes `crypto.randomUUID`. */
   readonly generateObjectId: () => string;
 }
@@ -103,6 +111,23 @@ export function registerStorageRoute(app: FastifyInstance, dependencies: Storage
       return reply.code(503).send({ code: "unavailable" });
     }
 
+    const persisted = await dependencies.documents.create({
+      ownerUserId: principal.userId,
+      kind: validated.value.kind,
+      objectPath: uploaded.value.path,
+      name: validated.value.name,
+      sizeBytes: validated.value.size,
+      contentType: validated.value.contentType
+    });
+
+    if (!persisted.ok) {
+      // The object is already in the bucket; a descriptor-less object is not
+      // queryable by the content-relevance check, so compensate by removing it
+      // rather than leaving an orphan behind.
+      await dependencies.storage.removeObject(uploaded.value.path);
+      return reply.code(503).send({ code: "unavailable" });
+    }
+
     return reply.code(201).send({
       path: uploaded.value.path,
       kind: validated.value.kind,
@@ -139,11 +164,15 @@ export function registerStorageRoute(app: FastifyInstance, dependencies: Storage
     }
 
     const removed = await dependencies.storage.removeObject(path);
-    if (!removed.ok) {
-      // Removing a missing object is the idempotent success the port documents.
-      if (removed.error.code === "not_found") {
-        return reply.code(204).send();
-      }
+    if (!removed.ok && removed.error.code !== "not_found") {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+
+    // Clear the descriptor row. Removing a missing object is the idempotent
+    // success the port documents; the row is still cleared so a retried delete
+    // leaves no orphan behind, and the repository's delete is idempotent too.
+    const deleted = await dependencies.documents.deleteByObjectPath(path);
+    if (!deleted.ok) {
       return reply.code(503).send({ code: "unavailable" });
     }
 

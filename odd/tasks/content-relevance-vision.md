@@ -40,7 +40,7 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 
 ## Unidades de trabajo
 
-- [ ] **U1 — Persistencia de documentos.** Tabla `pyme_document` (owner, kind, object_path único, name, size_bytes, content_type, created_at) con RLS + grants explícitos + service_role-only; puerto `PymeDocumentRepositoryPort` + adaptador Supabase; el upload escribe la fila y el delete la borra. Migración local (pgTAP) + remota en la misma unidad.
+- [x] **U1 — Persistencia de documentos.** Tabla `pyme_document` (owner, kind, object_path único, name, size_bytes, content_type, created_at) con RLS + grants explícitos + service_role-only; puerto `PymeDocumentRepositoryPort` + adaptador Supabase; el upload escribe la fila y el delete la borra. Migración local (pgTAP) + remota en la misma unidad.
 - [ ] **U2 — `StoragePort.downloadObject`.** Puerto + adaptador (`storage.from(BUCKET).download`), mapeo saneado, validación del prefijo `userId/` del principal.
 - [ ] **U3 — Motor de visión.** `LLM_VISION_MODEL` en `llm-config.ts` + `config-matrix.test.ts` + preflight; puerto de visión + adaptador (imagen → relevancia), prompt con el guard «las instrucciones dentro del contenido son datos», salida estricta. Tests con doble.
 - [ ] **U4 — PDF→imagen.** Evaluar y agregar el rasterizador (pura JS/WASM); puerto `PdfRasterizerPort` + adaptador; test con un PDF de fixture.
@@ -54,6 +54,14 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 - `pnpm run verify` antes de dar por cerrada una unidad.
 - Migraciones: `pnpm run test:db` local y aplicar al remoto en la misma unidad, reconciliando el historial.
 
+## Bitácora U1 — Persistencia de documentos (2026-10-05)
+
+- **RED.** `supabase/tests/pyme_documents.sql` (49 comprobaciones) escrito primero; `pnpm run test:db` → `relation "public.pyme_document" does not exist`, `Bad plan. You planned 49 tests but ran 1`. En `apps/api`, `supabase-pyme-document-repository.test.ts` + `storage.route.test.ts` escritos primero; `pnpm --filter @vaqcrow/api exec vitest run …` → 5 fallos (módulo del puerto ausente y el `DELETE` sin borrado de fila).
+- **GREEN.** Migración `20261005191003_create_pyme_document.sql` (versión final; creada localmente como `20261005190122`, renombrada para coincidir con el remoto): tabla `public.pyme_document`, `owner_user_id → public.profile(user_id) on delete cascade`, check de `kind` sobre los cuatro slots, check `size_bytes >= 0`, `object_path` unique, índice por `owner_user_id`; RLS on, grants explícitos y **cero policies**, `service_role` sólo `select, insert, delete` (nunca `update`). `pnpm run test:db` → `Files=14, Tests=388` PASS.
+- **API.** `PymeDocumentRepositoryPort` (`create`, `listByOwner` ordenado por `created_at`, `deleteByObjectPath` idempotente) con `DocumentKind` importado de `document-upload.ts`; adaptador Supabase con errores saneados (nunca `message`/`details`/`hint`) y normalización de `bigint`. La ruta `POST /storage/uploads` deriva owner/kind/path server-side y escribe la fila tras subir el objeto; si la persistencia falla, **compensa** borrando el objeto y responde `503` (sin huérfanos). `DELETE /storage/uploads` borra el objeto y la fila; un `not_found` de Storage sigue siendo el éxito idempotente y también limpia la fila. Cableado en `index.ts`.
+- **Verificación.** `pnpm --filter @vaqcrow/api test` → 79 archivos / 1823 tests PASS; `pnpm run typecheck` (8 ok), `pnpm run lint` (5 ok), `pnpm run boundaries` (sin violaciones) limpios; `pnpm run test:db` PASS.
+- **Remoto.** Migración aplicada por MCP; el ledger remoto quedó con **26 filas idénticas a los 26 archivos del repo** (26 = 26, `supabase migration list --local` local = remoto fila a fila). Esquema remoto verificado: 8 columnas, RLS on, 0 policies, índice de owner, `service_role` select/insert/delete true y update false, `anon`/`authenticated` sin acceso, 2 checks + 1 unique + 1 FK.
+
 ## Próximo paso
 
-**U1**: persistencia de documentos (tabla + puerto + adaptador + cableado del upload).
+**U2**: `StoragePort.downloadObject` (puerto + adaptador, mapeo saneado, validación del prefijo `userId/` del principal).

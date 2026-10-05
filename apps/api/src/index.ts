@@ -18,6 +18,7 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
+import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createDeterministicCompletenessCheckAdapter } from "./infrastructure/adapters/deterministic-completeness-check-adapter.js";
@@ -195,9 +196,11 @@ const app = buildApp({
     ttlSeconds: WALLET_CHALLENGE_TTL_SECONDS
   },
   // The document/photo transport (#399/T4b): the API validates the bytes and
-  // writes to the private `pyme-documents` bucket with `service_role`.
+  // writes to the private `pyme-documents` bucket with `service_role`, recording
+  // the row the content-relevance check (U5) will resolve server-side.
   storage: {
     storage: new SupabaseStorageAdapter(supabase),
+    documents: new SupabasePymeDocumentRepository(supabase),
     generateObjectId: () => randomUUID()
   },
   cors: config.cors

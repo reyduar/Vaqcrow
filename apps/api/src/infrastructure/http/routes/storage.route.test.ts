@@ -1,5 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
+import type {
+  PymeDocumentInput,
+  PymeDocumentRepositoryPort
+} from "../../../application/ports/pyme-document-repository-port.js";
 import type { StoragePort, UploadObjectInput } from "../../../application/ports/storage-port.js";
 import { buildAppAs, principalFor } from "../test-support/auth.js";
 import type { StorageRouteDependencies } from "./storage.route.js";
@@ -61,8 +65,32 @@ function fakeStorage(overrides: Partial<StoragePort> = {}): FakeStorage {
   return { port, uploaded, removed };
 }
 
-function deps(storage: StoragePort): StorageRouteDependencies {
-  return { storage, generateObjectId: () => OBJECT_ID };
+interface FakeDocuments {
+  readonly port: PymeDocumentRepositoryPort;
+  readonly created: PymeDocumentInput[];
+  readonly deleted: string[];
+}
+
+function fakeDocuments(overrides: Partial<PymeDocumentRepositoryPort> = {}): FakeDocuments {
+  const created: PymeDocumentInput[] = [];
+  const deleted: string[] = [];
+  const port: PymeDocumentRepositoryPort = {
+    create: async (input) => {
+      created.push(input);
+      return { ok: true, value: { documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", ...input, createdAt: "2026-10-05T19:00:00.000Z" } };
+    },
+    listByOwner: async () => ({ ok: true, value: [] }),
+    deleteByObjectPath: async (objectPath) => {
+      deleted.push(objectPath);
+      return { ok: true, value: undefined };
+    },
+    ...overrides
+  };
+  return { port, created, deleted };
+}
+
+function deps(storage: StoragePort, documents: PymeDocumentRepositoryPort = fakeDocuments().port): StorageRouteDependencies {
+  return { storage, documents, generateObjectId: () => OBJECT_ID };
 }
 
 let app: FastifyInstance | undefined;
@@ -72,9 +100,10 @@ afterEach(async () => {
 });
 
 describe("POST /storage/uploads", () => {
-  it("uploads a valid PDF and returns the stored descriptor", async () => {
+  it("uploads a valid PDF, persists its descriptor and returns the stored descriptor", async () => {
     const fake = fakeStorage();
-    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const documents = fakeDocuments();
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
     const body = multipart([
       { name: "kind", value: "cuit" },
       { name: "file", filename: "cuit.pdf", contentType: "application/pdf", data: PDF }
@@ -98,6 +127,17 @@ describe("POST /storage/uploads", () => {
     expect(fake.uploaded).toHaveLength(1);
     expect(fake.uploaded[0]?.path).toBe(`${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`);
     expect(fake.uploaded[0]?.contentType).toBe("application/pdf");
+    // The row is derived server-side from the principal and the validated upload.
+    expect(documents.created).toEqual([
+      {
+        ownerUserId: USER_ID,
+        kind: "cuit",
+        objectPath: `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`,
+        name: "cuit.pdf",
+        sizeBytes: PDF.length,
+        contentType: "application/pdf"
+      }
+    ]);
   });
 
   it("rejects a declared type outside the allow-list without calling storage", async () => {
@@ -274,6 +314,50 @@ describe("POST /storage/uploads", () => {
     expect(response.json()).toEqual({ code: "unavailable" });
   });
 
+  it("answers 503 and removes the uploaded object when persisting the descriptor fails", async () => {
+    const fake = fakeStorage();
+    const documents = fakeDocuments({
+      create: async () => ({ ok: false, error: { code: "unavailable" } })
+    });
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
+    const body = multipart([
+      { name: "kind", value: "cuit" },
+      { name: "file", filename: "cuit.pdf", contentType: "application/pdf", data: PDF }
+    ]);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/storage/uploads",
+      headers: { "content-type": body.contentType },
+      payload: body.payload
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    // No object is left behind with no descriptor pointing at it.
+    expect(fake.removed).toEqual([`${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`]);
+  });
+
+  it("does not persist a descriptor when the upload is rejected", async () => {
+    const fake = fakeStorage();
+    const documents = fakeDocuments();
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
+    const body = multipart([
+      { name: "kind", value: "passport" },
+      { name: "file", filename: "cuit.pdf", contentType: "application/pdf", data: PDF }
+    ]);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/storage/uploads",
+      headers: { "content-type": body.contentType },
+      payload: body.payload
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(documents.created).toHaveLength(0);
+  });
+
   it("denies a non-PYME role", async () => {
     const fake = fakeStorage();
     app = buildAppAs("INVERSOR", { storage: deps(fake.port) });
@@ -295,9 +379,10 @@ describe("POST /storage/uploads", () => {
 });
 
 describe("DELETE /storage/uploads", () => {
-  it("removes an object under the caller's own prefix", async () => {
+  it("removes an object under the caller's own prefix and deletes its descriptor row", async () => {
     const fake = fakeStorage();
-    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const documents = fakeDocuments();
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
     const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
 
     const response = await app.inject({
@@ -308,11 +393,13 @@ describe("DELETE /storage/uploads", () => {
     expect(response.statusCode).toBe(204);
     expect(response.body).toBe("");
     expect(fake.removed).toEqual([path]);
+    expect(documents.deleted).toEqual([path]);
   });
 
-  it("refuses a path outside the caller's prefix without calling storage", async () => {
+  it("refuses a path outside the caller's prefix without calling storage or the repository", async () => {
     const fake = fakeStorage();
-    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const documents = fakeDocuments();
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
 
     const response = await app.inject({
       method: "DELETE",
@@ -322,6 +409,7 @@ describe("DELETE /storage/uploads", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({ code: "forbidden" });
     expect(fake.removed).toHaveLength(0);
+    expect(documents.deleted).toHaveLength(0);
   });
 
   it("refuses the bare prefix with no object name", async () => {
@@ -372,19 +460,22 @@ describe("DELETE /storage/uploads", () => {
     expect(fake.removed).toHaveLength(0);
   });
 
-  it("treats a not_found removal as the idempotent success it documents", async () => {
+  it("treats a not_found removal as the idempotent success it documents, still clearing the row", async () => {
     const fake = fakeStorage({
       removeObject: async () => ({ ok: false, error: { code: "not_found" } })
     });
-    app = buildAppAs("PYME", { storage: deps(fake.port) });
+    const documents = fakeDocuments();
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
+    const path = `${USER_ID}/cuit/x.pdf`;
 
     const response = await app.inject({
       method: "DELETE",
-      url: `/storage/uploads?path=${encodeURIComponent(`${USER_ID}/cuit/x.pdf`)}`
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
     });
 
     expect(response.statusCode).toBe(204);
     expect(response.body).toBe("");
+    expect(documents.deleted).toEqual([path]);
   });
 
   it("rejects a request with no path", async () => {
@@ -410,6 +501,24 @@ describe("DELETE /storage/uploads", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("answers a sanitized 503 when clearing the descriptor row fails", async () => {
+    const fake = fakeStorage();
+    const documents = fakeDocuments({
+      deleteByObjectPath: async () => ({ ok: false, error: { code: "unavailable" } })
+    });
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/storage/uploads?path=${encodeURIComponent(`${USER_ID}/cuit/x.pdf`)}`
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    // The object was already removed; the caller may retry the idempotent delete.
+    expect(fake.removed).toEqual([`${USER_ID}/cuit/x.pdf`]);
   });
 
   it("denies a non-PYME role", async () => {
