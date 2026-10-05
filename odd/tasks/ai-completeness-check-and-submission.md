@@ -24,6 +24,7 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 | 3 | Carga/fallo/reintento y cómo se leen los documentos | Reutiliza el patrón del paso 3 de #399. |
 | 4 | **Alcance del chequeo (2026-10-05)** | **Acotado por ahora:** completitud sobre **datos declarados + presencia de documentos** (metadatos): los 3 documentos obligatorios, 1–4 fotos, ≥6 de 8 meses, coherencia. |
 | 5 | **Relevancia por contenido (visión)** | **Diferida** a una unidad posterior. El owner quiere, por sobre todo, que el chequeo detecte documentos **irrelevantes** (p. ej. una foto de Pikachu donde va la Constancia de CUIT). Requiere: (a) extender el motor de IA a **multimodal** + un **modelo con visión**; (b) que la API **lea los bytes** de los documentos (`StoragePort.downloadObject`); (c) **persistir las rutas** de los documentos del lado servidor. Las tres cosas están fuera de esta Feature. |
+| 6 | **Fotos: ¿opcionales o 1–4 obligatorias?** (conflicto entre el issue #402 «1–4 fotos» y la decisión U2 de #399 «hasta 4, opcionales») | **Exigir 1–4 fotos** (owner, 2026-10-05): el texto del issue gana sobre U2 para este chequeo. 0 fotos es un **faltante**; el demo mostrará el aviso de incompleto hasta que se suba al menos una foto. Sin cambio de código (la implementación ya lo hacía). |
 
 ## Hallazgos de la exploración (2026-10-05)
 
