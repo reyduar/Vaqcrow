@@ -37,7 +37,13 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/revenue-share-distributions/:distributionId", ["PYME", "ADMIN"]],
   ["POST", "/funding-intents", ["ADMIN"]],
   ["POST", "/funding-intents/:intentId/submission", ["ADMIN"]],
-  ["GET", "/funding-intents/:intentId", ["ADMIN"]]
+  ["GET", "/funding-intents/:intentId", ["ADMIN"]],
+  // In-app notifications (#382/T1c): every signed-in role reads and marks only
+  // its own rows; the recipient is the verified principal, never the request.
+  ["GET", "/notifications", "any"],
+  ["GET", "/notifications/unread-count", "any"],
+  ["POST", "/notifications/:notificationId/read", "any"],
+  ["POST", "/notifications/read-all", "any"]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -66,6 +72,7 @@ function buildFullApp(auth?: AuthDependency): {
     storage: stub,
     business: stub,
     wallet: stub,
+    notification: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

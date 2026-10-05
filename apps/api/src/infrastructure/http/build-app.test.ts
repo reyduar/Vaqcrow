@@ -2,7 +2,7 @@ import { correlationIdSchema } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./build-app.js";
-import { fakeAuthPort } from "./test-support/auth.js";
+import { bearer, fakeAuthPort } from "./test-support/auth.js";
 
 const CALLER_CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
 
@@ -196,6 +196,26 @@ describe("buildApp", () => {
       expect(response.statusCode).toBe(status);
       expect(response.json()).toEqual(body);
       expect(logged).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("notification dependency", () => {
+    it("registers the notification routes when the dependency is present", async () => {
+      const repository = {
+        resolveRecipientsByRole: async () => ({ ok: true as const, recipients: [] }),
+        insertIfAbsent: async () => ({ ok: true as const, inserted: true, id: "notification-1" }),
+        markEmailSent: async () => undefined,
+        listByRecipient: async () => [],
+        countUnread: async () => 0,
+        markRead: async () => false,
+        markAllRead: async () => 0
+      };
+      app = buildApp({ auth: { port: fakeAuthPort() }, notification: { repository } });
+
+      const response = await app.inject({ method: "GET", url: "/notifications", headers: bearer("PYME") });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ notifications: [] });
     });
   });
 

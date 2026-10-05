@@ -29,6 +29,24 @@ export interface NewNotification {
   readonly ctaHref: string | null;
 }
 
+/**
+ * The directory read's outcome. A provider failure is `unavailable`, distinct
+ * from a role that genuinely has no active recipients (`ok` with an empty
+ * list), so a caller can tell "nobody to notify" from "the lookup broke".
+ */
+export type ResolveRecipientsResult =
+  | { readonly ok: true; readonly recipients: readonly NotificationRecipient[] }
+  | { readonly ok: false; readonly code: "unavailable" };
+
+/**
+ * The enqueue outcome. A provider failure is `unavailable`; the success branch
+ * reports whether the row was inserted or already existed on the idempotency
+ * key, with the row's id either way.
+ */
+export type InsertIfAbsentResult =
+  | { readonly ok: true; readonly inserted: boolean; readonly id: string }
+  | { readonly ok: false; readonly code: "unavailable" };
+
 export interface StoredNotification {
   readonly id: string;
   readonly recipientUserId: string;
@@ -44,16 +62,14 @@ export interface StoredNotification {
 
 export interface NotificationRepositoryPort {
   /** Every active profile with the given role and an email (one or more recipients). */
-  resolveRecipientsByRole(role: Role): Promise<readonly NotificationRecipient[]>;
+  resolveRecipientsByRole(role: Role): Promise<ResolveRecipientsResult>;
 
   /**
    * Enqueues one notification per recipient, idempotent on
    * `(event_key, recipient_user_id)`: a replayed event returns `inserted: false`
    * with the existing row's id instead of inserting a duplicate.
    */
-  insertIfAbsent(
-    notification: NewNotification
-  ): Promise<{ readonly inserted: boolean; readonly id: string }>;
+  insertIfAbsent(notification: NewNotification): Promise<InsertIfAbsentResult>;
 
   /** Records deliverability, not intent: called once Resend accepted the message. */
   markEmailSent(id: string, sentAt: string): Promise<void>;

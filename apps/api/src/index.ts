@@ -5,6 +5,7 @@ import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
+import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
@@ -17,6 +18,8 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
+import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
+import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase-sme-request-repository.js";
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
@@ -127,6 +130,18 @@ const auth = { port: new SupabaseAuth(supabase) };
 const auditLog = new SupabaseAuditLog(supabase);
 void auditLog; // not consumed by any route yet
 
+// Notifications (#382/T1c). The repository backs the bell routes below; the
+// publisher is wired here so its first caller (#402, submission → admin) only
+// has to consume the port — no production call site publishes yet. Email is
+// optional config: with no Resend key the port is a null object, not a misconfig.
+const notificationRepository = new SupabaseNotificationRepository(supabase);
+const notificationPublisher = new NotificationPublisher({
+  repository: notificationRepository,
+  email: createEmailPort(config.email),
+  appBaseUrl: config.email.appBaseUrl
+});
+void notificationPublisher; // no production call site publishes yet (#402)
+
 const app = buildApp({
   auth,
   applicationReviewRepository,
@@ -151,6 +166,8 @@ const app = buildApp({
     generateApplicationId: () => parseApplicationId(randomUUID())
   },
   business: { repository: businessRepository },
+  // The in-app notification bell (#382/T1c): the signed-in user's own rows.
+  notification: { repository: notificationRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

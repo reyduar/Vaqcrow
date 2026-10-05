@@ -22,33 +22,45 @@ const NEW_APPLICATION_EVENT: NotificationEvent = {
 class InMemoryNotificationRepository implements NotificationRepositoryPort {
   recipients: readonly NotificationRecipient[] = [];
   throwOnResolve = false;
+  resolveFailure = false;
   insertFailure = false;
+  throwOnInsert = false;
   readonly inserted: NewNotification[] = [];
   readonly markedSent: Array<{ id: string; sentAt: string }> = [];
   readonly stored = new Map<string, { id: string; notification: NewNotification }>();
   private sequence = 0;
 
-  async resolveRecipientsByRole(): Promise<readonly NotificationRecipient[]> {
+  async resolveRecipientsByRole(): Promise<
+    { readonly ok: true; readonly recipients: readonly NotificationRecipient[] } | { readonly ok: false; readonly code: "unavailable" }
+  > {
     if (this.throwOnResolve) {
       throw new Error("directory unavailable");
     }
-    return this.recipients;
+    if (this.resolveFailure) {
+      return { ok: false, code: "unavailable" };
+    }
+    return { ok: true, recipients: this.recipients };
   }
 
-  async insertIfAbsent(notification: NewNotification): Promise<{ inserted: boolean; id: string }> {
-    if (this.insertFailure) {
+  async insertIfAbsent(
+    notification: NewNotification
+  ): Promise<{ readonly ok: true; readonly inserted: boolean; readonly id: string } | { readonly ok: false; readonly code: "unavailable" }> {
+    if (this.throwOnInsert) {
       throw new Error("insert unavailable");
+    }
+    if (this.insertFailure) {
+      return { ok: false, code: "unavailable" };
     }
     const key = `${notification.eventKey}|${notification.recipientUserId}`;
     const existing = this.stored.get(key);
     if (existing !== undefined) {
-      return { inserted: false, id: existing.id };
+      return { ok: true, inserted: false, id: existing.id };
     }
     this.sequence += 1;
     const id = `notification-${this.sequence}`;
     this.stored.set(key, { id, notification });
     this.inserted.push(notification);
-    return { inserted: true, id };
+    return { ok: true, inserted: true, id };
   }
 
   async markEmailSent(id: string, sentAt: string): Promise<void> {
@@ -103,7 +115,7 @@ describe("NotificationPublisher.publish", () => {
 
     const summary = await publisher.publish(NEW_APPLICATION_EVENT);
 
-    expect(summary).toEqual({ inserted: 2, skipped: 0, emailsSent: 2, emailsFailed: 0 });
+    expect(summary).toEqual({ recipients: 2, inserted: 2, skipped: 0, emailsSent: 2, emailsFailed: 0, failed: false });
     expect(repository.inserted).toHaveLength(2);
     expect(repository.inserted[0]).toMatchObject({
       recipientUserId: ADMIN,
@@ -130,8 +142,8 @@ describe("NotificationPublisher.publish", () => {
     const first = await publisher.publish(NEW_APPLICATION_EVENT);
     const replay = await publisher.publish(NEW_APPLICATION_EVENT);
 
-    expect(first).toEqual({ inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0 });
-    expect(replay).toEqual({ inserted: 0, skipped: 1, emailsSent: 0, emailsFailed: 0 });
+    expect(first).toEqual({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
+    expect(replay).toEqual({ recipients: 1, inserted: 0, skipped: 1, emailsSent: 0, emailsFailed: 0, failed: false });
     expect(email.messages).toHaveLength(1);
     expect(repository.markedSent).toHaveLength(1);
   });
@@ -146,7 +158,7 @@ describe("NotificationPublisher.publish", () => {
 
     const summary = await publisher.publish(NEW_APPLICATION_EVENT);
 
-    expect(summary).toEqual({ inserted: 2, skipped: 0, emailsSent: 0, emailsFailed: 2 });
+    expect(summary).toEqual({ recipients: 2, inserted: 2, skipped: 0, emailsSent: 0, emailsFailed: 2, failed: false });
     expect(repository.markedSent).toHaveLength(0);
   });
 
@@ -160,32 +172,65 @@ describe("NotificationPublisher.publish", () => {
 
     const summary = await publisher.publish(NEW_APPLICATION_EVENT);
 
-    expect(summary).toEqual({ inserted: 2, skipped: 0, emailsSent: 0, emailsFailed: 2 });
+    expect(summary).toEqual({ recipients: 2, inserted: 2, skipped: 0, emailsSent: 0, emailsFailed: 2, failed: false });
     expect(repository.markedSent).toHaveLength(0);
   });
 
-  it("resolves with an empty summary when the recipient lookup fails", async () => {
+  it("reports failed and resolves when the recipient lookup reports unavailable", async () => {
+    const { repository, publisher } = setup();
+    repository.resolveFailure = true;
+
+    expect(await publisher.publish(NEW_APPLICATION_EVENT)).toEqual({
+      recipients: 0,
+      inserted: 0,
+      skipped: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      failed: true
+    });
+  });
+
+  it("contains a throwing directory and reports failed without throwing", async () => {
     const { repository, publisher } = setup();
     repository.throwOnResolve = true;
 
     expect(await publisher.publish(NEW_APPLICATION_EVENT)).toEqual({
+      recipients: 0,
       inserted: 0,
       skipped: 0,
       emailsSent: 0,
-      emailsFailed: 0
+      emailsFailed: 0,
+      failed: true
     });
   });
 
-  it("skips a recipient whose in-app insert fails without throwing", async () => {
+  it("counts a recipient whose in-app insert reports unavailable as failed and continues", async () => {
     const { repository, publisher } = setup();
     repository.recipients = [{ userId: ADMIN, email: "admin@example.test" }];
     repository.insertFailure = true;
 
     expect(await publisher.publish(NEW_APPLICATION_EVENT)).toEqual({
+      recipients: 1,
       inserted: 0,
-      skipped: 1,
+      skipped: 0,
       emailsSent: 0,
-      emailsFailed: 0
+      emailsFailed: 0,
+      failed: true
+    });
+  });
+
+  it("contains a throwing insert and reports failed without throwing", async () => {
+    const { repository, publisher } = setup();
+    repository.recipients = [{ userId: ADMIN, email: "admin@example.test" }];
+    repository.throwOnInsert = true;
+
+    expect(await publisher.publish(NEW_APPLICATION_EVENT)).toEqual({
+      recipients: 1,
+      inserted: 0,
+      skipped: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      failed: true
     });
   });
 

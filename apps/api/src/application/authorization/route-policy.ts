@@ -55,6 +55,13 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /revenue-share-distributions/:distributionId/submission": only("PYME"),
   "GET /revenue-share-distributions/:distributionId": only("PYME", "ADMIN"),
 
+  // In-app notifications (#382/T1c): every signed-in role reads and marks only
+  // its own rows. The recipient is the verified principal, never the request.
+  "GET /notifications": AUTHENTICATED,
+  "GET /notifications/unread-count": AUTHENTICATED,
+  "POST /notifications/:notificationId/read": AUTHENTICATED,
+  "POST /notifications/read-all": AUTHENTICATED,
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

@@ -20,6 +20,8 @@ import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
+import { registerNotificationRoute } from "./routes/notification.route.js";
+import type { NotificationRouteDependencies } from "./routes/notification.route.js";
 import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
 import type { RevenueShareDistributionRouteDependencies } from "./routes/revenue-share-distribution.route.js";
 import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
@@ -84,6 +86,7 @@ export function buildApp(dependencies: {
   readonly storage?: StorageRouteDependencies;
   readonly business?: BusinessRouteDependencies;
   readonly wallet?: WalletRouteDependencies;
+  readonly notification?: NotificationRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -165,6 +168,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.wallet) {
     registerWalletRoute(app, dependencies.wallet);
+  }
+  if (dependencies.notification) {
+    registerNotificationRoute(app, dependencies.notification);
   }
   return app;
 }

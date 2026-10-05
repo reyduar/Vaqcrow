@@ -23,10 +23,18 @@ export interface NotificationEvent {
 }
 
 export interface PublishSummary {
+  /** How many recipients the audience resolved to (0 when the lookup failed). */
+  readonly recipients: number;
   readonly inserted: number;
   readonly skipped: number;
   readonly emailsSent: number;
   readonly emailsFailed: number;
+  /**
+   * True when the run could not do its persistence work: the recipient lookup
+   * was unavailable or an in-app insert failed. A failed *email* is counted in
+   * `emailsFailed` and never sets this flag — delivery is best-effort by design.
+   */
+  readonly failed: boolean;
 }
 
 export interface NotificationPublisherPort {

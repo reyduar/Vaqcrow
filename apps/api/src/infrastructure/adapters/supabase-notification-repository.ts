@@ -2,9 +2,11 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Role } from "../../application/ports/auth-port.js";
 import type {
+  InsertIfAbsentResult,
   NewNotification,
   NotificationRecipient,
   NotificationRepositoryPort,
+  ResolveRecipientsResult,
   StoredNotification
 } from "../../application/ports/notification-repository-port.js";
 
@@ -58,7 +60,7 @@ interface ProviderErrorLike {
 export class SupabaseNotificationRepository implements NotificationRepositoryPort {
   constructor(private readonly client: SupabaseClient) {}
 
-  async resolveRecipientsByRole(role: Role): Promise<readonly NotificationRecipient[]> {
+  async resolveRecipientsByRole(role: Role): Promise<ResolveRecipientsResult> {
     try {
       const { data, error } = await this.client
         .from(PROFILE_TABLE)
@@ -68,7 +70,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("resolveRecipientsByRole", error);
-        return [];
+        return { ok: false, code: "unavailable" };
       }
 
       const rows = Array.isArray(data) ? (data as ProfileRow[]) : [];
@@ -80,10 +82,14 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
       }
 
       if (userIds.length === 0) {
-        return [];
+        return { ok: true, recipients: [] };
       }
 
       const emails = await this.listEmailsById();
+      if (emails === undefined) {
+        return { ok: false, code: "unavailable" };
+      }
+
       const recipients: NotificationRecipient[] = [];
       for (const userId of userIds) {
         const email = emails.get(userId);
@@ -91,16 +97,14 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
           recipients.push({ userId, email });
         }
       }
-      return recipients;
+      return { ok: true, recipients };
     } catch (cause) {
       this.logUnexpected("resolveRecipientsByRole", cause);
-      return [];
+      return { ok: false, code: "unavailable" };
     }
   }
 
-  async insertIfAbsent(
-    notification: NewNotification
-  ): Promise<{ readonly inserted: boolean; readonly id: string }> {
+  async insertIfAbsent(notification: NewNotification): Promise<InsertIfAbsentResult> {
     try {
       const { data, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -120,20 +124,24 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("insertIfAbsent", error);
-        return { inserted: false, id: "" };
+        return { ok: false, code: "unavailable" };
       }
 
       const insertedId = firstId(data);
       if (insertedId !== undefined) {
-        return { inserted: true, id: insertedId };
+        return { ok: true, inserted: true, id: insertedId };
       }
 
       // `ON CONFLICT DO NOTHING` returned no row: the event was already enqueued
-      // for this recipient, so the port reports the existing row's id.
-      return { inserted: false, id: await this.readExistingId(notification) };
+      // for this recipient, so the port reports the existing row's id. A failed
+      // read-back is a real failure, not an empty id, so it is `unavailable`.
+      const existingId = await this.readExistingId(notification);
+      return existingId === undefined
+        ? { ok: false, code: "unavailable" }
+        : { ok: true, inserted: false, id: existingId };
     } catch (cause) {
       this.logUnexpected("insertIfAbsent", cause);
-      return { inserted: false, id: "" };
+      return { ok: false, code: "unavailable" };
     }
   }
 
@@ -247,8 +255,8 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
     }
   }
 
-  /** Reads the existing id after a conflict; an empty string means it could not be read. */
-  private async readExistingId(notification: NewNotification): Promise<string> {
+  /** Reads the existing id after a conflict; `undefined` means it could not be read. */
+  private async readExistingId(notification: NewNotification): Promise<string | undefined> {
     try {
       const { data, error } = await this.client
         .from(NOTIFICATION_TABLE)
@@ -259,23 +267,23 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
       if (error) {
         this.logProviderError("insertIfAbsent(read-back)", error);
-        return "";
+        return undefined;
       }
 
       const id = data !== null && typeof data === "object" && "id" in data ? data.id : undefined;
-      return typeof id === "string" ? id : "";
+      return typeof id === "string" ? id : undefined;
     } catch (cause) {
       this.logUnexpected("insertIfAbsent(read-back)", cause);
-      return "";
+      return undefined;
     }
   }
 
   /**
    * Reads the Auth directory's emails, paginated like the superadmin seed, and
-   * returns `id → email`. A failure yields an empty map, so the caller fans out
-   * to no one rather than to half-resolved recipients.
+   * returns `id → email`. A failure yields `undefined`, so the caller reports
+   * `unavailable` rather than fanning out to no one (or half the recipients).
    */
-  private async listEmailsById(): Promise<Map<string, string>> {
+  private async listEmailsById(): Promise<Map<string, string> | undefined> {
     const byId = new Map<string, string>();
     try {
       for (let page = 1; page <= LIST_MAX_PAGES; page += 1) {
@@ -286,7 +294,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
 
         if (error) {
           this.logProviderError("resolveRecipientsByRole(listUsers)", error);
-          return new Map();
+          return undefined;
         }
 
         const users = data?.users ?? [];
@@ -302,7 +310,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
       }
     } catch (cause) {
       this.logUnexpected("resolveRecipientsByRole(listUsers)", cause);
-      return new Map();
+      return undefined;
     }
 
     return byId;

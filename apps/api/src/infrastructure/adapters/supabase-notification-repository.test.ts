@@ -183,10 +183,13 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
 
     const result = await new SupabaseNotificationRepository(client).resolveRecipientsByRole("ADMIN");
 
-    expect(result).toEqual([
-      { userId: ADMIN, email: "admin@example.test" },
-      { userId: PYME, email: "pyme@example.test" }
-    ]);
+    expect(result).toEqual({
+      ok: true,
+      recipients: [
+        { userId: ADMIN, email: "admin@example.test" },
+        { userId: PYME, email: "pyme@example.test" }
+      ]
+    });
     expect(ops[0]?.table).toBe("profile");
     expect(ops[0]?.columns).toBe("user_id");
     expect(ops[0]?.filters).toEqual([
@@ -209,17 +212,20 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
       { page: 1, perPage: 200 },
       { page: 2, perPage: 200 }
     ]);
-    expect(result).toEqual([]);
+    expect(result).toEqual({ ok: true, recipients: [] });
   });
 
   it("returns no recipients without listing Auth users when the role has no active profile", async () => {
     const { client, userCalls } = fakeClient(() => ({ data: [], error: null }));
 
-    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByRole("PYME")).toEqual([]);
+    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByRole("PYME")).toEqual({
+      ok: true,
+      recipients: []
+    });
     expect(userCalls).toEqual([]);
   });
 
-  it("answers empty (best-effort) and sanitizes a profile error, a listing error or a throw", async () => {
+  it("reports unavailable and sanitizes a profile error, a listing error or a throw", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     for (const scenario of ["profile-error", "list-error", "throw"] as const) {
       const { client } = fakeClient(
@@ -234,7 +240,7 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
 
       const result = await new SupabaseNotificationRepository(client).resolveRecipientsByRole("ADMIN");
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({ ok: false, code: "unavailable" });
       noSecret(result);
     }
   });
@@ -245,9 +251,10 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
       () => ({ data: { users: [{ id: ADMIN, email: "admin@example.test" }] }, error: null })
     );
 
-    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByRole("ADMIN")).toEqual([
-      { userId: ADMIN, email: "admin@example.test" }
-    ]);
+    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByRole("ADMIN")).toEqual({
+      ok: true,
+      recipients: [{ userId: ADMIN, email: "admin@example.test" }]
+    });
   });
 });
 
@@ -259,7 +266,7 @@ describe("SupabaseNotificationRepository.insertIfAbsent", () => {
 
     const result = await new SupabaseNotificationRepository(client).insertIfAbsent(NEW_NOTIFICATION);
 
-    expect(result).toEqual({ inserted: true, id: NOTIFICATION_ID });
+    expect(result).toEqual({ ok: true, inserted: true, id: NOTIFICATION_ID });
     expect(ops[0]?.action).toBe("upsert");
     expect(ops[0]?.upsertOptions).toEqual({
       onConflict: "event_key,recipient_user_id",
@@ -289,7 +296,7 @@ describe("SupabaseNotificationRepository.insertIfAbsent", () => {
 
     const result = await new SupabaseNotificationRepository(client).insertIfAbsent(NEW_NOTIFICATION);
 
-    expect(result).toEqual({ inserted: false, id: NOTIFICATION_ID });
+    expect(result).toEqual({ ok: true, inserted: false, id: NOTIFICATION_ID });
     const readBack = ops[1];
     expect(readBack?.table).toBe("notification");
     expect(readBack?.terminal).toBe("maybeSingle");
@@ -299,32 +306,32 @@ describe("SupabaseNotificationRepository.insertIfAbsent", () => {
     ]);
   });
 
-  it("answers inserted=false with an empty id when the conflict read-back fails or throws", async () => {
+  it("reports unavailable when the conflict read-back fails or throws", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const readBackFailure = fakeClient((op) =>
       op.action === "upsert" ? { data: [], error: null } : { data: null, error: pgError("42501") }
     );
     expect(await new SupabaseNotificationRepository(readBackFailure.client).insertIfAbsent(NEW_NOTIFICATION)).toEqual({
-      inserted: false,
-      id: ""
+      ok: false,
+      code: "unavailable"
     });
 
     const thrown = fakeClient(() => {
       throw new Error("socket SECRET");
     });
     expect(await new SupabaseNotificationRepository(thrown.client).insertIfAbsent(NEW_NOTIFICATION)).toEqual({
-      inserted: false,
-      id: ""
+      ok: false,
+      code: "unavailable"
     });
   });
 
-  it("answers inserted=false and never leaks the provider error on an insert failure", async () => {
+  it("reports unavailable and never leaks the provider error on an insert failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient((op) => (op.action === "upsert" ? { data: null, error: pgError("23505") } : { data: null, error: null }));
 
     const result = await new SupabaseNotificationRepository(client).insertIfAbsent(NEW_NOTIFICATION);
 
-    expect(result).toEqual({ inserted: false, id: "" });
+    expect(result).toEqual({ ok: false, code: "unavailable" });
     noSecret(result);
   });
 });

@@ -6,8 +6,9 @@ import {
 import type { Role } from "../ports/auth-port.js";
 import type { EmailPort } from "../ports/email-port.js";
 import type {
-  NotificationRecipient,
-  NotificationRepositoryPort
+  InsertIfAbsentResult,
+  NotificationRepositoryPort,
+  ResolveRecipientsResult
 } from "../ports/notification-repository-port.js";
 import type {
   NotificationEvent,
@@ -22,7 +23,10 @@ import type {
  * in-app row per recipient, idempotent on `(event_key, recipient_user_id)`, and
  * the email port delivers the same copy. Publishing is best-effort: a recipient
  * whose email fails is counted, never thrown, so the action that raised the
- * event always completes.
+ * event always completes. Persistence failures — an unavailable recipient
+ * lookup or a failed in-app insert — are reported as `failed: true` in the
+ * summary and never thrown, so the caller can tell a real repository failure
+ * from an audience with nobody in it.
  *
  * The only failure that throws is a programming error: the event's `type` and
  * its payload's `type` disagreeing, which is a defect in the producer, not a
@@ -45,7 +49,11 @@ export class NotificationPublisher implements NotificationPublisherPort {
     }
 
     const role = NOTIFICATION_AUDIENCE[event.type];
-    const recipients = await this.resolveRecipients(role);
+    const resolved = await this.resolveRecipients(role);
+    if (!resolved.ok) {
+      return { recipients: 0, inserted: 0, skipped: 0, emailsSent: 0, emailsFailed: 0, failed: true };
+    }
+    const recipients = resolved.recipients;
 
     const inApp = renderInApp(event.payload);
     const email = renderEmail(event.payload, this.dependencies.appBaseUrl);
@@ -55,11 +63,13 @@ export class NotificationPublisher implements NotificationPublisherPort {
     let skipped = 0;
     let emailsSent = 0;
     let emailsFailed = 0;
+    let failedInserted = 0;
 
     for (const recipient of recipients) {
       const stored = await this.insertForRecipient(event, recipient.userId, inApp);
-      if (stored === undefined) {
-        skipped += 1;
+      if (!stored.ok) {
+        // The in-app row could not be persisted: not a replay, a real failure.
+        failedInserted += 1;
         continue;
       }
 
@@ -82,15 +92,25 @@ export class NotificationPublisher implements NotificationPublisherPort {
       await this.markEmailSent(stored.id, sentAt);
     }
 
-    return { inserted, skipped, emailsSent, emailsFailed };
+    return {
+      recipients: recipients.length,
+      inserted,
+      skipped,
+      emailsSent,
+      emailsFailed,
+      failed: failedInserted > 0
+    };
   }
 
-  /** A directory failure means no recipients; publishing stays best-effort. */
-  private async resolveRecipients(role: Role): Promise<readonly NotificationRecipient[]> {
+  /**
+   * A directory failure (or a non-conforming throwing port) is contained and
+   * reported as `unavailable`; the caller decides what to do with `failed`.
+   */
+  private async resolveRecipients(role: Role): Promise<ResolveRecipientsResult> {
     try {
       return await this.dependencies.repository.resolveRecipientsByRole(role);
     } catch {
-      return [];
+      return { ok: false, code: "unavailable" };
     }
   }
 
@@ -98,7 +118,7 @@ export class NotificationPublisher implements NotificationPublisherPort {
     event: NotificationEvent,
     recipientUserId: string,
     inApp: ReturnType<typeof renderInApp>
-  ): Promise<{ readonly inserted: boolean; readonly id: string } | undefined> {
+  ): Promise<InsertIfAbsentResult> {
     try {
       return await this.dependencies.repository.insertIfAbsent({
         recipientUserId,
@@ -110,7 +130,7 @@ export class NotificationPublisher implements NotificationPublisherPort {
         ctaHref: inApp.ctaHref ?? null
       });
     } catch {
-      return undefined;
+      return { ok: false, code: "unavailable" };
     }
   }
 
