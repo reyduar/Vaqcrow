@@ -180,12 +180,37 @@ describe("checkCompleteness", () => {
     ]);
   });
 
-  it("does not flag a month at exactly 1.5x the average", () => {
+  it("does not flag a month below 1.5x the average", () => {
+    // Eight positive months average 106.25, so the threshold is 159.375 and 150
+    // sits below it. The exact-threshold and just-above cases follow.
     const result = checkCompleteness(
       input({ salesMonths: months([100, 100, 100, 100, 100, 100, 100, 150]) })
     );
 
     expect(codes(result.findings)).not.toContain("sales_anomaly");
+  });
+
+  it("does not flag a month exactly at 1.5x the average", () => {
+    // The average includes the candidate: positives [100, 300] average 200, so
+    // the threshold is exactly 300 and the strict `>` rule leaves 300 unflagged.
+    const result = checkCompleteness(
+      input({ salesMonths: months([100, 300, 0, 0, 0, 0, 0, 0]) })
+    );
+
+    expect(codes(result.findings)).not.toContain("sales_anomaly");
+  });
+
+  it("flags a month just above 1.5x the average", () => {
+    // Positives [100, 301] average 200.5, so the threshold is 300.75 and 301
+    // clears it by 0.25 — the strict `>` boundary on the other side.
+    const result = checkCompleteness(
+      input({ salesMonths: months([100, 301, 0, 0, 0, 0, 0, 0]) })
+    );
+
+    const anomalies = result.findings.filter((finding) => finding.code === "sales_anomaly");
+    expect(anomalies).toEqual([
+      { code: "sales_anomaly", severity: "warning", detail: expect.stringContaining("Febrero") }
+    ]);
   });
 
   it("stays a function of its input and never mutates it", () => {
