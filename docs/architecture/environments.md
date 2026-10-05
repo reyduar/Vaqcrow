@@ -64,7 +64,7 @@ pnpm --filter @vaqcrow/api seed:superadmin:docker   # siembra el superadmin en S
 pnpm --filter @vaqcrow/api seed:superadmin:cloud    # ídem contra el proyecto remoto (.env.cloud)
 ```
 
-**Email local.** El stack local envía los emails de Auth (el enlace de confirmación del alta de `PYME`/`INVERSOR`) al servidor de pruebas Mailpit del CLI (`[local_smtp]` en `supabase/config.toml`): nada sale a Internet. Se leen en <http://127.0.0.1:54324>. Resend **no** se configura en local. Si cambiás `supabase/config.toml` (por ejemplo `[auth]`), reiniciá el stack con `pnpm env:docker:down` y `pnpm env:docker:up`.
+**Email local.** El stack local envía los emails de Auth (el enlace de confirmación del alta de `PYME`/`INVERSOR`) al servidor de pruebas Mailpit del CLI (`[local_smtp]` en `supabase/config.toml`): nada sale a Internet. Se leen en <http://127.0.0.1:54324>. Resend **no** se configura en local para Auth. El email transaccional de la **API** (el que dispara la campana de notificaciones) es otro slice, `email-config.ts`, con sus propias variables — ver [§14](#14-email-transaccional-de-la-api-resend); sin `RESEND_API_KEY` queda deshabilitado por defecto en local. Si cambiás `supabase/config.toml` (por ejemplo `[auth]`), reiniciá el stack con `pnpm env:docker:down` y `pnpm env:docker:up`.
 
 ## 5. Suite de integración por perfil
 
@@ -283,3 +283,22 @@ Cualquier fallo —configuración faltante, token inválido, perfil ilegible, re
 - `getClaims()` verifica de verdad: el doble genera al arrancar un par de claves P-256, firma los access tokens en ES256 con `kid` y publica la clave pública en `GET /auth/v1/.well-known/jwks.json`. `@supabase/auth-js` 2.116.0 ve un algoritmo asimétrico con `kid` y verifica la firma con WebCrypto contra ese JWKS, tanto en el navegador como en el proxy de Next.js; con HS256 caería a `GET /auth/v1/user`, que el doble también responde. Un token con firma inválida o vencido da 401 en PostgREST.
 - A diferencia de `stub-api-server.mjs`, este doble lee el reloj y genera claves en cada arranque: el cliente rechaza un JWT vencido, así que `exp` sigue la hora real. Ningún spec compara literalmente lo que devuelve.
 - `e2e/auth-roles.spec.ts` cubre, para cada rol, alta → vista «Cuenta creada» sin el email → confirmar → ingreso → home y menú por rol → cerrar sesión → la página protegida manda a `/login?role=…` → volver a ingresar; más el rol equivocado, la sesión abierta en `/login` y las credenciales incorrectas.
+
+## 14. Email transaccional de la API (Resend)
+
+> [!info] Es la API HTTP de Resend, distinta del SMTP de Auth
+> El email de la campana de notificaciones lo envía la **API HTTP de Resend** desde la API (`apps/api`), detrás de un puerto y un adaptador. No es el SMTP que Supabase Auth usa en [§13](#13-supabase-auth-email-superadmin-y-proyecto-remoto) para la confirmación de cuenta, aunque ambos comparten el remitente verificado `no-reply@vaqcrow.com`. El adaptador no se ejercita contra Resend en las pruebas del PR (usan un `fetch` doble) ni desde `pnpm run test`.
+
+Slice `email-config.ts` (`apps/api/src/application/config/email-config.ts`), opcional por diseño: un email fallido o no configurado nunca debe impedir que la API arranque ni que una acción se complete.
+
+| Variable | Requerida | Default | Notas |
+|---|---|---|---|
+| `RESEND_API_KEY` | no | — | Su ausencia significa **email deshabilitado**, no mal configurado; se envuelve como `Secret` y no puede filtrarse a un log. |
+| `EMAIL_FROM` | no | `Vaqcrow <no-reply@vaqcrow.com>` | Una línea, con o sin nombre para mostrar; se rechaza CR/LF (inyección de headers). |
+| `APP_BASE_URL` | no en `local` | `http://localhost:3001` | Base absoluta de los links del email; se le quita la barra final. |
+
+**Regla fail-closed.** `EMAIL_FROM` y `APP_BASE_URL` sólo se validan cuando el slice está **habilitado** (hay `RESEND_API_KEY`). Fuera de `local` (`APP_ENV=demo` u otro), con el email habilitado, un `APP_BASE_URL` ausente o inválido **detiene el arranque** de la API en vez de armar links contra el loopback; en `local` el default de loopback es válido. Sin `RESEND_API_KEY`, el slice resuelve de forma indulgente y nunca condiciona el boot.
+
+- Las pruebas de PR usan un doble de email; nunca hay una llamada viva a Resend en `pnpm run test`.
+- `scripts/demo/preflight` espeja el módulo: el check `email` valida `EMAIL_FROM`/`APP_BASE_URL` y reporta si el email está habilitado, y `RESEND_API_KEY` figura en `SECRET_ENV_NAMES` (nunca imprime su valor).
+- Cambios de comportamiento documentados: fuera de `local`, la API no arranca si el email está habilitado y falta `APP_BASE_URL`. Evidencia: [[docs/planning/in-app-notifications-and-resend-email-evidence|Evidencia de cierre de #382]].

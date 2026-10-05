@@ -81,7 +81,7 @@ Los pasos que ejecuta el motor no cambian de naturaleza al pasar a roles: evalua
 | Cotización/entrada ARS a activo Stellar | **Simulada** por `FundingRailProvider` | Cotización, expiración y estado rotulados | Banco/anchor real para el corredor argentino; SEP-1, SEP-10, SEP-12, SEP-6/24 y SEP-38 según capacidades |
 | Wallet y firma | **Real** con Freighter, para PyME e inversor; en el paso 4 del wizard (#399) la conexión corre detrás de `WalletPort` hasta [#406](https://github.com/reyduar/Vaqcrow/issues/406) | Cuenta pública, consentimiento y XDR firmado | El mismo adaptador inicial, con evaluación de UX y soporte; siempre no custodial |
 | Despliegue de la bóveda | **Real en Testnet**: la aprobación del administrador dispara el `POST /campaigns` firmado por la plataforma, con la cuenta de la PyME como destino inmutable | Dirección de la bóveda y hash del despliegue | Fábrica y contrato auditados |
-| Notificaciones | **Real (planificado, [#382](https://github.com/reyduar/Vaqcrow/issues/382)):** campana in-app para los tres roles y email por Resend detrás de un puerto; las pruebas del PR usan un doble | Campana y correos | El mismo puerto con dominio y remitente verificados |
+| Notificaciones | **Real (implementado en la rama de [#382](https://github.com/reyduar/Vaqcrow/issues/382), apilada, no en `main`):** campana in-app con contador de no leídas y modal, más email transaccional por la **API de Resend** detrás de un puerto y un adaptador; la campana se monta en el header público de PYME/INVERSOR y su montaje en Admin espera a [#386](https://github.com/reyduar/Vaqcrow/issues/386); las pruebas del PR usan un doble | Campana y correos | El mismo puerto con dominio y remitente verificados |
 | Fondeo | **Real en Testnet**, custodiado por contrato | Hash, dirección de la bóveda y estado del contrato | Activo y corredor aprobados en Public Network después de gates legales/operativos |
 | Confirmación | **Real y asíncrona** | Estados `submitted`, `confirmed` o `failed`, latencia y reintentos | Worker durable, cursor persistente, alertas y reconciliación |
 | Cálculo de revenue share | **Real y determinístico** | Entradas, regla versionada, redondeo y salida | Motor contractual revisado por legal/contabilidad |
@@ -217,7 +217,7 @@ flowchart LR
 
     WEB -.->|sesión en cookies · rama #378, sin mergear| SBAUTH[Supabase Auth<br/>email y contraseña · roles]
     SBAUTH -.->|identidad confiable| API
-    API -.->|planificado #382| NOTIF[Puerto de notificaciones<br/>Resend]
+    API -.->|rama #382, no en main| NOTIF[Puerto de notificaciones<br/>Resend]
 
     API --> DOMAIN[packages/domain]
     API --> AIPKG[packages/ai]
@@ -243,7 +243,7 @@ flowchart LR
     VAULT --> TESTNET
 ```
 
-Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. Los bloques Supabase Auth, Storage y notificaciones corresponden a los Epics #368, #374 y #377; **Storage ya está implementado en la rama de #398/#399** (apilada, no en `main`), mientras Auth y notificaciones todavía no son capacidades desplegadas. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
+Las flechas continuas representan el camino ejecutable de la demo; las flechas punteadas, componentes opcionales o futuros. Los bloques Supabase Auth, Storage y notificaciones corresponden a los Epics #368, #374 y #377; **Storage ya está implementado en la rama de #398/#399** y **las notificaciones (campana + email por Resend) en la rama de #382**, ambas apiladas y no en `main`; Auth y la campana todavía no son capacidades desplegadas desde `main`. Fastify es el framework/servidor HTTP de Node.js, **no** la plataforma de despliegue. Los destinos web, API y worker quedan desacoplados para elegir, sustituir o revertir cada hosting por separado.
 
 ### CI/CD con GitHub Actions
 
