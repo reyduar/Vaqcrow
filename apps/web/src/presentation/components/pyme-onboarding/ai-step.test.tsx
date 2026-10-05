@@ -1,16 +1,37 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AiEvaluationInput } from "@/application/ports/ai-evaluation-port";
+import type { CompletenessCheckInput } from "@/application/ports/completeness-check-port";
 import { FakeAiEvaluation } from "@/test/fake-ai-evaluation";
+import { FakeCompleteness, completenessResult, gapFinding } from "@/test/fake-completeness";
 import { AiStep } from "./ai-step";
 
 const INPUT: AiEvaluationInput = { smeReference: "30712345678", sales: [] };
 
-function renderStep(port = new FakeAiEvaluation()) {
+const COMPLETENESS_INPUT: CompletenessCheckInput = {
+  documents: [
+    { kind: "sales-declarations", present: true },
+    { kind: "cuit", present: true },
+    { kind: "articles-of-incorporation", present: false }
+  ],
+  photoCount: 0,
+  salesMonths: [{ month: "Abril", valueArs: null }]
+};
+
+function renderStep(port = new FakeAiEvaluation(), completeness = new FakeCompleteness()) {
   const onContinue = vi.fn();
   const onCorrect = vi.fn();
-  render(<AiStep port={port} input={INPUT} onContinue={onContinue} onCorrect={onCorrect} />);
-  return { port, onContinue, onCorrect };
+  render(
+    <AiStep
+      port={port}
+      input={INPUT}
+      completenessPort={completeness}
+      completenessInput={COMPLETENESS_INPUT}
+      onContinue={onContinue}
+      onCorrect={onCorrect}
+    />
+  );
+  return { port, completeness, onContinue, onCorrect };
 }
 
 describe("AiStep", () => {
@@ -37,7 +58,7 @@ describe("AiStep", () => {
     renderStep(port);
 
     expect(screen.getByRole("heading", { level: 1, name: "Evaluación AI" })).toBeInTheDocument();
-    expect(screen.getByText("SIMULADO")).toBeInTheDocument();
+    expect(screen.getAllByText("SIMULADO").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText(
         "La IA ordena la evidencia que cargaste, marca faltantes y anomalías y propone una banda de riesgo. No aprueba ni rechaza: la decisión la toma una persona en el paso siguiente."
@@ -45,10 +66,15 @@ describe("AiStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the risk band as text and the four checks when done", async () => {
+  it("renders the risk band and the API completeness findings when done", async () => {
     const port = new FakeAiEvaluation();
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({
+      complete: false,
+      findings: [gapFinding("Falta un documento obligatorio: Estatuto.")]
+    });
     const release = port.holdNextEvaluate();
-    renderStep(port);
+    renderStep(port, completeness);
 
     await act(async () => {
       release();
@@ -58,11 +84,45 @@ describe("AiStep", () => {
     expect(screen.getByText("Sujeta a revisión humana")).toBeInTheDocument();
     expect(screen.getByText("Riesgo medio")).toBeInTheDocument();
 
-    expect(screen.getByText("Identidad y empresa")).toBeInTheDocument();
-    expect(screen.getByText("Ventas declaradas")).toBeInTheDocument();
-    expect(screen.getByText("Faltante")).toBeInTheDocument();
-    expect(screen.getByText("Anomalía")).toBeInTheDocument();
+    expect(screen.getByText("Completitud de la solicitud")).toBeInTheDocument();
+    expect(screen.getByText("Falta un documento obligatorio: Estatuto.")).toBeInTheDocument();
+    expect(screen.getByText("Faltante:")).toBeInTheDocument();
+    expect(completeness.calls).toEqual([COMPLETENESS_INPUT]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("warns without blocking when the result is incomplete", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({ complete: false, findings: [gapFinding()] });
+    const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
+
+    expect(await screen.findByText(/Podés enviar la solicitud igual/)).toBeInTheDocument();
+    const continueButton = screen.getByRole("button", { name: /Continuar/ });
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not warn when the application is complete", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.seedResult(completenessResult());
+    renderStep(new FakeAiEvaluation(), completeness);
+
+    expect(await screen.findByText("Completitud de la solicitud")).toBeInTheDocument();
+    expect(screen.queryByText(/Podés enviar la solicitud igual/)).not.toBeInTheDocument();
+    expect(screen.getByText(/No encontramos faltantes ni anomalías/)).toBeInTheDocument();
+  });
+
+  it("keeps Continuar available when the completeness check fails", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.failNext("network");
+    const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
+
+    expect(await screen.findByText(/No pudimos revisar la completitud/)).toBeInTheDocument();
+    const continueButton = screen.getByRole("button", { name: /Continuar/ });
+    expect(continueButton).toBeEnabled();
+    fireEvent.click(continueButton);
+    expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
   it("advances with Continuar and returns with Corregir datos", async () => {

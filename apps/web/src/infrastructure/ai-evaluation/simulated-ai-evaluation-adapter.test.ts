@@ -6,18 +6,12 @@ afterEach(() => {
 });
 
 describe("SimulatedAiEvaluationAdapter", () => {
-  it("resolves the deterministic medium band with the four template checks", async () => {
+  it("resolves the deterministic medium band", async () => {
     const adapter = new SimulatedAiEvaluationAdapter(0);
 
     const result = await adapter.evaluate({ smeReference: "30712345678", sales: [] });
 
-    expect(result.riskBand).toBe("medium");
-    expect(result.checks.map((check) => check.title)).toEqual([
-      "Identidad y empresa",
-      "Ventas declaradas",
-      "Faltante",
-      "Anomalía"
-    ]);
+    expect(result).toEqual({ riskBand: "medium" });
   });
 
   it("waits for the injectable delay before resolving", async () => {

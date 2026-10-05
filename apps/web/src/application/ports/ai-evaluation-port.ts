@@ -1,34 +1,27 @@
 /**
  * AI evaluation capability of the PyME onboarding wizard's step 3
  * («Evaluación AI», Feature #398, Task #399 / T5). Vendor-free and React-free:
- * the simulated adapter lives in `infrastructure/ai-evaluation/` and Feature
- * #402 swaps in the real completeness check behind this same port.
+ * the simulated adapter lives in `infrastructure/ai-evaluation/`.
  *
- * The AI is advisory: it organises the evidence, marks missing data and
- * anomalies and proposes a risk band. It never approves, rejects, calculates
- * an obligation or moves funds — the human review in step 4 decides.
+ * The AI is advisory: it proposes a risk band. It never approves, rejects,
+ * calculates an obligation or moves funds — the human review in step 4 decides.
+ *
+ * Feature #402 split the concerns: the **completeness** findings (faltantes and
+ * anomalías) are now real and come from the API behind
+ * `CompletenessCheckPort`; this port only carries the proposed band, which the
+ * simulated adapter still provides. The four mock checks the template drew were
+ * removed with the swap so the step never shows a fabricated gap.
  */
 
 /** Proposed risk band; a label, never a decision. */
 export type AiRiskBand = "low" | "medium" | "high";
 
-/** A check is either satisfied (`ok`) or needs attention (`warning`). */
-export type AiCheckKind = "ok" | "warning";
-
-export interface AiEvaluationCheck {
-  readonly kind: AiCheckKind;
-  readonly title: string;
-  readonly body: string;
-}
-
 export interface AiEvaluationResult {
   readonly riskBand: AiRiskBand;
-  readonly checks: readonly AiEvaluationCheck[];
 }
 
 /**
- * What the evaluation receives. Kept to the evidence the wizard already has;
- * the real completeness check (#402) extends this additively when it lands.
+ * What the evaluation receives. Kept to the evidence the wizard already has.
  */
 export interface AiEvaluationInput {
   /** The PyME reference the request will be sent under (CUIT digits). */

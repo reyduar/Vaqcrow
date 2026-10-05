@@ -53,13 +53,13 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
 - [ ] **T1 (#403) — Implementar.**
   - [x] **T1a — Chequeo de completitud (API).** `CompletenessCheckPort` + adaptador determinista + tests con dobles.
   - [ ] **T1b — Envío a revisión (API).** Precondición de wallet server-side, idempotencia, y publicación del evento `admin.new_application` (cableado en `index.ts`/`build-app`).
-  - [ ] **T1c — Web.** Cablear el resultado de completitud al paso 3 (faltantes/anomalías; incompleto advierte).
+  - [x] **T1c — Web.** Cablear el resultado de completitud al paso 3 (faltantes/anomalías; incompleto advierte).
 - [ ] **T2 (#404) — Probar.** Golden fixtures (completa, documento faltante, meses faltantes, anomalía), prompt-injection, validación de schema, idempotencia del envío, rechazo sin clave, evento publicado una sola vez.
 - [ ] **T3 (#405) — Evidencia.** `docs/planning/ai-completeness-check-and-submission-evidence.md` (español) + alineación de docs.
 
 ## Próximo paso
 
-**T1a**: puerto + adaptador determinista del chequeo de completitud, con tests.
+**T2**: golden fixtures (completa, documento faltante, meses faltantes, anomalía), idempotencia y evento publicado una sola vez.
 
 ## Bitácora de implementación
 
@@ -159,3 +159,66 @@ Entregar el **paso 1 (chequeo de completitud)** y el **envío a revisión humana
     lista vacía y errores sanitizados.
 - **Verificación:** `pnpm --filter @vaqcrow/api test` 1810/1810; `typecheck`, `lint`
   y `boundaries` limpios. Sin migración, por lo que no se tocó el remoto.
+
+### T1c — Web (resultado de completitud en el paso 3)
+
+**Unidad de trabajo:** `feat(web): surface the completeness check in the onboarding wizard`.
+
+- **Puerto** (`apps/web/src/application/ports/completeness-check-port.ts`):
+  `check(input): Promise<Result>`, vendor-free y React-free. Códigos sanitizados
+  `invalid_request | unavailable | network`. `input` es exactamente el body de la
+  API (`documents {kind, present}[]`, `photoCount`, `salesMonths {month,
+  valueArs|null}[]`) y el resultado refleja `{ complete, findings }`.
+- **Adaptador HTTP** (`apps/web/src/infrastructure/completeness/http-completeness-gateway.ts`):
+  `POST /completeness-check` con `Authorization: Bearer` de la sesión inyectada;
+  nunca manda owner. Desenvuelve `200 { result }` y **valida el vocabulario** de
+  findings (código y severidad): un código/severidad/`detail` desconocido o vacío
+  colapsa a `unavailable`, nunca llega a pantalla. `400`→`invalid_request`;
+  resto→`unavailable`; transporte→`network`.
+- **Factory + null-object**
+  (`create-completeness-port.ts`, `unavailable-completeness-port.ts`): espejo de
+  `business/`; `createBrowserCompletenessPort()` usa `NEXT_PUBLIC_API_BASE_URL` y
+  la sesión lazy, y `UNAVAILABLE_COMPLETENESS_PORT` cuando no hay backend.
+- **Modelo puro** (`apps/web/src/application/pyme-onboarding/completeness.ts`):
+  `buildCompletenessInput(sales, documents, photos)` mapea la evidencia que ya
+  tenía el paso 2 (los 3 slots con `present`, fotos **cargadas**, 8 meses con
+  `null` para vacío — nunca `0`), `findingLabel` y `completenessNotice`. Las
+  reglas viven **una sola vez**, en la API: el cliente no las re-deriva.
+- **Paso 3**: `CompletenessFindings` corre el puerto en paralelo con la
+  evaluación IA (montado junto al bloque busy, no dentro del done) y renderiza la
+  lista concisa de faltantes/anomalías con el marcador `SIMULADO`, etiqueta
+  visible por finding (`Faltante`/`Aviso`/`Anomalía`) + icono, y un aviso **no
+  bloqueante** cuando `complete === false`. La banda de riesgo simulada se
+  conserva. Sin región viva propia: no compite con el `role="status"` de análisis.
+- **Retiro de duplicado:** el paso 3 ya no muestra los cuatro checks mock de la
+  plantilla (`AI_SIMULATED_CHECKS`): eran el placeholder del chequeo y mostraban
+  un faltante inventado. Se quitaron de `ai-evaluation-port.ts`,
+  `simulated-ai-evaluation-adapter.ts` y `ai-step.ts`; el adaptador solo propone
+  la banda. `salesAnomaly` de `registration-step.ts` **se conserva** porque sigue
+  usado por el indicador inline del paso 2 (validación de formulario), no por el
+  display del paso 3.
+- **Evidencia de completitud:** `RegistrationStep.onSubmit` recibe un segundo
+  argumento con el `CompletenessCheckInput` construido en el momento del envío
+  (los documentos/fotos viven en su estado); el wizard lo guarda y lo pasa a
+  `AiStep`.
+- **Tolerancia al `409 wallet_required`:** `toSmeSubmitError` mapea
+  `status === 409 && errorCode === "wallet_required"` a un mensaje honesto de
+  wallet (copy nueva, pendiente de aprobación del owner), sin caer en el genérico
+  ni crashear. Es defensa del rechazo server-side de T1b (la UI ya bloquea sin
+  clave almacenada).
+- **Copy nueva (owner-pending):** título «Completitud de la solicitud», aviso
+  incompleto «Faltan datos o hay anomalías. Podés enviar la solicitud igual: la
+  persona revisora decide.», completo «No encontramos faltantes ni anomalías.»,
+  error «No pudimos revisar la completitud. Podés continuar igual.» y el mensaje
+  de wallet «El servidor no tiene tu wallet Freighter registrada. Volvé a
+  conectar Freighter y enviá la solicitud de nuevo.».
+- **TDD:** RED observado (módulos inexistentes + 6 asserts fallando en 5
+  archivos) antes del GREEN. Tests: gateway HTTP (8), factory/null-object (5),
+  modelo puro (4 describe), `ai-step` UI (8), wizard (13, con el input construido
+  desde el paso 2) y el mapeo 409 (2 en `sme-request-errors`, 1 en
+  `review-step`). Doble `FakeCompleteness` en `src/test/`.
+- **Verificación:** enfocado `vitest run src/presentation/components/pyme-onboarding
+  src/infrastructure/completeness` 85/85; suite web completa 1519/1519 (161
+  archivos); `typecheck`, `lint` (0 errores; 1 warning preexistente en
+  `fetch-http-client.ts`) y `boundaries` (790 módulos, 0 violaciones) limpios.
+  `apps/web` only; sin tocar la API ni migraciones.

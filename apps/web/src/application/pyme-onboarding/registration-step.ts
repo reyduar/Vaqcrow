@@ -181,6 +181,11 @@ export function salesMonthAria(month: string): string {
  * Template lines 334–335: a month is anomalous when it is non-empty and its
  * parsed value is more than 1.5× the average of the *positive* parsed months.
  * An empty month is never an anomaly — it is a faltante (`salesMissing`).
+ *
+ * Retained (Feature #402 / T1c) only for this step's inline field indicator:
+ * the authoritative anomaly finding the PyME sees in step 3 now comes from the
+ * API's `POST /completeness-check` (which mirrors the same 1.5× rule), so the
+ * step-3 display never re-derives it here.
  */
 export function salesAnomaly(sales: readonly string[]): boolean[] {
   const positives = sales.map(parseAmount).filter((value) => value > 0);

@@ -1,4 +1,4 @@
-import type { AiCheckKind, AiEvaluationCheck, AiRiskBand } from "@/application/ports/ai-evaluation-port";
+import type { AiRiskBand } from "@/application/ports/ai-evaluation-port";
 
 /**
  * Pure copy and state of the PyME onboarding wizard's step 3 («Evaluación AI»,
@@ -7,9 +7,9 @@ import type { AiCheckKind, AiEvaluationCheck, AiRiskBand } from "@/application/p
  *
  * Copy is verbatim from the owner's template
  * `docs/design/template/Vaqcrow Onboarding PyME.dc.html` (export 2026-10-03),
- * lines 199–225. The result is simulated behind `AiEvaluationPort`; Feature
- * #402 swaps in the real completeness check. The band is text + icon, never
- * colour alone: `riskBandLabel` always names it.
+ * lines 199–225. The band is text + icon, never colour alone: `riskBandLabel`
+ * always names it. Feature #402 replaced the template's four mock checks with
+ * the API's real completeness findings (see `./completeness`).
  */
 
 export const AI_STEP_COPY = Object.freeze({
@@ -37,31 +37,3 @@ export const AI_RISK_LABELS: Readonly<Record<AiRiskBand, string>> = Object.freez
 export function riskBandLabel(band: AiRiskBand): string {
   return AI_RISK_LABELS[band];
 }
-
-/**
- * The simulated adapter's deterministic output: the template's four checks,
- * verbatim (lines 218–221). The titles read as data an AI organises; none of
- * them is a decision.
- */
-export const AI_SIMULATED_CHECKS: readonly AiEvaluationCheck[] = Object.freeze([
-  Object.freeze({
-    kind: "ok" as AiCheckKind,
-    title: "Identidad y empresa",
-    body: "KYC simulado aprobado. CUIT y razón social coinciden."
-  }),
-  Object.freeze({
-    kind: "ok" as AiCheckKind,
-    title: "Ventas declaradas",
-    body: "12 meses cargados. Coinciden con el archivo adjunto."
-  }),
-  Object.freeze({
-    kind: "warning" as AiCheckKind,
-    title: "Faltante",
-    body: "No hay comprobante de domicilio comercial. Podés sumarlo después."
-  }),
-  Object.freeze({
-    kind: "warning" as AiCheckKind,
-    title: "Anomalía",
-    body: "Marzo muestra ventas 38% más altas que el promedio. La persona revisora va a pedir contexto."
-  })
-]);

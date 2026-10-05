@@ -41,6 +41,20 @@ describe("toSmeSubmitError", () => {
     expect(error.message).toMatch(/No se pudo enviar/);
   });
 
+  it("maps the 409 wallet_required rejection to a wallet-specific message", () => {
+    const error = toSmeSubmitError(new HttpClientError("http", 409, undefined, "wallet_required"));
+
+    expect(error.fieldErrors).toBeUndefined();
+    expect(error.message).toMatch(/wallet/i);
+    expect(error.message).not.toMatch(/No se pudo enviar la solicitud/);
+  });
+
+  it("keeps the generic message for an unrelated 409", () => {
+    const error = toSmeSubmitError(new HttpClientError("http", 409, undefined, "state_conflict"));
+
+    expect(error.message).toMatch(/No se pudo enviar la solicitud/);
+  });
+
   it("distinguishes network failures", () => {
     expect(toSmeSubmitError(new HttpClientError("network")).message).toMatch(/conexión/);
   });

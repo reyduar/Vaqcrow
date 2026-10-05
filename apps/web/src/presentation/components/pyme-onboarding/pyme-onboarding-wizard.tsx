@@ -31,6 +31,10 @@ import { type RegistrationValues } from "@/application/pyme-onboarding/registrat
 import { smeReferenceFor } from "@/application/pyme-onboarding/review-step";
 import type { AiEvaluationInput, AiEvaluationPort } from "@/application/ports/ai-evaluation-port";
 import type { BusinessPort } from "@/application/ports/business-port";
+import type {
+  CompletenessCheckInput,
+  CompletenessCheckPort
+} from "@/application/ports/completeness-check-port";
 import type { KycDocument, KycPort, KycResult } from "@/application/ports/kyc-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { UploadPort } from "@/application/ports/upload-port";
@@ -38,6 +42,7 @@ import type { WalletPort } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { SimulatedAiEvaluationAdapter } from "@/infrastructure/ai-evaluation/simulated-ai-evaluation-adapter";
 import { createBrowserBusinessPort } from "@/infrastructure/business/create-business-port";
+import { createBrowserCompletenessPort } from "@/infrastructure/completeness/create-completeness-port";
 import { createSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { FOCUS_RING } from "../auth-field";
@@ -65,6 +70,8 @@ export interface PymeOnboardingWizardProps {
   readonly upload?: UploadPort;
   /** AI evaluation for step 3; optional so tests can inject a double. */
   readonly ai?: AiEvaluationPort;
+  /** API completeness check for step 3; optional so tests can inject a double. */
+  readonly completeness?: CompletenessCheckPort;
   /** Wallet capability for step 4; optional so tests can inject a double. */
   readonly wallet?: WalletPort;
   /** SME-request engine for step 4's send; `null` forces «no backend». */
@@ -98,6 +105,7 @@ export function PymeOnboardingWizard({
   kyc,
   upload,
   ai = defaultAi,
+  completeness,
   wallet = defaultWallet,
   gateway = defaultGateway,
   business,
@@ -110,12 +118,15 @@ export function PymeOnboardingWizard({
   const [phase, setPhase] = useState<KycPhase>("idle");
   const [result, setResult] = useState<KycResult | null>(null);
   const [registration, setRegistration] = useState<RegistrationValues | null>(null);
+  const [completenessInput, setCompletenessInput] = useState<CompletenessCheckInput | null>(null);
   // Built per mount (like `CompanyWorkspace`'s upload port) so SSR never touches
   // the browser env or the Supabase client.
   const [browserBusiness] = useState<BusinessPort>(() => createBrowserBusinessPort());
+  const [browserCompleteness] = useState<CompletenessCheckPort>(() => createBrowserCompletenessPort());
   const requestRef = useRef(0);
 
   const businessPort = business ?? browserBusiness;
+  const completenessPort = completeness ?? browserCompleteness;
 
   const outcome = result?.outcome ?? null;
   const busy = phase === "busy";
@@ -340,16 +351,24 @@ export function PymeOnboardingWizard({
         <div hidden={stepIndex !== 1}>
           <RegistrationStep
             upload={upload}
-            onSubmit={(values) => {
+            onSubmit={(values, evidence) => {
               setRegistration(values);
+              setCompletenessInput(evidence);
               setStepIndex(2);
             }}
           />
         </div>
       ) : null}
 
-      {stepIndex === 2 && aiInput ? (
-        <AiStep port={ai} input={aiInput} onContinue={() => setStepIndex(3)} onCorrect={() => setStepIndex(1)} />
+      {stepIndex === 2 && aiInput && completenessInput ? (
+        <AiStep
+          port={ai}
+          input={aiInput}
+          completenessPort={completenessPort}
+          completenessInput={completenessInput}
+          onContinue={() => setStepIndex(3)}
+          onCorrect={() => setStepIndex(1)}
+        />
       ) : null}
 
       {stepIndex === 3 && registration ? (

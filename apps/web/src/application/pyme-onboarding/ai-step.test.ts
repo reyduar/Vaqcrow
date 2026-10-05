@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  AI_RISK_LABELS,
-  AI_SIMULATED_CHECKS,
-  AI_STEP_COPY,
-  riskBandLabel
-} from "./ai-step";
+import { AI_RISK_LABELS, AI_STEP_COPY, riskBandLabel } from "./ai-step";
 
 describe("AI_STEP_COPY", () => {
   it("carries the template's step-3 copy verbatim", () => {
@@ -28,22 +23,5 @@ describe("riskBandLabel", () => {
     expect(riskBandLabel("low")).toBe("Riesgo bajo");
     expect(riskBandLabel("medium")).toBe("Riesgo medio");
     expect(riskBandLabel("high")).toBe("Riesgo alto");
-  });
-});
-
-describe("AI_SIMULATED_CHECKS", () => {
-  it("lists the template's four checks with their kind", () => {
-    expect(AI_SIMULATED_CHECKS.map((check) => [check.kind, check.title])).toEqual([
-      ["ok", "Identidad y empresa"],
-      ["ok", "Ventas declaradas"],
-      ["warning", "Faltante"],
-      ["warning", "Anomalía"]
-    ]);
-    expect(AI_SIMULATED_CHECKS.map((check) => check.body)).toEqual([
-      "KYC simulado aprobado. CUIT y razón social coinciden.",
-      "12 meses cargados. Coinciden con el archivo adjunto.",
-      "No hay comprobante de domicilio comercial. Podés sumarlo después.",
-      "Marzo muestra ventas 38% más altas que el promedio. La persona revisora va a pedir contexto."
-    ]);
   });
 });

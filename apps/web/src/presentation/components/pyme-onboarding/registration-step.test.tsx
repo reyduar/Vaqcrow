@@ -229,6 +229,18 @@ describe("RegistrationStep demo values", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0]?.[0]).toEqual(DEMO_VALUES);
+
+    // The completeness evidence travels with the values so step 3 can ask the
+    // API for the findings without re-reading this step's local state.
+    const evidence = onSubmit.mock.calls[0]?.[1];
+    expect(evidence.documents).toEqual([
+      { kind: "sales-declarations", present: true },
+      { kind: "cuit", present: true },
+      { kind: "articles-of-incorporation", present: true }
+    ]);
+    expect(evidence.photoCount).toBe(0);
+    expect(evidence.salesMonths).toHaveLength(8);
+    expect(evidence.salesMonths[3]).toEqual({ month: "Abril", valueArs: null });
   });
 
   it("shows the busy state while a promise-returning submit settles, then re-enables", async () => {

@@ -2,13 +2,12 @@
  * Test-only in-memory `AiEvaluationPort`. No network, no timers.
  *
  * It mirrors the simulated adapter's observable contract (a deterministic
- * medium band with the four template checks) and adds test controls the real
- * adapter does not have — `seedResult`, `failNext` and a held promise
- * (`holdNextEvaluate`) so the busy state is observable without fake timers.
+ * medium band) and adds test controls the real adapter does not have —
+ * `seedResult`, `failNext` and a held promise (`holdNextEvaluate`) so the busy
+ * state is observable without fake timers.
  *
  * Not collected as a test suite: it has no `.test.` segment.
  */
-import { AI_SIMULATED_CHECKS } from "@/application/pyme-onboarding/ai-step";
 import type {
   AiEvaluationInput,
   AiEvaluationPort,
@@ -18,7 +17,7 @@ import type {
 export class FakeAiEvaluation implements AiEvaluationPort {
   /** Evaluation requests received, in order. */
   readonly calls: AiEvaluationInput[] = [];
-  private result: AiEvaluationResult = { riskBand: "medium", checks: AI_SIMULATED_CHECKS };
+  private result: AiEvaluationResult = { riskBand: "medium" };
   private failures = 0;
   private held: Promise<void> | null = null;
 

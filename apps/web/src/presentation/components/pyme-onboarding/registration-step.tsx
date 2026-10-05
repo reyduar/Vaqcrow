@@ -24,6 +24,7 @@ import {
   type RegistrationScalarField,
   type RegistrationValues
 } from "@/application/pyme-onboarding/registration-step";
+import { buildCompletenessInput } from "@/application/pyme-onboarding/completeness";
 import {
   allDocumentsUploaded,
   emptyDocumentsState,
@@ -32,6 +33,7 @@ import {
   type DocumentsState,
   type PhotoState
 } from "@/application/pyme-onboarding/document-upload";
+import type { CompletenessCheckInput } from "@/application/ports/completeness-check-port";
 import type { UploadPort } from "@/application/ports/upload-port";
 import { UNAVAILABLE_UPLOAD_PORT } from "@/infrastructure/upload/unavailable-upload-port";
 import { FOCUS_RING } from "../auth-field";
@@ -60,8 +62,12 @@ import { DocumentUpload } from "./document-upload";
  */
 
 export interface RegistrationStepProps {
-  /** Receives the raw form strings on a valid submit; default no-op (T2 has no persistence). */
-  readonly onSubmit?: (values: RegistrationValues) => void | Promise<void>;
+  /**
+   * Receives the raw form strings and the completeness evidence on a valid
+   * submit; default no-op (T2 has no persistence). The evidence is built here
+   * because the uploaded documents and photos live in this step's state.
+   */
+  readonly onSubmit?: (values: RegistrationValues, completeness: CompletenessCheckInput) => void | Promise<void>;
   /** Upload capability for the document/photo section; defaults to an unavailable port. */
   readonly upload?: UploadPort | undefined;
 }
@@ -158,7 +164,7 @@ export function RegistrationStep({ onSubmit = () => {}, upload = UNAVAILABLE_UPL
     if (!allDocumentsUploaded(documents)) {
       return;
     }
-    const result = onSubmit(values);
+    const result = onSubmit(values, buildCompletenessInput(values.sales, documents, photos));
     if (result instanceof Promise) {
       setSubmitting(true);
       try {

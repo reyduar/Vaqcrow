@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { FakeAiEvaluation } from "@/test/fake-ai-evaluation";
 import { FakeBusiness } from "@/test/fake-business";
+import { FakeCompleteness, gapFinding } from "@/test/fake-completeness";
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeUpload } from "@/test/fake-upload";
 import { FakeWallet } from "@/test/fake-wallet";
@@ -273,12 +274,15 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
   it("advances from a valid step-2 submit to the busy evaluation and then to the review", async () => {
     const kyc = new FakeKyc();
     const ai = new FakeAiEvaluation();
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({ complete: false, findings: [gapFinding()] });
     const releaseAi = ai.holdNextEvaluate();
     render(
       <PymeOnboardingWizard
         kyc={kyc}
         upload={new FakeUpload()}
         ai={ai}
+        completeness={completeness}
         wallet={new FakeWallet({ publicKey: "GBXK1234567890ABCD7Q2M" })}
         gateway={gateway()}
         onBack={vi.fn()}
@@ -294,9 +298,24 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Analizando tu solicitud…");
     expect(ai.calls).toEqual([{ smeReference: "30712345678", sales: expect.any(Array) }]);
 
+    // The wizard builds the completeness input from the uploaded documents, the
+    // photos and the sales grid it collected in step 2.
+    expect(completeness.calls).toHaveLength(1);
+    const built = completeness.calls[0]!;
+    expect(built.documents).toEqual([
+      { kind: "sales-declarations", present: true },
+      { kind: "cuit", present: true },
+      { kind: "articles-of-incorporation", present: true }
+    ]);
+    expect(built.photoCount).toBe(0);
+    expect(built.salesMonths).toHaveLength(8);
+
     await act(async () => {
       releaseAi();
     });
+
+    expect(await screen.findByText("Falta un documento obligatorio: Estatuto.")).toBeInTheDocument();
+    expect(screen.getByText(/Podés enviar la solicitud igual/)).toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: /Continuar/ }));
 
@@ -317,6 +336,7 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
         kyc={kyc}
         upload={new FakeUpload()}
         ai={ai}
+        completeness={new FakeCompleteness()}
         wallet={new FakeWallet({ publicKey: "GBXK1234567890ABCD7Q2M" })}
         gateway={gw}
         business={business}
@@ -348,7 +368,16 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
   it("returns to step 2 with Corregir datos and keeps the loaded values", async () => {
     const kyc = new FakeKyc();
     const ai = new FakeAiEvaluation();
-    render(<PymeOnboardingWizard kyc={kyc} upload={new FakeUpload()} ai={ai} wallet={new FakeWallet()} onBack={vi.fn()} />);
+    render(
+      <PymeOnboardingWizard
+        kyc={kyc}
+        upload={new FakeUpload()}
+        ai={ai}
+        completeness={new FakeCompleteness()}
+        wallet={new FakeWallet()}
+        onBack={vi.fn()}
+      />
+    );
 
     await advanceToRegistration(kyc);
     fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));

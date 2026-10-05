@@ -1,45 +1,39 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import type { IconType } from "react-icons";
 import {
   IoAlertCircleOutline,
   IoArrowBackOutline,
   IoArrowForwardOutline,
-  IoCheckmarkCircleOutline,
   IoSpeedometerOutline,
   IoSyncOutline
 } from "react-icons/io5";
 import { AI_STEP_COPY, riskBandLabel } from "@/application/pyme-onboarding/ai-step";
 import type {
-  AiCheckKind,
   AiEvaluationInput,
   AiEvaluationPort,
   AiEvaluationResult,
   AiRiskBand
 } from "@/application/ports/ai-evaluation-port";
+import type {
+  CompletenessCheckInput,
+  CompletenessCheckPort
+} from "@/application/ports/completeness-check-port";
 import { FOCUS_RING } from "../auth-field";
+import { CompletenessFindings } from "./completeness-findings";
 
 /**
  * Step 3 «Evaluación AI» of the onboarding wizard (Feature #398, Task #399 /
  * T5). Runs `AiEvaluationPort` once on mount — the wizard mounts it when step
  * 2's valid submit advances — and renders the template's busy block, then the
- * risk band and the four checks (lines 199–225).
+ * risk band and the API completeness findings (Feature #402).
  *
- * The evaluation is simulated behind the port; the band is always named in
- * text and carries an icon, never colour alone. «Corregir datos» leaves the
- * evidence untouched and returns to step 2; «Continuar» goes to step 4.
+ * The band is simulated behind `AiEvaluationPort`; the findings are real and
+ * come from `CompletenessCheckPort`. Both are named in text and carry an icon,
+ * never colour alone, and an incomplete result warns without blocking: the
+ * human review in step 4 decides. «Corregir datos» leaves the evidence
+ * untouched and returns to step 2; «Continuar» goes to step 4.
  */
-
-const CHECK_ICONS: Readonly<Record<AiCheckKind, IconType>> = {
-  ok: IoCheckmarkCircleOutline,
-  warning: IoAlertCircleOutline
-};
-
-const CHECK_TONES: Readonly<Record<AiCheckKind, string>> = {
-  ok: "text-trust-success",
-  warning: "text-trust-caution"
-};
 
 const BAND_TONES: Readonly<Record<AiRiskBand, string>> = {
   low: "bg-trust-success-surface text-trust-success",
@@ -53,13 +47,24 @@ export interface AiStepProps {
   readonly port: AiEvaluationPort;
   /** Stable across renders; the wizard memoizes it. */
   readonly input: AiEvaluationInput;
+  /** The API completeness check (Feature #402). */
+  readonly completenessPort: CompletenessCheckPort;
+  /** Stable across renders; the wizard captures it at step 2's submit. */
+  readonly completenessInput: CompletenessCheckInput;
   /** «Continuar»: advance to step 4 «Revisión humana». */
   readonly onContinue: () => void;
   /** «Corregir datos»: return to step 2. */
   readonly onCorrect: () => void;
 }
 
-export function AiStep({ port, input, onContinue, onCorrect }: AiStepProps) {
+export function AiStep({
+  port,
+  input,
+  completenessPort,
+  completenessInput,
+  onContinue,
+  onCorrect
+}: AiStepProps) {
   const titleId = useId();
   const [phase, setPhase] = useState<AiPhase>("busy");
   const [result, setResult] = useState<AiEvaluationResult | null>(null);
@@ -122,61 +127,43 @@ export function AiStep({ port, input, onContinue, onCorrect }: AiStepProps) {
       ) : null}
 
       {phase === "done" && result ? (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-page-border bg-page-surface p-5">
-            <div className="flex flex-col gap-1">
-              <span className="text-[13px] font-semibold text-text-secondary">{AI_STEP_COPY.riskLabel}</span>
-              <span className="text-[13px] text-text-secondary">{AI_STEP_COPY.riskSubject}</span>
-            </div>
-            <span
-              className={`inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-sm font-[650] ${BAND_TONES[result.riskBand]}`}
-            >
-              <IoSpeedometerOutline aria-hidden="true" focusable="false" className="text-[16px]" />
-              {riskBandLabel(result.riskBand)}
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-page-border bg-page-surface p-5">
+          <div className="flex flex-col gap-1">
+            <span className="text-[13px] font-semibold text-text-secondary">{AI_STEP_COPY.riskLabel}</span>
+            <span className="text-[13px] text-text-secondary">{AI_STEP_COPY.riskSubject}</span>
           </div>
+          <span
+            className={`inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-sm font-[650] ${BAND_TONES[result.riskBand]}`}
+          >
+            <IoSpeedometerOutline aria-hidden="true" focusable="false" className="text-[16px]" />
+            {riskBandLabel(result.riskBand)}
+          </span>
+        </div>
+      ) : null}
 
-          <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-            {result.checks.map((check) => {
-              const CheckIcon = CHECK_ICONS[check.kind];
-              return (
-                <li
-                  key={`${check.kind}-${check.title}`}
-                  className="flex items-start gap-3.5 rounded-card border border-page-border p-4"
-                >
-                  <CheckIcon
-                    aria-hidden="true"
-                    focusable="false"
-                    className={`mt-0.5 shrink-0 text-[22px] ${CHECK_TONES[check.kind]}`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[15px] font-[650]">{check.title}</div>
-                    <div className="text-sm leading-[1.5] text-pretty text-text-secondary">{check.body}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+      {/* Mounted in parallel with the AI evaluation so its result is ready when
+          the band lands, and so the step never shows a fabricated gap. */}
+      <CompletenessFindings port={completenessPort} input={completenessInput} />
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={onContinue}
-              className={`inline-flex h-[52px] flex-1 items-center justify-center gap-2 rounded-control bg-brand-accent text-base font-[650] text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
-            >
-              {AI_STEP_COPY.continueLabel}
-              <IoArrowForwardOutline aria-hidden="true" focusable="false" className="text-[18px]" />
-            </button>
-            <button
-              type="button"
-              onClick={onCorrect}
-              className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-control border border-control bg-transparent px-4 text-[15px] font-semibold text-text-primary hover:bg-page-surface ${FOCUS_RING}`}
-            >
-              <IoArrowBackOutline aria-hidden="true" focusable="false" className="text-[18px]" />
-              {AI_STEP_COPY.correctLabel}
-            </button>
-          </div>
-        </>
+      {phase === "done" && result ? (
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={onContinue}
+            className={`inline-flex h-[52px] flex-1 items-center justify-center gap-2 rounded-control bg-brand-accent text-base font-[650] text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
+          >
+            {AI_STEP_COPY.continueLabel}
+            <IoArrowForwardOutline aria-hidden="true" focusable="false" className="text-[18px]" />
+          </button>
+          <button
+            type="button"
+            onClick={onCorrect}
+            className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-control border border-control bg-transparent px-4 text-[15px] font-semibold text-text-primary hover:bg-page-surface ${FOCUS_RING}`}
+          >
+            <IoArrowBackOutline aria-hidden="true" focusable="false" className="text-[18px]" />
+            {AI_STEP_COPY.correctLabel}
+          </button>
+        </div>
       ) : null}
 
       {phase === "error" ? (

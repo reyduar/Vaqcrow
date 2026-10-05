@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { BusinessDraft } from "@/application/ports/business-port";
+import { HttpClientError } from "@/application/ports/http-client-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { DEMO_VALUES } from "@/application/pyme-onboarding/registration-step";
 import { FakeBusiness, fakeBusinessRecord } from "@/test/fake-business";
@@ -221,6 +222,22 @@ describe("ReviewStep send", () => {
       fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
     });
     expect(screen.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeInTheDocument();
+  });
+
+  it("maps the server's 409 wallet_required rejection to an honest wallet message", async () => {
+    const wallet = new FakeWallet();
+    wallet.seedAccount("GBXK1234567890ABCD7Q2M");
+    const submit = vi
+      .fn()
+      .mockRejectedValue(new HttpClientError("http", 409, undefined, "wallet_required"));
+    renderReview({ wallet, gateway: gateway({ submit }) });
+
+    await connectAndSend();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/wallet/i);
+    expect(screen.getByRole("alert")).toHaveTextContent("Volvé a conectar Freighter");
+    expect(screen.queryByText(/No se pudo enviar la solicitud/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).not.toBeInTheDocument();
   });
 
   it("says the service is unavailable when no gateway is configured", async () => {
