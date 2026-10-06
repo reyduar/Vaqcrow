@@ -1,31 +1,32 @@
 # Evidencia de cierre de la Feature #406 — Issue #409
 
-> Documento de cierre de Feature. Consolida la evidencia de las Tasks [#407](https://github.com/reyduar/Vaqcrow/issues/407) (implementación) y [#408](https://github.com/reyduar/Vaqcrow/issues/408) (pruebas) de la Feature [#406](https://github.com/reyduar/Vaqcrow/issues/406) ("Feature: Connect the PyME Freighter wallet before review", Epic [#374](https://github.com/reyduar/Vaqcrow/issues/374)), re-ejecuta las verificaciones locales en este árbol de trabajo y mapea cada criterio de aceptación de la Feature, citado textualmente, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/pyme-wallet-connection|Bitácora: conexión de la wallet Freighter de la PyME]].
+> Documento de cierre de Feature. Consolida la evidencia de las Tasks [#407](https://github.com/reyduar/Vaqcrow/issues/407) (implementación) y [#408](https://github.com/reyduar/Vaqcrow/issues/408) (pruebas) de la Feature [#406](https://github.com/reyduar/Vaqcrow/issues/406) ("Feature: Connect the PyME Freighter wallet before review", Epic [#374](https://github.com/reyduar/Vaqcrow/issues/374)), conserva las verificaciones locales realizadas durante la iteración y mapea cada criterio de aceptación de la Feature, citado textualmente, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/pyme-wallet-connection|Bitácora: conexión de la wallet Freighter de la PyME]].
 
-> [!warning] Estado de entrega: nada de #406, #407, #408 ni #409 está en `main`
-> El trabajo vive en la pila `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` (tip `8509e5e`) → `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` (tip `67e76d1`) → `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection` (este documento), creada desde la rama de la Feature #406 (`762460a`), que a su vez es la punta de la pila del wizard `#398 → #399 → #400 → #401`. Verificado el 2026-10-04 con `git merge-base --is-ancestor`: ninguno de `7e75d5c`, `d111ba4`, `578aa92`, `4128ad8` ni `67e76d1` es ancestro de `origin/main` (`6b9acbe`). Por decisión del owner, #369 y #378 llegan juntas a `main` junto con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)); después van la pila del wizard (#398–#401) y esta pila de la wallet. La demo desplegada desde `main` todavía no conecta Freighter.
+> [!warning] Estado de entrega: la implementación y la evidencia están completas en la rama de integración; #406 no está en `main`
+> La rama activa `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` está en el tip `0c740f8`. Los commits de implementación, pruebas y evidencia de #407/#408/#409 son ancestros de esta base actual; no hay trabajo de #406 integrado en `main`. El cierre de los issues queda pendiente de la acción manual del owner. La demo desplegada desde `main` todavía no conecta Freighter.
 
 ## 1. Contexto y objetivo
 
 La Feature #406 permite que una PyME conecte (o cree) Freighter, demuestre que controla la cuenta firmando un challenge de un solo uso y guarde su public key en el perfil antes de que la solicitud llegue a revisión del admin. La key es el **destino inmutable** de la bóveda cuando el admin aprueba, y la conexión es no-custodial: Vaqcrow nunca recibe ni guarda un seed ni una clave privada. Entrega además el **wallet card** del template y un adaptador de Freighter **reutilizable por los flujos de inversor** a través del puerto existente. Depende de [#398](https://github.com/reyduar/Vaqcrow/issues/398) (wizard de alta de la PyME; evidencia en [[docs/planning/pyme-onboarding-wizard-and-document-upload-evidence|Evidencia de #398]]).
 
-| Task | Rama | Estado del issue (2026-10-04) |
+| Task | Rama/base de referencia | Estado integrado (2026-10-06) |
 |---|---|---|
-| #407 — implementar | `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` | abierto; T1a/T1b/T1c + corrección `d208a50`, tip `8509e5e` |
-| #408 — probar | `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` | abierto; commit `4128ad8`, tip `67e76d1` |
-| #409 — documentar | `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection` | este documento |
+| #406 — Feature | `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (`0c740f8`) | implementación, pruebas y evidencia completas; cierre manual pendiente |
+| #407 — implementar | rama de integración actual (`0c740f8`) | T1a/T1b/T1c completos en commits históricos; cierre manual pendiente |
+| #408 — probar | rama de integración actual (`0c740f8`) | pruebas y cobertura completas en el historial; cierre manual pendiente |
+| #409 — documentar | rama de integración actual (`0c740f8`) | evidencia presente y reconciliada; cierre manual pendiente |
 
-La Feature #406 sigue abierta (`subIssuesSummary` 0/3 al 2026-10-04); su cierre lo decide el owner.
+La Feature #406 y sus Tasks están listas para cierre manual; esta documentación no afirma que estén mergeadas en `main`.
 
 ## 2. Cómo leer esta evidencia
 
-- **Dos fuentes, siempre nombradas.** (a) **Re-ejecutado** — un comando corrido el 2026-10-04 en este árbol de trabajo (rama de #409 sobre `67e76d1`), con su línea de salida real (§4.1). (b) **Bitácora** — una entrada fechada de [[odd/tasks/pyme-wallet-connection]] o el resultado de una revisión RDD; se cita, **no** se re-ejecutó aquí.
+- **Dos fuentes, siempre nombradas.** (a) **Re-ejecutado** — un comando corrido el 2026-10-04 durante la iteración, en el árbol histórico que tenía la rama de #409 sobre `67e76d1`, con su línea de salida real (§4.1). (b) **Bitácora** — una entrada fechada de [[odd/tasks/pyme-wallet-connection]] o el resultado de una revisión RDD; se cita, **no** se re-ejecutó aquí.
 - **Dobles, no proveedores.** Ninguna prueba de esta Feature habla con Freighter real, con Testnet/Horizon ni con el proyecto Supabase remoto. Las pruebas de aplicación y de componentes usan dobles (`FakeWallet`, `FakeWalletConnection`); el smoke de Playwright instala un emulador local de Freighter (`apps/web/e2e/support/freighter-emulator`) y un stub de `/profile/wallet*` bajo un fixture que falla si el navegador toca cualquier host no local. Sólo `pnpm run test:db` toca una base, y es el stack local del perfil docker.
 - **Sin secretos.** Ningún email, contraseña, seed, clave privada, token ni identificador de proyecto aparece en este documento; las variables se nombran, nunca sus valores.
 
 ## 3. Qué quedó implementado (Task #407)
 
-Fuente: bitácora (T1a/T1b/T1c, 2026-10-04), decisiones del owner y lectura del código en `8509e5e`.
+Fuente: bitácora (T1a/T1b/T1c, 2026-10-04), decisiones del owner y lectura del código en los commits históricos de implementación listados en el addendum de reconciliación.
 
 - **Migración y pgTAP (T1a)** — `supabase/migrations/20261004120000_add_profile_wallet_and_challenge.sql`: `profile.stellar_public_key text` (nullable, `check ~ '^G[A-Z2-7]{55}$'`) y `public.wallet_challenge` (`challenge_id` uuid PK, `owner_user_id → profile` cascade, `nonce`, `created_at`, `expires_at`, `consumed_at` nullable) con RLS encendida, **cero políticas** y grants explícitos: `service_role` es el único lector/escritor, `anon`/`authenticated` sin acceso. pgTAP `supabase/tests/wallet_connection.sql` (plan 44; toca estructura, grants, escritura como `service_role` y lectura del dueño por RLS). Aplicada al remoto (MCP de Supabase, 2026-10-04) con el historial reconciliado a `20261004120000`; verificado columna, RLS on, 0 políticas y grants. Commit `7e75d5c` (docs `f13ff70`).
 - **API (T1b)** — rutas `POST /profile/wallet/challenge` (emite el mensaje a firmar, `201 { challengeId, message }`), `POST /profile/wallet` (verifica y guarda, `200 { publicKey, frozen }`) y `GET /profile/wallet`, las tres `only("PYME")` en `route-policy.ts` y con el dueño tomado de `request.principal.userId`, nunca del cuerpo. Puerto `wallet-repository-port` (challenge create/find/consume condicional, `readPublicKey`/`writePublicKey`, `isFrozen`) + `wallet-signature-port`; adaptadores `supabase-wallet-repository` (`service_role`, errores saneados a `{ code }`) y `stellar-wallet-signature` (**SEP-53** `Keypair.verifyMessage`). La firma se verifica contra el `nonce` del challenge; la key se guarda en `profile.stellar_public_key`. **Inmutabilidad:** `isFrozen` recorre `sme_request.owner_user_id → application_id → campaign`, y `POST /profile/wallet` responde `409 wallet_frozen` si el dueño ya tiene bóveda. Errores `400/404/409/503` saneados, sin `message`/`details`. Commit `d111ba4` (docs `7284c68`).
@@ -43,7 +44,7 @@ Fuente: bitácora (T1a/T1b/T1c, 2026-10-04), decisiones del owner y lectura del 
 
 ### 4.1 Re-ejecutado en este árbol de trabajo (2026-10-04)
 
-Rama de #409 sobre `67e76d1`, Node `v24.21.0`, base de datos del stack local del perfil docker en marcha (`test:db` sólo usa Postgres).
+Las pruebas se re-ejecutaron el 2026-10-04 en el árbol histórico de #409 sobre `67e76d1`, con Node `v24.21.0` y la base de datos del stack local del perfil docker en marcha (`test:db` sólo usa Postgres). La rama de integración actual está en `0c740f8`; este addendum no inventa una nueva ejecución de las suites.
 
 ```sh
 $ pnpm --filter @vaqcrow/api test
@@ -98,7 +99,7 @@ exit 0
 
 ## 5. Límites y brechas vigentes
 
-1. **Criterio 2 PARCIAL.** El portón del envío del wizard se apoya en la conexión **persistida** (`review-step.tsx:132`, verificado también en el smoke), y `POST /profile/wallet` se niega a reemplazar una key congelada (`409 wallet_frozen`). Pero el **rechazo a nivel API de `POST /sme-requests` sin key guardada no lo impone #406**, sino el caso de uso de #402 (Feature de IA y envío); `route-policy.ts` sólo exige el rol `PYME`. Es un **seam registrado** en la bitácora T1b. El criterio queda cumplido **según la web** y a nivel de reemplazo de key, no como precondición del motor de envío.
+1. **Criterio 2 integrado.** El portón del envío del wizard se apoya en la conexión **persistida** (`review-step.tsx:132`, verificado también en el smoke), `POST /profile/wallet` se niega a reemplazar una key congelada (`409 wallet_frozen`) y el `POST /sme-requests` de #402 lee la key almacenada del principal verificado y devuelve `409 { code: "wallet_required" }` cuando falta. El enforcement server-side pertenece a #402, no a la implementación de #406; el seam histórico quedó cerrado en la base integrada actual.
 2. **La revisión RDD nativa de T1c quedó incompleta.** La lente devolvió vacío (`opencode_task_output_empty`) y el ciclo cerró con `stop`/`unachievable_lens_slot`, linaje `review-dbfbdad83184babc`; fue un fallo de transporte del reviewer, no una aprobación inventada ni una regresión de código. Reintentable. Ver §7.
 3. **Saldo XLM simulado.** `SimulatedWalletBalanceAdapter` siempre devuelve `0.0000000`; no hay lectura real de Horizon (unidad posterior; la frontera prohíbe el SDK en la web). El link del explorador se arma en la web (§3.3).
 4. **Hallazgos no bloqueantes de T1b** ya corregidos en `d208a50`, pero conviene reintentar su revisión para confirmarlo de forma independiente.
@@ -140,7 +141,7 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 | # | Criterio (verbatim, issue #406) | Resultado | Fuente |
 |---|---|---|---|
 | 1 | "A PyME can connect Freighter and its public key is stored after the control challenge; the wallet card matches the template." | ✅ **CUMPLIDO con dobles.** `connectAndStoreWallet` conecta Freighter → pide el challenge → firma → guarda; la API verifica la firma SEP-53 contra el `nonce` del challenge de un solo uso, lo consume y escribe `profile.stellar_public_key`. El wallet card sigue `Vaqcrow Portafolio.dc.html:116-137` (título no-custodial, `STELLAR TESTNET`, «Saldo disponible», «Activo de prueba sin valor económico», key acortada + Copiar/Copiada, Explorador, Desconectar, `CONGELADA`). No se probó contra Freighter real ni el remoto (§5.7). | Suite `apps/api` y web re-ejecutada; Playwright citado de bitácora |
-| 2 | "Submission to review is rejected without a stored public key." | ⚠️ **PARCIAL — cumplido en la web y a nivel de reemplazo de key; el rechazo API del envío es de #402.** El portón del wizard exige la conexión persistida (`review-step.tsx:132`) y `POST /profile/wallet` responde `409 wallet_frozen` al intentar reemplazar una key con bóveda; pero `POST /sme-requests` no valida la key (seam de #402, §5.1). | Lectura del código; bitácora T1b (seam) |
+| 2 | "Submission to review is rejected without a stored public key." | ✅ **CUMPLIDO en la base integrada actual.** El portón del wizard exige la conexión persistida (`review-step.tsx:132`), `POST /profile/wallet` responde `409 wallet_frozen` al intentar reemplazar una key con bóveda y el `POST /sme-requests` de #402 lee la key del principal verificado y responde `409 { code: "wallet_required" }` si falta. Históricamente, este enforcement pertenece a #402 y no fue agregado por #406. | Lectura del código y contrato actual de #402; bitácora T1b para el seam histórico |
 | 3 | "The key cannot change after the vault deployment; no seed or private key is ever requested, sent or stored." | ✅ **CUMPLIDO.** `isFrozen` recorre `sme_request.owner_user_id → application_id → campaign`; con bóveda, `POST /profile/wallet` responde `409 wallet_frozen` (no cambia la key). El flujo sólo usa la public key y una firma SEP-53 de mensaje; `FreighterWallet` nunca pide ni devuelve seed, mnemonic ni clave privada. | Suite `apps/api` y web re-ejecutada; lectura del código |
 | 4 | "The Freighter adapter is reusable by investor flows through the port." | ✅ **CUMPLIDO.** `WalletPort` (`wallet-port.ts:41`) + adaptador `FreighterWallet` ya los consumen `funding-workspace`, `distribution-workspace`, `campaign-workspace` y `workspace-status`; #406 no crea un puerto nuevo y suma `signMessage` (SEP-53) al existente. | Lectura del código + `boundaries` re-ejecutado |
 | 5 | "Required evidence and failure behavior are covered." | ✅ **CUMPLIDO.** Fallos cubiertos: Freighter no instalado/rechazo/red equivocada/desconocido, challenge inválido/expirado/replay/clave distinta, `isFrozen` fallido, `409 wallet_frozen`, `503` de persistencia, `400/404/503` de ruta, fallo al copiar la cuenta; este documento es la evidencia. | Suite `apps/api`, web y `test:db` re-ejecutadas; §4.2 |
@@ -151,17 +152,21 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 
 - **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el cierre de #407/#408/#409 lo decide el owner. Ninguno está en `main`.
 - **Revisión nativa de T1c sin completar.** No hay resultado de lente por un defecto del transporte del reviewer (§5.2); su verificación es la de la bitácora T1c y la re-ejecución de §4.1.
-- **El criterio 2 se mide de forma parcial.** La precondición API del envío pertenece a #402; hasta entonces, una llamada directa a `POST /sme-requests` con sesión `PYME` no verifica que exista key (§5.1). Es una brecha de seguridad conocida y registrada, no un olvido.
+- **El criterio 2 pertenece a #402 y está cerrado en la base integrada.** El seam histórico quedó resuelto: `POST /sme-requests` lee la key del principal verificado y devuelve `409 { code: "wallet_required" }` si falta (§5.1 y §8). No se atribuye este enforcement a #406.
 - **El remoto no se re-verificó aquí.** Todo lo del proyecto remoto proviene de la bitácora (2026-10-04).
 
 ## 10. Estado de entrega y próximos pasos
 
-- Este cambio es sólo documentación: este archivo, la bitácora y las entradas de #406–#409 en `demo-tasks-list.md`. Commit en la rama de #409; la PR contra la rama de #408/#407/#406 es un paso posterior.
-- La Feature #406 **no está en `main`** y no se cierra sola: el cierre lo decide el owner.
+- Este pase es sólo documentación: reconcilia este archivo, la bitácora y las entradas de #406–#409 en `demo-tasks-list.md` con la rama de integración en `0c740f8`. La evidencia histórica se entregó en `be6b758`; no se agregó implementación ni commit nuevo en este pase.
+- La implementación, las pruebas y la evidencia están completas en la rama de integración; sólo queda el cierre manual de GitHub por parte del owner. La Feature #406 **no está en `main`**.
 
-> [!todo] Condiciones antes del merge a `main` de la pila #406/#407/#408/#409
-> 1. Cerrar el criterio 2 de punta a punta: que el caso de uso de `POST /sme-requests` de #402 rechace el envío sin key persistida (§5.1).
-> 2. Reintentar la revisión RDD nativa de T1c (y, si se quiere, confirmar la de T1b) cuando el transporte del reviewer de OpenCode vuelva a funcionar (§5.2).
-> 3. Comprobar la conexión con Freighter real y contra el proyecto remoto con un navegador (§5.7).
-> 4. Reemplazar el `SimulatedWalletBalanceAdapter` por una lectura real de Horizon por `fetch`, cuando corresponda (§5.3).
-> 5. Confirmar la ausencia de hallazgos bloqueantes del assess de T2 (#408).
+> [!info] Limitaciones y verificaciones manuales preservadas
+> 1. El criterio 2 ya está cerrado en la base integrada por #402; no es una tarea pendiente de implementación de #406.
+> 2. La revisión RDD nativa de T1c quedó incompleta por transporte (`opencode_task_output_empty`), sin inventar una aprobación (§5.2).
+> 3. No se comprobó la conexión con Freighter real ni contra el proyecto Supabase remoto mediante un navegador (§5.7).
+> 4. El saldo continúa provisto por `SimulatedWalletBalanceAdapter`; una lectura real de Horizon por `fetch` queda como trabajo posterior (§5.3).
+> 5. Estas limitaciones no autorizan a afirmar un merge en `main` ni una rehearsal remota.
+
+## Addendum de reconciliación (2026-10-06)
+
+No se agregó implementación nueva en este pase: se reconcilió el estado documental con la rama de integración actual `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` en `0c740f8`. Los work units históricos que ya son ancestros de la base actual son: `7e75d5c` (migración + tabla de challenge), `d111ba4` (API, challenge firmado, perfil y destino congelado), `d208a50` (consumo antes de escritura y correcciones RDD), `578aa92` (adaptador Freighter, flujo de conexión, wallet card y cableado), `4128ad8` (pruebas adicionales) y `be6b758` (evidencia). La base también contiene `3d8553e` de #402, que aporta el enforcement server-side de `wallet_required`. No se realizó una rehearsal real con Freighter/navegador ni contra Supabase remoto; el saldo sigue simulado. La documentación no afirma merge en `main`.

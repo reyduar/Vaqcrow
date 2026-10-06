@@ -2148,7 +2148,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 ^issue-406
 
 - **Título original:** `Feature: Connect the PyME Freighter wallet before review`
-- **GitHub y estado:** [issue #406](https://github.com/reyduar/Vaqcrow/issues/406) · Tipo `Feature` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #406](https://github.com/reyduar/Vaqcrow/issues/406) · Tipo `Feature` · Área `stellar` · Prioridad `High` · Workflow `Backlog` · implementación/evidencia completas; cierre manual pendiente.
 - **Jerarquía y bloqueos:** padre [#374](#^issue-374); bloqueada nativamente por [#398](#^issue-398).
 - **Objetivo:** Permitir que la PyME conecte o cree una wallet Freighter y entregue su clave pública antes de que la solicitud llegue a revisión del admin, y entregar el adaptador de Freighter y la tarjeta de wallet reutilizables. Vaqcrow nunca recibe ni guarda claves.
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
@@ -2157,43 +2157,43 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
   - En qué paso del wizard va la conexión (el template solo la ubica en los próximos pasos de cuenta creada).
 - **Orden:** Requerida por [#410](#^issue-410), [#422](#^issue-422) y [#434](#^issue-434).
 
-**Rama e implementación.** `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (`762460a`) es la rama de integración y seguimiento del Feature, creada desde la punta del wizard (#401); la implementación se entrega mediante sus Tasks en la pila `#406 → #407 → #408 → #409`. **No está en `main`**: la pila del wizard (#398–#401) y esta pila llegan a `main` después de #369+#378. Evidencia en [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md).
+**Rama e implementación.** `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (tip actual `0c740f8`) es la rama de integración y seguimiento del Feature; la implementación, las pruebas y la evidencia se entregaron mediante sus Tasks y sus commits históricos en la pila `#406 → #407 → #408 → #409`. **No está en `main`**: la pila del wizard (#398–#401) y esta pila llegan a `main` después de #369+#378. El cierre manual de GitHub queda pendiente. Evidencia en [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md).
 
 ### #407 — Implementar la conexión de la wallet Freighter de la PyME
 
 ^issue-407
 
 - **Título original:** `Task: Implement the PyME Freighter wallet connection`
-- **GitHub y estado:** [issue #407](https://github.com/reyduar/Vaqcrow/issues/407) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #407](https://github.com/reyduar/Vaqcrow/issues/407) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog` · implementación completa; cierre manual pendiente.
 - **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#408](#^issue-408).
 
-**Rama e implementación.** `Vaqcrow#407_Task_Implement_the_PyME_Freighter_wallet_connection` (tip `8509e5e`): T1a (migración `profile.stellar_public_key` + `wallet_challenge`, commit `7e75d5c`), T1b (rutas `POST /profile/wallet/challenge`, `POST /profile/wallet` y `GET /profile/wallet`; puertos de repositorio y firma; SEP-53; inmutabilidad, commit `d111ba4`, corrección `d208a50`) y T1c (`WalletPort.signMessage`, `FreighterWallet`, wallet card del template, cableado en el paso 4 del wizard y en `/company`, commit `578aa92`). **No está en `main`.**
+**Rama e implementación.** La implementación de #407 está completa en la rama de integración actual (`0c740f8`), mediante estos work units históricos: T1a (migración `profile.stellar_public_key` + `wallet_challenge`, `7e75d5c`), T1b (rutas `POST /profile/wallet/challenge`, `POST /profile/wallet` y `GET /profile/wallet`; puertos de repositorio y firma; SEP-53; inmutabilidad, `d111ba4`, corrección `d208a50`) y T1c (`WalletPort.signMessage`, `FreighterWallet`, wallet card del template, cableado en el paso 4 del wizard y en `/company`, `578aa92`). **No está en `main`; el cierre manual queda pendiente.**
 
 ### #408 — Probar la conexión de la wallet Freighter de la PyME
 
 ^issue-408
 
 - **Título original:** `Task: Test the PyME Freighter wallet connection`
-- **GitHub y estado:** [issue #408](https://github.com/reyduar/Vaqcrow/issues/408) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #408](https://github.com/reyduar/Vaqcrow/issues/408) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog` · pruebas completas; cierre manual pendiente.
 - **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); bloqueada nativamente por [#407](#^issue-407).
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#409](#^issue-409).
 
-**Rama e implementación.** `Vaqcrow#408_Task_Test_the_PyME_Freighter_wallet_connection` (tip `67e76d1`, commit `4128ad8`): cierra el formato `es-AR` del saldo en la wallet card (7 decimales), agrega replay/expiración a nivel ruta y dos aserciones pgTAP de RLS del perfil. **No está en `main`.**
+**Rama e implementación.** Las pruebas de #408 están completas en la rama de integración actual (`0c740f8`); el work unit histórico `4128ad8` cierra el formato `es-AR` del saldo en la wallet card (7 decimales), agrega replay/expiración a nivel ruta y dos aserciones pgTAP de RLS del perfil. **No está en `main`; el cierre manual queda pendiente.**
 
 ### #409 — Documentar evidencia de la conexión de la wallet Freighter de la PyME
 
 ^issue-409
 
 - **Título original:** `Task: Document evidence for the PyME Freighter wallet connection`
-- **GitHub y estado:** [issue #409](https://github.com/reyduar/Vaqcrow/issues/409) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #409](https://github.com/reyduar/Vaqcrow/issues/409) · Tipo `Task` · Área `stellar` · Prioridad `High` · Workflow `Backlog` · evidencia completa; cierre manual pendiente.
 - **Jerarquía y bloqueos:** padre [#406](#^issue-406), que requiere [#398](#^issue-398); bloqueada nativamente por [#408](#^issue-408).
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#406](#^issue-406).
 
-**Rama e implementación.** `Vaqcrow#409_Task_Document_evidence_for_the_PyME_Freighter_wallet_connection`: este documento [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md), que mapea los siete criterios de aceptación de #406 a su verificación re-ejecutada. **No está en `main`.**
+**Rama e implementación.** La evidencia de #409 está completa en la rama de integración actual (`0c740f8`), en este documento [`pyme-wallet-connection-evidence.md`](./pyme-wallet-connection-evidence.md), que mapea los siete criterios de aceptación de #406 a su verificación histórica re-ejecutada. **No está en `main`; el cierre manual queda pendiente.**
 
 ### #434 — Mi campaña de la PyME
 
