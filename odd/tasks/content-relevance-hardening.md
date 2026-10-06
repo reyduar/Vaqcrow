@@ -105,6 +105,19 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **RDD.** Medium, consentido; aprobado y quemado (`review-203d9620b050ff0a`). Una revisión previa del mismo cambio marcó sangría de 3 espacios en los cierres con timeout; corregida antes del commit. Advisory abierto: `maxWorkers` fijo vs. valor relativo (`"50%"`).
 - **Estado.** T1–T5 completadas; la evidencia parcial aceptada anterior queda superada por el gate literal en verde.
 
+### Bitácora RDD — tramo pendiente `bc7feb0..f647391` (2026-10-06)
+
+- **Por qué en tramos.** Tras los commits de T5, el hook propuso todo el rango commiteado desde `aaee084` (159 commits, 39.043 líneas) y la revisión nativa respondió `lens_context_budget_exceeded`. La última frontera revisada era `bc7feb0` (fin de S4), así que el tramo pendiente `bc7feb0..HEAD` (~1.236 líneas, riesgo alto) se partió en cuatro slices; A–C se revisaron desde un worktree detached en el commit final de cada slice, ya eliminado.
+
+| Slice | Rango | Lineage | Resultado |
+|---|---|---|---|
+| A | `bc7feb0..3467bd9` (antiguo S5: env/sesión + docs) | `review-9cb2d970a1d777c8` | aprobado + acknowledged; `R3-shell-sourced-env` WARNING, `R3-403-as-expired-session` WARNING, `R3-completeness-ui-unauthorized-untested` SUGGESTION |
+| B | `3467bd9..ff92df4` (T1/T2) | `review-0311c78b41db8455` | aprobado + acknowledged; `R3-deadline-not-bounding-inflight` WARNING, `R3-mid-pass-deadline-unproved` WARNING, `R3-deadline-invalid-input` SUGGESTION, `R3-cap-selection-unasserted` SUGGESTION |
+| C | `ff92df4..7893e68` (sync de `opencode.json`) | — | **no revisado**: un solo archivo de 261 líneas, riesgo alto; `lens_context_budget_exceeded` sin crear autoridad. El owner aceptó dejarlo sin revisar (configuración generada por `gentle-ai sync`, no código de la demo) |
+| D | `7893e68..f647391` (T3/T4/T5) | `review-b5019e7322966e3c` | aprobado + acknowledged; `R3-dedup-doc-scope-unproved` SUGGESTION, `R3-fixed-maxworkers` SUGGESTION |
+
+- **Hallazgos para trabajo posterior (todos non-blocking).** Los más concretos son de B: el deadline global sólo se chequea antes de cada documento, así que una llamada lenta iniciada justo antes puede pasar el presupuesto de 8 s (el comentario junto a `MAX_DOCUMENTS_CHECKED` promete más de lo que el código garantiza), y ningún test usa el reloj inyectable `now` para probar un vencimiento a mitad de pasada. De A: los scripts `dev:docker`/`dev:cloud` hacen `source` del env como shell (valores con `$`, espacios o `#` se expanden) y un `403` se muestra como sesión vencida.
+
 ## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
 > [!warning] Espejo Engram pendiente
