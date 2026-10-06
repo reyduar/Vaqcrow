@@ -57,9 +57,22 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 - `pnpm run test:boundaries`
 - `pnpm run test:db` cuando una migración cambie el esquema; primero local docker y luego remoto según la política del repositorio.
 
+## Progreso
+
+### T1a — Visor privado de documentos para admin (commit: `62d88fb`)
+
+- **RED.** El focused run falló inicialmente con la ruta GET sin registrar y el nuevo lookup de repositorio ausente; una ejecución adicional ejercitó una excepción del repositorio que debía degradar a `503`.
+- **GREEN.** `GET /storage/uploads?path=` quedó restringido a `ADMIN`, exige descriptor persistido, descarga mediante `StoragePort`, devuelve bytes con `private, no-store`, `nosniff` y filename seguro, y mapea fallos a `400`/`404`/`503` sanitizados. POST/DELETE de PyME no cambian.
+- **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/routes/storage.route.test.ts src/infrastructure/adapters/supabase-pyme-document-repository.test.ts` → **40 passed**; `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/authorization.test.ts` → **251 passed**.
+- **RDD.** El assess indicó `medium`/`slice_budget_reached`, pero el STATUS nativo devolvió `rdd_disabled`; no se creó autoridad de review ni se modificó la preferencia del owner. La verificación de T1a queda respaldada por RED/GREEN, tests del worker y el spot-check del padre.
+
+### Próximo work unit
+
+T1b: contexto agregado de revisión admin y límites de la PyME, sin integrar todavía la consola dependiente de #386.
+
 ## Próximo paso
 
-Arrancar T1a backend-first con los límites como reglas de dominio/configuración y con enforcement server-side atómico; T1b espera la consola de #386.
+Continuar con T1b backend-first; la integración visual de la consola espera #386.
 
 ## Guardrails adoptados
 
