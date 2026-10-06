@@ -83,6 +83,9 @@ pub enum Error {
     NothingToRefund = 7,
     BatchTooLarge = 8,
     EmptyBatch = 9,
+    /// The investor's resulting contribution would exceed the per-investor cap
+    /// (`goal / 10`), so at least ten distinct investors are needed to settle.
+    InvestorCapExceeded = 10,
 }
 
 #[contractevent]
@@ -161,6 +164,17 @@ impl CampaignVault {
         let total = Self::total(env.clone()) + amount;
         let key = DataKey::Contribution(investor.clone());
         let previous: i128 = env.storage().persistent().get(&key).unwrap_or(0);
+
+        // Per-investor concentration cap: nobody may hold more than a tenth of
+        // the goal, so settling always needs at least ten distinct investors.
+        // The server caps a campaign goal at USD 50,000-equivalent when it is
+        // created (#410), so `min(10% of goal, USD 5,000)` reduces exactly to
+        // `10% of the goal`; the contract therefore needs only the goal, not the
+        // FX rate. Checked before any state write or token transfer.
+        let cap = Self::goal(env.clone()) / 10;
+        if previous + amount > cap {
+            return Err(Error::InvestorCapExceeded);
+        }
 
         if previous == 0 {
             // Membership has to be checked, not inferred from the contribution

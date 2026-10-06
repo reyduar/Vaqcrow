@@ -115,9 +115,26 @@ T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribut
 
 - **Work-unit commit.** `fc0673b feat(api): snapshot campaign FX rate and enforce goal cap`.
 
+### T3b — Tope individual atómico en `campaign-vault::contribute`
+
+- **RED.** Se agregaron tests Rust que ejercitan el tope (exactamente en el tope, un stroop por encima y una segunda contribución del mismo inversor que lo excede) y se corrieron desde `contracts/`. El run falló al compilar con `error[E0599]: no variant, associated function, or constant named `InvestorCapExceeded` found for enum `Error`` (dos ocurrencias, `campaign-vault/src/test.rs:226` y `:252`). Ese error de compilación por la variante inexistente es la señal RED esperada; no hubo un fallo de aserción previo.
+- **GREEN.**
+  - `Error` gana la variante **apendizada** `InvestorCapExceeded = 10`; las variantes 1–9 no se reordenan ni renumeran (sus códigos son ABI público).
+  - `contribute` lee `goal` y rechaza con esa variante cuando `previous + amount > goal / 10`, **antes de cualquier escritura de estado o transferencia**. El orden effects-before-interactions y el resto del comportamiento no cambian.
+  - El comentario del contrato deja explícito el razonamiento: con el objetivo acotado a USD 50.000-equivalentes en la creación (#410/T3a), `min(10% del objetivo, USD 5.000)` se reduce exactamente a `10% del objetivo`, así que el contrato no necesita la tasa FX.
+  - No se tocó la firma del constructor ni los argumentos de `factory::deploy`; no se tocaron `apps/api` ni `apps/web`.
+- **Verificación observada.**
+  - `cargo test` (desde `contracts/`) → **39 passed; 0 failed** (`campaign-factory` 3 + `campaign-vault` 36). Los cuatro tests nuevos del tope y los cinco de liquidación reescritos pasan.
+  - `stellar contract build` (desde `contracts/`) → **build completo**. `campaign_vault.wasm` optimizado 8.708 bytes, sha256 `966f5b89c1f690488e87bb550a69dac7a8b1e6a84261be867ef98b9b9895dce4`.
+  - Los tests de liquidación se reescribieron para llegar al objetivo con diez inversores distintos (el tope lo exige); `GOAL` de test subió a `10_000` y su tope es `1_000`. `cargo test` regeneró los snapshots versionados de `contracts/campaign-vault/test_snapshots/`, un reflejo determinista del nuevo objetivo y de los flujos de liquidación (por ejemplo, la entry del goal pasa de `i128: 1000` a `i128: 10000`).
+- **Paso de operador para Testnet (documentado, NO ejecutado).** El hash del wasm de la bóveda cambió, así que una fábrica ya desplegada seguiría creando bóvedas con el wasm viejo, sin tope. La fábrica guarda `VaultWasm` en el constructor y no tiene setter: para hacer efectivo el tope hay que **redesplegar la fábrica apuntando al wasm nuevo** (`966f5b89…`) y **re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID`**, con el mismo procedimiento que tras un reset de Testnet (`contracts/README.md`). Las bóvedas ya desplegadas conservan su wasm y no adquieren el tope. No se ejecutó ningún despliegue, redeploy ni publicación en este work unit.
+- **Límite explícito.** T3b es sólo el guardrail on-chain autoritativo; la integración con el flujo de aprobación (`T1`/`T2`), las notificaciones (`T4`) y la consola admin (#386) siguen pendientes.
+
+- **Work-unit commit.** pendiente (lo realiza el padre).
+
 ## Próximo paso
 
-T3a quedó implementado server-side. Sigue T3b: aplicar el tope individual atómico en `campaign-vault::contribute` (tests Rust y paso de redeploy), y luego `T4` (notificaciones/fallos); la integración visual de la consola espera #386.
+T3a (server-side) y T3b (contrato) quedaron implementados. El tope individual ya se aplica de forma atómica en `contribute`; falta el paso de operador —redesplegar/re-apuntar la fábrica— que este work unit documenta pero no ejecuta. Siguen `T4` (notificaciones/fallos) y la integración visual de la consola, que espera #386.
 
 ## Guardrails adoptados
 
