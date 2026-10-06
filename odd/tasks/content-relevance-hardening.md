@@ -43,7 +43,7 @@ La revisión nativa de la feature aprobó el alcance (S1–S4 con autoridad quem
 - [x] **T2 — R3-1: acotar el fan-out.** Tope de filas + deadline global (reloj inyectable). **Concurrencia diferida a propósito** (es una optimización de latencia, no lo que pide el hallazgo, y agrega riesgo de determinismo). Tests: deadline vencido → `content_unverified`; más filas que el tope. Commit.
 - [x] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
 - [x] **T4 — R3-4: findings de fotos no ambiguos.** El owner eligió deduplicar los `content_irrelevant` de fotos, preservando la copy aprobada; los warnings `content_unverified` siguen siendo uno por documento. Commit.
-- [ ] **T5 — Verificación + evidencia.** `pnpm run verify` completo; actualizar la evidencia de visión y esta bitácora. Commit.
+- [ ] **T5 — Verificación + evidencia (incompleta/bloqueada).** `pnpm run verify` literal no terminó; actualizar la evidencia de visión y esta bitácora. Queda pendiente repetir el gate literal con éxito o adoptar un ajuste de recursos del runner documentado explícitamente. Sin commit de implementación de T5.
 
 ## Checks
 
@@ -86,6 +86,16 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **26 passed (26)**; incluye dos fotos irrelevantes y dos warnings de fotos para fijar que solo se deduplica el gap.
 - **RDD.** El candidato acumulado `7893e68..708fa38` quedó en riesgo **medium**, `under_budget`; no se creó autoridad de review.
 
+### T5 — verificación + evidencia (2026-10-06; incompleta/bloqueada)
+
+- **Gate literal incompleto.** `pnpm run verify` no es un pase: lint terminó con **5/5**, 0 errores y 1 warning preexistente; typecheck con **8/8**; la fase de tests de API terminó con **83 archivos / 1.889 tests**; la fase web encontró timeouts en varias suites y la herramienta padre alcanzó su límite de **120 s** antes de build/boundaries. Por eso no se afirma que `pnpm run verify` haya completado.
+- **Suite enfocada.** `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/pyme-onboarding/pyme-onboarding-wizard.test.tsx` → **13/13 passed**; el timeout de «Requiere cambios» no se reprodujo.
+- **Suite web acotada.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **161 archivos / 1.539 tests passed**, duración **100.88 s**, sin fallos. Esto respalda contención de recursos en la ejecución sin límite de workers, pero no convierte el `pnpm run verify` literal en pase.
+- **Checks independientes.** `pnpm run build` → **5/5 tasks passed**. `pnpm run boundaries` → **0 violations**, **814 módulos**, **2.576 dependencias** inspeccionadas. `pnpm run test:boundaries` → **10 archivos / 164 tests passed**.
+- **Cobertura de hardening ya verificada.** T3 conserva el guard de imagen directa de **4 MiB**, commit `5de3a24`; T4 conserva la deduplicación exclusiva de gaps `content_irrelevant` de fotos, commit `1971c68`; la suite enfocada del adaptador pasó **26/26**. Los warnings `content_unverified` siguen siendo uno por documento.
+- **Estado.** T1–T4 siguen completadas. T5 queda **incompleta/bloqueada** porque el comando literal agregado no terminó, aunque todos los checks individuales pasaron con workers web acotados. La acción restante es repetir `pnpm run verify` literalmente con éxito o adoptar y documentar explícitamente un ajuste de recursos del runner.
+- **Worktree.** Sólo permanece el cambio preexistente `M .env.docker.example`; no forma parte de T5 ni se editó.
+
 ## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
 > [!warning] Espejo Engram pendiente
@@ -103,7 +113,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 | T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
 | T3 (R3-2) | ✅ hecho | `5de3a24` | `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen; el borde exacto se procesa y el primer byte extra degrada de forma determinista a `content_unverified` sin llamar a visión. Downscaler WASM queda como deuda futura. |
 | T4 (R3-4) | ✅ hecho | `1971c68` | El owner eligió deduplicar findings `content_irrelevant` de fotos; se conserva el primero y los warnings `content_unverified` siguen por documento. |
-| T5 | 🔲 pendiente | — | `pnpm run verify` completo + evidencia/bitácora. |
+| T5 | ⚠️ incompleta/bloqueada | — | Evidencia actualizada, pero `pnpm run verify` literal no terminó por timeouts web sin límite de workers; los checks independientes pasaron y falta repetir el gate literal o documentar un ajuste explícito del runner. |
 
 **Gotchas acumulados.**
 - El prompt del reviewer es **una línea de ~450 bytes** (`GENTLE_AI_REVIEW_BINDING {...}`); el hook de transporte materializa el contexto congelado. Un prompt gigante reconstruido rompe el JSON de la tool (`SchemaError(Missing key ["subagent_type"])`); `subagent_type` debe setearse explícito.

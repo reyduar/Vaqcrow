@@ -59,6 +59,13 @@ Fuente: bitácora (U1–U6, 2026-10-05) y lectura del código.
 - Por cada fila persistida: valida el prefijo del path (`isOwnedObjectPath`), descarga el objeto, rasteriza si el `content_type` es `application/pdf`, y llama al proveedor de visión. `relevant:false` → `content_irrelevant` (`gap`, copy `El contenido de «<doc>» no parece corresponder a ese documento.`); cualquier fallo de descarga/rasterizado/visión, path ajeno o lista ilegible → `content_unverified` (`warning`, «No pudimos verificar…»). Un fallo nunca es un pase silencioso.
 - El vocabulario `CompletenessFindingCode` ganó `content_irrelevant` y `content_unverified`; las etiquetas en español por slot viven en `COMPLETENESS_CONTENT_LABELS`. La ruta `POST /completeness-check` no cambia de contrato (sigue `200` aun incompleto, `400`/`401`/`503` saneados) y se cablea en `index.ts` con el repositorio, el storage, el rasterizador y el proveedor de visión.
 
+#### 3.5.1 Endurecimiento S4
+
+- Los rechazos de `listByOwner` y de cada paso por documento quedan aislados: se degradan a `content_unverified` (`warning`) y preservan los findings declarados ya calculados.
+- El fan-out está acotado por un máximo de filas y un deadline global; lo que queda sin juzgar se declara como `content_unverified`, sin tocar los puertos después del vencimiento.
+- La rama de imagen aplica un guard explícito de **4 MiB** antes de convertir bytes a base64: el borde exacto sigue el camino normal y el primer byte por encima degrada de forma determinista a `content_unverified`, sin llamar a visión.
+- Los `content_irrelevant` de fotos se deduplican por decisión del owner: varias fotos irrelevantes producen un único gap con la copy aprobada. Los `content_unverified` se mantienen **uno por documento**, incluidos los de fotos, porque cada warning puede representar un fallo distinto.
+
 ### 3.6 Web (U6, `1d33691`)
 
 - El puerto web y el gateway HTTP agregaron los dos códigos al vocabulario validado; un código fuera del vocabulario sigue colapsando a `unavailable`. `findingLabel` pasa a un `switch` por código: `content_irrelevant` → «Faltante», `content_unverified` → «Aviso», sin depender de inferir por severidad.
@@ -112,6 +119,10 @@ $ pnpm run boundaries
 | Rasterizador: PDF de fixture → PNG válido, tope de página grande, entradas inválidas; round-trip del encoder PNG | `pdfium-pdf-rasterizer-adapter.test.ts` (7), `png-encoder.test.ts` (5) | Re-ejecutado (suite API) |
 | `downloadObject`: bytes+tipo, fallback de content type, 404→`not_found`, 400→`invalid_path`, 500→`unavailable`, data nula/throw→`unavailable`, sin fuga | `supabase-storage-adapter.test.ts`, `object-path.test.ts` | Re-ejecutado (suite API) |
 | Persistencia: `create`/`listByOwner`/`deleteByObjectPath`, errores saneados; la subida compensa si la escritura falla | `supabase-pyme-document-repository.test.ts` (8), `storage.route.test.ts` | Re-ejecutado (suite API) |
+| Rechazo de lista, descarga, rasterizado o visión aislado por documento; se conserva el finding declarado | `content-aware-completeness-check-adapter.test.ts`; suite API **83 archivos / 1.889 tests** | T5, re-ejecutado (2026-10-06) |
+| Tope de filas y deadline global: lo no juzgado degrada a `content_unverified` sin tocar los puertos | `content-aware-completeness-check-adapter.test.ts`; suite API **83 archivos / 1.889 tests** | T5, re-ejecutado (2026-10-06) |
+| Guard de imagen de **4 MiB**: borde exacto permitido y primer byte extra degradado sin llamar a visión | `content-aware-completeness-check-adapter.test.ts`; commit `5de3a24`; suite enfocada del adaptador **26/26 passed** | T5, re-ejecutado (2026-10-06) |
+| Deduplicación exclusiva de gaps `content_irrelevant` de fotos; warnings `content_unverified` uno por documento | `content-aware-completeness-check-adapter.test.ts`; commit `1971c68`; suite enfocada del adaptador **26/26 passed** | T5, re-ejecutado (2026-10-06) |
 
 ### 4.3 Verificaciones fuera del gate de PR (tomadas de la bitácora)
 
@@ -119,6 +130,31 @@ $ pnpm run boundaries
 - **Probe en vivo del proveedor de visión** (§5.2): sí se corrió el 2026-10-05, fuera del gate de PR.
 
 **Nunca ejercitado:** una llamada viva desde el chequeo de contenido de punta a punta (ruta → Storage real → rasterizador → modelo vivo); una imagen adversaria con una instrucción embebida contra el modelo vivo (la defensa se prueba por guard + esquema estricto, no con un ataque real); el flujo de wallet real de #406. La suite `test:integration` no se corrió.
+
+### 4.4 Verificación T5 — 2026-10-06
+
+La verificación de T5 es **parcial**. El comando agregado `pnpm run verify` no terminó: lint pasó (**5/5**, 0 errores y 1 warning preexistente), typecheck pasó (**8/8**), la fase de API pasó (**83 archivos / 1.889 tests**) y la fase web tuvo timeouts en varias suites; la herramienta padre alcanzó su límite de **120 s** antes de build y boundaries. No se reporta ese comando como completado.
+
+Los checks independientes sí pasaron:
+
+```text
+pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/pyme-onboarding/pyme-onboarding-wizard.test.tsx
+→ 13/13 passed; el timeout de «Requiere cambios» no se reprodujo.
+
+pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4
+→ 161 archivos / 1.539 tests passed; duración 100.88 s; sin fallos.
+
+pnpm run build
+→ 5/5 tasks passed.
+
+pnpm run boundaries
+→ 0 violations; 814 módulos; 2.576 dependencias inspeccionadas.
+
+pnpm run test:boundaries
+→ 10 archivos / 164 tests passed.
+```
+
+La suite web acotada respalda contención de recursos en la ejecución sin límite de workers; no convierte el `pnpm run verify` literal en pase. T3 conserva el guard directo de imagen de 4 MiB (commit `5de3a24`) y T4 la deduplicación sólo de gaps irrelevantes de fotos (commit `1971c68`); la suite enfocada del adaptador quedó en **26/26**. El worktree mantiene únicamente el cambio preexistente `M .env.docker.example`, fuera de T5 y no editado.
 
 ## 5. Decisiones del owner y probe en vivo
 
@@ -172,6 +208,10 @@ $ pnpm run boundaries
 
 **Total: 14 hallazgos non-blocking en total (3 de S1 + 3 de S2 + 4 de S3 + 4 de S4)**, ninguno abre corrección; la revisión de la brecha queda **cerrada para U1–U7 (S1–S4)**.
 
+### 7.1 Estado RDD de T5
+
+La evidencia de T5 queda **parcial**: el `pnpm run verify` literal no terminó porque la ejecución web sin límite de workers encontró timeouts y la herramienta padre alcanzó 120 s. La ejecución web acotada (`--maxWorkers=4`) y todos los checks restantes pasaron, pero esto no sustituye el gate agregado. La feature no se declara completamente cerrada hasta repetir el comando literal con éxito o adoptar un ajuste de recursos del runner documentado explícitamente.
+
 ## 8. Mapeo de criterios de aceptación
 
 Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D1–D7) y, donde aplican, de los criterios de aceptación de [#402](https://github.com/reyduar/Vaqcrow/issues/402).
@@ -198,15 +238,18 @@ Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D
 - **Revisión RDD de esta brecha corrida y reconocida** (§7): S1–S4 aprobados con autoridad quemada; S5 quedó pendiente por `under_budget`. Los 14 hallazgos son non-blocking y ninguno abre corrección.
 - **Precisión de visión no medida** (§6.3): el sistema avisa y no bloquea, que es la mitigación.
 - **Cierre manual.** La brecha de #402 no está en `main` y no la cierra GitHub sola; el cierre lo decide el owner.
+- **T5 parcial.** El gate literal `pnpm run verify` quedó incompleto por timeouts de la fase web sin límite de workers; la suite web acotada y los checks independientes pasaron, pero falta repetir el gate literal con éxito o documentar un ajuste explícito de recursos del runner.
 - **Costo de build/deploy.** `@hyzyla/pdfium` no se bundlea (build `tsc`) y se resuelve de `node_modules`; la imagen crece ~11 MB. Si se introduce un bundler, el `.wasm` debe quedar externo.
 
 ## 10. Estado de entrega y próximos pasos
 
 - Este cambio es solo pruebas + documentación: un test de composición en `completeness-check.route.test.ts`, este archivo, la alineación de [[docs/planning/ai-completeness-check-and-submission-evidence|la evidencia de #402]], [[docs/planning/demo-run-preflight|el preflight]], [[docs/planning/DEMO|DEMO.md]], `CLAUDE.md`/`AGENTS.md` (gemelos) y la bitácora. **No hay cambio de producción.**
 - La brecha **no está en `main`**; la pila completa se mergea con el retiro del recorrido de seis pasos (#438).
+- T5 (2026-10-06) queda **incompleto/bloqueado**: los checks independientes pasaron con workers web acotados, pero no se marca el cierre total hasta que el `pnpm run verify` literal termine correctamente o quede documentado un ajuste de recursos del runner.
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402 (contenido)
 > 1. **Operador:** agregar `LLM_VISION_MODEL` a `.env.cloud`, `.env.docker`, Railway y el ledger de configuración de la nube; sin eso la API no bootea (§6.1).
 > 2. ~~**Owner:** aprobar la copy del paso de contenido (§6.2).~~ **Resuelto (owner, 2026-10-06):** aprobada tal cual (§6.2).
 > 3. ~~**Owner/equipo:** decidir si corresponde una revisión RDD de esta brecha (§7).~~ **Resuelto:** la revisión se corrió en 5 slices — S1–S4 aprobados con autoridad quemada, S5 pendiente por `under_budget` (§7).
 > 4. **Equipo:** evaluar la precisión del modelo de visión con documentos reales antes de cualquier uso que no sea demo (§6.3).
+> 5. **Equipo:** repetir `pnpm run verify` literalmente con éxito o documentar explícitamente el ajuste de recursos del runner; hasta entonces T5 y el cierre completo permanecen parciales (§4.4, §7.1).
