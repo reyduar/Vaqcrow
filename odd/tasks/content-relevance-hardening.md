@@ -76,6 +76,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **GREEN.** La rama de imagen comprueba `downloaded.value.bytes.byteLength` antes de convertir a base64. Una imagen de hasta `4 * 1024 * 1024` bytes sigue el camino normal; una mayor degrada a un único `content_unverified` (`warning`) sin invocar visión. Los PDFs mantienen su ruta de rasterización sin cambios.
 - **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **24 passed (24)**; los tests cubren el borde exacto y el primer byte por encima.
 - **Deuda residual.** El guard evita enviar imágenes grandes al modelo, pero no las redimensiona; un downscaler WASM sigue siendo una optimización futura fuera de este cierre.
+- **RDD.** El rango completo de hardening excedió el presupuesto de contexto nativo, así que se reencuadró el candidato a `7893e68..d30f0ac`; la evaluación quedó en riesgo **medium**, `under_budget`, sin crear autoridad de review.
 
 ## Estado al 2026-10-06 (fallback local; mirror Engram pendiente)
 
