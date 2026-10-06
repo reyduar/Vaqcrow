@@ -48,8 +48,8 @@ Que la PyME conecte (o cree) Freighter, la app obtenga su public key y la **guar
 
 ## Próximo paso
 
-La implementación, las pruebas y la evidencia de #406 están completas en la rama activa. El siguiente paso es que el owner revise la reconciliación y prepare el cierre manual de #407, #408, #409 y #406; no se debe interpretar como una afirmación de merge a `main`.
+La implementación, las pruebas y la evidencia de #406 están completas en la rama activa. El owner cerró manualmente #407, #408, #409 y #406 el 2026-10-06; no se debe interpretar como una afirmación de merge a `main`.
 
 ## Addendum de reconciliación (2026-10-06)
 
-No se agregó implementación nueva en este pase. Se reconcilió la bitácora con el estado real de la rama activa (`0c740f8`) y con estos work units históricos: `7e75d5c` (migración + tabla de challenge), `d111ba4` (API, challenge firmado, perfil y destino congelado), `d208a50` (consumo antes de escritura y correcciones RDD), `578aa92` (adaptador Freighter, flujo de conexión, wallet card y cableado), `4128ad8` (pruebas adicionales) y `be6b758` (evidencia). La base integrada también contiene `3d8553e` de #402, que cierra el seam server-side `wallet_required`. No se hizo una rehearsal real con navegador/Freighter ni contra Supabase remoto; el saldo continúa simulado.
+No se agregó implementación nueva en este pase. Se reconcilió la bitácora con el estado real de la rama activa (`0c740f8`) y con estos work units históricos: `7e75d5c` (migración + tabla de challenge), `d111ba4` (API, challenge firmado, perfil y destino congelado), `d208a50` (consumo antes de escritura y correcciones RDD), `578aa92` (adaptador Freighter, flujo de conexión, wallet card y cableado), `4128ad8` (pruebas adicionales) y `be6b758` (evidencia). La base integrada también contiene `3d8553e` de #402, que cierra el seam server-side `wallet_required`. No se hizo una rehearsal real con navegador/Freighter ni contra Supabase remoto; el saldo continúa simulado. GitHub cerró manualmente #407, #408, #409 y #406 el 2026-10-06.

@@ -3,7 +3,7 @@
 > Documento de cierre de Feature. Consolida la evidencia de las Tasks [#407](https://github.com/reyduar/Vaqcrow/issues/407) (implementación) y [#408](https://github.com/reyduar/Vaqcrow/issues/408) (pruebas) de la Feature [#406](https://github.com/reyduar/Vaqcrow/issues/406) ("Feature: Connect the PyME Freighter wallet before review", Epic [#374](https://github.com/reyduar/Vaqcrow/issues/374)), conserva las verificaciones locales realizadas durante la iteración y mapea cada criterio de aceptación de la Feature, citado textualmente, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/pyme-wallet-connection|Bitácora: conexión de la wallet Freighter de la PyME]].
 
 > [!warning] Estado de entrega: la implementación y la evidencia están completas en la rama de integración; #406 no está en `main`
-> La rama activa `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` está en el tip `0c740f8`. Los commits de implementación, pruebas y evidencia de #407/#408/#409 son ancestros de esta base actual; no hay trabajo de #406 integrado en `main`. El cierre de los issues queda pendiente de la acción manual del owner. La demo desplegada desde `main` todavía no conecta Freighter.
+> La rama activa `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` está en el tip `0c740f8`. Los commits de implementación, pruebas y evidencia de #407/#408/#409 son ancestros de esta base actual; no hay trabajo de #406 integrado en `main`. El owner cerró manualmente #407, #408, #409 y #406 el 2026-10-06. La demo desplegada desde `main` todavía no conecta Freighter.
 
 ## 1. Contexto y objetivo
 
@@ -11,12 +11,12 @@ La Feature #406 permite que una PyME conecte (o cree) Freighter, demuestre que c
 
 | Task | Rama/base de referencia | Estado integrado (2026-10-06) |
 |---|---|---|
-| #406 — Feature | `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (`0c740f8`) | implementación, pruebas y evidencia completas; cierre manual pendiente |
-| #407 — implementar | rama de integración actual (`0c740f8`) | T1a/T1b/T1c completos en commits históricos; cierre manual pendiente |
-| #408 — probar | rama de integración actual (`0c740f8`) | pruebas y cobertura completas en el historial; cierre manual pendiente |
-| #409 — documentar | rama de integración actual (`0c740f8`) | evidencia presente y reconciliada; cierre manual pendiente |
+| #406 — Feature | `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` (`0c740f8`) | implementación, pruebas y evidencia completas; cerrado manualmente 2026-10-06 |
+| #407 — implementar | rama de integración actual (`0c740f8`) | T1a/T1b/T1c completos en commits históricos; cerrado manualmente 2026-10-06 |
+| #408 — probar | rama de integración actual (`0c740f8`) | pruebas y cobertura completas en el historial; cerrado manualmente 2026-10-06 |
+| #409 — documentar | rama de integración actual (`0c740f8`) | evidencia presente y reconciliada; cerrado manualmente 2026-10-06 |
 
-La Feature #406 y sus Tasks están listas para cierre manual; esta documentación no afirma que estén mergeadas en `main`.
+La Feature #406 y sus Tasks fueron cerradas manualmente el 2026-10-06; esta documentación no afirma que estén mergeadas en `main`.
 
 ## 2. Cómo leer esta evidencia
 
@@ -150,7 +150,7 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 
 ## 9. Riesgos, contradicciones y limitaciones aceptadas
 
-- **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el cierre de #407/#408/#409 lo decide el owner. Ninguno está en `main`.
+- **Cierre manual de las Tasks.** GitHub no cierra un issue cuando la PR se mergea en una rama que no es la principal; el owner cerró #407/#408/#409 y #406 manualmente el 2026-10-06. Ninguno está en `main`.
 - **Revisión nativa de T1c sin completar.** No hay resultado de lente por un defecto del transporte del reviewer (§5.2); su verificación es la de la bitácora T1c y la re-ejecución de §4.1.
 - **El criterio 2 pertenece a #402 y está cerrado en la base integrada.** El seam histórico quedó resuelto: `POST /sme-requests` lee la key del principal verificado y devuelve `409 { code: "wallet_required" }` si falta (§5.1 y §8). No se atribuye este enforcement a #406.
 - **El remoto no se re-verificó aquí.** Todo lo del proyecto remoto proviene de la bitácora (2026-10-04).
@@ -158,7 +158,7 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 ## 10. Estado de entrega y próximos pasos
 
 - Este pase es sólo documentación: reconcilia este archivo, la bitácora y las entradas de #406–#409 en `demo-tasks-list.md` con la rama de integración en `0c740f8`. La evidencia histórica se entregó en `be6b758`; no se agregó implementación ni commit nuevo en este pase.
-- La implementación, las pruebas y la evidencia están completas en la rama de integración; sólo queda el cierre manual de GitHub por parte del owner. La Feature #406 **no está en `main`**.
+- La implementación, las pruebas y la evidencia están completas en la rama de integración; GitHub cerró #407/#408/#409 y #406 manualmente el 2026-10-06. La Feature #406 **no está en `main`**.
 
 > [!info] Limitaciones y verificaciones manuales preservadas
 > 1. El criterio 2 ya está cerrado en la base integrada por #402; no es una tarea pendiente de implementación de #406.
@@ -169,4 +169,4 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 
 ## Addendum de reconciliación (2026-10-06)
 
-No se agregó implementación nueva en este pase: se reconcilió el estado documental con la rama de integración actual `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` en `0c740f8`. Los work units históricos que ya son ancestros de la base actual son: `7e75d5c` (migración + tabla de challenge), `d111ba4` (API, challenge firmado, perfil y destino congelado), `d208a50` (consumo antes de escritura y correcciones RDD), `578aa92` (adaptador Freighter, flujo de conexión, wallet card y cableado), `4128ad8` (pruebas adicionales) y `be6b758` (evidencia). La base también contiene `3d8553e` de #402, que aporta el enforcement server-side de `wallet_required`. No se realizó una rehearsal real con Freighter/navegador ni contra Supabase remoto; el saldo sigue simulado. La documentación no afirma merge en `main`.
+No se agregó implementación nueva en este pase: se reconcilió el estado documental con la rama de integración actual `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` en `0c740f8`. Los work units históricos que ya son ancestros de la base actual son: `7e75d5c` (migración + tabla de challenge), `d111ba4` (API, challenge firmado, perfil y destino congelado), `d208a50` (consumo antes de escritura y correcciones RDD), `578aa92` (adaptador Freighter, flujo de conexión, wallet card y cableado), `4128ad8` (pruebas adicionales) y `be6b758` (evidencia). La base también contiene `3d8553e` de #402, que aporta el enforcement server-side de `wallet_required`. No se realizó una rehearsal real con Freighter/navegador ni contra Supabase remoto; el saldo sigue simulado. GitHub cerró manualmente #407, #408, #409 y #406 el 2026-10-06. La documentación no afirma merge en `main`.
