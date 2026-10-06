@@ -310,6 +310,74 @@ describe("createContentAwareCompletenessCheckAdapter", () => {
     ]);
   });
 
+  it("deduplicates irrelevant photo findings without deduplicating document findings", async () => {
+    const cuit = record();
+    const firstPhoto = record({
+      documentId: "doc-photo-first",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/first.jpg`,
+      name: "first.jpg",
+      contentType: "image/jpeg"
+    });
+    const secondPhoto = record({
+      documentId: "doc-photo-second",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/second.jpg`,
+      name: "second.jpg",
+      contentType: "image/jpeg"
+    });
+    const h = harness({
+      rows: { ok: true, value: [cuit, firstPhoto, secondPhoto] },
+      downloads: {
+        [cuit.objectPath]: { ok: true, value: { bytes: PDF_BYTES, contentType: "application/pdf" } },
+        [firstPhoto.objectPath]: { ok: true, value: { bytes: JPEG_BYTES, contentType: "image/jpeg" } },
+        [secondPhoto.objectPath]: { ok: true, value: { bytes: JPEG_BYTES, contentType: "image/jpeg" } }
+      },
+      outcome: () => irrelevant()
+    });
+
+    const result = await h.checker.check(command());
+
+    expect(result.findings).toEqual([
+      { code: "content_irrelevant", severity: "gap", detail: expect.stringContaining("Constancia de CUIT") },
+      { code: "content_irrelevant", severity: "gap", detail: expect.stringContaining("Foto del negocio") }
+    ]);
+    expect(result.findings.filter((finding) => finding.detail.includes("Foto del negocio"))).toHaveLength(1);
+  });
+
+  it("keeps separate content_unverified warnings for multiple photos", async () => {
+    const firstPhoto = record({
+      documentId: "doc-photo-first",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/first.jpg`,
+      name: "first.jpg",
+      contentType: "image/jpeg"
+    });
+    const secondPhoto = record({
+      documentId: "doc-photo-second",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/second.jpg`,
+      name: "second.jpg",
+      contentType: "image/jpeg"
+    });
+    const h = harness({
+      rows: { ok: true, value: [firstPhoto, secondPhoto] },
+      downloads: {
+        [firstPhoto.objectPath]: { ok: true, value: { bytes: JPEG_BYTES, contentType: "image/jpeg" } },
+        [secondPhoto.objectPath]: { ok: true, value: { bytes: JPEG_BYTES, contentType: "image/jpeg" } }
+      },
+      outcome: () => visionFailure()
+    });
+
+    const result = await h.checker.check(command());
+
+    expect(result.findings).toHaveLength(2);
+    expect(result.findings).toEqual([
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Foto del negocio") },
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Foto del negocio") }
+    ]);
+  });
+
   it("resolves the persisted rows only for the owner in the command, never a body field", async () => {
     const h = harness();
 

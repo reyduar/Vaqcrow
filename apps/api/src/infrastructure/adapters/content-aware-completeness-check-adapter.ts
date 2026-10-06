@@ -207,6 +207,7 @@ export function createContentAwareCompletenessCheckAdapter(
         });
       }
 
+      let hasIrrelevantPhotoFinding = false;
       for (const record of candidates) {
         if (now() >= deadlineAt) {
           // Out of budget: declare this document unverified without touching any
@@ -215,7 +216,13 @@ export function createContentAwareCompletenessCheckAdapter(
           continue;
         }
         try {
-          findings.push(...(await checkDocument(dependencies, record, command.ownerUserId)));
+          for (const finding of await checkDocument(dependencies, record, command.ownerUserId)) {
+            if (record.kind === "photo" && finding.code === "content_irrelevant") {
+              if (hasIrrelevantPhotoFinding) continue;
+              hasIrrelevantPhotoFinding = true;
+            }
+            findings.push(finding);
+          }
         } catch {
           // R3-3: a rejecting port degrades exactly like an in-band `{ ok: false }`
           // inside `checkDocument` — one non-blocking warning for this document.
