@@ -66,9 +66,16 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 - **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/routes/storage.route.test.ts src/infrastructure/adapters/supabase-pyme-document-repository.test.ts` → **40 passed**; `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/authorization.test.ts` → **251 passed**.
 - **RDD.** El assess indicó `medium`/`slice_budget_reached`, pero el STATUS nativo devolvió `rdd_disabled`; no se creó autoridad de review ni se modificó la preferencia del owner. La verificación de T1a queda respaldada por RED/GREEN, tests del worker y el spot-check del padre.
 
+### T1b — Contexto agregado de revisión admin (commit: `3cac86a`)
+
+- **RED.** Los focused tests fallaron antes de implementar porque no existían el módulo del caso de uso ni la ruta registrada.
+- **GREEN.** `GET /application-reviews/:applicationId/context` quedó restringido a `ADMIN` y compone snapshot de revisión, solicitud con owner resuelto server-side, empresa opcional, descriptores privados, assessment opcional y última decisión opcional. IDs inválidos responden `400`, recursos desconocidos `404` y fallos de dependencias `503` saneados. Las ausencias opcionales no se convierten en falsos errores.
+- **Verificación.** Suite enfocada del caso de uso/ruta → **17 passed**; autorización → **258 passed**; `pnpm --filter @vaqcrow/api typecheck` → **pass**.
+- **RDD.** El assess acumulado indicó `medium`/`slice_budget_reached`; el STATUS nativo volvió a devolver `rdd_disabled`, sin crear autoridad de review ni modificar la preferencia del owner.
+
 ### Próximo work unit
 
-T1b: contexto agregado de revisión admin y límites de la PyME, sin integrar todavía la consola dependiente de #386.
+T1c: reglas de campaña y concentración de inversores, sin integrar todavía la consola dependiente de #386.
 
 ## Próximo paso
 
