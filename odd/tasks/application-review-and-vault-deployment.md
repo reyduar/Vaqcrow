@@ -35,11 +35,12 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 | D2 | ¿Cómo se comunica «Pedir», «Requiere cambios» y «Rechazada» a la PyME? | **Resuelta (2026-10-06):** cada resultado se envía al correo registrado de la PyME y como notificación en la campana del header. Al abrirla, la app lleva al paso «Revisión humana» del wizard, donde se muestra el detalle accionable del pedido, los cambios requeridos o el rechazo. Se reutiliza #382 para email/campana; no se inventa una ruta nueva. |
 | D3 | ¿Qué estados y acciones expone el review durante/después del deployment? | **Resuelta (2026-10-06):** `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada`. Un fallo muestra `Despliegue fallido`, permite **Reintentar** y ofrece **Ver detalle** en modo solo lectura. La publicación ocurre sólo después de la confirmación de Testnet. |
 | D4 | ¿Qué controla «Límite aprobado» y quién define deadline/mínimo de contribución? | **Resuelta (2026-10-06):** el admin no ingresa ni modifica límites; la PyME define los términos del proyecto durante el registro. La plataforma impone un máximo de USD 50.000 equivalentes por campaña y un máximo por inversor igual al menor de 10% del objetivo y USD 5.000 equivalentes. |
+| D5 | ¿Se espera a #386 antes de tocar #410? | **Resuelta (2026-10-06):** se autoriza implementar backend-first en paralelo; la integración con la consola admin queda para después de #386. |
 
 ## Tareas
 
 - [x] **T0 — Resolver preguntas abiertas.** D1–D4 resueltas antes de implementar los flujos afectados.
-- [ ] **T1 — Revisión admin.** Contexto de solicitud, viewer privado, KYC/KYB por documento, assessment consultivo y decisión con validación/confirmación.
+- [ ] **T1 — Revisión admin.** Se divide en T1a backend-first (contexto de solicitud, viewer privado, KYC/KYB por documento, assessment consultivo y decisión API) y T1b integración con la consola admin después de #386.
 - [ ] **T2 — Persistencia y auditoría.** Decisión atribuida al admin autenticado, transiciones condicionales e idempotencia.
 - [ ] **T3 — Aprobación y vault.** Vincular la public key persistida, validar los términos de la PyME contra los topes duros y la regla anti-concentración, llamar al engine existente de `POST /campaigns`, evitar redeploy en replay y publicar sólo tras confirmación. Exponer `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada`, más `Despliegue fallido`, **Reintentar** y **Ver detalle** solo lectura.
 - [ ] **T4 — Notificaciones y fallos.** Implementar email al correo registrado y notificación en la campana para pedido, cambios requeridos, rechazo y aprobación; al abrirla, navegar al paso «Revisión humana» con el detalle correspondiente. Resolver además los estados pending/failure sin sobreafirmar resultados.
@@ -58,7 +59,7 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 
 ## Próximo paso
 
-Arrancar T1 con los límites como reglas de dominio/configuración y con enforcement server-side atómico.
+Arrancar T1a backend-first con los límites como reglas de dominio/configuración y con enforcement server-side atómico; T1b espera la consola de #386.
 
 ## Guardrails adoptados
 
