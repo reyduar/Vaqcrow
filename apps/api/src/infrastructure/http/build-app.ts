@@ -36,6 +36,8 @@ import { registerStorageRoute } from "./routes/storage.route.js";
 import type { StorageRouteDependencies } from "./routes/storage.route.js";
 import { registerWalletRoute } from "./routes/wallet.route.js";
 import type { WalletRouteDependencies } from "./routes/wallet.route.js";
+import { registerRateTableRoute } from "./routes/rate-table.route.js";
+import type { RateTableRouteDependencies } from "./routes/rate-table.route.js";
 
 /**
  * Fastify's own 4xx errors (body parsing, media type, body size, schema
@@ -93,6 +95,7 @@ export function buildApp(dependencies: {
   readonly wallet?: WalletRouteDependencies;
   readonly notification?: NotificationRouteDependencies;
   readonly completenessCheck?: CompletenessCheckRouteDependencies;
+  readonly rateTable?: RateTableRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -183,6 +186,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.completenessCheck) {
     registerCompletenessCheckRoute(app, dependencies.completenessCheck);
+  }
+  if (dependencies.rateTable) {
+    registerRateTableRoute(app, dependencies.rateTable);
   }
   return app;
 }

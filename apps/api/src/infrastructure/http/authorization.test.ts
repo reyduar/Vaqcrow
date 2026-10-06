@@ -32,6 +32,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
   ["POST", "/campaigns", ["ADMIN"]],
+  ["GET", "/admin/rates/current", ["ADMIN"]],
+  ["POST", "/admin/rates", ["ADMIN"]],
   ["GET", "/campaigns/:campaignId", "any"],
   ["GET", "/campaigns/:campaignId/transactions/:hash", "any"],
   ["POST", "/campaigns/:campaignId/invocations", "any"],
@@ -79,6 +81,7 @@ function buildFullApp(auth?: AuthDependency): {
     wallet: stub,
     notification: stub,
     completenessCheck: stub,
+    rateTable: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

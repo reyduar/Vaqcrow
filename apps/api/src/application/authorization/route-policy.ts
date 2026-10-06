@@ -52,6 +52,8 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /application-reviews/:applicationId/decisions": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
+  "POST /admin/rates": only("ADMIN"),
+  "GET /admin/rates/current": only("ADMIN"),
   "GET /campaigns/:campaignId": AUTHENTICATED,
   "GET /campaigns/:campaignId/transactions/:hash": AUTHENTICATED,
   "POST /campaigns/:campaignId/invocations": AUTHENTICATED,

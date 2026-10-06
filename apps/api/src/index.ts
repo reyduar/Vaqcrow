@@ -28,6 +28,7 @@ import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { SupabaseWalletRepository } from "./infrastructure/adapters/supabase-wallet-repository.js";
+import { SupabaseRateTableRepository } from "./infrastructure/adapters/supabase-rate-table-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./infrastructure/scheduling/confirmation-policy.js";
@@ -173,6 +174,7 @@ const notificationPublisher = new NotificationPublisher({
 // service_role client.
 const storageAdapter = new SupabaseStorageAdapter(supabase);
 const pymeDocumentRepository = new SupabasePymeDocumentRepository(supabase);
+const rateTableRepository = new SupabaseRateTableRepository(supabase);
 
 // The completeness check (#402/T1a, extended by U5): the declared rules run
 // first, then the persisted documents are read and judged. Gaps warn, they never
@@ -224,6 +226,7 @@ const app = buildApp({
   // The completeness check (#402/T1a, U5): declared gaps and content findings
   // warn, they never block the send.
   completenessCheck: { checker: completenessCheck },
+  rateTable: { repository: rateTableRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

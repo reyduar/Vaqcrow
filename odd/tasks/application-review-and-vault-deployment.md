@@ -74,9 +74,16 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 - **Verificación.** Suite enfocada del caso de uso/ruta → **17 passed**; autorización → **258 passed**; `pnpm --filter @vaqcrow/api typecheck` → **pass**.
 - **RDD.** El assess acumulado indicó `medium`/`slice_budget_reached`; el STATUS nativo volvió a devolver `rdd_disabled`, sin crear autoridad de review ni modificar la preferencia del owner.
 
+### T3 backend-first — tabla de tasas y guardrails enteros (trabajo en curso, sin commit)
+
+- **RED.** Los focused tests nuevos fallaron antes de la implementación: faltaban el módulo de validación, el adaptador y el registro HTTP; las rutas devolvían `404`.
+- **GREEN.** Se agregó `fx_rate` con RLS/grants sólo para `service_role`, campos enteros (`usd_to_ars` y `stroops_per_usd`), versión primaria e índice de vigencia. `POST /admin/rates` y `GET /admin/rates/current` están restringidos a `ADMIN`, atribuyen el autor al principal verificado, serializan `bigint` como strings y mapean conflictos/fallos a errores saneados. La validación pura aplica sin floats el máximo de USD 50.000 y el máximo individual `min(10% del objetivo, USD 5.000)`.
+- **Verificación observada.** `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/campaign-guardrails.test.ts src/infrastructure/adapters/supabase-rate-table-repository.test.ts src/infrastructure/http/routes/rate-table.route.test.ts` → **6 passed**; `pnpm --filter @vaqcrow/api typecheck` → **pass**; `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/http/authorization.test.ts src/infrastructure/http/routes/campaign.route.test.ts` → **297 passed**.
+- **Límite explícito.** Este slice no conecta todavía el snapshot de tasa a `campaign` ni invoca los guardrails desde `openCampaign`/contribuciones: los contratos actuales de términos sólo transportan `goalStroops`/`deadline`, y la autoridad de vault permanece en el engine existente. La integración de aprobación, snapshot histórico y reserva atómica de contribuciones requiere el siguiente work unit con esos seams.
+
 ### Próximo work unit
 
-T1c: reglas de campaña y concentración de inversores, sin integrar todavía la consola dependiente de #386.
+Conectar el snapshot de tasa y los términos PyME a `campaign`, y aplicar la validación de concentración dentro de una operación de contribución atómica, sin integrar todavía la consola dependiente de #386.
 
 ## Próximo paso
 
