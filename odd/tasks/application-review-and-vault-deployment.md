@@ -83,13 +83,39 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 
 - **Work-unit commit.** `004f2d9 feat(api): add admin FX rate guardrails`.
 
-### Próximo work unit
+### Próximo work unit — T3a: snapshot de tasa y tope de campaña
 
-Conectar el snapshot de tasa y los términos PyME a `campaign`, y aplicar la validación de concentración dentro de una operación de contribución atómica, sin integrar todavía la consola dependiente de #386.
+Diseño verificado contra los seams actuales:
+
+- `campaign-vault::contribute` ya lee `goal` del storage; el tope por inversor puede aplicarse dentro de `contribute` sin cambiar el constructor ni el `deploy` de la fábrica.
+- Con el objetivo acotado a USD 50.000 equivalentes, `min(10% del objetivo, USD 5.000)` equivale exactamente a `10% del objetivo`, así que el contrato no necesita la tasa para el tope individual.
+- `POST /campaigns` (`openCampaign`) es el punto de creación: ahí se resuelve la tasa vigente, se valida el tope de campaña y se snapshotearla.
+- `campaign` y `CampaignRecord` no tienen campos de snapshot de tasa; requieren migración y mapeo.
+
+T3a se limita al lado servidor (determinista, sin Testnet): migración de snapshot, puerto/repositorio/mapeo, validación en `openCampaign` con la tasa vigente y preflight de concentración en la preparación de aportes.
+
+T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribute` con tests Rust y el paso de redeploy documentado, sin afirmar Testnet sin evidencia observada.
+
+### T3a — Snapshot de tasa y tope de campaña (server-side)
+
+- **RED.** Los focused tests nuevos fallaron antes de implementar: **10 failed / 66 passed**. El adaptador no persistía ni leía las columnas de snapshot; `openCampaign` no resolvía la tasa ni aplicaba los guardrails; la ruta no mapeaba `rate_unavailable`/`goal_limit_exceeded` ni hacía el preflight de concentración.
+- **GREEN.**
+  - Migración `20261006130000_add_campaign_rate_snapshot.sql`: agrega a `public.campaign` las columnas nullable `fx_rate_version bigint`, `usd_to_ars bigint`, `stroops_per_usd bigint` y la restricción `campaign_rate_snapshot_all_or_none` (las tres NULL o las tres NOT NULL). Sin backfill, sin FK (el snapshot es una copia, no una referencia viva) y sin cambios de grants/RLS: el grant a nivel de tabla ya cubre las columnas nuevas.
+  - `CampaignRecord` gana `rateSnapshot?`; el adaptador Supabase lo mapea en insert y lectura y **omite las tres columnas** cuando no hay snapshot, dejando intacto el comportamiento previo.
+  - `openCampaign` resuelve la tasa vigente vía `RateTableRepositoryPort`, valida `goalStroops <= 50_000 USD * stroopsPerUsd` con los guardrails enteros existentes (sin floats) y persiste el snapshot. Los códigos saneados `rate_unavailable` (503) y `goal_limit_exceeded` (422) se mapean en la ruta, sin texto del proveedor.
+  - Preflight best-effort por inversor (`min(10% del objetivo, USD 5_000)`) en la preparación de `contribute`: usa el snapshot del mirror más la contribución leída de la cadena y responde `422 investor_limit_exceeded` antes de preparar. **No es atómico** (T3b) y se omite si la campaña no tiene snapshot (campañas previas a #410) en lugar de estimarlo con la tasa vigente.
+  - La respuesta HTTP no expone campos nuevos (`apps/web` y `packages/contracts` sin tocar).
+- **Idempotencia preservada.** El replay (`findByApplicationId` con fila existente) y la adopción de una bóveda ya desplegada no consultan la tabla de tasas: el snapshot se resuelve sólo en el camino de deploy nuevo.
+- **Verificación observada.**
+  - `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/open-campaign.test.ts src/infrastructure/adapters/supabase-campaign-repository.test.ts src/infrastructure/http/routes/campaign.route.test.ts` → **76 passed** (tras el RED de 10 failed / 66 passed).
+  - `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/campaign-dependencies.test.ts src/infrastructure/http/authorization.test.ts src/infrastructure/http/build-app.test.ts` → **296 passed**.
+  - `pnpm --filter @vaqcrow/api typecheck` → **pass**.
+  - Migración local: `supabase migration up --local` aplicó `20261006120000_create_fx_rate` y `20261006130000_add_campaign_rate_snapshot`; `pnpm run test:db` → 13/14 archivos ok, con `campaign_persistence.sql` **ok**. Falla ambiental **preexistente y ajena** en `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`) por 6 objetos preexistentes en el bucket local `pyme-documents` creados 2026-10-06 01:41–02:25 UTC, antes de este work unit; la migración de `campaign` no participa de ese conteo. No se aplicó ninguna migración remota ni se tocó Testnet.
+- **Límite explícito.** El tope individual sólo se verifica best-effort en la API (UX); la aplicación atómica y autoritativa queda en `campaign-vault::contribute` (T3b).
 
 ## Próximo paso
 
-Conectar el snapshot de tasa y los términos PyME a `campaign`, y aplicar la validación de concentración dentro de una operación de contribución atómica; la integración visual de la consola espera #386.
+T3a quedó implementado server-side. Sigue T3b: aplicar el tope individual atómico en `campaign-vault::contribute` (tests Rust y paso de redeploy), y luego `T4` (notificaciones/fallos); la integración visual de la consola espera #386.
 
 ## Guardrails adoptados
 

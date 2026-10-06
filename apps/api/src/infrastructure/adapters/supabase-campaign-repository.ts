@@ -3,6 +3,7 @@ import { parseApplicationId } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import type {
   CampaignContributionRecord,
+  CampaignRateSnapshot,
   CampaignRecord,
   CampaignReconciliationOutcome,
   CampaignRefundContact,
@@ -223,7 +224,17 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
       total_stroops: campaign.totalStroops.toString(),
       reconciliation_status: campaign.reconciliationStatus,
       last_reconciled_at: campaign.lastReconciledAt,
-      last_correlation_id: correlationId
+      last_correlation_id: correlationId,
+      // Absent when the campaign was opened without a rate snapshot (a
+      // pre-#410 campaign or an adopted vault): the three columns then stay
+      // NULL together, which the all-or-none check accepts.
+      ...(campaign.rateSnapshot === undefined
+        ? {}
+        : {
+            fx_rate_version: campaign.rateSnapshot.version,
+            usd_to_ars: campaign.rateSnapshot.usdToArs.toString(),
+            stroops_per_usd: campaign.rateSnapshot.stroopsPerUsd.toString()
+          })
     };
   }
 
@@ -256,6 +267,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
   private toCampaign(row: unknown): CampaignRecord {
     const value = this.asRecord(row);
     const lastDivergedAt = value["last_diverged_at"];
+    const rateSnapshot = this.toRateSnapshot(value);
     return {
       campaignId: this.text(value["campaign_id"]),
       applicationId: parseApplicationId(value["application_id"]),
@@ -272,8 +284,23 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
       ...(lastDivergedAt === null || lastDivergedAt === undefined
         ? {}
         : { lastDivergedAt: this.text(lastDivergedAt) }),
+      ...(rateSnapshot === undefined ? {} : { rateSnapshot }),
       createdAt: this.text(value["created_at"]),
       updatedAt: this.text(value["updated_at"])
+    };
+  }
+
+  /**
+   * The three snapshot columns are all-or-none at the schema level, so their
+   * absence is read from `fx_rate_version` alone and a partially-written row
+   * (which the constraint forbids) throws rather than half-mapping.
+   */
+  private toRateSnapshot(value: Record<string, unknown>): CampaignRateSnapshot | undefined {
+    if (value["fx_rate_version"] === null || value["fx_rate_version"] === undefined) return undefined;
+    return {
+      version: this.safeInteger(value["fx_rate_version"]),
+      usdToArs: this.bigint(value["usd_to_ars"]),
+      stroopsPerUsd: this.bigint(value["stroops_per_usd"])
     };
   }
 
@@ -316,6 +343,16 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value);
     if (typeof value === "string" && /^-?(?:0|[1-9]\d*)$/.test(value)) return BigInt(value);
     throw new Error("Malformed bigint column");
+  }
+
+  /** PostgREST returns a bigint as a decimal string; the version is small enough to map to a JS number. */
+  private safeInteger(value: unknown): number {
+    if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+    if (typeof value === "string" && /^-?(?:0|[1-9]\d*)$/.test(value)) {
+      const parsed = Number(value);
+      if (Number.isSafeInteger(parsed)) return parsed;
+    }
+    throw new Error("Malformed integer column");
   }
 
   private state(value: unknown): CampaignState {

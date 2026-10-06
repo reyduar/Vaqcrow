@@ -3,6 +3,21 @@ import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 export type CampaignState = "open" | "settled" | "refundable";
 export type ReconciliationStatus = "in_sync" | "diverged";
 
+/**
+ * The FX rate the campaign's terms were validated against when its vault was
+ * deployed (#410/T3a, decision D6). A copy of the values, not a reference to
+ * the current rate: changing the rate table later must never move the cap on
+ * a campaign already published. Optional because campaigns opened before the
+ * snapshot existed carry none.
+ */
+export interface CampaignRateSnapshot {
+  readonly version: number;
+  /** ARS per USD, scaled by `RATE_SCALE`. */
+  readonly usdToArs: bigint;
+  /** Native stroops per USD. */
+  readonly stroopsPerUsd: bigint;
+}
+
 export interface CampaignRecord {
   readonly campaignId: string;
   readonly applicationId: ApplicationId;
@@ -18,6 +33,8 @@ export interface CampaignRecord {
   readonly reconciliationStatus: ReconciliationStatus;
   readonly lastReconciledAt: string;
   readonly lastDivergedAt?: string;
+  /** Present only when the campaign's terms were validated against a rate snapshot (#410/T3a). */
+  readonly rateSnapshot?: CampaignRateSnapshot;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -21,7 +21,9 @@ import type {
   CampaignState,
   ReconciliationStatus
 } from "../../../application/ports/campaign-repository-port.js";
+import type { RateTableRepositoryPort } from "../../../application/ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
+import { validateCampaignGuardrails } from "../../../application/use-cases/campaign-guardrails.js";
 import { openCampaign } from "../../../application/use-cases/open-campaign.js";
 import { reconcileCampaign } from "../../../application/use-cases/reconcile-campaign.js";
 
@@ -70,6 +72,8 @@ export interface CampaignRouteDependencies {
   readonly factory: CampaignFactoryPort;
   readonly chain: CampaignVaultChainPort;
   readonly invocations: CampaignVaultInvocationPort;
+  /** Resolves the rate a fresh deployment is validated against and snapshotted with (#410/T3a). */
+  readonly rates: RateTableRepositoryPort;
   readonly network: string;
   readonly networkPassphrase: string;
   /** The vault's payment asset (native XLM SAC in this demo). Config-level, not per-application. */
@@ -191,6 +195,7 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         accounts: dependencies.accounts,
         factory: dependencies.factory,
         chain: dependencies.chain,
+        rates: dependencies.rates,
         network: dependencies.network,
         tokenContractId: dependencies.tokenContractId
       },
@@ -221,6 +226,13 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         return reply.code(422).send({ code: "sme_account_unavailable" });
       case "vault_state_mismatch":
         return reply.code(422).send({ code: "vault_state_mismatch" });
+      case "rate_unavailable":
+        // The rate table is a dependency, never the caller's fault; no
+        // provider text crosses this boundary.
+        return reply.code(503).send({ code: "rate_unavailable" });
+      case "goal_limit_exceeded":
+        // A policy refusal: the declared goal is above the platform's hard cap.
+        return reply.code(422).send({ code: "goal_limit_exceeded" });
       case "unavailable":
         return reply.code(503).send({ code: "unavailable" });
     }
@@ -340,6 +352,37 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         // against a settled or refunding vault is refused here too.
         if (chainState.value.state !== "funding") {
           return reply.code(409).send({ code: "campaign_not_funding" });
+        }
+
+        // Best-effort, non-atomic contribution preflight (#410/T3a) — UX
+        // only: the authoritative per-investor cap is enforced atomically by
+        // the vault contract (T3b). The mirror supplies the campaign's
+        // snapshotted rate and goal; the chain supplies the investor's
+        // running contribution. A campaign opened before the snapshot existed
+        // has no stored rate to check against, so the preflight is skipped
+        // rather than guessed from the current rate table.
+        const rate = mirror.value.rateSnapshot;
+        if (rate !== undefined && command.amountStroops !== null) {
+          const existing = await dependencies.chain.readContribution(
+            mirror.value.contractAddress,
+            command.investorAccountId
+          );
+
+          if (!existing.ok) {
+            return reply.code(503).send({ code: "unavailable" });
+          }
+
+          const guardrail = validateCampaignGuardrails({
+            goalStroops: mirror.value.goalStroops,
+            investorContributionStroops: existing.value + command.amountStroops,
+            rate
+          });
+
+          if (!guardrail.ok) {
+            return guardrail.code === "investor_limit_exceeded"
+              ? reply.code(422).send({ code: "investor_limit_exceeded" })
+              : reply.code(503).send({ code: "unavailable" });
+          }
         }
       }
 

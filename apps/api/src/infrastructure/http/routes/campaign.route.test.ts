@@ -13,6 +13,7 @@ import type {
   VerifyCampaignVaultInvocationInput
 } from "../../../application/ports/campaign-vault-invocation-port.js";
 import type { CampaignRecord, CampaignRepositoryPort } from "../../../application/ports/campaign-repository-port.js";
+import type { RateSnapshot, RateTableRepositoryPort } from "../../../application/ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
 import { buildAppAs } from "../test-support/auth.js";
 import type { CampaignRouteDependencies } from "./campaign.route.js";
@@ -55,6 +56,21 @@ const campaignRecord: CampaignRecord = {
   updatedAt: "2026-09-24T00:00:00.000Z"
 };
 
+const RATE: RateSnapshot = {
+  version: 5,
+  effectiveAt: "2026-10-05T00:00:00.000Z",
+  authorUserId: "44444444-4444-4444-8444-444444444444",
+  source: "manual",
+  usdToArs: 1_000_000_000n,
+  stroopsPerUsd: 10_000_000n
+};
+
+/** A campaign whose terms were validated against `RATE` (#410/T3a). */
+const campaignRecordWithRate: CampaignRecord = {
+  ...campaignRecord,
+  rateSnapshot: { version: RATE.version, usdToArs: RATE.usdToArs, stroopsPerUsd: RATE.stroopsPerUsd }
+};
+
 const fundingChainState: VaultChainState = {
   state: "funding",
   totalStroops: 0n,
@@ -85,6 +101,16 @@ function factoryDouble(): CampaignFactoryPort {
   return {
     predict: vi.fn().mockResolvedValue({ ok: true, value: CONTRACT_ADDRESS }),
     deploy: vi.fn().mockResolvedValue({ ok: true, value: { contractAddress: CONTRACT_ADDRESS, hash: TRANSACTION_HASH } })
+  };
+}
+
+function ratesDouble(
+  overrides: Partial<{ [K in keyof RateTableRepositoryPort]: RateTableRepositoryPort[K] }> = {}
+): RateTableRepositoryPort {
+  return {
+    create: vi.fn(),
+    findCurrent: vi.fn().mockResolvedValue({ ok: true, value: RATE }),
+    ...overrides
   };
 }
 
@@ -150,6 +176,7 @@ function deps(
     factory: factoryDouble(),
     chain: chainDouble(),
     invocations: invocationsDouble(),
+    rates: ratesDouble(),
     network: "testnet",
     networkPassphrase: NETWORK_PASSPHRASE,
     tokenContractId: TOKEN_CONTRACT_ID,
@@ -286,6 +313,48 @@ describe("POST /campaigns", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("returns 503 rate_unavailable when no current rate exists, without leaking provider text", async () => {
+    const applicationReviews = applicationReviewsDouble();
+    withApprovedApplication(applicationReviews);
+    const campaigns = campaignsDouble({
+      findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const rates = ratesDouble({ findCurrent: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, rates }) });
+
+    const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "rate_unavailable" });
+  });
+
+  it("returns 422 goal_limit_exceeded when the goal is above USD 50,000 at the current rate", async () => {
+    const applicationReviews = applicationReviewsDouble();
+    withApprovedApplication(applicationReviews);
+    const campaigns = campaignsDouble({
+      findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const factory = factoryDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, factory }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/campaigns",
+      // 50,001 USD at 10,000,000 stroops per USD, one stroop over the cap.
+      payload: { ...openBody, goalStroops: "500010000000000" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "goal_limit_exceeded" });
+    expect(factory.deploy).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown field with 400 invalid_request", async () => {
@@ -471,6 +540,90 @@ describe("POST /campaigns/:campaignId/invocations", () => {
     });
 
     expect(response.statusCode).toBe(409);
+    expect(invocations.prepare).not.toHaveBeenCalled();
+  });
+
+  it("refuses a contribute that would exceed the per-investor cap before preparing (#410/T3a)", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 0n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "investor_limit_exceeded" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+    expect(chain.readContribution).toHaveBeenCalledWith(CONTRACT_ADDRESS, INVESTOR_ACCOUNT_ID);
+  });
+
+  it("counts the investor's existing contribution toward the cap", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    // 900,000 existing + 500,000 requested = 1,400,000, above the 1,000,000 cap.
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 900_000n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500000" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "investor_limit_exceeded" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+  });
+
+  it("prepares a contribute within the per-investor cap", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 0n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500000" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(invocations.prepare).toHaveBeenCalled();
+  });
+
+  it("skips the per-investor preflight when the campaign has no rate snapshot (legacy campaign)", async () => {
+    const chain = chainDouble({ readContribution: vi.fn() });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(invocations.prepare).toHaveBeenCalled();
+    expect(chain.readContribution).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when the investor's existing contribution cannot be read for the preflight", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(503);
     expect(invocations.prepare).not.toHaveBeenCalled();
   });
 

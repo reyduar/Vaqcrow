@@ -13,6 +13,7 @@ import type {
 } from "../ports/campaign-vault-chain-port.js";
 import type { CampaignRecord, CampaignRepositoryPort, CampaignRepositoryResult } from "../ports/campaign-repository-port.js";
 import type { ApplicationReviewRepositoryPort, ApplicationReviewRepositoryResult } from "../ports/application-review-repository-port.js";
+import type { RateSnapshot, RateTableRepositoryPort, RateTableResult } from "../ports/rate-table-repository-port.js";
 import type { StellarAccountPort, StellarAccountResult } from "../ports/stellar-account-port.js";
 import { SME_STARTING_BALANCE_STROOPS, openCampaign } from "./open-campaign.js";
 import type { ApplicationReviewSnapshot } from "@vaqcrow/contracts";
@@ -145,6 +146,29 @@ function factory(
   };
 }
 
+const RATE: RateSnapshot = {
+  version: 5,
+  effectiveAt: "2026-10-05T00:00:00.000Z",
+  authorUserId: "44444444-4444-4444-8444-444444444444",
+  source: "manual",
+  usdToArs: 1_000_000_000n,
+  stroopsPerUsd: 10_000_000n
+};
+
+function rates(
+  result: RateTableResult<RateSnapshot> = { ok: true, value: RATE }
+): RateTableRepositoryPort & { readonly calls: { findCurrent: unknown[] } } {
+  const calls = { findCurrent: [] as unknown[] };
+  return {
+    create: vi.fn(),
+    findCurrent: vi.fn(async (now: string) => {
+      calls.findCurrent.push(now);
+      return result;
+    }),
+    calls
+  };
+}
+
 function fundingChainState(overrides: Partial<VaultChainState> = {}): VaultChainState {
   return {
     state: "funding",
@@ -179,6 +203,7 @@ function deps(overrides: {
   readonly accounts?: ReturnType<typeof accounts>;
   readonly factory?: ReturnType<typeof factory>;
   readonly chain?: CampaignVaultChainPort;
+  readonly rates?: ReturnType<typeof rates>;
 }) {
   return {
     applicationReviews: overrides.applicationReviews ?? applicationReviews(),
@@ -186,6 +211,7 @@ function deps(overrides: {
     accounts: overrides.accounts ?? accounts([{ ok: true, value: true }]),
     factory: overrides.factory ?? factory(),
     chain: overrides.chain ?? chain(),
+    rates: overrides.rates ?? rates(),
     network: NETWORK,
     tokenContractId: TOKEN_CONTRACT_ID
   };
@@ -370,6 +396,90 @@ describe("openCampaign", () => {
         tokenContractAddress: TOKEN_CONTRACT_ID
       }),
       correlationId: CORRELATION_ID
+    });
+  });
+
+  it("resolves the current rate and persists its snapshot when the vault is deployed (#410/T3a)", async () => {
+    const campaignsPort = campaigns();
+    const ratesPort = rates();
+
+    await openCampaign(deps({ campaigns: campaignsPort, rates: ratesPort }), {
+      command: command(),
+      correlationId: CORRELATION_ID
+    });
+
+    expect(ratesPort.calls.findCurrent).toHaveLength(1);
+    expect(campaignsPort.calls.create[0]).toMatchObject({
+      campaign: expect.objectContaining({
+        rateSnapshot: { version: RATE.version, usdToArs: RATE.usdToArs, stroopsPerUsd: RATE.stroopsPerUsd }
+      })
+    });
+  });
+
+  it("refuses with rate_unavailable when no current rate exists (no 5xx leak)", async () => {
+    const factoryPort = factory();
+    const campaignsPort = campaigns();
+    const ratesPort = rates({ ok: false, error: { code: "not_found" } });
+
+    const result = await openCampaign(deps({ factory: factoryPort, campaigns: campaignsPort, rates: ratesPort }), {
+      command: command(),
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "rate_unavailable" } });
+    expect(factoryPort.deploy).not.toHaveBeenCalled();
+    expect(campaignsPort.calls.create).toHaveLength(0);
+  });
+
+  it("refuses with goal_limit_exceeded when the goal is above USD 50,000 at the current rate", async () => {
+    const factoryPort = factory();
+    const campaignsPort = campaigns();
+    // 50,001 USD worth at 10,000,000 stroops per USD, one stroop over the cap.
+    const overLimit = {
+      ...command(),
+      goalStroops: 50_001n * RATE.stroopsPerUsd
+    };
+
+    const result = await openCampaign(deps({ factory: factoryPort, campaigns: campaignsPort }), {
+      command: overLimit,
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "goal_limit_exceeded" } });
+    expect(factoryPort.deploy).not.toHaveBeenCalled();
+    expect(campaignsPort.calls.create).toHaveLength(0);
+  });
+
+  it("replays an already-opened campaign without consulting the rate table, preserving idempotency", async () => {
+    const existing = campaignRecord();
+    const ratesPort = rates();
+
+    const result = await openCampaign(
+      deps({ campaigns: campaigns({ findByApplicationId: { ok: true, value: existing } }), rates: ratesPort }),
+      { command: command(), correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({ ok: true, value: { campaign: existing, applied: false } });
+    expect(ratesPort.calls.findCurrent).toHaveLength(0);
+  });
+
+  it("adopts a vault already deployed at the predicted address without consulting the rate table", async () => {
+    const ratesPort = rates();
+    const campaignsPort = campaigns();
+
+    const result = await openCampaign(
+      deps({
+        campaigns: campaignsPort,
+        rates: ratesPort,
+        chain: chain({ ok: true, value: fundingChainState() }, { ok: true, value: fundingChainState() })
+      }),
+      { command: command(), correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { applied: true } });
+    expect(ratesPort.calls.findCurrent).toHaveLength(0);
+    expect(campaignsPort.calls.create[0]).not.toMatchObject({
+      campaign: expect.objectContaining({ rateSnapshot: expect.anything() })
     });
   });
 });
