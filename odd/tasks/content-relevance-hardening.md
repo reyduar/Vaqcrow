@@ -69,3 +69,30 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **GREEN.** `MAX_DOCUMENTS_CHECKED = 8` y `DEFAULT_DEADLINE_MS = 8_000` (por debajo del timeout de 10 s del cliente web). Las dependencias ganaron `now?` y `deadlineMs?` **opcionales** (los callers actuales, incluido `index.ts`, no cambian). `deadlineAt = now() + deadlineMs` se resuelve **una vez** después de leer la lista; se procesan `listed.value.slice(0, MAX_DOCUMENTS_CHECKED)`; si la lista excede el tope se empuja **un** `content_unverified` reusando `UNVERIFIED_LIST_COPY`; en el loop secuencial, `now() >= deadlineAt` declara la fila `content_unverified` **sin tocar ningún puerto**. El `try/catch` de T1 y el orden de findings quedan intactos.
 - **Decisión de diseño.** **Sin concurrencia**: el hallazgo pide tope + deadline, y el deadline ya acota el peor caso por debajo del timeout del cliente. La concurrencia queda como optimización futura (bajar la latencia típica), no como parte de este cierre.
 - **Verificación.** `vitest run` del archivo → **22 passed (22)**; `pnpm --filter @vaqcrow/api test` → **83 files / 1885 passed**; `pnpm run typecheck` → **8 ok**; `pnpm run lint` → **5 ok** (0 errores; 1 warning preexistente).
+
+## Estado al 2026-10-06 (fallback local; mirror Engram pendiente)
+
+> [!warning] Espejo Engram pendiente
+> `mem_session_summary` (×2) y `mem_save` (×1) fallaron con `could not confirm Engram session registration`. `mem_doctor` reporta el store sano (**9/10 checks OK**; `ambiguous_active_runtime_sessions` e `invalid_session_identity` en OK) y **un** error ajeno a esta escritura: el target de sync `cloud:vaqcrow` tiene **2371 mutaciones sin confirmar**, más targets colgados (`cloud:/`, `cloud:arielduarte`, `cloud:news-reader-app`, `cloud:scratch-2026-09-10-dddd53`). No se inventó ni registró un `session_id` para destrabarlo. **Este bloque es el registro local hasta que el mirror a Engram se pueda escribir.**
+
+**Rama / HEAD.** `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review` en `f30f9c7`. Nada llega a `main` hasta [#438](https://github.com/reyduar/Vaqcrow/issues/438) (Opción A del owner).
+
+**Revisión RDD de la feature de visión — cerrada.** Cinco slices sobre `122f713..b817074`: S1 `review-c09e239e893d1507`, S2 `review-0837c1eec97116ef`, S3 `review-1d41600d7f2239ab`, S4 `review-a7fb517f7003089c` — los cuatro **aprobados + acknowledged** (autoridad quemada), ninguno abrió corrección. **S5** (`bc7feb0..b817074`, 272 líneas) devolvió `review_due: false` / `under_budget` ⇒ **no revisado, pendiente**; su envelope de consentimiento se descartó sin START (sin autoridad creada). **14 hallazgos non-blocking** (3+3+4+4). Outcome registrado en [[docs/planning/content-relevance-vision-evidence]] §7/§9/§10 y en [[odd/tasks/content-relevance-vision]] → commit `3467bd9`.
+
+**Endurecimiento de S4 — estado por tarea.**
+
+| Tarea | Estado | Commit | Notas |
+|---|---|---|---|
+| T1 (R3-3) | ✅ hecho | `34c02a1` | `try/catch` en `listByOwner` y por documento; un rechazo degrada como `ok:false`. RED 5/19 → GREEN 19; API 83/1882. |
+| T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
+| T3 (R3-2) | 🔲 **no empezado** | — | Plan: `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen (coherente con lo que ya emite el camino rasterizado ≤1600 px) → `content_unverified` determinista + test de borde; documentar la brecha residual y el downscaler WASM como deuda. |
+| T4 (R3-4) | 🔲 pendiente | — | **Requiere decisión del owner**: distinguir fotos por nombre de archivo (cambia la copy ya aprobada) vs deduplicar findings idénticos. |
+| T5 | 🔲 pendiente | — | `pnpm run verify` completo + evidencia/bitácora. |
+
+**Gotchas acumulados.**
+- El prompt del reviewer es **una línea de ~450 bytes** (`GENTLE_AI_REVIEW_BINDING {...}`); el hook de transporte materializa el contexto congelado. Un prompt gigante reconstruido rompe el JSON de la tool (`SchemaError(Missing key ["subagent_type"])`); `subagent_type` debe setearse explícito.
+- La suite de `apps/api` corre con cwd en el workspace: la ruta es `src/infrastructure/adapters/...`, **no** `apps/api/src/...`.
+- `.env.docker.example` (template versionado) **no** tenía `LLM_VISION_MODEL`; sí lo tienen `.env.cloud.example` (línea 65) y los `.env.docker`/`.env.cloud` locales. El operador ya lo agregó al template, **sin commitear**.
+- Dobles `vi.fn(async () => result)` **no** cubren un puerto que *rechaza* (ese es R3-3).
+
+**Pendiente operativo.** Primer envío real por Resend de `admin.new_application` cuando la pila llegue a la demo.
