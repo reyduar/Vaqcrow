@@ -43,7 +43,7 @@ La revisión nativa de la feature aprobó el alcance (S1–S4 con autoridad quem
 - [x] **T2 — R3-1: acotar el fan-out.** Tope de filas + deadline global (reloj inyectable). **Concurrencia diferida a propósito** (es una optimización de latencia, no lo que pide el hallazgo, y agrega riesgo de determinismo). Tests: deadline vencido → `content_unverified`; más filas que el tope. Commit.
 - [x] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
 - [x] **T4 — R3-4: findings de fotos no ambiguos.** El owner eligió deduplicar los `content_irrelevant` de fotos, preservando la copy aprobada; los warnings `content_unverified` siguen siendo uno por documento. Commit.
-- [ ] **T5 — Verificación + evidencia (incompleta aceptada).** `pnpm run verify` literal no terminó; actualizar la evidencia de visión y esta bitácora. Queda pendiente repetir el gate literal con éxito o adoptar un ajuste de recursos del runner documentado explícitamente. Sin commit de implementación de T5.
+- [x] **T5 — Verificación + evidencia.** `pnpm run verify` literal pasó con exit 0 tras el ajuste de recursos `8a0dda8`; evidencia de visión y bitácora actualizadas.
 
 ## Checks
 
@@ -97,6 +97,14 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **Estado.** T1–T4 siguen completadas. T5 queda **incompleta aceptada** porque el comando literal agregado no terminó, aunque todos los checks individuales pasaron con workers web acotados. La acción restante es repetir `pnpm run verify` literalmente con éxito o adoptar y documentar explícitamente un ajuste de recursos del runner, si se decide más adelante.
 - **Worktree.** Sólo permanece el cambio preexistente `M .env.docker.example`; no forma parte de T5 ni se editó.
 
+### T5 — cierre del gate literal (2026-10-06, `8a0dda8`)
+
+- **Causa.** Los timeouts web (`layout.traversal`, `demo-shell`, `select`) pasan aislados (traversal **301 ms**): contención de CPU de jsdom con workers sin límite bajo turbo. Acotado web, dos tests de `tests/boundaries.test.ts` que cruzan las fuentes reales quedaron como cuello propio: **3,8 s / 4,0 s** con la máquina ociosa, contra 5 s.
+- **Ajuste.** `maxWorkers: 4` en `apps/web/vitest.config.ts`; timeout explícito de 30 s (`REAL_SOURCES_CRUISE_TIMEOUT_MS`) sólo para esos dos tests. Route: inline (2 archivos mecánicos ya entendidos).
+- **Gate.** `pnpm run verify` → **exit 0**: web 161/1.539, API 83/1.889, contracts 15/526, domain 2/120, ai 8/143, boundaries 0 violaciones, `test:boundaries` 10/164.
+- **RDD.** Medium, consentido; aprobado y quemado (`review-203d9620b050ff0a`). Una revisión previa del mismo cambio marcó sangría de 3 espacios en los cierres con timeout; corregida antes del commit. Advisory abierto: `maxWorkers` fijo vs. valor relativo (`"50%"`).
+- **Estado.** T1–T5 completadas; la evidencia parcial aceptada anterior queda superada por el gate literal en verde.
+
 ## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
 > [!warning] Espejo Engram pendiente
@@ -114,7 +122,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 | T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
 | T3 (R3-2) | ✅ hecho | `5de3a24` | `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen; el borde exacto se procesa y el primer byte extra degrada de forma determinista a `content_unverified` sin llamar a visión. Downscaler WASM queda como deuda futura. |
 | T4 (R3-4) | ✅ hecho | `1971c68` | El owner eligió deduplicar findings `content_irrelevant` de fotos; se conserva el primero y los warnings `content_unverified` siguen por documento. |
-| T5 | ⚠️ incompleta aceptada | — | Evidencia parcial aceptada por el owner (2026-10-06) para continuar; no se solicita ajustar ahora el runner. `pnpm run verify` literal no terminó por timeouts web sin límite de workers; el gate agregado sigue técnicamente incompleto y puede repetirse más adelante. |
+| T5 | ✅ hecho | `8a0dda8` | `pnpm run verify` literal con exit 0 tras `maxWorkers: 4` en web y timeout de 30 s en los dos tests de boundaries que cruzan el repo. |
 
 **Gotchas acumulados.**
 - El prompt del reviewer es **una línea de ~450 bytes** (`GENTLE_AI_REVIEW_BINDING {...}`); el hook de transporte materializa el contexto congelado. Un prompt gigante reconstruido rompe el JSON de la tool (`SchemaError(Missing key ["subagent_type"])`); `subagent_type` debe setearse explícito.

@@ -158,6 +158,15 @@ pnpm run test:boundaries
 
 La suite web acotada respalda contención de recursos en la ejecución sin límite de workers; no convierte el `pnpm run verify` literal en pase. T3 conserva el guard directo de imagen de 4 MiB (commit `5de3a24`) y T4 la deduplicación sólo de gaps irrelevantes de fotos (commit `1971c68`); la suite enfocada del adaptador quedó en **26/26**. El worktree mantiene únicamente el cambio preexistente `M .env.docker.example`, fuera de T5 y no editado.
 
+### 4.5 Cierre de T5 — gate literal (2026-10-06, `8a0dda8`)
+
+El ajuste de recursos quedó en el repositorio y `pnpm run verify` **literal terminó con exit 0** (re-ejecutado en el working tree el 2026-10-06):
+
+- **Causa medida.** Los tres timeouts web (`layout.traversal.test.tsx`, `demo-shell.test.tsx`, `select.test.tsx`) pasan aislados (el traversal en **301 ms** contra un límite de 5 s): era contención de CPU de jsdom con workers sin límite mientras turbo corre los otros workspaces. Al acotar web apareció un segundo cuello: los dos tests de `tests/boundaries.test.ts` que recorren las fuentes reales con dependency-cruiser tardan **3,8 s y 4,0 s** aun con la máquina ociosa.
+- **Ajuste.** `apps/web/vitest.config.ts` fija `maxWorkers: 4`; esos dos tests de boundaries reciben un timeout explícito de **30 s** (`REAL_SOURCES_CRUISE_TIMEOUT_MS`); el resto conserva el default de 5 s.
+- **Resultado.** lint, typecheck, `lint:tests`, `typecheck:tests`; tests: web **161 archivos / 1.539 tests**, API **83 / 1.889**, contracts **15 / 526**, domain **2 / 120**, ai **8 / 143**; build; `boundaries` **0 violaciones** (814 módulos, 2.576 dependencias); `test:boundaries` **10 archivos / 164 tests**.
+- **Revisión RDD.** Aprobada con autoridad quemada (lineage `review-203d9620b050ff0a`, lente reliability). Sugerencia no bloqueante: un `maxWorkers` fijo no se adapta a la cantidad de núcleos; en un runner de CI con menos núcleos convendría un valor relativo (`"50%"`).
+
 ## 5. Decisiones del owner y probe en vivo
 
 ### 5.1 Decisiones del owner (2026-10-05, verbatim de la bitácora)
@@ -212,6 +221,8 @@ La suite web acotada respalda contención de recursos en la ejecución sin lími
 
 ### 7.1 Estado RDD de T5
 
+**Actualización (2026-10-06, `8a0dda8`):** el gate literal pasó tras documentar el ajuste de recursos; T5 queda completa (§4.5). Texto original:
+
 La evidencia de T5 queda **parcial y aceptada por el owner (2026-10-06)**: el `pnpm run verify` literal no terminó porque la ejecución web sin límite de workers encontró timeouts y la herramienta padre alcanzó 120 s. La ejecución web acotada (`--maxWorkers=4`) y todos los checks restantes pasaron, pero esto no sustituye el gate agregado. No se solicita cambiar ahora la configuración ni los recursos del runner; T5 sigue técnicamente incompleta para el gate literal y la feature no se declara completamente cerrada. El comando podrá repetirse más adelante, o podrá documentarse entonces un ajuste explícito de recursos si se decide.
 
 ## 8. Mapeo de criterios de aceptación
@@ -240,18 +251,18 @@ Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D
 - **Revisión RDD de esta brecha corrida y reconocida** (§7): S1–S4 aprobados con autoridad quemada; S5 quedó pendiente por `under_budget`. Los 14 hallazgos son non-blocking y ninguno abre corrección.
 - **Precisión de visión no medida** (§6.3): el sistema avisa y no bloquea, que es la mitigación.
 - **Cierre manual.** La brecha de #402 no está en `main` y no la cierra GitHub sola; el cierre lo decide el owner.
-- **T5 parcial aceptada por el owner (2026-10-06).** El gate literal `pnpm run verify` quedó incompleto por timeouts de la fase web sin límite de workers; la suite web acotada y los checks independientes pasaron. No se solicita ajustar ahora el runner; el gate literal puede repetirse más adelante.
+- **`maxWorkers` fijo (T5, `8a0dda8`).** El tope de 4 workers web está medido en una sola máquina; en un runner con menos núcleos puede volver la contención (§4.5).
 - **Costo de build/deploy.** `@hyzyla/pdfium` no se bundlea (build `tsc`) y se resuelve de `node_modules`; la imagen crece ~11 MB. Si se introduce un bundler, el `.wasm` debe quedar externo.
 
 ## 10. Estado de entrega y próximos pasos
 
 - Este cambio es solo pruebas + documentación: un test de composición en `completeness-check.route.test.ts`, este archivo, la alineación de [[docs/planning/ai-completeness-check-and-submission-evidence|la evidencia de #402]], [[docs/planning/demo-run-preflight|el preflight]], [[docs/planning/DEMO|DEMO.md]], `CLAUDE.md`/`AGENTS.md` (gemelos) y la bitácora. **No hay cambio de producción.**
 - La brecha **no está en `main`**; la pila completa se mergea con el retiro del recorrido de seis pasos (#438).
-- T5 (2026-10-06) queda **incompleto, con evidencia parcial aceptada por el owner**: los checks independientes pasaron con workers web acotados, pero no se marca el cierre total porque el `pnpm run verify` literal no terminó. No se solicita ajustar ahora la configuración del runner; el gate puede repetirse más adelante.
+- T5 (2026-10-06) queda **completa**: tras la evidencia parcial aceptada, el ajuste de recursos (`8a0dda8`) hizo pasar el `pnpm run verify` literal con exit 0 (§4.5).
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402 (contenido)
 > 1. **Operador:** agregar `LLM_VISION_MODEL` a `.env.cloud`, `.env.docker`, Railway y el ledger de configuración de la nube; sin eso la API no bootea (§6.1).
 > 2. ~~**Owner:** aprobar la copy del paso de contenido (§6.2).~~ **Resuelto (owner, 2026-10-06):** aprobada tal cual (§6.2).
 > 3. ~~**Owner/equipo:** decidir si corresponde una revisión RDD de esta brecha (§7).~~ **Resuelto:** la revisión se corrió en 5 slices — S1–S4 aprobados con autoridad quemada, S5 pendiente por `under_budget` (§7).
 > 4. **Equipo:** evaluar la precisión del modelo de visión con documentos reales antes de cualquier uso que no sea demo (§6.3).
-> 5. **Equipo:** si se decide más adelante, repetir `pnpm run verify` literalmente con éxito o documentar explícitamente un ajuste de recursos del runner; hasta entonces T5 y el cierre completo permanecen parciales (§4.4, §7.1).
+> 5. ~~**Equipo:** si se decide más adelante, repetir `pnpm run verify` literalmente con éxito o documentar explícitamente un ajuste de recursos del runner; hasta entonces T5 y el cierre completo permanecen parciales (§4.4, §7.1).~~ **Resuelto (2026-10-06, `8a0dda8`):** el gate literal pasó con exit 0 (§4.5).
