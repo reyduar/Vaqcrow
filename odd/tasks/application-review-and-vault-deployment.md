@@ -154,7 +154,7 @@ Diseño verificado contra los seams actuales:
   - `pnpm --filter @vaqcrow/api typecheck` → **pass**.
 - **Límite explícito.** Fuera de T4a (documentado, no implementado): la notificación de **aprobación/publicación** pertenece al unit de estados de despliegue (D3), y la navegación de la campana al paso «Revisión humana» es UI (#386). No se tocaron contratos Rust, `apps/web`, `packages/contracts`, Testnet ni migraciones (remotas o locales).
 
-- **Work-unit commit.** Pendiente; lo commitea el padre.
+- **Work-unit commit.** `50fc044 feat(api): notify PyME owner of decision outcomes`.
 
 ## Próximo paso
 
