@@ -114,7 +114,7 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 - **Test nuevo (caracterización, no TDD de comportamiento nuevo).** Se agregó un `describe` «content-aware path, composed end to end (U7)» en `completeness-check.route.test.ts`: `buildAppAs("PYME")` con `createContentAwareCompletenessCheckAdapter` y dobles sólo para documentos/storage/rasterizador/visión. Aserta `200` con `content_irrelevant` no bloqueante, `listByOwner` llamado con el `userId` del principal, `rasterize` una vez y que la visión recibe el PNG con `kind: "cuit"`. El archivo pasó de 18 a 19 tests. No hubo cambio de producción.
 - **Verificación (re-ejecutada).** `pnpm --filter @vaqcrow/api test` → **83 archivos / 1877 tests PASS**; `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **161 / 1527 PASS**; `pnpm run test:db` → **Files=14, Tests=388, PASS**; `pnpm run typecheck` → **8 ok**; `pnpm run lint` → **5 ok** (0 errores; 1 warning preexistente `fetch-http-client.ts:8:17`); `pnpm run boundaries` → **814 módulos, 2575 dependencias, sin violaciones**; `diff CLAUDE.md AGENTS.md` → idénticos.
 - **Evidencia y alineación.** Se escribió [[docs/planning/content-relevance-vision-evidence|Evidencia de relevancia por contenido (visión)]] (español, criterios verbatim, decisiones D1–D7, probe en vivo con límites, deuda operativa `LLM_VISION_MODEL`, copy aprobada, estado RDD). Se actualizó la evidencia de #402 (la brecha diferida ahora apunta al doc nuevo), el preflight (`LLM_VISION_MODEL` obligatoria sin default) y `DEMO.md`; `CLAUDE.md`/`AGENTS.md` byte-idénticos.
-- **RDD.** Esta brecha **no** tiene revisión nativa propia: no se creó autoridad ni se aprobó nada para U1–U7. No se reclama aprobación.
+- **RDD (al cierre de U7).** En ese momento esta brecha **no** tenía revisión nativa propia. Se corrió después, el 2026-10-06, sobre `122f713..b817074` (U1–U7); ver **Bitácora RDD** más abajo y [[docs/planning/content-relevance-vision-evidence|la evidencia]] §7.
 
 ## Bitácora — Ensayo manual en vivo (2026-10-06)
 
@@ -124,6 +124,30 @@ El chequeo actual es **determinista y de metadatos** (`odd/tasks/ai-completeness
 - **Fix de UX derivado (`204e527`).** Los 5 adaptadores web mapeaban 401/403 a `unavailable` (mismo mensaje que un 503 real); ahora 401/403 → `unauthorized` con «Tu sesión no es válida o venció. Volvé a iniciar sesión.», en upload, completitud, business, wallet y notificaciones.
 - **Copy aprobada (owner, 2026-10-06).** Visión y sesión inválida, tal cual.
 
+## Bitácora RDD — revisión de la feature (2026-10-06)
+
+- **Alcance y formato.** La revisión nativa se corrió en **5 slices** sobre el rango `122f713..b817074` (U1–U7). **S1–S4 quedaron aprobados y con autoridad quemada** (`review-acknowledged/v1`); ninguno abrió corrección. **S5 no se revisó.**
+
+| Slice | Rango | Lineage | Resultado |
+|---|---|---|---|
+| S1 | `122f713..282103f` | `review-c09e239e893d1507` | aprobado + acknowledged; R3-001 WARNING, R3-002 WARNING, R3-003 SUGGESTION |
+| S2 | `282103f..d8696c8` | `review-0837c1eec97116ef` | aprobado + acknowledged; `R3-required-vision-env` WARNING, `R3-toPortError-400-remap` WARNING, `R3-vision-strict-parse-no-structured-output` SUGGESTION |
+| S3 | `d8696c8..299bb27` | `review-1d41600d7f2239ab` | aprobado + acknowledged; R3-1 WARNING, R3-2 WARNING, R3-3 WARNING, R3-4 SUGGESTION |
+| S4 | `299bb27..bc7feb0` | `review-a7fb517f7003089c` | aprobado + acknowledged; R3-1 WARNING, R3-2 WARNING, R3-3 SUGGESTION, R3-4 SUGGESTION |
+
+> [!info] Provenance de S1 y S2
+> IDs y severidades según la bitácora de la sesión; S1/S2 se corrieron antes de la compactación.
+
+- **Hallazgos de S4 (los más concretos, todos non-blocking, para trabajo posterior).**
+  - **R3-1 (WARNING).** El paso de contenido recorre las filas del owner en serie y sin tope de filas ni deadline global, y la ruta espera todo antes de responder; un set grande o lento (o un timeout por documento) puede exceder el presupuesto de request y surface como fallo genérico en vez de los findings no bloqueantes.
+  - **R3-2 (WARNING).** La rama de imagen hace base64 de los bytes descargados sin redimensionar ni validar tamaño (el bucket acepta hasta 10 MB), mientras que la rama PDF pasa por el rasterizador; una foto grande podría rechazarse/timeoutear y degradar a `content_unverified`, justo en las fotos más grandes.
+  - **R3-3 (SUGGESTION).** Los `await` por fila no tienen `try/catch`, así que un puerto que **rechace** (en vez de devolver `ok:false`) propaga y la ruta lo convierte en `503`, descartando los findings declarados ya calculados — lo opuesto al path de la lista, que degrada a un warning.
+  - **R3-4 (SUGGESTION).** Cada fila produce su propio finding y el `detail` de `content_irrelevant` sale solo de la etiqueta por kind, así que varias fotos irrelevantes dan findings byte-idénticos, indistinguibles y sin deduplicar.
+
+- **S5 pendiente.** `bc7feb0..b817074` (272 líneas, fixes de env/UX + docs) devolvió `review_due: false` con `review_due_reason: under_budget` (por debajo del presupuesto de ~400 líneas), así que por protocolo queda **pendiente**, no revisado; el envelope de consentimiento que devolvió el preflight **no se ejecutó** y no creó autoridad.
+
+- **Total: 14 hallazgos non-blocking en total (3 de S1 + 3 de S2 + 4 de S3 + 4 de S4)**, ninguno abre corrección; la revisión de la brecha queda **cerrada para U1–U7 (S1–S4)**.
+
 ## Próximo paso
 
-**Equipo:** decidir si corresponde una revisión RDD de esta brecha (U1–U7), que todavía **no** corrió. El operador ya agregó `LLM_VISION_MODEL` a los perfiles; queda espejarla en `.env.docker.example`.
+**Equipo:** la revisión RDD de esta brecha (U1–U7) ya se corrió en 5 slices (S1–S4 aprobados con autoridad quemada; S5 pendiente por `under_budget`); quedan los hallazgos non-blocking de S4 como trabajo posterior (ninguno abre corrección). El operador ya agregó `LLM_VISION_MODEL` a los perfiles; queda espejarla en `.env.docker.example`.

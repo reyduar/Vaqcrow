@@ -154,9 +154,23 @@ $ pnpm run boundaries
 
 ## 7. Correcciones y estado RDD
 
-**Correcciones de implementación.** Ninguna en U7 (unidad de pruebas + docs; no hubo defecto de producción). El único cambio de código de U7 es un test de composición nuevo (caracterización: el comportamiento ya existía), no una corrección.
+**Correcciones de implementación.** Ninguna en U7 (unidad de pruebas + docs; no hubo defecto de producción). El único cambio de código de U7 es un test de composición nuevo (caracterización: el comportamiento ya existía), no una corrección. Ninguno de los hallazgos RDD de esta brecha abrió una corrección.
 
-**Estado RDD (no corrida para esta unidad).** La revisión nativa de #402 se corrió y reconoció para el alcance determinista (dos slices, aprobados y con autoridad quemada; ver [[docs/planning/ai-completeness-check-and-submission-evidence|la evidencia de #402]] §7). **Esta brecha de contenido no tiene una revisión RDD propia**: no se creó autoridad ni se aprobó nada para U1–U7. No se reclama aprobación.
+**Estado RDD (revisión corrida y reconocida).** La revisión nativa de #402 se corrió y reconoció para el alcance determinista (dos slices, aprobados y con autoridad quemada; ver [[docs/planning/ai-completeness-check-and-submission-evidence|la evidencia de #402]] §7). **La revisión nativa de esta brecha de contenido también se corrió**, en **5 slices** sobre el rango `122f713..b817074` (U1–U7). **S1–S4 quedaron aprobados y con autoridad quemada** (`review-acknowledged/v1`); ninguno abrió corrección.
+
+| Slice | Rango | Lineage | Resultado |
+|---|---|---|---|
+| S1 | `122f713..282103f` | `review-c09e239e893d1507` | aprobado + acknowledged; R3-001 WARNING, R3-002 WARNING, R3-003 SUGGESTION |
+| S2 | `282103f..d8696c8` | `review-0837c1eec97116ef` | aprobado + acknowledged; `R3-required-vision-env` WARNING, `R3-toPortError-400-remap` WARNING, `R3-vision-strict-parse-no-structured-output` SUGGESTION |
+| S3 | `d8696c8..299bb27` | `review-1d41600d7f2239ab` | aprobado + acknowledged; R3-1 WARNING, R3-2 WARNING, R3-3 WARNING, R3-4 SUGGESTION |
+| S4 | `299bb27..bc7feb0` | `review-a7fb517f7003089c` | aprobado + acknowledged; R3-1 WARNING, R3-2 WARNING, R3-3 SUGGESTION, R3-4 SUGGESTION |
+
+> [!info] Provenance de S1 y S2
+> IDs y severidades según la bitácora de la sesión; S1/S2 se corrieron antes de la compactación.
+
+**S5 no se revisó:** `bc7feb0..b817074` (272 líneas, fixes de env/UX + docs) devolvió `review_due: false` con `review_due_reason: under_budget` (por debajo del presupuesto de ~400 líneas), así que por protocolo queda **pendiente**, no revisado; el envelope de consentimiento que devolvió el preflight **no se ejecutó** y no creó autoridad.
+
+**Total: 14 hallazgos non-blocking en total (3 de S1 + 3 de S2 + 4 de S3 + 4 de S4)**, ninguno abre corrección; la revisión de la brecha queda **cerrada para U1–U7 (S1–S4)**.
 
 ## 8. Mapeo de criterios de aceptación
 
@@ -181,7 +195,7 @@ Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D
 
 - **La API no arranca hasta que el operador agregue `LLM_VISION_MODEL`** (§6.1). Es el riesgo operativo principal de esta entrega; el código lo exige a propósito (sin default, como `LLM_MODEL`) para no esconder la decisión.
 - **Copy aprobada** (owner, 2026-10-06): visión y sesión inválida, tal cual; §6.2.
-- **Revisión RDD de esta brecha no corrida** (§7): el alcance de contenido no tiene autoridad de revisión propia.
+- **Revisión RDD de esta brecha corrida y reconocida** (§7): S1–S4 aprobados con autoridad quemada; S5 quedó pendiente por `under_budget`. Los 14 hallazgos son non-blocking y ninguno abre corrección.
 - **Precisión de visión no medida** (§6.3): el sistema avisa y no bloquea, que es la mitigación.
 - **Cierre manual.** La brecha de #402 no está en `main` y no la cierra GitHub sola; el cierre lo decide el owner.
 - **Costo de build/deploy.** `@hyzyla/pdfium` no se bundlea (build `tsc`) y se resuelve de `node_modules`; la imagen crece ~11 MB. Si se introduce un bundler, el `.wasm` debe quedar externo.
@@ -193,6 +207,6 @@ Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402 (contenido)
 > 1. **Operador:** agregar `LLM_VISION_MODEL` a `.env.cloud`, `.env.docker`, Railway y el ledger de configuración de la nube; sin eso la API no bootea (§6.1).
-> 2. **Owner:** aprobar la copy del paso de contenido (§6.2).
-> 3. **Owner/equipo:** decidir si corresponde una revisión RDD de esta brecha (§7).
+> 2. ~~**Owner:** aprobar la copy del paso de contenido (§6.2).~~ **Resuelto (owner, 2026-10-06):** aprobada tal cual (§6.2).
+> 3. ~~**Owner/equipo:** decidir si corresponde una revisión RDD de esta brecha (§7).~~ **Resuelto:** la revisión se corrió en 5 slices — S1–S4 aprobados con autoridad quemada, S5 pendiente por `under_budget` (§7).
 > 4. **Equipo:** evaluar la precisión del modelo de visión con documentos reales antes de cualquier uso que no sea demo (§6.3).
