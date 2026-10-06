@@ -113,7 +113,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 
 **Pendiente operativo.** Primer envío real por Resend de `admin.new_application` cuando la pila llegue a la demo.
 
-## Estado actual de la sesión T3
+## Estado actual de la sesión T3/T4
 
-- La escritura de Engram volvió a funcionar: `mem_save` registró la implementación de T3 y sus relaciones de compatibilidad; el espejo completo de esta bitácora se sincroniza en esta sesión.
-- Rama actual: `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, HEAD `10f6002`.
+- La escritura de Engram volvió a funcionar: `mem_save` registró las decisiones e implementaciones de T3/T4 y sus relaciones de compatibilidad; el espejo completo de esta bitácora se sincroniza en esta sesión.
+- Rama actual: `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, HEAD `f5701e9`.
