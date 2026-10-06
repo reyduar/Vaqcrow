@@ -64,6 +64,7 @@ const COMPLETE_INPUT: CompletenessCheckInput = {
 const PDF_BYTES = Uint8Array.from([0x25, 0x50, 0x44, 0x46, 0x2d, 1, 2, 3]);
 const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9]);
 const JPEG_BYTES = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 4]);
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 function base64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
@@ -237,6 +238,55 @@ describe("createContentAwareCompletenessCheckAdapter", () => {
       contentType: "image/jpeg",
       imageBase64: base64(JPEG_BYTES)
     });
+  });
+
+  it("sends an image exactly at the byte limit to the vision provider", async () => {
+    const photo = record({
+      documentId: "doc-photo-limit",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/limit.jpg`,
+      name: "limit.jpg",
+      contentType: "image/jpeg"
+    });
+    const bytes = new Uint8Array(MAX_IMAGE_BYTES);
+    const h = harness({
+      rows: { ok: true, value: [photo] },
+      downloads: { [photo.objectPath]: { ok: true, value: { bytes, contentType: "image/jpeg" } } },
+      outcome: () => relevant()
+    });
+
+    const result = await h.checker.check(command());
+
+    expect(result).toEqual({ complete: true, findings: [] });
+    expect(h.vision.assessRelevance).toHaveBeenCalledExactlyOnceWith({
+      kind: "photo",
+      contentType: "image/jpeg",
+      imageBase64: base64(bytes)
+    });
+  });
+
+  it("emits one content_unverified warning for an image above the byte limit", async () => {
+    const photo = record({
+      documentId: "doc-photo-over-limit",
+      kind: "photo",
+      objectPath: `${OWNER}/photo/over-limit.jpg`,
+      name: "over-limit.jpg",
+      contentType: "image/jpeg"
+    });
+    const bytes = new Uint8Array(MAX_IMAGE_BYTES + 1);
+    const h = harness({
+      rows: { ok: true, value: [photo] },
+      downloads: { [photo.objectPath]: { ok: true, value: { bytes, contentType: "image/jpeg" } } },
+      outcome: () => relevant()
+    });
+
+    const result = await h.checker.check(command());
+
+    expect(result).toEqual({
+      complete: true,
+      findings: [{ code: "content_unverified", severity: "warning", detail: expect.stringContaining("Foto del negocio") }]
+    });
+    expect(h.vision.assessRelevance).not.toHaveBeenCalled();
   });
 
   it("names an irrelevant photo as the business photo", async () => {

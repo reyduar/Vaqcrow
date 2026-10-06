@@ -67,6 +67,7 @@ export interface ContentAwareCompletenessCheckDependencies {
 const MAX_DOCUMENTS_CHECKED = 8;
 /** Sits below the web client's 10 s request timeout so the route answers first. */
 const DEFAULT_DEADLINE_MS = 8_000;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 /**
  * The persisted `kind` and the vision vocabulary are the same four slots today;
@@ -136,6 +137,9 @@ async function checkDocument(
     imageBase64 = Buffer.from(rasterized.value.bytes).toString("base64");
     imageContentType = rasterized.value.contentType;
   } else {
+    if (downloaded.value.bytes.byteLength > MAX_IMAGE_BYTES) {
+      return unverified();
+    }
     imageBase64 = Buffer.from(downloaded.value.bytes).toString("base64");
     imageContentType = record.contentType;
   }

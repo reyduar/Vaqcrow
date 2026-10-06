@@ -41,7 +41,7 @@ La revisión nativa de la feature aprobó el alcance (S1–S4 con autoridad quem
 
 - [x] **T1 — R3-3: aislar rechazos por documento.** `try/catch` alrededor de `listByOwner` y de cada `checkDocument`; un rechazo se convierte en el mismo `content_unverified` que un `ok:false`. Tests: un doble que **rechaza** en descarga/rasterizado/visión/lista. Commit.
 - [x] **T2 — R3-1: acotar el fan-out.** Tope de filas + deadline global (reloj inyectable). **Concurrencia diferida a propósito** (es una optimización de latencia, no lo que pide el hallazgo, y agrega riesgo de determinismo). Tests: deadline vencido → `content_unverified`; más filas que el tope. Commit.
-- [ ] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
+- [x] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
 - [ ] **T4 — R3-4: findings de fotos no ambiguos.** Decisión del owner (copy o dedupe) + test de dos fotos irrelevantes. Commit.
 - [ ] **T5 — Verificación + evidencia.** `pnpm run verify` completo; actualizar la evidencia de visión y esta bitácora. Commit.
 
@@ -70,6 +70,13 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **Decisión de diseño.** **Sin concurrencia**: el hallazgo pide tope + deadline, y el deadline ya acota el peor caso por debajo del timeout del cliente. La concurrencia queda como optimización futura (bajar la latencia típica), no como parte de este cierre.
 - **Verificación.** `vitest run` del archivo → **22 passed (22)**; `pnpm --filter @vaqcrow/api test` → **83 files / 1885 passed**; `pnpm run typecheck` → **8 ok**; `pnpm run lint` → **5 ok** (0 errores; 1 warning preexistente).
 
+### T3 — R3-2: tope de tamaño de imagen (commit: `dc8dab6`)
+
+- **RED.** Se agregó primero el caso de una imagen de `4 MiB + 1` bytes y falló como esperaba: el camino anterior todavía llamaba a visión (**1 expected failure; 23 passed**).
+- **GREEN.** La rama de imagen comprueba `downloaded.value.bytes.byteLength` antes de convertir a base64. Una imagen de hasta `4 * 1024 * 1024` bytes sigue el camino normal; una mayor degrada a un único `content_unverified` (`warning`) sin invocar visión. Los PDFs mantienen su ruta de rasterización sin cambios.
+- **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **24 passed (24)**; los tests cubren el borde exacto y el primer byte por encima.
+- **Deuda residual.** El guard evita enviar imágenes grandes al modelo, pero no las redimensiona; un downscaler WASM sigue siendo una optimización futura fuera de este cierre.
+
 ## Estado al 2026-10-06 (fallback local; mirror Engram pendiente)
 
 > [!warning] Espejo Engram pendiente
@@ -85,7 +92,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 |---|---|---|---|
 | T1 (R3-3) | ✅ hecho | `34c02a1` | `try/catch` en `listByOwner` y por documento; un rechazo degrada como `ok:false`. RED 5/19 → GREEN 19; API 83/1882. |
 | T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
-| T3 (R3-2) | 🔲 **no empezado** | — | Plan: `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen (coherente con lo que ya emite el camino rasterizado ≤1600 px) → `content_unverified` determinista + test de borde; documentar la brecha residual y el downscaler WASM como deuda. |
+| T3 (R3-2) | ✅ hecho | `dc8dab6` | `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen; el borde exacto se procesa y el primer byte extra degrada de forma determinista a `content_unverified` sin llamar a visión. Downscaler WASM queda como deuda futura. |
 | T4 (R3-4) | 🔲 pendiente | — | **Requiere decisión del owner**: distinguir fotos por nombre de archivo (cambia la copy ya aprobada) vs deduplicar findings idénticos. |
 | T5 | 🔲 pendiente | — | `pnpm run verify` completo + evidencia/bitácora. |
 
