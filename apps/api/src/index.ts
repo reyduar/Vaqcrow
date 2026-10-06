@@ -5,6 +5,7 @@ import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
+import { createAdminReviewContextRouteDependencies } from "./infrastructure/http/routes/admin-review-context.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
@@ -41,6 +42,7 @@ const config = parseApiConfig(process.env);
 const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
+const applicationAssessmentRepository = new SupabaseApplicationAssessmentRepository(supabase);
 
 // The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
 // frozen synthetic data, no I/O — a real authorized source would replace it
@@ -185,6 +187,13 @@ const completenessCheck = createContentAwareCompletenessCheckAdapter({
 const app = buildApp({
   auth,
   applicationReviewRepository,
+  adminReviewContext: createAdminReviewContextRouteDependencies({
+    applicationReviews: applicationReviewRepository,
+    smeRequests: smeRequestRepository,
+    businesses: businessRepository,
+    documents: pymeDocumentRepository,
+    assessments: applicationAssessmentRepository
+  }),
   revenueShareDistribution,
   assessment: {
     provider: assessmentProvider,
@@ -192,7 +201,7 @@ const app = buildApp({
   },
   applicationAssessment: {
     repository: applicationReviewRepository,
-    assessments: new SupabaseApplicationAssessmentRepository(supabase),
+    assessments: applicationAssessmentRepository,
     smeRequests: smeRequestRepository,
     salesData: salesDataProvider,
     provider: assessmentProvider,

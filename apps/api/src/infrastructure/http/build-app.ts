@@ -7,6 +7,8 @@ import type { ApplicationReviewRepositoryPort } from "../../application/ports/ap
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
+import { registerAdminReviewContextRoute } from "./routes/admin-review-context.route.js";
+import type { AdminReviewContextRouteDependencies } from "./routes/admin-review-context.route.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
 import type { ApplicationAssessmentRouteDependencies } from "./routes/application-assessment.route.js";
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
@@ -78,6 +80,7 @@ function assertRandomUUIDAvailable(): void {
 
 export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
+  readonly adminReviewContext?: AdminReviewContextRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
   readonly assessment?: AssessmentRouteDependencies;
@@ -132,6 +135,9 @@ export function buildApp(dependencies: {
     });
   }
   registerHealthRoute(app);
+  if (dependencies.adminReviewContext) {
+    registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
+  }
   if (dependencies.applicationReviewRepository) {
     registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
     registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });

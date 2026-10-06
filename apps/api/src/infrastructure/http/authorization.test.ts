@@ -27,6 +27,7 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/assessments", ["ADMIN"]],
   ["POST", "/application-reviews/:applicationId/assessments", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/assessment", ["ADMIN"]],
+  ["GET", "/application-reviews/:applicationId/context", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/manual-review", ["ADMIN"]],
   ["POST", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
@@ -65,6 +66,7 @@ function buildFullApp(auth?: AuthDependency): {
   const routes: Array<{ method: string; url: string }> = [];
   const app = buildApp({
     applicationReviewRepository: stub,
+    adminReviewContext: stub,
     fundingIntent: stub,
     revenueShareDistribution: stub,
     assessment: stub,

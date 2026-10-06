@@ -46,6 +46,7 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /assessments": only("ADMIN"),
   "POST /application-reviews/:applicationId/assessments": only("ADMIN"),
   "GET /application-reviews/:applicationId/assessment": only("ADMIN"),
+  "GET /application-reviews/:applicationId/context": only("ADMIN"),
   "GET /application-reviews/:applicationId/manual-review": only("ADMIN"),
   "POST /application-reviews/:applicationId/decisions": only("ADMIN"),
   "GET /application-reviews/:applicationId/decisions": only("ADMIN"),
