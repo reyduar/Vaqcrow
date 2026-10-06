@@ -116,4 +116,4 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 ## Estado actual de la sesión T3/T4
 
 - La escritura de Engram volvió a funcionar: `mem_save` registró las decisiones e implementaciones de T3/T4 y sus relaciones de compatibilidad; el espejo completo de esta bitácora se sincroniza en esta sesión.
-- Rama actual: `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, HEAD `f5701e9`.
+- Último commit de implementación de T4: `1971c68`; las actualizaciones posteriores de esta bitácora son commits de documentación separados.
