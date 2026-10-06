@@ -42,7 +42,7 @@ La revisión nativa de la feature aprobó el alcance (S1–S4 con autoridad quem
 - [x] **T1 — R3-3: aislar rechazos por documento.** `try/catch` alrededor de `listByOwner` y de cada `checkDocument`; un rechazo se convierte en el mismo `content_unverified` que un `ok:false`. Tests: un doble que **rechaza** en descarga/rasterizado/visión/lista. Commit.
 - [x] **T2 — R3-1: acotar el fan-out.** Tope de filas + deadline global (reloj inyectable). **Concurrencia diferida a propósito** (es una optimización de latencia, no lo que pide el hallazgo, y agrega riesgo de determinismo). Tests: deadline vencido → `content_unverified`; más filas que el tope. Commit.
 - [x] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
-- [ ] **T4 — R3-4: findings de fotos no ambiguos.** Decisión del owner (copy o dedupe) + test de dos fotos irrelevantes. Commit.
+- [x] **T4 — R3-4: findings de fotos no ambiguos.** El owner eligió deduplicar los `content_irrelevant` de fotos, preservando la copy aprobada; los warnings `content_unverified` siguen siendo uno por documento. Commit.
 - [ ] **T5 — Verificación + evidencia.** `pnpm run verify` completo; actualizar la evidencia de visión y esta bitácora. Commit.
 
 ## Checks
@@ -78,6 +78,13 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **Deuda residual.** El guard evita enviar imágenes grandes al modelo, pero no las redimensiona; un downscaler WASM sigue siendo una optimización futura fuera de este cierre.
 - **RDD.** El rango completo de hardening excedió el presupuesto de contexto nativo, así que se reencuadró el candidato a `7893e68..d30f0ac`; la evaluación quedó en riesgo **medium**, `under_budget`, sin crear autoridad de review.
 
+### T4 — R3-4: findings de fotos no ambiguos (commit: `1971c68`)
+
+- **Decisión del owner.** Se eligió deduplicar: varias fotos irrelevantes conservan un único finding `content_irrelevant` con la copy aprobada «Foto del negocio», sin eco de nombres de archivo. Los `content_unverified` no se deduplican porque cada documento puede haber fallado por separado.
+- **RED.** El caso con dos fotos irrelevantes observó el defecto anterior (**1 failed; 24 passed**): se emitían dos findings byte-idénticos.
+- **GREEN.** La agregación conserva el primer finding irrelevante de una foto y descarta solo los siguientes findings `content_irrelevant` de otras fotos; findings de documentos y warnings quedan intactos.
+- **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **26 passed (26)**; incluye dos fotos irrelevantes y dos warnings de fotos para fijar que solo se deduplica el gap.
+
 ## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
 > [!warning] Espejo Engram pendiente
@@ -94,7 +101,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 | T1 (R3-3) | ✅ hecho | `34c02a1` | `try/catch` en `listByOwner` y por documento; un rechazo degrada como `ok:false`. RED 5/19 → GREEN 19; API 83/1882. |
 | T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
 | T3 (R3-2) | ✅ hecho | `5de3a24` | `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen; el borde exacto se procesa y el primer byte extra degrada de forma determinista a `content_unverified` sin llamar a visión. Downscaler WASM queda como deuda futura. |
-| T4 (R3-4) | 🔲 pendiente | — | **Requiere decisión del owner**: distinguir fotos por nombre de archivo (cambia la copy ya aprobada) vs deduplicar findings idénticos. |
+| T4 (R3-4) | ✅ hecho | `1971c68` | El owner eligió deduplicar findings `content_irrelevant` de fotos; se conserva el primero y los warnings `content_unverified` siguen por documento. |
 | T5 | 🔲 pendiente | — | `pnpm run verify` completo + evidencia/bitácora. |
 
 **Gotchas acumulados.**
