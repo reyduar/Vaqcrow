@@ -38,6 +38,7 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
 
   "POST /storage/uploads": only("PYME"),
   "DELETE /storage/uploads": only("PYME"),
+  "GET /storage/uploads": only("ADMIN"),
 
   "GET /businesses/:businessId/sales-periods": only("PYME", "ADMIN"),
   "POST /businesses/:businessId/sales-periods": only("PYME"),

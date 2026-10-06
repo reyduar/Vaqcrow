@@ -47,6 +47,7 @@ function fakeClient(step: FakeStep) {
     eq: [] as Array<readonly [string, unknown]>,
     order: [] as Array<readonly [string, unknown]>,
     single: 0,
+    maybeSingle: 0,
     delete: 0
   };
   const result = () =>
@@ -74,6 +75,10 @@ function fakeClient(step: FakeStep) {
     },
     single: () => {
       calls.single += 1;
+      return result();
+    },
+    maybeSingle: () => {
+      calls.maybeSingle += 1;
       return result();
     },
     // `await builder` (the delete/list terminal) resolves to the configured step.
@@ -209,5 +214,32 @@ describe("SupabasePymeDocumentRepository.deleteByObjectPath", () => {
         error: { code: "unavailable" }
       });
     }
+  });
+});
+
+describe("SupabasePymeDocumentRepository.findByObjectPath", () => {
+  it("looks up one persisted descriptor by object_path and maps it", async () => {
+    const { client, calls } = fakeClient({ data: ROW });
+
+    const result = await new SupabasePymeDocumentRepository(client).findByObjectPath(OBJECT_PATH);
+
+    expect(calls.from).toEqual(["pyme_document"]);
+    expect(calls.eq).toEqual([["object_path", OBJECT_PATH]]);
+    expect(calls.maybeSingle).toBe(1);
+    expect(result).toEqual({ ok: true, value: EXPECTED });
+  });
+
+  it("treats an empty result as a missing descriptor and sanitizes failures", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const missing = await new SupabasePymeDocumentRepository(fakeClient({ data: null }).client).findByObjectPath(
+      OBJECT_PATH
+    );
+    expect(missing).toEqual({ ok: true, value: undefined });
+
+    const failure = await new SupabasePymeDocumentRepository(
+      fakeClient({ error: pgError("XX000") }).client
+    ).findByObjectPath(OBJECT_PATH);
+    expect(failure).toEqual({ ok: false, error: { code: "unavailable" } });
   });
 });

@@ -54,6 +54,37 @@ function rejectionStatus(code: UploadRejectionCode): number {
   }
 }
 
+function isValidObjectPath(path: unknown): path is string {
+  if (typeof path !== "string" || path.length === 0 || path.length > 1024 || path.includes("\\")) {
+    return false;
+  }
+
+  const segments = path.split("/");
+  return (
+    segments.length === 3 &&
+    segments.every(
+      (segment) =>
+        segment.length > 0 && segment !== "." && segment !== ".." && /^[A-Za-z0-9._-]+$/.test(segment)
+    )
+  );
+}
+
+function storageDownloadFailureStatus(code: "not_found" | "invalid_path" | "unavailable"): number {
+  switch (code) {
+    case "not_found":
+      return 404;
+    case "invalid_path":
+      return 400;
+    case "unavailable":
+      return 503;
+  }
+}
+
+function contentDisposition(name: string): string {
+  const safeName = name.replace(/[\u0000-\u001f\u007f"\\]/g, "_") || "download";
+  return `inline; filename="${safeName}"`;
+}
+
 export function registerStorageRoute(app: FastifyInstance, dependencies: StorageRouteDependencies): void {
   app.post("/storage/uploads", async (request, reply) => {
     const principal = request.principal;
@@ -170,5 +201,39 @@ export function registerStorageRoute(app: FastifyInstance, dependencies: Storage
     }
 
     return reply.code(204).send();
+  });
+
+  app.get<{ Querystring: { path?: string } }>("/storage/uploads", async (request, reply) => {
+    const path = request.query.path;
+    if (!isValidObjectPath(path)) {
+      return reply.code(400).send({ code: "invalid_request" });
+    }
+
+    try {
+      const descriptor = await dependencies.documents.findByObjectPath(path);
+      if (!descriptor.ok) {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+      if (descriptor.value === undefined || descriptor.value.objectPath !== path) {
+        return reply.code(404).send({ code: "not_found" });
+      }
+
+      const downloaded = await dependencies.storage.downloadObject(path);
+      if (!downloaded.ok) {
+        const status = storageDownloadFailureStatus(downloaded.error.code);
+        const code =
+          downloaded.error.code === "not_found" ? "not_found" : status === 400 ? "invalid_request" : "unavailable";
+        return reply.code(status).send({ code });
+      }
+
+      return reply
+        .header("Cache-Control", "private, no-store")
+        .header("Content-Disposition", contentDisposition(descriptor.value.name))
+        .header("X-Content-Type-Options", "nosniff")
+        .type(descriptor.value.contentType)
+        .send(Buffer.from(downloaded.value.bytes));
+    } catch {
+      return reply.code(503).send({ code: "unavailable" });
+    }
   });
 }

@@ -21,6 +21,7 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/profile/wallet", ["PYME"]],
   ["POST", "/storage/uploads", ["PYME"]],
   ["DELETE", "/storage/uploads", ["PYME"]],
+  ["GET", "/storage/uploads", ["ADMIN"]],
   ["GET", "/businesses/:businessId/sales-periods", ["PYME", "ADMIN"]],
   ["POST", "/businesses/:businessId/sales-periods", ["PYME"]],
   ["POST", "/assessments", ["ADMIN"]],
