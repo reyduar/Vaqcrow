@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { NotificationItem, NotificationPort } from "@/application/ports/notification-port";
+import type { NotificationErrorCode, NotificationItem, NotificationPort } from "@/application/ports/notification-port";
 
 /**
  * Server state of the notification bell (Feature #382, Task #383 / T1d).
@@ -27,9 +27,9 @@ const EMPTY: NotificationsState = { notifications: [], unread: 0 };
 
 /** Sanitized load/mutation failure; the code is already provider-free. */
 class NotificationError extends Error {
-  readonly code: string;
+  readonly code: NotificationErrorCode;
 
-  constructor(code: string) {
+  constructor(code: NotificationErrorCode) {
     super(`notifications request failed: ${code}`);
     this.name = "NotificationError";
     this.code = code;
@@ -74,6 +74,11 @@ export function useNotifications(port: NotificationPort | null) {
   );
 
   const state = data ?? EMPTY;
+  // The sanitized code behind a load failure, so the bell can tell an invalid
+  // session apart from an unavailable service instead of showing one generic
+  // message for both. An unexpected throw collapses to `unavailable`.
+  const loadErrorCode: NotificationErrorCode | null =
+    error instanceof NotificationError ? error.code : error !== undefined ? "unavailable" : null;
 
   const markRead = useCallback(
     async (id: string): Promise<boolean> => {
@@ -130,6 +135,7 @@ export function useNotifications(port: NotificationPort | null) {
     unread: state.unread,
     isLoading,
     loadFailed: error !== undefined,
+    loadErrorCode,
     markRead,
     markAllRead
   };

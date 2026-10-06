@@ -41,6 +41,7 @@ function codeForStatus(status: number, data: unknown): BusinessErrorCode {
   const envelope = codeFromEnvelope(data);
   if (envelope) return envelope;
   if (status === 400) return "invalid_request";
+  if (status === 401 || status === 403) return "unauthorized";
   if (status === 404) return "not_found";
   return "unavailable";
 }

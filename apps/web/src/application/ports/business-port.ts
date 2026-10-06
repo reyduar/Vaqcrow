@@ -39,11 +39,12 @@ export interface BusinessRecord extends BusinessDraft {
  * Sanitized failure codes. They mirror the API's `{ code }` / `{ errors }`
  * envelopes plus the transport's own `network`; the UI maps each one to copy.
  */
-export type BusinessErrorCode = "invalid_request" | "not_found" | "unavailable" | "network";
+export type BusinessErrorCode = "invalid_request" | "not_found" | "unauthorized" | "unavailable" | "network";
 
 export const BUSINESS_ERROR_CODES: readonly BusinessErrorCode[] = Object.freeze([
   "invalid_request",
   "not_found",
+  "unauthorized",
   "unavailable",
   "network"
 ]);

@@ -101,7 +101,21 @@ describe("HttpUploadAdapter.uploadDocument", () => {
     });
   });
 
-  it("answers unavailable for an unexpected status or a malformed success body", async () => {
+  it("gives 401 and 403 their own unauthorized code, not unavailable", async () => {
+    const expired = fakeClient({ post: { status: 401, data: {} } });
+    const wrongRole = fakeClient({ post: { status: 403, data: {} } });
+
+    expect(await new HttpUploadAdapter(expired.client).uploadDocument({ kind: "cuit", file: file() })).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+    expect(await new HttpUploadAdapter(wrongRole.client).uploadDocument({ kind: "cuit", file: file() })).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+  });
+
+  it("answers unavailable for a 503 or a malformed success body", async () => {
     const serverError = fakeClient({ post: { status: 503, data: { code: "unavailable" } } });
     const malformed = fakeClient({ post: { status: 201, data: { path: 42 } } });
 
@@ -138,8 +152,17 @@ describe("HttpUploadAdapter.removeDocument", () => {
     expect(calls[0]!.config?.["headers"]).toEqual({ Authorization: "Bearer token" });
   });
 
-  it("maps a non-204 answer to its sanitized code", async () => {
+  it("maps a 403 to unauthorized even when the envelope code is outside the vocabulary", async () => {
     const { client } = fakeClient({ remove: { status: 403, data: { code: "forbidden" } } });
+
+    expect(await new HttpUploadAdapter(client).removeDocument("u/cuit/x.pdf")).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+  });
+
+  it("still maps a 503 to unavailable", async () => {
+    const { client } = fakeClient({ remove: { status: 503, data: { code: "unavailable" } } });
 
     expect(await new HttpUploadAdapter(client).removeDocument("u/cuit/x.pdf")).toEqual({
       ok: false,

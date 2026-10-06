@@ -63,10 +63,11 @@ export interface CompletenessResult {
  * Sanitized failure codes. They mirror the API's `{ code }` / `{ errors }`
  * envelopes plus the transport's own `network`; the UI maps each one to copy.
  */
-export type CompletenessErrorCode = "invalid_request" | "unavailable" | "network";
+export type CompletenessErrorCode = "invalid_request" | "unauthorized" | "unavailable" | "network";
 
 export const COMPLETENESS_ERROR_CODES: readonly CompletenessErrorCode[] = Object.freeze([
   "invalid_request",
+  "unauthorized",
   "unavailable",
   "network"
 ]);

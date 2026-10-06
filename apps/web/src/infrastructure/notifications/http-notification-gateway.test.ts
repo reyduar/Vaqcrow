@@ -60,9 +60,12 @@ describe("HttpNotificationGateway.list", () => {
     expect(calls[0]!.config?.["headers"]).toEqual({});
   });
 
-  it("maps a status to a sanitized code and a malformed body to unavailable", async () => {
-    const unauthorized = fakeClient({ get: { status: 401, data: { code: "unauthenticated" } } });
-    expect(await new HttpNotificationGateway(unauthorized.client).list()).toEqual({ ok: false, code: "unavailable" });
+  it("gives 401 and 403 their own unauthorized code, and a malformed body to unavailable", async () => {
+    const expired = fakeClient({ get: { status: 401, data: { code: "unauthenticated" } } });
+    expect(await new HttpNotificationGateway(expired.client).list()).toEqual({ ok: false, code: "unauthorized" });
+
+    const refused = fakeClient({ get: { status: 403, data: {} } });
+    expect(await new HttpNotificationGateway(refused.client).list()).toEqual({ ok: false, code: "unauthorized" });
 
     const malformed = fakeClient({ get: { status: 200, data: { notifications: [{ id: "x" }] } } });
     expect(await new HttpNotificationGateway(malformed.client).list()).toEqual({ ok: false, code: "unavailable" });

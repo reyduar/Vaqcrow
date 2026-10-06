@@ -43,6 +43,7 @@ function codeFromEnvelope(data: unknown): UploadErrorCode | undefined {
 function codeForStatus(status: number, data: unknown): UploadErrorCode {
   const envelope = codeFromEnvelope(data);
   if (envelope) return envelope;
+  if (status === 401 || status === 403) return "unauthorized";
   if (status === 413) return "too_large";
   if (status === 415) return "unsupported_type";
   return "unavailable";

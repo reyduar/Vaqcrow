@@ -144,4 +144,10 @@ describe("walletConnectFailureCopy", () => {
       "No pudimos guardar tu wallet. Revisá tu conexión y probá de nuevo."
     );
   });
+
+  it("tells an invalid session apart at both the challenge and the store stage", () => {
+    const expected = "Tu sesión no es válida o venció. Volvé a iniciar sesión.";
+    expect(walletConnectFailureCopy({ ok: false, stage: "challenge", code: "unauthorized" })).toBe(expected);
+    expect(walletConnectFailureCopy({ ok: false, stage: "store", code: "unauthorized" })).toBe(expected);
+  });
 });

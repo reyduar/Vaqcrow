@@ -331,6 +331,18 @@ describe("ReviewStep company persistence", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos guardar los datos de tu empresa.");
   });
 
+  it("tells an invalid session apart from a generic company-save failure", async () => {
+    const business = new FakeBusiness();
+    business.failNext("create", "unauthorized");
+    const gw = gateway();
+    renderReview({ wallet: connectedWallet(), business, gateway: gw });
+
+    await connectAndSend();
+
+    expect(gw.submit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Tu sesión no es válida o venció. Volvé a iniciar sesión.");
+  });
+
   it("never sends an owner from the web", async () => {
     const business = new FakeBusiness();
     renderReview({ wallet: connectedWallet(), business, gateway: gateway() });

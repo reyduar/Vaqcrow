@@ -74,12 +74,18 @@ export interface NotificationBellProps {
 
 export function NotificationBell({ port }: NotificationBellProps = {}) {
   const [resolvedPort] = useState<NotificationPort>(() => port ?? createBrowserNotificationPort());
-  const { notifications, unread, markRead, markAllRead, loadFailed } = useNotifications(resolvedPort);
+  const { notifications, unread, markRead, markAllRead, loadFailed, loadErrorCode } = useNotifications(resolvedPort);
 
   // Owner-approved failure copy (2026-10-05): the template designs no failure
   // state, so these two strings are confined to this branch (no other state is
-  // invented here).
+  // invented here). An invalid session gets its own honest message (pending
+  // owner approval): the generic «no pudimos cargar» would hide a sign-in
+  // problem behind a service failure.
   const bellLabel = loadFailed ? "Notificaciones no disponibles" : `Notificaciones, ${unread} sin leer`;
+  const loadFailureMessage =
+    loadErrorCode === "unauthorized"
+      ? "Tu sesión no es válida o venció. Volvé a iniciar sesión."
+      : "No pudimos cargar tus notificaciones.";
 
   const [isOpen, setIsOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -151,7 +157,7 @@ export function NotificationBell({ port }: NotificationBellProps = {}) {
                 </h2>
                 <div className="text-[13px] text-text-secondary">
                   {loadFailed
-                    ? "No pudimos cargar tus notificaciones."
+                    ? loadFailureMessage
                     : unread > 0
                       ? `${unread} sin leer`
                       : "Todo leído"}

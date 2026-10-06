@@ -88,6 +88,7 @@ export const DOCUMENT_UPLOAD_COPY = Object.freeze({
     too_large: "El archivo supera los 10 MB.",
     invalid_name: "El nombre del archivo no es válido.",
     invalid_kind: "Este tipo de documento no es válido.",
+    unauthorized: "Tu sesión no es válida o venció. Volvé a iniciar sesión.",
     unavailable: "No se pudo subir el archivo. Probá de nuevo.",
     network: "No hay conexión con el servidor. Revisá tu conexión y volvé a intentar."
   }) as Readonly<Record<UploadErrorCode, string>>

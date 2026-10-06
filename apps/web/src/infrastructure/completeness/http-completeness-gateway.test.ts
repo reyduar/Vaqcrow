@@ -99,6 +99,14 @@ describe("HttpCompletenessGateway.check", () => {
     expect(await new HttpCompletenessGateway(client).check(INPUT)).toEqual({ ok: false, code: "unavailable" });
   });
 
+  it("gives 401 and 403 their own unauthorized code, not unavailable", async () => {
+    const expired = fakeClient({ post: { status: 401, data: {} } });
+    const refused = fakeClient({ post: { status: 403, data: {} } });
+
+    expect(await new HttpCompletenessGateway(expired.client).check(INPUT)).toEqual({ ok: false, code: "unauthorized" });
+    expect(await new HttpCompletenessGateway(refused.client).check(INPUT)).toEqual({ ok: false, code: "unauthorized" });
+  });
+
   it("answers unavailable for a malformed success body", async () => {
     const { client } = fakeClient({ post: { status: 200, data: { result: { complete: "yes", findings: [] } } } });
 

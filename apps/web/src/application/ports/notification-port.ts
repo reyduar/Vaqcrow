@@ -32,9 +32,10 @@ export interface NotificationItem {
  * Sanitized failure codes. They mirror the API's `{ code }` / `{ error }`
  * envelopes plus the transport's own `network`; the UI maps each one to copy.
  */
-export type NotificationErrorCode = "unavailable" | "network" | "not_found";
+export type NotificationErrorCode = "unauthorized" | "unavailable" | "network" | "not_found";
 
 export const NOTIFICATION_ERROR_CODES: readonly NotificationErrorCode[] = Object.freeze([
+  "unauthorized",
   "unavailable",
   "network",
   "not_found"

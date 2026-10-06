@@ -34,6 +34,7 @@ export type WalletConnectionErrorCode =
   | "invalid_request"
   | "not_found"
   | "wallet_frozen"
+  | "unauthorized"
   | "unavailable"
   | "network";
 
@@ -41,6 +42,7 @@ export const WALLET_CONNECTION_ERROR_CODES: readonly WalletConnectionErrorCode[]
   "invalid_request",
   "not_found",
   "wallet_frozen",
+  "unauthorized",
   "unavailable",
   "network"
 ]);

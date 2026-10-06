@@ -93,6 +93,7 @@ export const WALLET_CONNECTION_COPY: Readonly<Record<WalletConnectionErrorCode, 
   invalid_request: "No pudimos verificar tu wallet. Probá de nuevo.",
   not_found: "La verificación expiró. Volvé a intentar la conexión.",
   wallet_frozen: "Tu cuenta ya quedó congelada: la bóveda está abierta y el destino no se puede cambiar.",
+  unauthorized: "Tu sesión no es válida o venció. Volvé a iniciar sesión.",
   unavailable: "No pudimos guardar tu wallet. Revisá tu conexión y probá de nuevo.",
   network: "No pudimos guardar tu wallet. Revisá tu conexión y probá de nuevo."
 });

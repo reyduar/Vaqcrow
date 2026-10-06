@@ -1,5 +1,6 @@
 import type {
   CompletenessCheckInput,
+  CompletenessErrorCode,
   CompletenessFinding,
   CompletenessResult
 } from "@/application/ports/completeness-check-port";
@@ -28,6 +29,18 @@ export const COMPLETENESS_COPY = Object.freeze({
   emptyNotice: "No encontramos faltantes ni anomalías.",
   errorMessage: "No pudimos revisar la información. Podés continuar igual."
 });
+
+/**
+ * Visible message for a sanitized check failure. A 401/403 is the session's
+ * problem, not the service's: the generic «no pudimos revisar» copy would send
+ * the person to retry a request that cannot succeed until they sign in again.
+ * Copy pending owner approval.
+ */
+export function completenessErrorMessage(code: CompletenessErrorCode): string {
+  return code === "unauthorized"
+    ? "Tu sesión no es válida o venció. Volvé a iniciar sesión."
+    : COMPLETENESS_COPY.errorMessage;
+}
 
 /**
  * A month's ARS value as the check expects it: `null` when nothing was

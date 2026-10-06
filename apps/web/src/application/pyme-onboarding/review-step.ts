@@ -1,4 +1,5 @@
 import type { SmeRequestFormValues } from "@/application/evidence/review-view-model";
+import type { BusinessErrorCode } from "@/application/ports/business-port";
 import { cuitDigits, parseAmount, type RegistrationValues } from "./registration-step";
 
 /**
@@ -53,6 +54,18 @@ export const REVIEW_STEP_COPY = Object.freeze({
   businessFailed: "No pudimos guardar los datos de tu empresa. No se envió la solicitud. Probá de nuevo.",
   connectFailed: "No pudimos conectar Freighter. Probá de nuevo."
 });
+
+/**
+ * Visible message for a company-persistence failure. A 401/403 is the
+ * session's fault, not the service's: the generic «no pudimos guardar» copy
+ * would send the person to retry a request that cannot succeed until they sign
+ * in again. Copy pending owner approval.
+ */
+export function businessFailureMessage(code: BusinessErrorCode): string {
+  return code === "unauthorized"
+    ? "Tu sesión no es válida o venció. Volvé a iniciar sesión."
+    : REVIEW_STEP_COPY.businessFailed;
+}
 
 /** First and last four characters, like the template's mock `GBXK…7Q2M`. */
 export function shortPublicKey(publicKey: string): string {

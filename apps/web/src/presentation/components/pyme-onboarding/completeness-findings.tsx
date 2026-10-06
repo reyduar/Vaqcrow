@@ -2,10 +2,11 @@
 
 import { useEffect, useId, useState } from "react";
 import { IoAlertCircleOutline, IoRemoveCircleOutline } from "react-icons/io5";
-import { COMPLETENESS_COPY, completenessNotice, findingLabel } from "@/application/pyme-onboarding/completeness";
+import { COMPLETENESS_COPY, completenessErrorMessage, completenessNotice, findingLabel } from "@/application/pyme-onboarding/completeness";
 import type {
   CompletenessCheckInput,
   CompletenessCheckPort,
+  CompletenessErrorCode,
   CompletenessResult
 } from "@/application/ports/completeness-check-port";
 
@@ -29,6 +30,8 @@ type CompletenessPhase = "loading" | "done" | "error";
 interface CompletenessState {
   readonly phase: CompletenessPhase;
   readonly result: CompletenessResult | null;
+  /** Sanitized code behind an `error` phase; keeps a 401 apart from a 503. */
+  readonly errorCode: CompletenessErrorCode | null;
 }
 
 export interface CompletenessFindingsProps {
@@ -39,7 +42,7 @@ export interface CompletenessFindingsProps {
 
 export function CompletenessFindings({ port, input }: CompletenessFindingsProps) {
   const titleId = useId();
-  const [state, setState] = useState<CompletenessState>({ phase: "loading", result: null });
+  const [state, setState] = useState<CompletenessState>({ phase: "loading", result: null, errorCode: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -51,13 +54,13 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
         if (cancelled) return;
         setState(
           outcome.ok
-            ? { phase: "done", result: outcome.result }
-            : { phase: "error", result: null }
+            ? { phase: "done", result: outcome.result, errorCode: null }
+            : { phase: "error", result: null, errorCode: outcome.code }
         );
       },
       () => {
         if (cancelled) return;
-        setState({ phase: "error", result: null });
+        setState({ phase: "error", result: null, errorCode: "network" });
       }
     );
     return () => {
@@ -65,7 +68,7 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
     };
   }, [port, input]);
 
-  const { phase, result } = state;
+  const { phase, result, errorCode } = state;
   const notice = result ? completenessNotice(result) : null;
 
   return (
@@ -133,7 +136,7 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
             focusable="false"
             className="mt-0.5 shrink-0 text-[18px] text-trust-caution"
           />
-          {COMPLETENESS_COPY.errorMessage}
+          {completenessErrorMessage(errorCode ?? "unavailable")}
         </p>
       ) : null}
     </section>

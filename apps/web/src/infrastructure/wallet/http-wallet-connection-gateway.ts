@@ -45,6 +45,7 @@ function codeForStatus(status: number, data: unknown): WalletConnectionErrorCode
   const envelope = codeFromEnvelope(data);
   if (envelope) return envelope;
   if (status === 400) return "invalid_request";
+  if (status === 401 || status === 403) return "unauthorized";
   if (status === 404) return "not_found";
   if (status === 409) return "wallet_frozen";
   return "unavailable";

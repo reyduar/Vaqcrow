@@ -172,6 +172,7 @@ describe("DOCUMENT_UPLOAD_COPY", () => {
   it("maps every sanitized code to its own message", () => {
     expect(documentUploadErrorMessage("unsupported_type")).toBe("Formato no admitido. Usá PDF, JPG o PNG.");
     expect(documentUploadErrorMessage("too_large")).toBe("El archivo supera los 10 MB.");
+    expect(documentUploadErrorMessage("unauthorized")).toBe("Tu sesión no es válida o venció. Volvé a iniciar sesión.");
     expect(documentUploadErrorMessage("unavailable")).toBe("No se pudo subir el archivo. Probá de nuevo.");
     expect(documentUploadErrorMessage("network")).toBe(
       "No hay conexión con el servidor. Revisá tu conexión y volvé a intentar."

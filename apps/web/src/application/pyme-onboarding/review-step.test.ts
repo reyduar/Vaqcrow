@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  businessFailureMessage,
   REVIEW_STEP_COPY,
   reviewNextSteps,
   shortPublicKey,
@@ -31,6 +32,14 @@ describe("REVIEW_STEP_COPY", () => {
 describe("shortPublicKey", () => {
   it("keeps the first and last four characters, like the template's GBXK…7Q2M", () => {
     expect(shortPublicKey("GBXK1234567890ABCD7Q2M")).toBe("GBXK…7Q2M");
+  });
+});
+
+describe("businessFailureMessage", () => {
+  it("tells an invalid session apart from a generic company-save failure", () => {
+    expect(businessFailureMessage("unauthorized")).toBe("Tu sesión no es válida o venció. Volvé a iniciar sesión.");
+    expect(businessFailureMessage("unavailable")).toBe(REVIEW_STEP_COPY.businessFailed);
+    expect(businessFailureMessage("network")).toBe(REVIEW_STEP_COPY.businessFailed);
   });
 });
 

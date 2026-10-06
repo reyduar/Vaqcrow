@@ -21,6 +21,7 @@ export type UploadErrorCode =
   | "too_large"
   | "invalid_name"
   | "invalid_kind"
+  | "unauthorized"
   | "unavailable"
   | "network";
 
@@ -29,6 +30,7 @@ export const UPLOAD_ERROR_CODES: readonly UploadErrorCode[] = Object.freeze([
   "too_large",
   "invalid_name",
   "invalid_kind",
+  "unauthorized",
   "unavailable",
   "network"
 ]);

@@ -9,6 +9,7 @@ import { DEMO_VALUES, SALES_MONTHS } from "@/application/pyme-onboarding/registr
 import {
   COMPLETENESS_COPY,
   buildCompletenessInput,
+  completenessErrorMessage,
   completenessNotice,
   findingLabel,
   salesValueArs
@@ -55,6 +56,15 @@ describe("COMPLETENESS_COPY", () => {
     expect(COMPLETENESS_COPY.title).toBe("Información completa");
     expect(COMPLETENESS_COPY.errorMessage).toBe("No pudimos revisar la información. Podés continuar igual.");
     expect(Object.keys(COMPLETENESS_COPY)).not.toContain("simulado");
+  });
+
+  it("gives an invalid session its own honest message, distinct from an unavailable service", () => {
+    expect(completenessErrorMessage("unauthorized")).toBe(
+      "Tu sesión no es válida o venció. Volvé a iniciar sesión."
+    );
+    expect(completenessErrorMessage("unavailable")).toBe(COMPLETENESS_COPY.errorMessage);
+    expect(completenessErrorMessage("network")).toBe(COMPLETENESS_COPY.errorMessage);
+    expect(completenessErrorMessage("invalid_request")).toBe(COMPLETENESS_COPY.errorMessage);
   });
 });
 

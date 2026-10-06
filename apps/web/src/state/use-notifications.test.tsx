@@ -131,6 +131,21 @@ describe("useNotifications", () => {
     await waitFor(() => expect(result.current.loadFailed).toBe(true));
     expect(result.current.notifications).toEqual([]);
     expect(result.current.unread).toBe(0);
+    expect(result.current.loadErrorCode).toBe("network");
+  });
+
+  it("keeps an invalid session apart from an unavailable service", async () => {
+    const port: NotificationPort = {
+      list: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" }),
+      countUnread: vi.fn().mockResolvedValue({ ok: true, unread: 0 }),
+      markRead: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" }),
+      markAllRead: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" })
+    };
+
+    const { result } = renderHook(() => useNotifications(port), { wrapper });
+
+    await waitFor(() => expect(result.current.loadFailed).toBe(true));
+    expect(result.current.loadErrorCode).toBe("unauthorized");
   });
 
   it("keeps the list and derives the unread count when only the count fails", async () => {

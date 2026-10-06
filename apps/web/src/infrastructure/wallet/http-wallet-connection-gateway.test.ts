@@ -72,6 +72,20 @@ describe("HttpWalletConnectionGateway.requestChallenge", () => {
     expect(await new HttpWalletConnectionGateway(client).requestChallenge()).toEqual({ ok: false, code: "unavailable" });
   });
 
+  it("gives 401 and 403 their own unauthorized code", async () => {
+    const expired = fakeClient({ post: { status: 401, data: {} } });
+    const refused = fakeClient({ post: { status: 403, data: {} } });
+
+    expect(await new HttpWalletConnectionGateway(expired.client).requestChallenge()).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+    expect(await new HttpWalletConnectionGateway(refused.client).requestChallenge()).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+  });
+
   it("answers network when the transport throws", async () => {
     const { client } = fakeClient({ post: new Error("socket hang up") });
 

@@ -20,6 +20,7 @@ import {
   walletConnectFailureCopy
 } from "@/application/pyme-onboarding/wallet-connection";
 import {
+  businessFailureMessage,
   REVIEW_STEP_COPY,
   reviewNextSteps,
   smeReferenceFor,
@@ -142,7 +143,7 @@ export function ReviewStep({ wallet, gateway, business, connection, values, onEd
     const company = await ensureMyBusiness(business, values);
     if (!company.ok) {
       setSendPhase("idle");
-      setSendError(REVIEW_STEP_COPY.businessFailed);
+      setSendError(businessFailureMessage(company.code));
       return;
     }
     const result = await submitSmeRequest(gateway, toSmeRequestValues(values), smeReferenceFor(values));

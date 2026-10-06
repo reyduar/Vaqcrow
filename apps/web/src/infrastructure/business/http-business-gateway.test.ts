@@ -101,6 +101,20 @@ describe("HttpBusinessGateway.createBusiness", () => {
     expect(await new HttpBusinessGateway(client).createBusiness(DRAFT)).toEqual({ ok: false, code: "unavailable" });
   });
 
+  it("gives 401 and 403 their own unauthorized code when creating", async () => {
+    const expired = fakeClient({ post: { status: 401, data: {} } });
+    const refused = fakeClient({ post: { status: 403, data: {} } });
+
+    expect(await new HttpBusinessGateway(expired.client).createBusiness(DRAFT)).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+    expect(await new HttpBusinessGateway(refused.client).createBusiness(DRAFT)).toEqual({
+      ok: false,
+      code: "unauthorized"
+    });
+  });
+
   it("answers unavailable for a malformed success body", async () => {
     const { client } = fakeClient({ post: { status: 201, data: { business: { businessId: "x" } } } });
 
@@ -144,6 +158,14 @@ describe("HttpBusinessGateway.getMyBusiness", () => {
     const { client } = fakeClient({ get: { status: 503, data: { code: "unavailable" } } });
 
     expect(await new HttpBusinessGateway(client).getMyBusiness()).toEqual({ ok: false, code: "unavailable" });
+  });
+
+  it("gives 401 and 403 their own unauthorized code when reading", async () => {
+    const expired = fakeClient({ get: { status: 401, data: {} } });
+    const refused = fakeClient({ get: { status: 403, data: {} } });
+
+    expect(await new HttpBusinessGateway(expired.client).getMyBusiness()).toEqual({ ok: false, code: "unauthorized" });
+    expect(await new HttpBusinessGateway(refused.client).getMyBusiness()).toEqual({ ok: false, code: "unauthorized" });
   });
 
   it("answers unavailable for a malformed success body", async () => {

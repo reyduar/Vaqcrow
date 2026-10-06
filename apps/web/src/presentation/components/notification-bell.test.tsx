@@ -188,4 +188,22 @@ describe("NotificationBell", () => {
     expect(within(dialog).queryByText("Todo leído")).not.toBeInTheDocument();
     expect(within(dialog).queryByText(/\d+ sin leer/)).not.toBeInTheDocument();
   });
+
+  it("tells an invalid session apart from a generic load failure", async () => {
+    const port: NotificationPort = {
+      list: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" }),
+      countUnread: vi.fn().mockResolvedValue({ ok: true, unread: 0 }),
+      markRead: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" }),
+      markAllRead: vi.fn().mockResolvedValue({ ok: false, code: "unauthorized" })
+    };
+
+    renderIsolated(port);
+
+    const bell = await screen.findByRole("button", { name: "Notificaciones no disponibles" });
+    fireEvent.click(bell);
+    const dialog = screen.getByRole("dialog", { name: "Notificaciones" });
+    expect(
+      within(dialog).getByText("Tu sesión no es válida o venció. Volvé a iniciar sesión.")
+    ).toBeInTheDocument();
+  });
 });
