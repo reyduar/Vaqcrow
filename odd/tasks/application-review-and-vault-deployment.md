@@ -130,7 +130,7 @@ T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribut
 - **Paso de operador para Testnet (documentado, NO ejecutado).** El hash del wasm de la bóveda cambió, así que una fábrica ya desplegada seguiría creando bóvedas con el wasm viejo, sin tope. La fábrica guarda `VaultWasm` en el constructor y no tiene setter: para hacer efectivo el tope hay que **redesplegar la fábrica apuntando al wasm nuevo** (`966f5b89…`) y **re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID`**, con el mismo procedimiento que tras un reset de Testnet (`contracts/README.md`). Las bóvedas ya desplegadas conservan su wasm y no adquieren el tope. No se ejecutó ningún despliegue, redeploy ni publicación en este work unit.
 - **Límite explícito.** T3b es sólo el guardrail on-chain autoritativo; la integración con el flujo de aprobación (`T1`/`T2`), las notificaciones (`T4`) y la consola admin (#386) siguen pendientes.
 
-- **Work-unit commit.** pendiente (lo realiza el padre).
+- **Work-unit commit.** `53621e0 feat(contracts): cap investor contribution at a tenth of the goal`.
 
 ## Próximo paso
 
