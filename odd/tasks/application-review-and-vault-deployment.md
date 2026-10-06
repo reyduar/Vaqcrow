@@ -33,7 +33,7 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 |---|---|---|
 | D1 | ¿El admin puede inspeccionar PDFs, imágenes y fotos o sólo ver sus nombres? | **Resuelta (2026-10-06):** autorizado visor/descarga segura, con autorización admin, Storage privado y sin URLs públicas. |
 | D2 | ¿Cómo se comunica «Pedir», «Requiere cambios» y «Rechazada» a la PyME? | **Resuelta (2026-10-06):** cada resultado se envía al correo registrado de la PyME y como notificación en la campana del header. Al abrirla, la app lleva al paso «Revisión humana» del wizard, donde se muestra el detalle accionable del pedido, los cambios requeridos o el rechazo. Se reutiliza #382 para email/campana; no se inventa una ruta nueva. |
-| D3 | ¿Qué estados y acciones expone el review durante/después del deployment? | Pendiente. |
+| D3 | ¿Qué estados y acciones expone el review durante/después del deployment? | **Resuelta (2026-10-06):** `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada`. Un fallo muestra `Despliegue fallido`, permite **Reintentar** y ofrece **Ver detalle** en modo solo lectura. La publicación ocurre sólo después de la confirmación de Testnet. |
 | D4 | ¿Qué controla «Límite aprobado» y quién define deadline/mínimo de contribución? | Pendiente. |
 
 ## Tareas
@@ -41,7 +41,7 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 - [ ] **T0 — Resolver preguntas abiertas.** Completar D2–D4 antes de implementar los flujos afectados.
 - [ ] **T1 — Revisión admin.** Contexto de solicitud, viewer privado, KYC/KYB por documento, assessment consultivo y decisión con validación/confirmación.
 - [ ] **T2 — Persistencia y auditoría.** Decisión atribuida al admin autenticado, transiciones condicionales e idempotencia.
-- [ ] **T3 — Aprobación y vault.** Vincular la public key persistida, llamar al engine existente de `POST /campaigns`, evitar redeploy en replay y publicar sólo tras confirmación.
+- [ ] **T3 — Aprobación y vault.** Vincular la public key persistida, llamar al engine existente de `POST /campaigns`, evitar redeploy en replay y publicar sólo tras confirmación. Exponer `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada`, más `Despliegue fallido`, **Reintentar** y **Ver detalle** solo lectura.
 - [ ] **T4 — Notificaciones y fallos.** Implementar email al correo registrado y notificación en la campana para pedido, cambios requeridos, rechazo y aprobación; al abrirla, navegar al paso «Revisión humana» con el detalle correspondiente. Resolver además los estados pending/failure sin sobreafirmar resultados.
 - [ ] **T5 — Verificación y evidencia.** Suites deterministas, boundaries, evidencia en español y cierre manual de #411/#412/#413/#410.
 
