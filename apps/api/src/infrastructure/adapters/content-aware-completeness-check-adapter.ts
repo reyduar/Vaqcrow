@@ -51,7 +51,22 @@ export interface ContentAwareCompletenessCheckDependencies {
   readonly storage: StoragePort;
   readonly rasterizer: PdfRasterizerPort;
   readonly vision: VisionProviderPort;
+  /** Injectable clock (default `Date.now`); tests pin the deadline without real time. */
+  readonly now?: () => number;
+  /** Overall budget for the content pass (default `DEFAULT_DEADLINE_MS`). */
+  readonly deadlineMs?: number;
 }
+
+/**
+ * R3-1: the content pass is advisory and bounded by the request budget. It judges
+ * at most this many rows and stops starting new documents once the deadline has
+ * passed, so a large or slow owner document set can never keep the route waiting
+ * past the client timeout. Everything left unjudged is declared, never a silent
+ * pass.
+ */
+const MAX_DOCUMENTS_CHECKED = 8;
+/** Sits below the web client's 10 s request timeout so the route answers first. */
+const DEFAULT_DEADLINE_MS = 8_000;
 
 /**
  * The persisted `kind` and the vision vocabulary are the same four slots today;
@@ -170,7 +185,31 @@ export function createContentAwareCompletenessCheckAdapter(
         return degradeListRead();
       }
 
-      for (const record of listed.value) {
+      // R3-1: the clock is resolved once, after the list read, so the deadline
+      // covers only the content pass. The loop stays sequential on purpose
+      // (concurrency is deliberately deferred): the bound is a cap plus a
+      // deadline, not parallelism.
+      const now = dependencies.now ?? Date.now;
+      const deadlineAt = now() + (dependencies.deadlineMs ?? DEFAULT_DEADLINE_MS);
+
+      const candidates = listed.value.slice(0, MAX_DOCUMENTS_CHECKED);
+      if (listed.value.length > MAX_DOCUMENTS_CHECKED) {
+        // Rows past the cap are not judged: declare them once with the approved
+        // list copy instead of a silent pass.
+        findings.push({
+          code: "content_unverified",
+          severity: "warning",
+          detail: UNVERIFIED_LIST_COPY
+        });
+      }
+
+      for (const record of candidates) {
+        if (now() >= deadlineAt) {
+          // Out of budget: declare this document unverified without touching any
+          // port. The check stays advisory and every declared finding is kept.
+          findings.push(unverifiedDocumentFinding(record.kind));
+          continue;
+        }
         try {
           findings.push(...(await checkDocument(dependencies, record, command.ownerUserId)));
         } catch {

@@ -497,3 +497,72 @@ describe("rejected ports (R3-3): a rejected promise never rejects the check", ()
     ]);
   });
 });
+
+describe("bounded content pass (R3-1): a row cap and an overall deadline", () => {
+  function rows(count: number): PymeDocumentRecord[] {
+    return Array.from({ length: count }, (_, index) =>
+      record({ documentId: `doc-${index}`, objectPath: `${OWNER}/cuit/doc-${index}.pdf` })
+    );
+  }
+
+  function downloadsFor(records: readonly PymeDocumentRecord[]): Readonly<Record<string, StorageResult<DownloadedObject>>> {
+    return Object.fromEntries(
+      records.map((row) => [
+        row.objectPath,
+        { ok: true as const, value: { bytes: PDF_BYTES, contentType: "application/pdf" } }
+      ])
+    );
+  }
+
+  it("caps how many documents one pass judges", async () => {
+    const records = rows(9);
+    const h = harness({ rows: { ok: true, value: records }, downloads: downloadsFor(records), outcome: () => relevant() });
+
+    const result = await h.checker.check(command());
+
+    expect(h.vision.assessRelevance).toHaveBeenCalledTimes(8);
+    expect(result.findings).toEqual([
+      { code: "content_unverified", severity: "warning", detail: expect.any(String) }
+    ]);
+  });
+
+  it("judges no document once the overall deadline has passed, and keeps the declared findings", async () => {
+    const records = rows(2);
+    const input: CompletenessCheckInput = {
+      ...COMPLETE_INPUT,
+      documents: [
+        { kind: "cuit", present: true },
+        { kind: "articles-of-incorporation", present: true }
+      ]
+    };
+    const h = harness({ rows: { ok: true, value: records }, downloads: downloadsFor(records), outcome: () => relevant() });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: h.documents.port,
+      storage: h.storage.port,
+      rasterizer: h.rasterizer.port,
+      vision: h.vision.port,
+      deadlineMs: 0
+    });
+
+    const result = await checker.check(command(input));
+
+    expect(h.vision.assessRelevance).not.toHaveBeenCalled();
+    expect(h.storage.downloadObject).not.toHaveBeenCalled();
+    expect(result.complete).toBe(false);
+    expect(result.findings).toEqual([
+      { code: "missing_document", severity: "gap", detail: expect.stringContaining("Declaraciones de ventas") },
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") },
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") }
+    ]);
+  });
+
+  it("still judges every document while the deadline has not passed", async () => {
+    const records = rows(3);
+    const h = harness({ rows: { ok: true, value: records }, downloads: downloadsFor(records), outcome: () => relevant() });
+
+    const result = await h.checker.check(command());
+
+    expect(h.vision.assessRelevance).toHaveBeenCalledTimes(3);
+    expect(result).toEqual({ complete: true, findings: [] });
+  });
+});
