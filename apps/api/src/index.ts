@@ -189,6 +189,13 @@ const completenessCheck = createContentAwareCompletenessCheckAdapter({
 const app = buildApp({
   auth,
   applicationReviewRepository,
+  // A recorded changes-requested/rejected decision notifies the application's
+  // owner (#410/T4a): the SME request resolves the owner, the publisher delivers
+  // the in-app row and email addressed to that user alone.
+  humanDecisionNotifications: {
+    smeRequests: smeRequestRepository,
+    notifications: notificationPublisher
+  },
   adminReviewContext: createAdminReviewContextRouteDependencies({
     applicationReviews: applicationReviewRepository,
     smeRequests: smeRequestRepository,

@@ -85,27 +85,70 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
         }
       }
 
-      if (userIds.length === 0) {
-        return { ok: true, recipients: [] };
-      }
-
-      const emails = await this.listEmailsById();
-      if (emails === undefined) {
-        return { ok: false, code: "unavailable" };
-      }
-
-      const recipients: NotificationRecipient[] = [];
-      for (const userId of userIds) {
-        const email = emails.get(userId);
-        if (email !== undefined) {
-          recipients.push({ userId, email });
-        }
-      }
-      return { ok: true, recipients };
+      return await this.joinRecipients(userIds);
     } catch (cause) {
       this.logUnexpected("resolveRecipientsByRole", cause);
       return { ok: false, code: "unavailable" };
     }
+  }
+
+  async resolveRecipientsByUserIds(userIds: readonly string[]): Promise<ResolveRecipientsResult> {
+    try {
+      // A genuinely empty address list is nobody to notify, not a lookup
+      // failure, and it must not degrade into a role-wide broadcast.
+      if (userIds.length === 0) {
+        return { ok: true, recipients: [] };
+      }
+
+      const { data, error } = await this.client
+        .from(PROFILE_TABLE)
+        .select("user_id")
+        .in("user_id", [...userIds])
+        .eq("status", "active");
+
+      if (error) {
+        this.logProviderError("resolveRecipientsByUserIds", error);
+        return { ok: false, code: "unavailable" };
+      }
+
+      const rows = Array.isArray(data) ? (data as ProfileRow[]) : [];
+      const activeIds: string[] = [];
+      for (const row of rows) {
+        if (typeof row.user_id === "string") {
+          activeIds.push(row.user_id);
+        }
+      }
+
+      return await this.joinRecipients(activeIds);
+    } catch (cause) {
+      this.logUnexpected("resolveRecipientsByUserIds", cause);
+      return { ok: false, code: "unavailable" };
+    }
+  }
+
+  /**
+   * Joins active profile ids to their Auth emails. An empty id set is `ok` with
+   * no recipients (nobody to notify); a directory read that cannot be proven
+   * complete is `unavailable`, never a silently partial audience.
+   */
+  private async joinRecipients(userIds: readonly string[]): Promise<ResolveRecipientsResult> {
+    if (userIds.length === 0) {
+      return { ok: true, recipients: [] };
+    }
+
+    const emails = await this.listEmailsById();
+    if (emails === undefined) {
+      return { ok: false, code: "unavailable" };
+    }
+
+    const recipients: NotificationRecipient[] = [];
+    for (const userId of userIds) {
+      const email = emails.get(userId);
+      if (email !== undefined) {
+        recipients.push({ userId, email });
+      }
+    }
+    return { ok: true, recipients };
   }
 
   async insertIfAbsent(notification: NewNotification): Promise<InsertIfAbsentResult> {
@@ -302,7 +345,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
         });
 
         if (error) {
-          this.logProviderError("resolveRecipientsByRole(listUsers)", error);
+          this.logProviderError("listEmailsById(listUsers)", error);
           return undefined;
         }
 
@@ -319,7 +362,7 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
         }
       }
     } catch (cause) {
-      this.logUnexpected("resolveRecipientsByRole(listUsers)", cause);
+      this.logUnexpected("listEmailsById(listUsers)", cause);
       return undefined;
     }
 

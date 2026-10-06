@@ -72,6 +72,14 @@ const CATALOGUE: readonly CatalogueCase[] = [
     ctaHref: "/company"
   },
   {
+    payload: { type: "pyme.rejected" },
+    audience: "PYME",
+    title: "Tu solicitud fue rechazada",
+    body: "El equipo revisó tu solicitud y no fue aprobada. Podés ver el detalle en tu campaña.",
+    ctaLabel: "Ver mi campaña",
+    ctaHref: "/company"
+  },
+  {
     payload: { type: "pyme.approved_published" },
     audience: "PYME",
     title: "Tu campaña fue aprobada y publicada",
@@ -139,8 +147,8 @@ const CATALOGUE: readonly CatalogueCase[] = [
 
 describe("notification catalogue completeness", () => {
   it("covers every declared event type exactly once", () => {
-    expect(CATALOGUE).toHaveLength(13);
-    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(13);
+    expect(CATALOGUE).toHaveLength(14);
+    expect(NOTIFICATION_EVENT_TYPES).toHaveLength(14);
     expect(new Set(CATALOGUE.map((entry) => entry.payload.type))).toEqual(
       new Set(NOTIFICATION_EVENT_TYPES)
     );

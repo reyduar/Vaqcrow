@@ -110,6 +110,10 @@ function fakeClient(handler: Handler, listUsers?: ListUsersHandler) {
         op.filters.push({ column, value });
         return builder;
       },
+      in(column: string, values: readonly unknown[]) {
+        op.filters.push({ column, value: values });
+        return builder;
+      },
       order(column: string, options: unknown) {
         op.order = { column, options };
         return builder;
@@ -270,6 +274,87 @@ describe("SupabaseNotificationRepository.resolveRecipientsByRole", () => {
       ok: true,
       recipients: [{ userId: ADMIN, email: "admin@example.test" }]
     });
+  });
+});
+
+describe("SupabaseNotificationRepository.resolveRecipientsByUserIds", () => {
+  it("resolves the active profiles among the addressed ids and joins their Auth emails", async () => {
+    const { client, ops, userCalls } = fakeClient(
+      (op) => (op.table === "profile" ? { data: [{ user_id: ADMIN }, { user_id: PYME }], error: null } : { data: null, error: null }),
+      () => ({
+        data: {
+          users: [
+            { id: ADMIN, email: "admin@example.test" },
+            { id: PYME, email: "pyme@example.test" },
+            { id: "other", email: "other@example.test" }
+          ]
+        },
+        error: null
+      })
+    );
+
+    const result = await new SupabaseNotificationRepository(client).resolveRecipientsByUserIds([ADMIN, PYME]);
+
+    expect(result).toEqual({
+      ok: true,
+      recipients: [
+        { userId: ADMIN, email: "admin@example.test" },
+        { userId: PYME, email: "pyme@example.test" }
+      ]
+    });
+    expect(ops[0]?.table).toBe("profile");
+    expect(ops[0]?.columns).toBe("user_id");
+    expect(ops[0]?.filters).toEqual([
+      { column: "user_id", value: [ADMIN, PYME] },
+      { column: "status", value: "active" }
+    ]);
+    expect(userCalls).toEqual([{ page: 1, perPage: 200 }]);
+  });
+
+  it("returns an empty ok result without querying when addressed ids are empty", async () => {
+    const { client, ops, userCalls } = fakeClient(() => ({ data: [], error: null }));
+
+    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByUserIds([])).toEqual({
+      ok: true,
+      recipients: []
+    });
+    // A genuine nobody-to-notify is not a lookup failure, and no query is wasted.
+    expect(ops).toHaveLength(0);
+    expect(userCalls).toEqual([]);
+  });
+
+  it("drops an addressed profile without an email or that is not active", async () => {
+    const { client } = fakeClient(
+      () => ({ data: [{ user_id: ADMIN }], error: null }),
+      () => ({ data: { users: [{ id: ADMIN, email: "admin@example.test" }] }, error: null })
+    );
+
+    // The query already narrows to active profiles; the join drops a profile
+    // whose Auth user has no address rather than returning a half-built recipient.
+    expect(await new SupabaseNotificationRepository(client).resolveRecipientsByUserIds([ADMIN, PYME])).toEqual({
+      ok: true,
+      recipients: [{ userId: ADMIN, email: "admin@example.test" }]
+    });
+  });
+
+  it("reports unavailable and sanitizes a profile error, a listing error or a throw", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const scenario of ["profile-error", "list-error", "throw"] as const) {
+      const { client } = fakeClient(
+        (op) => {
+          if (scenario === "throw") {
+            throw new Error("network SECRET");
+          }
+          return op.table === "profile" ? { data: null, error: pgError("42501") } : { data: [], error: null };
+        },
+        () => (scenario === "list-error" ? { data: { users: [] }, error: pgError("503") } : { data: { users: [] }, error: null })
+      );
+
+      const result = await new SupabaseNotificationRepository(client).resolveRecipientsByUserIds([ADMIN]);
+
+      expect(result).toEqual({ ok: false, code: "unavailable" });
+      noSecret(result);
+    }
   });
 });
 

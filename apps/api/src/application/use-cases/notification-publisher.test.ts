@@ -38,12 +38,28 @@ const INVESTOR_CONTRIBUTION_EVENT: NotificationEvent = {
   smeName: "Panadería Horizonte SRL"
 };
 
+/**
+ * The addressed form: a PyME decision targets the application's owner by id, so
+ * a `pyme.*` event must not fan out to every PyME through the role directory.
+ */
+const PYME_REJECTED_ADDRESSED_EVENT: NotificationEvent = {
+  eventKey: "application:22222222-2222-4222-8222-222222222222:decision:44444444-4444-4444-8444-444444444444:rejected",
+  type: "pyme.rejected",
+  recipientUserIds: ["00000000-0000-4000-8000-0000000000a1"]
+};
+
 class InMemoryNotificationRepository implements NotificationRepositoryPort {
   recipients: readonly NotificationRecipient[] = [];
+  /** Recipients an addressed event resolves to; independent of the role directory. */
+  addressedRecipients: readonly NotificationRecipient[] = [];
   /** Every role the publisher asked the directory for, in order. */
   readonly resolvedRoles: Role[] = [];
+  /** Every addressed id list the publisher asked the directory for, in order. */
+  readonly resolvedUserIds: Array<readonly string[]> = [];
   throwOnResolve = false;
   resolveFailure = false;
+  throwOnResolveByUserIds = false;
+  resolveByUserIdsFailure = false;
   insertFailure = false;
   throwOnInsert = false;
   throwOnMarkEmailSent = false;
@@ -63,6 +79,19 @@ class InMemoryNotificationRepository implements NotificationRepositoryPort {
       return { ok: false, code: "unavailable" };
     }
     return { ok: true, recipients: this.recipients };
+  }
+
+  async resolveRecipientsByUserIds(userIds: readonly string[]): Promise<
+    { readonly ok: true; readonly recipients: readonly NotificationRecipient[] } | { readonly ok: false; readonly code: "unavailable" }
+  > {
+    this.resolvedUserIds.push([...userIds]);
+    if (this.throwOnResolveByUserIds) {
+      throw new Error("directory unavailable");
+    }
+    if (this.resolveByUserIdsFailure) {
+      return { ok: false, code: "unavailable" };
+    }
+    return { ok: true, recipients: this.addressedRecipients };
   }
 
   async insertIfAbsent(
@@ -328,5 +357,75 @@ describe("NotificationPublisher.publish audience resolution", () => {
     await publisher.publish(NEW_APPLICATION_EVENT);
 
     expect(repository.resolvedRoles).toEqual(["INVERSOR", "PYME", "ADMIN"]);
+  });
+});
+
+describe("NotificationPublisher.publish addressed delivery", () => {
+  const OWNER = "00000000-0000-4000-8000-0000000000a1";
+
+  it("resolves exactly the addressed users and never the role directory", async () => {
+    const { repository, email, publisher } = setup();
+    repository.addressedRecipients = [{ userId: OWNER, email: "owner@example.test" }];
+    // A role lookup would fan out to these if the publisher ignored the address.
+    repository.recipients = [
+      { userId: ADMIN, email: "admin@example.test" },
+      { userId: ADMIN_TWO, email: "admin2@example.test" }
+    ];
+
+    const summary = await publisher.publish(PYME_REJECTED_ADDRESSED_EVENT);
+
+    expect(repository.resolvedRoles).toEqual([]);
+    expect(repository.resolvedUserIds).toEqual([[OWNER]]);
+    expect(summary).toEqual({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
+    expect(repository.inserted).toHaveLength(1);
+    expect(repository.inserted[0]).toMatchObject({
+      recipientUserId: OWNER,
+      eventType: "pyme.rejected",
+      title: "Tu solicitud fue rechazada",
+      ctaHref: "/company"
+    });
+    expect(email.messages).toHaveLength(1);
+    expect(email.messages[0]?.to).toBe("owner@example.test");
+  });
+
+  it("delivers to nobody when the addressed users resolve to no active recipient", async () => {
+    const { repository, publisher } = setup();
+    repository.addressedRecipients = [];
+    repository.recipients = [{ userId: ADMIN, email: "admin@example.test" }];
+
+    const summary = await publisher.publish(PYME_REJECTED_ADDRESSED_EVENT);
+
+    // An unresolved owner must skip, never fall back to broadcasting to all PYME.
+    expect(repository.addressedRecipients).toEqual([]);
+    expect(repository.resolvedRoles).toEqual([]);
+    expect(summary).toEqual({ recipients: 0, inserted: 0, skipped: 0, emailsSent: 0, emailsFailed: 0, failed: false });
+  });
+
+  it("reports failed and resolves when the addressed lookup is unavailable", async () => {
+    const { repository, publisher } = setup();
+    repository.resolveByUserIdsFailure = true;
+
+    expect(await publisher.publish(PYME_REJECTED_ADDRESSED_EVENT)).toEqual({
+      recipients: 0,
+      inserted: 0,
+      skipped: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      failed: true
+    });
+  });
+
+  it("contains a throwing addressed directory and reports failed without throwing", async () => {
+    const { repository, publisher } = setup();
+    repository.throwOnResolveByUserIds = true;
+
+    expect(await publisher.publish(PYME_REJECTED_ADDRESSED_EVENT)).toEqual({
+      recipients: 0,
+      inserted: 0,
+      skipped: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      failed: true
+    });
   });
 });

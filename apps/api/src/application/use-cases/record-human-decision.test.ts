@@ -1,5 +1,7 @@
 import { parseCorrelationId, parseHumanDecisionCommand, parseHumanDecisionRecord } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { NotificationPublisherPort } from "../ports/notification-publisher-port.js";
+import type { SmeRequestRecord, SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 import type {
   ApplicationReviewRepositoryErrorCode,
   ApplicationReviewRepositoryPort,
@@ -83,6 +85,181 @@ describe("recordHumanDecision", () => {
     await expect(recordHumanDecision(repository, { command, correlationId })).resolves.toEqual({
       ok: false,
       error: { code: "unavailable" }
+    });
+  });
+});
+
+const OWNER = "00000000-0000-4000-8000-0000000000a1";
+const DECISION_APPLICATION_ID = "22222222-2222-4222-8222-222222222222";
+const SME_REQUEST: SmeRequestRecord = {
+  applicationId: DECISION_APPLICATION_ID as SmeRequestRecord["applicationId"],
+  request: {
+    smeReference: "sme:SYN-PH-0001",
+    declaredTotalArs: 15_000_000,
+    periodStart: "2026-01",
+    periodEnd: "2026-08",
+    simuladoLabel: "SIMULADO"
+  },
+  ownerUserId: OWNER
+};
+
+function outcomeCommand(outcome: "approved" | "changes_requested" | "rejected") {
+  return parseHumanDecisionCommand({
+    decisionId: "11111111-1111-4111-8111-111111111111",
+    applicationId: DECISION_APPLICATION_ID,
+    outcome,
+    actor: "reviewer@example.test",
+    reason: "Verified synthetic evidence",
+    approvedLimitArs: outcome === "approved" ? 1_000_000 : null
+  });
+}
+
+function outcomeRecord(outcome: "approved" | "changes_requested" | "rejected") {
+  const outcomeCommandValue = outcomeCommand(outcome);
+  return parseHumanDecisionRecord({
+    ...outcomeCommandValue,
+    decidedAt: "2026-09-19T12:00:00.000Z",
+    correlationId
+  });
+}
+
+function smeRequestsReturning(
+  result: { readonly ok: true; readonly value: SmeRequestRecord } | { readonly ok: false; readonly error: { readonly code: "not_found" | "unavailable" } }
+): Pick<SmeRequestRepositoryPort, "findByApplicationId"> {
+  return { findByApplicationId: vi.fn().mockResolvedValue(result) };
+}
+
+function notificationsSpy(): {
+  notifications: Pick<NotificationPublisherPort, "publish">;
+  publish: ReturnType<typeof vi.fn<NotificationPublisherPort["publish"]>>;
+} {
+  const publish = vi
+    .fn<NotificationPublisherPort["publish"]>()
+    .mockResolvedValue({ recipients: 1, inserted: 1, skipped: 0, emailsSent: 1, emailsFailed: 0, failed: false });
+  return { notifications: { publish }, publish };
+}
+
+describe("recordHumanDecision decision notifications", () => {
+  it.each(["changes_requested", "rejected"] as const)(
+    "publishes the addressed %s event to the application owner on a real apply",
+    async (outcome) => {
+      const record = outcomeRecord(outcome);
+      const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+      const smeRequests = smeRequestsReturning({ ok: true, value: SME_REQUEST });
+      const { notifications, publish } = notificationsSpy();
+
+      const result = await recordHumanDecision(
+        repository,
+        { command: outcomeCommand(outcome), correlationId },
+        { smeRequests, notifications }
+      );
+
+      expect(result).toEqual({ ok: true, value: { decision: record, applied: true } });
+      expect(smeRequests.findByApplicationId).toHaveBeenCalledWith(DECISION_APPLICATION_ID);
+      expect(publish).toHaveBeenCalledTimes(1);
+      expect(publish.mock.calls[0]?.[0]).toEqual({
+        eventKey: `application:${DECISION_APPLICATION_ID}:decision:${record.decisionId}:${outcome}`,
+        type: outcome === "changes_requested" ? "pyme.changes_requested" : "pyme.rejected",
+        recipientUserIds: [OWNER]
+      });
+    }
+  );
+
+  it("does not publish for an approved decision (its notification belongs to the deployment unit)", async () => {
+    const record = outcomeRecord("approved");
+    const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+    const smeRequests = smeRequestsReturning({ ok: true, value: SME_REQUEST });
+    const { notifications, publish } = notificationsSpy();
+
+    await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("approved"), correlationId },
+      { smeRequests, notifications }
+    );
+
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("does not publish again on a replay", async () => {
+    const record = outcomeRecord("rejected");
+    const repository = repositoryReturning({ ok: true, value: { record, applied: false } });
+    const smeRequests = smeRequestsReturning({ ok: true, value: SME_REQUEST });
+    const { notifications, publish } = notificationsSpy();
+
+    const result = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("rejected"), correlationId },
+      { smeRequests, notifications }
+    );
+
+    expect(result).toEqual({ ok: true, value: { decision: record, applied: false } });
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("skips the notification rather than broadcasting when the owner cannot be resolved", async () => {
+    const record = outcomeRecord("changes_requested");
+    const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+    const smeRequests = smeRequestsReturning({
+      ok: true,
+      value: { applicationId: SME_REQUEST.applicationId, request: SME_REQUEST.request }
+    });
+    const { notifications, publish } = notificationsSpy();
+
+    const result = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("changes_requested"), correlationId },
+      { smeRequests, notifications }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("never fails the decision when the owner lookup is unavailable or throws", async () => {
+    const record = outcomeRecord("changes_requested");
+    const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+    const { notifications, publish } = notificationsSpy();
+
+    const unavailable = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("changes_requested"), correlationId },
+      { smeRequests: smeRequestsReturning({ ok: false, error: { code: "unavailable" } }), notifications }
+    );
+    expect(unavailable).toEqual({ ok: true, value: { decision: record, applied: true } });
+
+    const throwing: Pick<SmeRequestRepositoryPort, "findByApplicationId"> = {
+      findByApplicationId: vi.fn().mockRejectedValue(new Error("lookup unavailable"))
+    };
+    const thrown = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("changes_requested"), correlationId },
+      { smeRequests: throwing, notifications }
+    );
+    expect(thrown).toEqual({ ok: true, value: { decision: record, applied: true } });
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("never fails the decision when the publisher throws", async () => {
+    const record = outcomeRecord("rejected");
+    const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+    const smeRequests = smeRequestsReturning({ ok: true, value: SME_REQUEST });
+    const publish = vi.fn<NotificationPublisherPort["publish"]>().mockRejectedValue(new Error("delivery unavailable"));
+
+    const result = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("rejected"), correlationId },
+      { smeRequests, notifications: { publish } }
+    );
+
+    expect(result).toEqual({ ok: true, value: { decision: record, applied: true } });
+  });
+
+  it("keeps the existing no-dependency call working", async () => {
+    const repository = repositoryReturning({ ok: true, value: { record, applied: true } });
+
+    await expect(recordHumanDecision(repository, { command, correlationId })).resolves.toEqual({
+      ok: true,
+      value: { decision: record, applied: true }
     });
   });
 });

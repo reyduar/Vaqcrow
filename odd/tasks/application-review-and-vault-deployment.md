@@ -132,9 +132,33 @@ T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribut
 
 - **Work-unit commit.** `53621e0 feat(contracts): cap investor contribution at a tenth of the goal`.
 
+## T4a — Notificaciones de decisión a la PyME (backend-first)
+
+Diseño verificado contra los seams actuales:
+
+- El catálogo tenía `pyme.changes_requested` y `pyme.approved_published`, pero **no** `pyme.rejected`, y `NOTIFICATION_AUDIENCE` resolvía por rol: un evento `pyme.*` se repartía a **todas** las PyME, no a la dueña de la solicitud.
+- `SmeRequestRepositoryPort.findByApplicationId` devuelve `ownerUserId`, el destinatario correcto.
+- `NotificationPublisher` ya hacía entrega best-effort con email por el mismo port.
+
+- **RED.** Los focused tests nuevos fallaron antes de implementar: **14 failed / 103 passed (5 archivos)**. Fallos observados: `renderInApp("pyme.rejected")` y `renderEmail` del mismo evento lanzaban `unhandled notification event type` desde `assertNever`; la completitud del catálogo fallaba al comparar 14 eventos contra 13; `SupabaseNotificationRepository.resolveRecipientsByUserIds is not a function`; el publisher no direccionaba (llamaba al path por rol); `recordHumanDecision` no publicaba en `changes_requested`/`rejected` aplicados (2 tests); la ruta de decisión no componía las dependencias de notificación.
+- **GREEN.**
+  - Direccionamiento explícito: `NotificationRepositoryPort.resolveRecipientsByUserIds(userIds)` resuelve **sólo** los perfiles activos entre los ids indicados y une sus emails de Auth (mismo `joinRecipients` que el path por rol; input vacío o sin match es `ok` con lista vacía, fallo del proveedor es `unavailable`). `NotificationEvent` gana `recipientUserIds?`; el publisher usa el path direccionado cuando está presente y el path por rol (sin cambios) cuando no. `admin.new_application` sigue por rol.
+  - Evento faltante: `pyme.rejected` agregado a `NOTIFICATION_EVENT_TYPES`, `NotificationPayload`, `NOTIFICATION_AUDIENCE` (PYME) y `renderInApp` (título «Tu solicitud fue rechazada», copy español y CTA «Ver mi campaña» → `/company`). Copy sigue **pendiente del owner** como el resto del catálogo.
+  - Publicación en la decisión: `recordHumanDecision` acepta un tercer colaborador opcional (`smeRequests` + `notifications`) y, sólo en un apply real, publica `pyme.changes_requested` / `pyme.rejected` direccionado al `ownerUserId` con `eventKey application:<applicationId>:decision:<decisionId>:<outcome>`. `approved` **no** publica aquí (pertenece al unit de despliegue/publicación, D3). El replay (`applied: false`) no publica; un owner no resuelto, un lookup caído o un publisher que lanza **nunca** fallan la decisión. Si el owner no se resuelve, se omite la notificación en lugar de difundir a todas las PyME.
+  - Wiring: `registerHumanDecisionRoute` acepta las dependencias opcionales; `build-app` expone `humanDecisionNotifications` y `index.ts` compone `smeRequestRepository` + `notificationPublisher`. La forma y el mapeo de estados de la respuesta de decisión no cambian.
+  - Los dobles de test que implementan `NotificationRepositoryPort` (`notification-publisher.test.ts`, `notification.route.test.ts`, `build-app.test.ts`) se actualizaron sólo para el nuevo método requerido.
+- **REFACTOR.** `joinRecipients` se extrajo para compartir la unión perfil→email entre ambos paths, y el log de `listEmailsById` dejó de nombrar una operación específica de rol. Tests enfocados siguen verdes.
+- **Verificación observada.**
+  - RED: `pnpm --filter @vaqcrow/api exec vitest run <5 archivos>` → **14 failed / 103 passed**.
+  - GREEN: `pnpm --filter @vaqcrow/api exec vitest run <7 archivos>` → **149 passed**; con `authorization.test.ts` → **421 passed (8 archivos)**.
+  - `pnpm --filter @vaqcrow/api typecheck` → **pass**.
+- **Límite explícito.** Fuera de T4a (documentado, no implementado): la notificación de **aprobación/publicación** pertenece al unit de estados de despliegue (D3), y la navegación de la campana al paso «Revisión humana» es UI (#386). No se tocaron contratos Rust, `apps/web`, `packages/contracts`, Testnet ni migraciones (remotas o locales).
+
+- **Work-unit commit.** Pendiente; lo commitea el padre.
+
 ## Próximo paso
 
-T3a (server-side) y T3b (contrato) quedaron implementados. El tope individual ya se aplica de forma atómica en `contribute`; falta el paso de operador —redesplegar/re-apuntar la fábrica— que este work unit documenta pero no ejecuta. Siguen `T4` (notificaciones/fallos) y la integración visual de la consola, que espera #386.
+T4a quedó implementado (direccionamiento por destinatario + notificaciones de cambios/rechazo). Sigue el unit de estados de despliegue/aprobación (notificación de aprobación/publicación tras la confirmación de Testnet, D3). Falta además el paso de operador —redesplegar/re-apuntar la fábrica— que T3b documenta pero no ejecuta.
 
 ## Guardrails adoptados
 

@@ -4,6 +4,7 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import type { DecisionNotificationDependencies } from "../../application/use-cases/record-human-decision.js";
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
@@ -82,6 +83,11 @@ function assertRandomUUIDAvailable(): void {
 
 export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
+  /**
+   * Optional audience for a recorded decision's owner notification. When
+   * omitted, decisions still record but do not notify.
+   */
+  readonly humanDecisionNotifications?: DecisionNotificationDependencies;
   readonly adminReviewContext?: AdminReviewContextRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
@@ -142,7 +148,11 @@ export function buildApp(dependencies: {
     registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
   }
   if (dependencies.applicationReviewRepository) {
-    registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
+    registerHumanDecisionRoute(
+      app,
+      dependencies.applicationReviewRepository,
+      dependencies.humanDecisionNotifications
+    );
     registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });
   }
   if (dependencies.fundingIntent) {

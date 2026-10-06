@@ -3,7 +3,6 @@ import {
   renderEmail,
   renderInApp
 } from "../notifications/notification-catalogue.js";
-import type { Role } from "../ports/auth-port.js";
 import type { EmailPort } from "../ports/email-port.js";
 import type {
   InsertIfAbsentResult,
@@ -42,8 +41,7 @@ export class NotificationPublisher implements NotificationPublisherPort {
   ) {}
 
   async publish(event: NotificationEvent): Promise<PublishSummary> {
-    const role = NOTIFICATION_AUDIENCE[event.type];
-    const resolved = await this.resolveRecipients(role);
+    const resolved = await this.resolveAudience(event);
     if (!resolved.ok) {
       return { recipients: 0, inserted: 0, skipped: 0, emailsSent: 0, emailsFailed: 0, failed: true };
     }
@@ -97,12 +95,17 @@ export class NotificationPublisher implements NotificationPublisherPort {
   }
 
   /**
-   * A directory failure (or a non-conforming throwing port) is contained and
-   * reported as `unavailable`; the caller decides what to do with `failed`.
+   * An explicit address list wins over the catalogue's role: an event that
+   * names its recipients must reach exactly them, and never fan out to the
+   * whole role. A directory failure (or a non-conforming throwing port) is
+   * contained and reported as `unavailable`; the caller decides what to do
+   * with `failed`.
    */
-  private async resolveRecipients(role: Role): Promise<ResolveRecipientsResult> {
+  private async resolveAudience(event: NotificationEvent): Promise<ResolveRecipientsResult> {
     try {
-      return await this.dependencies.repository.resolveRecipientsByRole(role);
+      return event.recipientUserIds !== undefined
+        ? await this.dependencies.repository.resolveRecipientsByUserIds(event.recipientUserIds)
+        : await this.dependencies.repository.resolveRecipientsByRole(NOTIFICATION_AUDIENCE[event.type]);
     } catch {
       return { ok: false, code: "unavailable" };
     }

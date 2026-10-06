@@ -26,6 +26,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   "admin.goal_reached",
   "admin.operator_invited",
   "pyme.changes_requested",
+  "pyme.rejected",
   "pyme.approved_published",
   "pyme.goal_reached",
   "pyme.declare_sales",
@@ -49,6 +50,7 @@ export type NotificationPayload =
   | { readonly type: "admin.goal_reached"; readonly smeName: string }
   | { readonly type: "admin.operator_invited" }
   | { readonly type: "pyme.changes_requested" }
+  | { readonly type: "pyme.rejected" }
   | { readonly type: "pyme.approved_published" }
   | { readonly type: "pyme.goal_reached" }
   | { readonly type: "pyme.declare_sales" }
@@ -65,6 +67,7 @@ export const NOTIFICATION_AUDIENCE: Readonly<Record<NotificationEventType, Role>
   "admin.goal_reached": "ADMIN",
   "admin.operator_invited": "ADMIN",
   "pyme.changes_requested": "PYME",
+  "pyme.rejected": "PYME",
   "pyme.approved_published": "PYME",
   "pyme.goal_reached": "PYME",
   "pyme.declare_sales": "PYME",
@@ -130,6 +133,13 @@ export function renderInApp(payload: NotificationPayload): RenderedInAppNotifica
       return {
         title: "Te pidieron cambios en tu solicitud",
         body: "Revisá las observaciones del equipo y volvé a enviarla.",
+        ctaLabel: "Ver mi campaña",
+        ctaHref: "/company"
+      };
+    case "pyme.rejected":
+      return {
+        title: "Tu solicitud fue rechazada",
+        body: "El equipo revisó tu solicitud y no fue aprobada. Podés ver el detalle en tu campaña.",
         ctaLabel: "Ver mi campaña",
         ctaHref: "/company"
       };
