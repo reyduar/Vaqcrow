@@ -78,7 +78,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **Deuda residual.** El guard evita enviar imágenes grandes al modelo, pero no las redimensiona; un downscaler WASM sigue siendo una optimización futura fuera de este cierre.
 - **RDD.** El rango completo de hardening excedió el presupuesto de contexto nativo, así que se reencuadró el candidato a `7893e68..d30f0ac`; la evaluación quedó en riesgo **medium**, `under_budget`, sin crear autoridad de review.
 
-## Estado al 2026-10-06 (fallback local; mirror Engram pendiente)
+## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
 > [!warning] Espejo Engram pendiente
 > `mem_session_summary` (×2) y `mem_save` (×1) fallaron con `could not confirm Engram session registration`. `mem_doctor` reporta el store sano (**9/10 checks OK**; `ambiguous_active_runtime_sessions` e `invalid_session_identity` en OK) y **un** error ajeno a esta escritura: el target de sync `cloud:vaqcrow` tiene **2371 mutaciones sin confirmar**, más targets colgados (`cloud:/`, `cloud:arielduarte`, `cloud:news-reader-app`, `cloud:scratch-2026-09-10-dddd53`). No se inventó ni registró un `session_id` para destrabarlo. **Este bloque es el registro local hasta que el mirror a Engram se pueda escribir.**
@@ -104,3 +104,8 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - Dobles `vi.fn(async () => result)` **no** cubren un puerto que *rechaza* (ese es R3-3).
 
 **Pendiente operativo.** Primer envío real por Resend de `admin.new_application` cuando la pila llegue a la demo.
+
+## Estado actual de la sesión T3
+
+- La escritura de Engram volvió a funcionar: `mem_save` registró la implementación de T3 y sus relaciones de compatibilidad; el espejo completo de esta bitácora se sincroniza en esta sesión.
+- Rama actual: `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, HEAD `10f6002`.
