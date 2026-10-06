@@ -135,6 +135,8 @@ $ pnpm run boundaries
 
 La verificación de T5 es **parcial**. El comando agregado `pnpm run verify` no terminó: lint pasó (**5/5**, 0 errores y 1 warning preexistente), typecheck pasó (**8/8**), la fase de API pasó (**83 archivos / 1.889 tests**) y la fase web tuvo timeouts en varias suites; la herramienta padre alcanzó su límite de **120 s** antes de build y boundaries. No se reporta ese comando como completado.
 
+**Decisión del owner (2026-10-06).** Se acepta la evidencia parcial para continuar el trabajo; no se solicita ajustar ahora el runner ni sus recursos. T5 sigue técnicamente **incompleta** para el gate agregado literal `pnpm run verify` y podrá repetirse más adelante. Esto no convierte el comando en pase ni cierra completamente la feature.
+
 Los checks independientes sí pasaron:
 
 ```text
@@ -210,7 +212,7 @@ La suite web acotada respalda contención de recursos en la ejecución sin lími
 
 ### 7.1 Estado RDD de T5
 
-La evidencia de T5 queda **parcial**: el `pnpm run verify` literal no terminó porque la ejecución web sin límite de workers encontró timeouts y la herramienta padre alcanzó 120 s. La ejecución web acotada (`--maxWorkers=4`) y todos los checks restantes pasaron, pero esto no sustituye el gate agregado. La feature no se declara completamente cerrada hasta repetir el comando literal con éxito o adoptar un ajuste de recursos del runner documentado explícitamente.
+La evidencia de T5 queda **parcial y aceptada por el owner (2026-10-06)**: el `pnpm run verify` literal no terminó porque la ejecución web sin límite de workers encontró timeouts y la herramienta padre alcanzó 120 s. La ejecución web acotada (`--maxWorkers=4`) y todos los checks restantes pasaron, pero esto no sustituye el gate agregado. No se solicita cambiar ahora la configuración ni los recursos del runner; T5 sigue técnicamente incompleta para el gate literal y la feature no se declara completamente cerrada. El comando podrá repetirse más adelante, o podrá documentarse entonces un ajuste explícito de recursos si se decide.
 
 ## 8. Mapeo de criterios de aceptación
 
@@ -238,18 +240,18 @@ Los criterios de esta brecha se citan textualmente de la bitácora (objetivo y D
 - **Revisión RDD de esta brecha corrida y reconocida** (§7): S1–S4 aprobados con autoridad quemada; S5 quedó pendiente por `under_budget`. Los 14 hallazgos son non-blocking y ninguno abre corrección.
 - **Precisión de visión no medida** (§6.3): el sistema avisa y no bloquea, que es la mitigación.
 - **Cierre manual.** La brecha de #402 no está en `main` y no la cierra GitHub sola; el cierre lo decide el owner.
-- **T5 parcial.** El gate literal `pnpm run verify` quedó incompleto por timeouts de la fase web sin límite de workers; la suite web acotada y los checks independientes pasaron, pero falta repetir el gate literal con éxito o documentar un ajuste explícito de recursos del runner.
+- **T5 parcial aceptada por el owner (2026-10-06).** El gate literal `pnpm run verify` quedó incompleto por timeouts de la fase web sin límite de workers; la suite web acotada y los checks independientes pasaron. No se solicita ajustar ahora el runner; el gate literal puede repetirse más adelante.
 - **Costo de build/deploy.** `@hyzyla/pdfium` no se bundlea (build `tsc`) y se resuelve de `node_modules`; la imagen crece ~11 MB. Si se introduce un bundler, el `.wasm` debe quedar externo.
 
 ## 10. Estado de entrega y próximos pasos
 
 - Este cambio es solo pruebas + documentación: un test de composición en `completeness-check.route.test.ts`, este archivo, la alineación de [[docs/planning/ai-completeness-check-and-submission-evidence|la evidencia de #402]], [[docs/planning/demo-run-preflight|el preflight]], [[docs/planning/DEMO|DEMO.md]], `CLAUDE.md`/`AGENTS.md` (gemelos) y la bitácora. **No hay cambio de producción.**
 - La brecha **no está en `main`**; la pila completa se mergea con el retiro del recorrido de seis pasos (#438).
-- T5 (2026-10-06) queda **incompleto/bloqueado**: los checks independientes pasaron con workers web acotados, pero no se marca el cierre total hasta que el `pnpm run verify` literal termine correctamente o quede documentado un ajuste de recursos del runner.
+- T5 (2026-10-06) queda **incompleto, con evidencia parcial aceptada por el owner**: los checks independientes pasaron con workers web acotados, pero no se marca el cierre total porque el `pnpm run verify` literal no terminó. No se solicita ajustar ahora la configuración del runner; el gate puede repetirse más adelante.
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #402 (contenido)
 > 1. **Operador:** agregar `LLM_VISION_MODEL` a `.env.cloud`, `.env.docker`, Railway y el ledger de configuración de la nube; sin eso la API no bootea (§6.1).
 > 2. ~~**Owner:** aprobar la copy del paso de contenido (§6.2).~~ **Resuelto (owner, 2026-10-06):** aprobada tal cual (§6.2).
 > 3. ~~**Owner/equipo:** decidir si corresponde una revisión RDD de esta brecha (§7).~~ **Resuelto:** la revisión se corrió en 5 slices — S1–S4 aprobados con autoridad quemada, S5 pendiente por `under_budget` (§7).
 > 4. **Equipo:** evaluar la precisión del modelo de visión con documentos reales antes de cualquier uso que no sea demo (§6.3).
-> 5. **Equipo:** repetir `pnpm run verify` literalmente con éxito o documentar explícitamente el ajuste de recursos del runner; hasta entonces T5 y el cierre completo permanecen parciales (§4.4, §7.1).
+> 5. **Equipo:** si se decide más adelante, repetir `pnpm run verify` literalmente con éxito o documentar explícitamente un ajuste de recursos del runner; hasta entonces T5 y el cierre completo permanecen parciales (§4.4, §7.1).
