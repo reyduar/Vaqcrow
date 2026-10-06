@@ -84,6 +84,7 @@ _(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo 
 - **RED.** El caso con dos fotos irrelevantes observó el defecto anterior (**1 failed; 24 passed**): se emitían dos findings byte-idénticos.
 - **GREEN.** La agregación conserva el primer finding irrelevante de una foto y descarta solo los siguientes findings `content_irrelevant` de otras fotos; findings de documentos y warnings quedan intactos.
 - **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **26 passed (26)**; incluye dos fotos irrelevantes y dos warnings de fotos para fijar que solo se deduplica el gap.
+- **RDD.** El candidato acumulado `7893e68..708fa38` quedó en riesgo **medium**, `under_budget`; no se creó autoridad de review.
 
 ## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
 
