@@ -394,3 +394,106 @@ describe("createContentAwareCompletenessCheckAdapter", () => {
     expect(h.vision.assessRelevance).not.toHaveBeenCalled();
   });
 });
+
+describe("rejected ports (R3-3): a rejected promise never rejects the check", () => {
+  const reject = (): Promise<never> => Promise.reject(new Error("port rejected"));
+
+  it("degrades the list read to one warning when listByOwner rejects", async () => {
+    const documents = documentsDouble({ ok: true, value: [] });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: { ...documents.port, listByOwner: reject },
+      storage: storageDouble({}).port,
+      rasterizer: rasterizerDouble().port,
+      vision: visionDouble(() => relevant()).port
+    });
+
+    await expect(checker.check(command())).resolves.toEqual({
+      complete: true,
+      findings: [{ code: "content_unverified", severity: "warning", detail: expect.any(String) }]
+    });
+  });
+
+  it("degrades the document when the storage download rejects", async () => {
+    const h = harness({ rows: { ok: true, value: [record()] } });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: h.documents.port,
+      storage: { ...h.storage.port, downloadObject: reject },
+      rasterizer: h.rasterizer.port,
+      vision: h.vision.port
+    });
+
+    const result = await checker.check(command());
+
+    expect(result.complete).toBe(true);
+    expect(result.findings).toEqual([
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") }
+    ]);
+  });
+
+  it("degrades the document when the rasterizer rejects", async () => {
+    const h = harness({
+      rows: { ok: true, value: [record()] },
+      downloads: {
+        [record().objectPath]: { ok: true, value: { bytes: PDF_BYTES, contentType: "application/pdf" } }
+      }
+    });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: h.documents.port,
+      storage: h.storage.port,
+      rasterizer: { ...h.rasterizer.port, rasterize: reject },
+      vision: h.vision.port
+    });
+
+    const result = await checker.check(command());
+
+    expect(result.findings).toEqual([
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") }
+    ]);
+  });
+
+  it("degrades the document when the vision provider rejects", async () => {
+    const h = harness({
+      rows: { ok: true, value: [record()] },
+      downloads: {
+        [record().objectPath]: { ok: true, value: { bytes: PDF_BYTES, contentType: "application/pdf" } }
+      }
+    });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: h.documents.port,
+      storage: h.storage.port,
+      rasterizer: h.rasterizer.port,
+      vision: { ...h.vision.port, assessRelevance: reject }
+    });
+
+    const result = await checker.check(command());
+
+    expect(result.findings).toEqual([
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") }
+    ]);
+  });
+
+  it("keeps every already-computed declared finding when a document rejects", async () => {
+    const input: CompletenessCheckInput = {
+      ...COMPLETE_INPUT,
+      documents: [
+        { kind: "cuit", present: true },
+        { kind: "articles-of-incorporation", present: true }
+      ]
+    };
+    const h = harness({ rows: { ok: true, value: [record()] } });
+    const checker = createContentAwareCompletenessCheckAdapter({
+      documents: h.documents.port,
+      storage: { ...h.storage.port, downloadObject: reject },
+      rasterizer: h.rasterizer.port,
+      vision: h.vision.port
+    });
+
+    const result = await checker.check(command(input));
+
+    expect(result.complete).toBe(false);
+    expect(result.findings).toEqual([
+      { code: "missing_document", severity: "gap", detail: expect.stringContaining("Declaraciones de ventas") },
+      { code: "content_unverified", severity: "warning", detail: expect.stringContaining("Constancia de CUIT") }
+    ]);
+  });
+});

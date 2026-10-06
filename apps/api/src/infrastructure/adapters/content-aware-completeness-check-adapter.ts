@@ -13,7 +13,8 @@ import type {
 import type { PdfRasterizerPort } from "../../application/ports/pdf-rasterizer-port.js";
 import type {
   PymeDocumentRecord,
-  PymeDocumentRepositoryPort
+  PymeDocumentRepositoryPort,
+  PymeDocumentRepositoryResult
 } from "../../application/ports/pyme-document-repository-port.js";
 import type { StoragePort } from "../../application/ports/storage-port.js";
 import { isOwnedObjectPath } from "../../application/storage/object-path.js";
@@ -70,6 +71,17 @@ const irrelevantCopy = (label: string): string =>
 const unverifiedCopy = (label: string): string => `No pudimos verificar el contenido de «${label}».`;
 const UNVERIFIED_LIST_COPY = "No pudimos verificar el contenido de tus documentos.";
 
+/**
+ * The honest warning for one document whose content could not be judged. Shared
+ * by the in-band `{ ok: false }` paths and by a port that rejects its promise:
+ * R3-3 is a resilience fix, so both failures must degrade identically.
+ */
+const unverifiedDocumentFinding = (kind: DocumentKind): CompletenessFinding => ({
+  code: "content_unverified",
+  severity: "warning",
+  detail: unverifiedCopy(COMPLETENESS_CONTENT_LABELS[kind])
+});
+
 function isGap(finding: CompletenessFinding): boolean {
   return finding.severity === "gap";
 }
@@ -84,9 +96,7 @@ async function checkDocument(
   ownerUserId: string
 ): Promise<readonly CompletenessFinding[]> {
   const label = COMPLETENESS_CONTENT_LABELS[record.kind];
-  const unverified = (): readonly CompletenessFinding[] => [
-    { code: "content_unverified", severity: "warning", detail: unverifiedCopy(label) }
-  ];
+  const unverified = (): readonly CompletenessFinding[] => [unverifiedDocumentFinding(record.kind)];
 
   // Defence in depth: the adapter runs as service_role, so the API owns this
   // check. A row whose path escaped the owner prefix is never read.
@@ -136,20 +146,40 @@ export function createContentAwareCompletenessCheckAdapter(
     async check(command: CompletenessCheckCommand): Promise<CompletenessCheckResult> {
       const findings: CompletenessFinding[] = [...checkCompleteness(command.input).findings];
 
-      const listed = await dependencies.documents.listByOwner(command.ownerUserId);
-      if (!listed.ok) {
-        // The declared rules already ran; a read failure degrades to one honest
-        // warning instead of failing the whole advisory check.
+      const degradeListRead = (): CompletenessCheckResult => {
+        // The declared rules already ran; a read failure — resolved `{ ok: false }`
+        // or a rejected promise — degrades to one honest warning instead of
+        // failing the whole advisory check.
         findings.push({
           code: "content_unverified",
           severity: "warning",
           detail: UNVERIFIED_LIST_COPY
         });
         return { complete: !findings.some(isGap), findings };
+      };
+
+      let listed: PymeDocumentRepositoryResult<readonly PymeDocumentRecord[]>;
+      try {
+        listed = await dependencies.documents.listByOwner(command.ownerUserId);
+      } catch {
+        // R3-3: a rejected port must not reject `check` (the route would turn it
+        // into a 503 and discard the declared findings already computed).
+        return degradeListRead();
+      }
+      if (!listed.ok) {
+        return degradeListRead();
       }
 
       for (const record of listed.value) {
-        findings.push(...(await checkDocument(dependencies, record, command.ownerUserId)));
+        try {
+          findings.push(...(await checkDocument(dependencies, record, command.ownerUserId)));
+        } catch {
+          // R3-3: a rejecting port degrades exactly like an in-band `{ ok: false }`
+          // inside `checkDocument` — one non-blocking warning for this document.
+          // `findings` keeps every declared finding, never a silent pass, never a
+          // failed check.
+          findings.push(unverifiedDocumentFinding(record.kind));
+        }
       }
 
       return { complete: !findings.some(isGap), findings };
