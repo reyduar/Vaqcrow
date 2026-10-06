@@ -113,6 +113,8 @@ T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribut
   - Migración local: `supabase migration up --local` aplicó `20261006120000_create_fx_rate` y `20261006130000_add_campaign_rate_snapshot`; `pnpm run test:db` → 13/14 archivos ok, con `campaign_persistence.sql` **ok**. Falla ambiental **preexistente y ajena** en `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`) por 6 objetos preexistentes en el bucket local `pyme-documents` creados 2026-10-06 01:41–02:25 UTC, antes de este work unit; la migración de `campaign` no participa de ese conteo. No se aplicó ninguna migración remota ni se tocó Testnet.
 - **Límite explícito.** El tope individual sólo se verifica best-effort en la API (UX); la aplicación atómica y autoritativa queda en `campaign-vault::contribute` (T3b).
 
+- **Work-unit commit.** `fc0673b feat(api): snapshot campaign FX rate and enforce goal cap`.
+
 ## Próximo paso
 
 T3a quedó implementado server-side. Sigue T3b: aplicar el tope individual atómico en `campaign-vault::contribute` (tests Rust y paso de redeploy), y luego `T4` (notificaciones/fallos); la integración visual de la consola espera #386.
