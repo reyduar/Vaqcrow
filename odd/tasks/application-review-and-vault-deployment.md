@@ -287,6 +287,8 @@ El job `contracts` de `.github/workflows/ci.yml` corre `contracts/scripts/campai
   - `shellcheck contracts/scripts/campaign-smoke.sh` → **sin hallazgos**.
 - **Límite explícito.** No se tocaron el contrato Rust (`campaign-vault`/`campaign-factory`), `apps/web`, `apps/api`, `packages/contracts`, migraciones locales ni remotas, ni Testnet. La primera corrida real en Testnet sería el propio job de CI.
 
+- **Work-unit commit.** `73d0833 test(contracts): respect the investor cap in the campaign smoke`.
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.
