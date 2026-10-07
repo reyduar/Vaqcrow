@@ -63,6 +63,13 @@ class FakeAdminReviewPort implements AdminReviewPort {
   async recordDecision(): Promise<RecordDecisionResult> {
     return { ok: false, code: "unavailable" };
   }
+  async getDeployment() {
+    return { ok: false, code: "not_found" } as const;
+  }
+
+  async deploy() {
+    return { ok: false, code: "unavailable" } as const;
+  }
 }
 
 function swr({ children }: { children: ReactNode }) {

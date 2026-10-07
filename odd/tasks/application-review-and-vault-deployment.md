@@ -475,6 +475,37 @@ Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook + 
 
 - **Work-unit commit.** `91999f3 feat(web): add the human decision review section`.
 
+### U6 — Panel de despliegue (web)
+
+Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook con polling + sección + composición, 2+ archivos no triviales). Sin cambios en `apps/api` ni `packages/*`.
+
+- **RED.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4 src/application/admin/deployment.test.ts src/infrastructure/admin/http-admin-review-gateway-deployment.test.ts src/state/use-admin-deployment.test.tsx src/app/admin/admin-review-deployment.test.tsx` → **4 archivos fallidos; 21 failed**: `getDeployment`/`deploy` no existían en el gateway (`is not a function`), y los módulos `application/admin/deployment` y `state/use-admin-deployment` no existían (sus tres archivos no llegaron a recolectar tests).
+- **GREEN.**
+  - Puerto `admin-review-port.ts`: `CampaignDeploymentState`, `AdminDeployment` (`campaignId`/`lastError` en `null` cuando la API los omite), `getDeployment(applicationId)` → `{ ok, deployment }` o `not_found` (404: no hay despliegue registrado) / `unavailable` / `network`; `deploy(applicationId)` → `{ ok, deployment }` o `DeployFailureCode` (`application_not_found`, `application_not_approved`, los cuatro 422, `rate_unavailable`, `unavailable`, `network`). El null object devuelve `unavailable` en ambos.
+  - Gateway HTTP (axios + Bearer, como U3/U5): `GET` y `POST /application-reviews/:applicationId/deployment` (POST con body vacío `{}`). El sobre `{ deployment }` se valida campo por campo: mismo `applicationId`, estado conocido, `attempts` entero ≥ 0, `campaignId` UUID v4 si viene, `lastError` string si viene, timestamps string; cualquier desvío → `unavailable`. POST: 404 → `application_not_found`, 409 → `application_not_approved`, 422 sólo con un código documentado (otro 422 → `unavailable`), 503 `rate_unavailable` o `unavailable`, otro no-2xx → `unavailable`; throw → `network`; id no UUID v4 → `not_found`/`application_not_found` sin request. Estados y códigos verificados contra `campaign-deployment.route.ts` y `deploy-approved-campaign.ts`.
+  - Modelo puro `application/admin/deployment.ts`: rótulos D3 textuales (`Pendiente de confirmación`, `Desplegando bóveda`, `Bóveda confirmada / PyME publicada`, `Despliegue fallido`), tono `success` **sólo** para `confirmed` (pendiente neutral, desplegando info, fallido critical) y un ícono distinto por estado; **Reintentar** sólo en `failed`; copy fijo por `lastError` (un código desconocido nunca se repite: «No quedó registrado el motivo del fallo.»); los fallos de plataforma (`rate_unavailable`, `unavailable`) dicen «no depende de la PyME»; mensajes de reintento que nunca afirman una bóveda confirmada; detalle de solo lectura (intentos, último error si falló, ID de campaña si está confirmada, «Registrado» y «Última actualización» en `dd/mm/aaaa hh:mm`, zona Argentina, con `formatAssessmentTimestamp` de U4); `deploymentPanelVisible` (aprobada o con registro) y `deploymentShouldPoll` (sólo `pending`/`deploying`).
+  - Hook `state/use-admin-deployment.ts`: SWR con clave `["admin-deployment", applicationId, reviewState]` (una aprobación registrada en la vista vuelve a leer); un 404 es la lectura `missing`, no un error; `refreshInterval` como función del último dato: sondea cada `pollIntervalMs` (por defecto 4 s, inyectable) sólo mientras `pending`/`deploying`, y se detiene con `confirmed`/`failed`/`missing`, al desmontar o con la pestaña oculta. `retry` hace un único `POST` a la vez (un `ref` frena el doble click antes del re-render), revalida el panel y llama a `reload()` del contexto.
+  - Sección `presentation/components/admin/deployment-section.tsx`: ícono, H2 «Despliegue de la bóveda», badge `TESTNET` (contexto de red, `demo-ui.md` §2), estado como `Badge` con ícono + texto dentro de `role="status"`, mensaje honesto; **Reintentar** (`isLoading` → «Reintentando…» y deshabilitado en vuelo); **Ver detalle** como botón con `aria-expanded`/`aria-controls` que muestra un `<dl>` de solo lectura; error del reintento en `role="alert"`. Sin registro (404) o con lectura fallida: texto honesto + «Actualizar» (sólo re-lee). No rinde nada si la revisión no está aprobada y no hay registro.
+  - Composición `application-review.tsx`: slot `deployment` (debajo de la decisión, columna angosta, como lo dejó U2) con puerto, `reload` y `deploymentPollIntervalMs` inyectable.
+- **REFACTOR.** Los fakes de `AdminReviewPort` de U2–U5 (`admin-review.test.tsx`, `admin-review-kyc.test.tsx`, `admin-review-ai.test.tsx`, `admin-review-decision.test.tsx`, `use-admin-review.test.tsx`) suman `getDeployment` (404) y `deploy` (`unavailable`).
+- **Verificación observada.**
+  - Foco: 4 archivos → **55 passed**.
+  - `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **181 archivos, 1801 passed**.
+  - `pnpm run typecheck` → **8/8**.
+  - `pnpm run lint` → **5/5 sin errores** (1 warning preexistente, `_request` sin usar, ajeno a U6).
+  - `pnpm run boundaries` → **sin violaciones** (925 módulos, 2995 dependencias).
+  - `pnpm --filter @vaqcrow/web build` → compila; `/admin/pymes/[applicationId]` sigue como ruta dinámica (`ƒ`).
+- **Preguntas abiertas.**
+  - **Ubicación y título.** El template no diseña el panel de D3: quedó debajo de la decisión en la columna angosta (slot de U2) con el título «Despliegue de la bóveda» y el badge `TESTNET`. A confirmar por el owner.
+  - **Aprobada sin registro (GET 404).** El disparo tras la aprobación es fire-and-forget, así que justo después de aprobar puede no existir la fila todavía. Decisión conservadora: **no** se muestra «Pendiente de confirmación» (no hay registro que lo respalde), **no** se ofrece un botón de despliegue (D3 sólo define Reintentar tras un fallo) y **no** se sondea; se muestra «Todavía no hay un despliegue registrado para esta aprobación. Puede tardar unos segundos en aparecer; actualizá para volver a consultar.» con «Actualizar» (sólo re-lee). Si el disparo falló antes de `markPending`, el admin queda sin acción: ¿se habilita un «Desplegar» explícito (el `POST` lo admite)?
+  - **Copy no diseñado.** Mensajes por estado, textos por `lastError`, mensajes de reintento, «Consultando el estado del despliegue…», «No pudimos leer el estado del despliegue…», «Ver detalle» / «Ocultar detalle» y los rótulos del detalle son propios. A confirmar.
+  - **`deploying` trabado.** La API rechaza un `POST` mientras la fila está en `deploying` (`503 unavailable`) y el panel sigue sondeando sin ofrecer Reintentar; no hay timeout de «trabado» en la UI ni en la API.
+  - **«PyME publicada».** Se usa el rótulo D3 textual en `confirmed`; la publicación en el marketplace (#414) no está implementada, sólo la notificación `pyme.approved_published`.
+  - **ID de campaña.** Se muestra el `campaignId` interno (UUID); el contract id de la bóveda y el hash de la transacción no viajan en este endpoint, así que el detalle no ofrece un enlace verificable al ledger (`demo-ui.md` §2, trazabilidad).
+- **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real, Testnet ni en un navegador real (el polling real, el tiempo del `POST` síncrono contra Testnet y el foco quedan para el stub e2e de U7).
+
+- **Work-unit commit.** _pendiente_
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.

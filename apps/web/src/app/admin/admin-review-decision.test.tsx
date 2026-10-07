@@ -88,6 +88,13 @@ class FakePort implements AdminReviewPort {
     this.decisionCalls.push(request);
     return this.decisionResult(request);
   }
+  async getDeployment() {
+    return { ok: false, code: "not_found" } as const;
+  }
+
+  async deploy() {
+    return { ok: false, code: "unavailable" } as const;
+  }
 }
 
 function swr({ children }: { children: ReactNode }) {

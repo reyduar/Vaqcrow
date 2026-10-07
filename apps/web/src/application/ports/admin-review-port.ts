@@ -121,6 +121,51 @@ export type RecordDecisionResult =
 
 export type RecordDecisionFailure = Extract<RecordDecisionResult, { ok: false }>;
 
+/** The persisted vault-deployment lifecycle of an approved application (T5b / D3). */
+export type CampaignDeploymentState = "pending" | "deploying" | "confirmed" | "failed";
+
+/**
+ * Read-only projection of `GET /application-reviews/:applicationId/deployment`.
+ * `lastError` is the API's sanitized code (never provider text) and
+ * `campaignId` only exists once the deployment is confirmed; both are `null`
+ * when the API omits them.
+ */
+export interface AdminDeployment {
+  readonly applicationId: string;
+  readonly state: CampaignDeploymentState;
+  readonly attempts: number;
+  readonly campaignId: string | null;
+  readonly lastError: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** `not_found` is a 404: no deployment has been recorded for the application yet. */
+export type GetDeploymentResult =
+  | { readonly ok: true; readonly deployment: AdminDeployment }
+  | { readonly ok: false; readonly code: "not_found" | "unavailable" | "network" };
+
+/**
+ * Refusals of `POST /application-reviews/:applicationId/deployment` (deploy or
+ * retry): 404 `application_not_found`, 409 `application_not_approved`, the
+ * 422 preconditions, the 503 `rate_unavailable`/`unavailable`, and the
+ * transport's `network`.
+ */
+export type DeployFailureCode =
+  | "application_not_found"
+  | "application_not_approved"
+  | "owner_unresolved"
+  | "terms_unavailable"
+  | "wallet_required"
+  | "goal_limit_exceeded"
+  | "rate_unavailable"
+  | "unavailable"
+  | "network";
+
+export type DeployResult =
+  | { readonly ok: true; readonly deployment: AdminDeployment }
+  | { readonly ok: false; readonly code: DeployFailureCode };
+
 export interface AdminReviewPort {
   getContext(applicationId: string): Promise<AdminReviewResult>;
   setDocumentVerdict(
@@ -130,4 +175,6 @@ export interface AdminReviewPort {
   ): Promise<SetDocumentVerdictResult>;
   downloadDocument(objectPath: string): Promise<AdminDocumentFileResult>;
   recordDecision(applicationId: string, request: RecordDecisionRequest): Promise<RecordDecisionResult>;
+  getDeployment(applicationId: string): Promise<GetDeploymentResult>;
+  deploy(applicationId: string): Promise<DeployResult>;
 }
