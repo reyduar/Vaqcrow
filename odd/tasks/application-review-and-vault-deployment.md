@@ -298,7 +298,7 @@ La rama de #410 integra la línea #382/#386 por merge `f930365` (decisión del o
 Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (un único writer), con spot-check del parent antes del commit.
 
 - [x] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
-- [ ] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
+- [x] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
 - [ ] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
 - [ ] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
 - [ ] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
@@ -362,7 +362,7 @@ Ruta: **delegado** (un writer; port + gateway + factory + null object + hook + r
   - **Panel de despliegue.** El template no ubica el panel de D3; el slot `deployment` quedó debajo de la decisión en la columna angosta, a confirmar en U6.
 - **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Las secciones 1–3 y el despliegue no tienen contenido todavía (U3–U6); no se probó contra la API real (sólo dobles).
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `06dfa53 feat(web): add the admin application review route`.
 
 ## Guardrails adoptados
 
