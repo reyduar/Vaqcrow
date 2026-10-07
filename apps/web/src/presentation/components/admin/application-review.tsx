@@ -5,6 +5,7 @@ import type { AdminReviewPort } from "@/application/ports/admin-review-port";
 import type { OpenDocumentWindow } from "@/application/ports/document-window-port";
 import { createBrowserAdminReviewPort } from "@/infrastructure/admin/create-admin-review-port";
 import { openDocumentWindow } from "@/infrastructure/admin/document-window";
+import { AssessmentSection } from "./assessment-section";
 import { KycSection } from "./kyc-section";
 import { ReviewView, type ReviewSlots } from "./review-view";
 
@@ -20,7 +21,8 @@ export interface ApplicationReviewProps {
  * The admin review of one application (#410): the U2 `ReviewView` shell with
  * its sections plugged in. One port serves both the context read and the
  * section writes, so they share the signed-in session. Section 1 (KYC/KYB) is
- * U3; sections 2–3 and the deployment panel arrive with U4–U6.
+ * U3 and section 2 (AI recommendation) U4; section 3 and the deployment panel
+ * arrive with U5–U6.
  */
 export function ApplicationReview({ applicationId, port, openWindow = openDocumentWindow }: ApplicationReviewProps) {
   const [resolvedPort] = useState<AdminReviewPort>(() => port ?? createBrowserAdminReviewPort());
@@ -29,7 +31,8 @@ export function ApplicationReview({ applicationId, port, openWindow = openDocume
     () => ({
       kyc: (context, reload) => (
         <KycSection context={context} reload={reload} port={resolvedPort} openWindow={openWindow} />
-      )
+      ),
+      assessment: (context) => <AssessmentSection context={context} />
     }),
     [resolvedPort, openWindow]
   );

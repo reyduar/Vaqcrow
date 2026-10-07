@@ -409,6 +409,36 @@ Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook + 
 
 - **Work-unit commit.** `edc160f feat(web): add the KYC/KYB review section and private viewer`.
 
+### U4 — Sección 2 · Recomendación de IA (web)
+
+Ruta: **delegado** (un writer; modelo puro + sección + composición + tests, 2+ archivos no triviales). Sin cambios en `apps/api` ni `packages/*`.
+
+- **RED.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4 src/application/admin/assessment.test.ts src/app/admin/admin-review-ai.test.tsx` → **2 archivos fallidos; 6 failed**: el módulo `application/admin/assessment` no existía (el archivo de modelo no llegó a recolectar tests) y la composición no rendía ningún H2 «2 · Recomendación de IA».
+- **GREEN.**
+  - Modelo puro `application/admin/assessment.ts` (sin React; sólo importa tipos de `@vaqcrow/contracts`): `assessmentSectionFor(read | null)` devuelve el estado vacío o la vista con chip de riesgo (`low`/`medium`/`high` → «Riesgo bajo/medio/alto», ícono propio por banda y tono neutral/caution/critical — «medio» es el `--warn` del template; bajo/alto siguen los tonos del panel legado; nunca verde, que `demo-ui.md` §2 reserva para lo confirmado en el ledger), «Confianza 0,72» (`formatAssessmentConfidence`: dos decimales con coma; 0 → «0,00», 1 → «1,00»), una lista única en el orden del template (razones → «Anomalía: …» → «Faltante: …» → «Pregunta sugerida: …») y el pie «{modelo} · dd/mm/aaaa hh:mm» (`formatAssessmentTimestamp`, zona `America/Argentina/Buenos_Aires` fija para que no dependa del reloj del visor; ilegible → «Sin dato»). Usa `metadata.model` y `recordedAt`.
+  - Sección `presentation/components/admin/assessment-section.tsx`: encabezado con ícono `analytics`, H2 «2 · Recomendación de IA» y «Consultiva · no aprueba» (12 px, secundario, como el template); chips de riesgo (texto + ícono `aria-hidden`) y confianza; `ul` con anomalías en `text-trust-caution` (el `--warn-t` del template); pie monoespaciado. Sin ningún botón: la sección no decide nada. Una evaluación con `metadata.source = "simulated"` lleva el badge `SIMULADO` (patrón de U3) contiguo al modelo en el pie.
+  - Sin assessment: se mantienen título y «Consultiva · no aprueba» y se muestra «Todavía no hay ninguna evaluación de IA registrada para esta solicitud.» (copy existente de `human-decision-workspace.tsx`), sin chips, lista ni pie.
+  - Composición `application-review.tsx`: el slot `assessment` rinde la sección (sólo lee el contexto; no usa `reload` ni el puerto).
+- **REFACTOR.** No se movieron `riskLabel`/`confidencePercent` del panel legado: el legado muestra porcentaje («72 %») y el template decimal («0,72»), así que no encajaban; el panel legado quedó intacto.
+- **Verificación observada.**
+  - Foco: `assessment.test.ts` + `src/app/admin/` → **5 archivos, 61 passed**.
+  - `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **174 archivos, 1707 passed**.
+  - `pnpm run typecheck` → **8/8**.
+  - `pnpm run lint` → **5/5 sin errores** (1 warning preexistente, `_request` sin usar, ajeno a U4).
+  - `pnpm run boundaries` → **sin violaciones** (908 módulos, 2921 dependencias).
+  - `pnpm --filter @vaqcrow/web build` → compila; `/admin/pymes/[applicationId]` sigue como ruta dinámica (`ƒ`).
+- **Preguntas abiertas.**
+  - **«corr» del pie.** El template cierra con «corr 7f3a-91c2», pero `ApplicationAssessmentRead` (lo que trae el contexto) no tiene correlation ID: sólo `assessmentId`, `metadata` y `recordedAt`. El pie omite el segmento en vez de inventarlo o rotular el `assessmentId` como correlación; `demo-ui.md` §2 (Trazabilidad) pide el correlation ID, así que exponerlo sería un cambio de API/contrato.
+  - **Modelo vs versión de prompt.** El template muestra un solo identificador («evaluador-v1»); se usó `metadata.model`. `promptVersion` no se muestra.
+  - **Fecha del pie.** Se usa `recordedAt` (persistencia); `metadata.generatedAt` (generación) queda sin mostrar. Zona horaria fija de Argentina, a confirmar.
+  - **Anomalías.** El contrato no trae texto libre como el del template («junio ≈ 1,8× la tendencia…»), sólo `type`, `evidenceRef` y `severity`. Se rinde «Anomalía: valor atípico|contradicción en {ref} · a revisar|informativa» para no ocultar datos; copy a confirmar.
+  - **Evidencia de las razones.** El template muestra sólo el texto; se agregó una línea secundaria monoespaciada «Evidencia: {refs}» porque el operador debe poder ver qué evidencia cita la IA (`demo-ui.md` §3) y el panel legado ya la mostraba. A confirmar.
+  - **Riesgo bajo/alto e íconos.** El template sólo diseña «Riesgo medio» y sin ícono; tonos de bajo/alto e íconos (información / alerta / advertencia) son del panel legado y de la regla «nunca sólo color».
+  - **`SIMULADO` y estado sin assessment.** No diseñados en esta vista; se aplicó `demo-ui.md` §2 (Simulación explícita) y la copy existente del flujo legado. Los estados «procesando / inválida / timeout / respaldo» del brief (pantalla 17) no tienen dato en el contexto (sólo assessment o `null`) y no se representan.
+- **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real ni en un navegador real. Sección 3 y despliegue siguen vacías (U5–U6).
+
+- **Work-unit commit.** _pendiente_
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.
