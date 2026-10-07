@@ -15,9 +15,41 @@ export type AdminQueueSortField = "applicationId" | "name" | "sector" | "state" 
 export type AdminQueueSortOrder = "asc" | "desc";
 
 /**
+ * The four display groups the console's KPIs and table use (#386/T1b). They
+ * fold the six raw `application_review` states into the states an operator
+ * reads, so the `state` filter and the counts are resolved server-side and stay
+ * global instead of being derived from the loaded page.
+ */
+export type AdminQueueDisplayState = "pending" | "changes" | "approved" | "rejected";
+
+export const ADMIN_QUEUE_DISPLAY_STATES: readonly AdminQueueDisplayState[] = Object.freeze([
+  "pending",
+  "changes",
+  "approved",
+  "rejected"
+]);
+
+/**
+ * Display group -> the raw `application_review` states it folds. `pending` is
+ * every state not yet decided; the other three map one to one. Kept in lockstep
+ * with `queueDisplayState` in `apps/web/src/application/admin/queue.ts`.
+ */
+export const ADMIN_QUEUE_RAW_STATES_BY_DISPLAY: Readonly<
+  Record<AdminQueueDisplayState, readonly ApplicationReviewState[]>
+> = Object.freeze({
+  pending: Object.freeze(["awaiting_assessment", "human_review"] as const),
+  changes: Object.freeze(["changes_requested"] as const),
+  approved: Object.freeze(["approved"] as const),
+  rejected: Object.freeze(["rejected"] as const)
+});
+
+/** One number per display group, global across the whole queue (never page-scoped). */
+export type AdminQueueCounts = Readonly<Record<AdminQueueDisplayState, number>>;
+
+/**
  * A validated queue query (the use case owns validation and clamping; the port
  * receives already-resolved values). `search` is optional and pre-sanitized for
- * PostgREST's filter syntax.
+ * PostgREST's filter syntax; `state` narrows the page to one display group.
  */
 export interface AdminQueueQuery {
   readonly page: number;
@@ -25,6 +57,7 @@ export interface AdminQueueQuery {
   readonly sort: AdminQueueSortField;
   readonly order: AdminQueueSortOrder;
   readonly search?: string;
+  readonly state?: AdminQueueDisplayState;
 }
 
 /** One PyME queue row: the application plus its company and review state. */
@@ -39,6 +72,8 @@ export interface AdminQueueItem {
 export interface AdminQueuePage {
   readonly items: readonly AdminQueueItem[];
   readonly total: number;
+  /** The global per-display-group counts, independent of the requested page. */
+  readonly counts: AdminQueueCounts;
 }
 
 export interface SmeRequestRepositoryError {

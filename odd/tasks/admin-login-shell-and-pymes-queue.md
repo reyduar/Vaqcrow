@@ -41,6 +41,7 @@ El issue dice que la cola lee «el engine existente `GET /sme-requests`», pero 
 ## Tareas
 
 - [x] **T1 — Endpoint de listado admin.** `GET` de solicitudes para `ADMIN` con nombre, rubro, estado y último cambio, paginación, orden y búsqueda server-side (requirió una vista SQL read-only, ver Progreso); tests y ruta registrada.
+- [x] **T1b — Filtro y conteo por estado server-side (seguimiento de T1).** `GET /sme-requests` gana `state` y `counts` globales por grupo de visualización; los KPIs y el badge dejan de derivarse de la página cargada.
 - [x] **T2 — Login y shell de `/admin`.** Login real (sólo `ADMIN`), guard de ruta (D2), shell con header `Vaqcrow Admin` + `TESTNET · DEMO`, nav PyMEs/Usuarios, tema, campana, chip (D3) y cerrar sesión.
 - [x] **T3 — Cola de PyMEs.** KPIs como filtros (`aria-pressed`), búsqueda, tabla con estados/acciones, paginación/orden y estados de carga/vacío/error (D1).
 - [x] **T4 — Pruebas.** Componentes y guard: errores de login, filtros KPI, búsqueda, paginación/orden, denegación de rol, estados.
@@ -177,12 +178,64 @@ el único archivo nuevo.
   `Sin dato` cuando falta el negocio, paginación (`Anterior`/`Página X de Y`/
   `Siguiente`), y estados de carga/vacío/error con «Reintentar».
 
-**Limitación registrada (dato, no diseño):** el contrato de T1 no ofrece filtro
-por estado ni conteo por estado, y `apps/api` está fuera de esta superficie. Por
-eso los KPIs (número y filtro) y el badge «Pendientes» del nav operan sobre la
-página cargada —para los datos de la demo (≤ tamaño de página) coincide con el
-total—. Un filtro/conteo por estado server-side es el seguimiento recomendado;
-no se expandió el backend en silencio.
+**Limitación registrada (dato, no diseño, resuelta por T1b):** el contrato de T1
+no ofrecía filtro por estado ni conteo por estado, así que los KPIs (número y
+filtro) y el badge «Pendientes» del nav operaban sobre la página cargada. T1b
+lo corrige con `state` y `counts` server-side (ver Progreso › T1b); no se
+expandió el backend en silencio en T3.
+
+### T1b — Filtro y conteo por estado server-side (seguimiento de T1)
+
+**Entregado (sin commit; el padre revisa y commitea):**
+
+- **API `GET /sme-requests` (ADMIN).** `state` opcional que acepta un grupo de
+  visualización (`pending`/`changes`/`approved`/`rejected`) y lo resuelve
+  server-side a los estados crudos de `application_review`
+  (`awaiting_assessment`/`human_review` → `pending`; `changes_requested`;
+  `approved`; `rejected`). Un `state` desconocido es `400 { code:
+  "invalid_request" }` sin tocar el repositorio. La respuesta conserva
+  `{ items, page, pageSize, total }` y agrega `counts` (un número por grupo,
+  global, nunca acotado a la página).
+- **Conteos sin migración.** PostgREST no tiene `group by`, así que el adapter
+  hace **cuatro consultas count-only `HEAD`** (una por grupo, con
+  `.in("state", estados crudos del grupo)`) en paralelo con la consulta de
+  página; no se agregó ningún objeto SQL nuevo. Un conteo faltante o fallido es
+  `unavailable` (nunca un 200 con KPIs inventados).
+- **Web.** El puerto y el gateway (`AdminQueuePage.counts`, `AdminQueueQuery.state`,
+  param `state`) siguen vendor-free; el gateway exige los cuatro conteos enteros
+  no negativos y rechaza la página si faltan. `queue.ts` conserva los selectores
+  puros y suma `queueQueryToggleFilter` (aplica/limpia el filtro server-side y
+  vuelve a la página 1). `PymesQueue` muestra `page.counts`, marca
+  `aria-pressed` según `query.state` y la tabla refleja el set filtrado; el badge
+  «Pendientes» de `AdminShell` usa `page.counts.pending`. Se retiraron
+  `filterQueueItems`/`countQueueStates` (quedaban muertos al pasar el filtro y el
+  conteo al servidor).
+
+**Decisión de mapeo registrada:** `pending` cubre sólo los dos estados que el
+camino real produce en la cola (`awaiting_assessment` recién enviado y
+`human_review`); `draft` no aparece porque `submit_sme_request` inserta
+`awaiting_assessment`. Si un `draft` llegara a existir, el conteo y el filtro
+`pending` no lo incluirían; se deja anotado como borde no alcanzable hoy.
+
+**Verificación (RED→GREEN→REFACTOR):**
+
+- RED: focused API (`list-admin-sme-requests.test.ts`,
+  `supabase-sme-request-repository.test.ts`, `sme-request.route.test.ts`) →
+  3 archivos / 6 tests fallando (`counts` ausente, `state` rechazado con 400,
+  `ADMIN_QUEUE_RAW_STATES_BY_DISPLAY` inexistente). Focused web
+  (`queue.test.ts`, `http-admin-queue-gateway.test.ts`,
+  `admin-console.test.tsx`) → 3 archivos / 10 tests fallando
+  (`queueQueryToggleFilter` no es función, `counts` no parseado, badge/KPIs
+  derivados de la página).
+- GREEN: focused API → 3 archivos / 53 tests passed; focused web → 3 archivos /
+  46 tests passed; `pnpm --filter @vaqcrow/api test` → 76 archivos / 1788 tests
+  passed; `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → 162
+  archivos / 1550 tests passed; `pnpm --filter @vaqcrow/api typecheck` y
+  `pnpm --filter @vaqcrow/web typecheck` → limpios; `pnpm run boundaries` → 797
+  módulos sin violaciones; `pnpm run lint` → 0 errores (1 warning preexistente
+  en `fetch-http-client.ts`, ajeno).
+- REFACTOR: la validación de `state` usa `ADMIN_QUEUE_DISPLAY_STATES` en lugar
+  de derivar las claves; focused y suites completas siguen en verde.
 
 **Acciones de fila:** `onOpen` es un prop opcional; #410 es la vista de
 revisión. En esta rebanada el botón se renderiza como lo diseña el template y no
@@ -205,6 +258,7 @@ navega.
 
 ## Próximo paso
 
-T5 (documento de evidencia en `docs/planning/` y cierre). Seguimiento
-recomendado: filtro/conteo por estado server-side en `GET /sme-requests` para
-que los KPIs y el badge dejen de ser de página.
+T5 (documento de evidencia en `docs/planning/` y cierre). El seguimiento
+recomendado (filtro/conteo por estado server-side) quedó entregado en T1b; queda
+sólo el cierre documental. Regla de alineación: la migración de la vista no
+cambió, así que no hay versión remota pendiente.

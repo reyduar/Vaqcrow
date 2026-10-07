@@ -1,22 +1,37 @@
 import type { ApplicationReviewState } from "@vaqcrow/contracts";
 
 /**
- * The admin PyMEs queue capability (Feature #386, Task T3). Vendor-free and
- * React-free; the HTTP adapter lives in `infrastructure/admin/`.
+ * The admin PyMEs queue capability (Feature #386, Tasks T3 + T1b). Vendor-free
+ * and React-free; the HTTP adapter lives in `infrastructure/admin/`.
  *
- * It mirrors `GET /sme-requests` (T1, ADMIN-only): a server-side-paginated and
+ * It mirrors `GET /sme-requests` (ADMIN-only): a server-side-paginated and
  * sorted page of every submitted application with its company name, sector,
  * review state and last change. A missing business arrives as the literal
  * `"Sin dato"` from the API — this boundary never invents a company or a zero.
  *
- * There is no per-state filter or per-state count in the T1 contract, so the
- * queue's KPI narrowing is a presentation concern over the loaded page (see
- * `application/admin/queue.ts`).
+ * T1b adds a server-side `state` filter and a global `counts` object, so the
+ * KPI numbers and the nav badge are no longer derived from the loaded page.
  */
 
 export type AdminQueueSortField = "applicationId" | "name" | "sector" | "state" | "updatedAt";
 
 export type AdminQueueSortOrder = "asc" | "desc";
+
+/**
+ * The four display groups the API filters and counts by. Kept in lockstep with
+ * `QueueDisplayState` in `application/admin/queue.ts`.
+ */
+export type AdminQueueDisplayState = "pending" | "changes" | "approved" | "rejected";
+
+export const ADMIN_QUEUE_DISPLAY_STATES: readonly AdminQueueDisplayState[] = Object.freeze([
+  "pending",
+  "changes",
+  "approved",
+  "rejected"
+]);
+
+/** One global number per display group, independent of the requested page. */
+export type AdminQueueCounts = Readonly<Record<AdminQueueDisplayState, number>>;
 
 export interface AdminQueueQuery {
   /** 1-based. */
@@ -26,6 +41,8 @@ export interface AdminQueueQuery {
   readonly order: AdminQueueSortOrder;
   /** Already-trimmed search term over name, id and sector; omitted when empty. */
   readonly search?: string;
+  /** Narrows the page to one display group; omitted means every group. */
+  readonly state?: AdminQueueDisplayState;
 }
 
 /** One queue row, exactly as `GET /sme-requests` returns it. */
@@ -42,6 +59,8 @@ export interface AdminQueuePage {
   readonly page: number;
   readonly pageSize: number;
   readonly total: number;
+  /** Global per-display-group counts; never derived from `items`. */
+  readonly counts: AdminQueueCounts;
 }
 
 /**

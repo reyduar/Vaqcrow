@@ -18,6 +18,9 @@ const item = {
   updatedAt: "2026-10-04T12:00:00.000Z"
 };
 
+// Global, one number per display group; never narrowed by the current page.
+const counts = { pending: 1, changes: 0, approved: 0, rejected: 0 };
+
 describe("parseAdminQueueQuery", () => {
   it("applies the documented defaults for an empty query", () => {
     expect(parseAdminQueueQuery({})).toEqual({
@@ -39,6 +42,14 @@ describe("parseAdminQueueQuery", () => {
     const parsed = parseAdminQueueQuery({ q: "   " });
 
     expect(parsed.ok && parsed.value.search).toBeUndefined();
+  });
+
+  it("parses a known display state and rejects an unknown one", () => {
+    expect(parseAdminQueueQuery({ state: "changes" })).toEqual({
+      ok: true,
+      value: { page: 1, pageSize: DEFAULT_ADMIN_QUEUE_PAGE_SIZE, sort: "updatedAt", order: "desc", state: "changes" }
+    });
+    expect(parseAdminQueueQuery({ state: "banana" })).toEqual({ ok: false, code: "invalid_request" });
   });
 
   it("strips PostgREST filter metacharacters from the search term", () => {
@@ -69,18 +80,46 @@ describe("listAdminSmeRequests", () => {
     return {
       submit: vi.fn(),
       findByApplicationId: vi.fn(),
-      listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [item], total: 1 } }),
+      listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [item], total: 1, counts } }),
       ...overrides
     };
   }
 
-  it("passes the resolved query to the repository and echoes the page metadata", async () => {
+  it("passes the resolved query to the repository and echoes the page metadata with global counts", async () => {
     const repo = repository();
 
     const result = await listAdminSmeRequests({ repository: repo }, { query: { page: "2", pageSize: "10" } });
 
     expect(repo.listAdminQueue).toHaveBeenCalledWith({ page: 2, pageSize: 10, sort: "updatedAt", order: "desc" });
-    expect(result).toEqual({ ok: true, value: { items: [item], page: 2, pageSize: 10, total: 1 } });
+    expect(result).toEqual({
+      ok: true,
+      value: { items: [item], page: 2, pageSize: 10, total: 1, counts }
+    });
+  });
+
+  it("passes a resolved display-state filter to the repository", async () => {
+    const repo = repository();
+
+    const result = await listAdminSmeRequests({ repository: repo }, { query: { state: "pending" } });
+
+    expect(repo.listAdminQueue).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: DEFAULT_ADMIN_QUEUE_PAGE_SIZE,
+      sort: "updatedAt",
+      order: "desc",
+      state: "pending"
+    });
+    expect(result.ok && result.value.counts).toEqual(counts);
+  });
+
+  it("rejects an unknown state with a sanitized invalid_request without touching the repository", async () => {
+    const repo = repository();
+
+    expect(await listAdminSmeRequests({ repository: repo }, { query: { state: "banana" } })).toEqual({
+      ok: false,
+      error: { code: "invalid_request" }
+    });
+    expect(repo.listAdminQueue).not.toHaveBeenCalled();
   });
 
   it("does not touch the repository for a malformed query", async () => {

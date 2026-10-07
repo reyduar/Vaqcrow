@@ -1,5 +1,7 @@
 import axios, { type AxiosInstance } from "axios";
+import { ADMIN_QUEUE_DISPLAY_STATES } from "@/application/ports/admin-queue-port";
 import type {
+  AdminQueueCounts,
   AdminQueueItem,
   AdminQueuePage,
   AdminQueuePort,
@@ -56,12 +58,31 @@ function parseItem(data: unknown): AdminQueueItem | undefined {
   };
 }
 
-/** The `{ items, page, pageSize, total }` envelope; any deviation is `undefined`. */
+/**
+ * The global `counts` object: one non-negative integer per display group. A
+ * missing group is `undefined` so the caller never fabricates a KPI number.
+ */
+function parseCounts(value: unknown): AdminQueueCounts | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const counts = {} as Record<string, number>;
+  for (const state of ADMIN_QUEUE_DISPLAY_STATES) {
+    const count = record[state];
+    if (!isNonNegativeInteger(count)) return undefined;
+    counts[state] = count;
+  }
+  return counts as AdminQueueCounts;
+}
+
+/** The `{ items, page, pageSize, total, counts }` envelope; any deviation is `undefined`. */
 function parsePage(data: unknown): AdminQueuePage | undefined {
   if (typeof data !== "object" || data === null) return undefined;
-  const { items, page, pageSize, total } = data as Record<string, unknown>;
+  const { items, page, pageSize, total, counts: rawCounts } = data as Record<string, unknown>;
   if (!Array.isArray(items)) return undefined;
   if (!isPositiveInteger(page) || !isPositiveInteger(pageSize) || !isNonNegativeInteger(total)) return undefined;
+
+  const counts = parseCounts(rawCounts);
+  if (counts === undefined) return undefined;
 
   const parsed: AdminQueueItem[] = [];
   for (const entry of items) {
@@ -69,7 +90,7 @@ function parsePage(data: unknown): AdminQueuePage | undefined {
     if (!item) return undefined;
     parsed.push(item);
   }
-  return { items: parsed, page, pageSize, total };
+  return { items: parsed, page, pageSize, total, counts };
 }
 
 async function headersFor(provider: AccessTokenProvider | undefined): Promise<Record<string, string> | undefined> {
@@ -89,7 +110,8 @@ function queryParams(query: AdminQueueQuery): Record<string, string | number> {
     pageSize: query.pageSize,
     sort: query.sort,
     order: query.order,
-    ...(query.search === undefined ? {} : { q: query.search })
+    ...(query.search === undefined ? {} : { q: query.search }),
+    ...(query.state === undefined ? {} : { state: query.state })
   };
 }
 

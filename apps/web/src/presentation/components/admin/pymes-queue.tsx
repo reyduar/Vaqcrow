@@ -10,15 +10,14 @@ import {
   IoSearchOutline
 } from "react-icons/io5";
 import {
-  countQueueStates,
   DEFAULT_ADMIN_QUEUE_QUERY,
-  filterQueueItems,
   formatQueueUpdatedAt,
   MISSING_BUSINESS_LABEL,
   QUEUE_KPI_FILTERS,
   QUEUE_STATE_COPY,
   queueActionFor,
   queueDisplayState,
+  queueQueryToggleFilter,
   queueSearchOrUndefined,
   queueSortToggle,
   queueTotalPages,
@@ -26,7 +25,13 @@ import {
   type QueueIcon,
   type QueueTone
 } from "@/application/admin/queue";
-import type { AdminQueueItem, AdminQueuePort, AdminQueueQuery, AdminQueueSortField } from "@/application/ports/admin-queue-port";
+import type {
+  AdminQueueCounts,
+  AdminQueueItem,
+  AdminQueuePort,
+  AdminQueueQuery,
+  AdminQueueSortField
+} from "@/application/ports/admin-queue-port";
 import { createBrowserAdminQueuePort } from "@/infrastructure/admin/create-admin-queue-port";
 import { useAdminQueue } from "@/state/use-admin-queue";
 
@@ -52,6 +57,9 @@ const TONE_SURFACE: Readonly<Record<QueueTone, string>> = {
   success: "bg-trust-success-surface text-trust-success",
   critical: "bg-trust-critical-surface text-trust-critical"
 };
+
+/** Shown while the first page is in flight or failed; never a fabricated total. */
+const EMPTY_COUNTS: AdminQueueCounts = { pending: 0, changes: 0, approved: 0, rejected: 0 };
 
 function nameOrMissing(name: string): string {
   return name.trim() === "" ? MISSING_BUSINESS_LABEL : name;
@@ -84,27 +92,26 @@ export interface PymesQueueProps {
 /**
  * `/admin/pymes`: the PyMEs queue of `Vaqcrow Admin.dc.html` (view `pymes`).
  *
- * The KPI cards filter the loaded page (`aria-pressed`; clicking again clears),
- * the search narrows server-side through `q`, and paging and sorting are
- * server-side (`page`/`pageSize`/`sort`/`order`). Loading, empty and error
- * states are honest; a missing business renders the API's "Sin dato", never an
- * invented company or a zero.
+ * The KPI cards show the API's global `counts` and select the server-side
+ * `state` filter (`aria-pressed`; clicking again clears), the search narrows
+ * server-side through `q`, and paging and sorting are server-side
+ * (`page`/`pageSize`/`sort`/`order`). Loading, empty and error states are
+ * honest; a missing business renders the API's "Sin dato", never an invented
+ * company or a zero.
  */
 export function PymesQueue({ port, onOpen }: PymesQueueProps) {
   const [resolvedPort] = useState<AdminQueuePort>(() => port ?? createBrowserAdminQueuePort());
   const [query, setQuery] = useState<AdminQueueQuery>(DEFAULT_ADMIN_QUEUE_QUERY);
   const [searchInput, setSearchInput] = useState("");
-  const [activeFilter, setActiveFilter] = useState<QueueFilterState | null>(null);
   const { page, isLoading, loadFailed, reload } = useAdminQueue(resolvedPort, query);
 
   const items = page?.items ?? [];
-  const counts = countQueueStates(items);
-  const visible = filterQueueItems(items, activeFilter);
+  const counts = page?.counts ?? EMPTY_COUNTS;
   const totalPages = page ? queueTotalPages(page.total, page.pageSize) : 1;
-  const hasFilterOrSearch = activeFilter !== null || query.search !== undefined;
+  const hasFilterOrSearch = query.state !== undefined || query.search !== undefined;
 
   function toggleFilter(state: QueueFilterState) {
-    setActiveFilter((current) => (current === state ? null : state));
+    setQuery((current) => queueQueryToggleFilter(current, state));
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
@@ -145,7 +152,7 @@ export function PymesQueue({ port, onOpen }: PymesQueueProps) {
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
         {QUEUE_KPI_FILTERS.map((filter) => {
-          const pressed = activeFilter === filter.state;
+          const pressed = query.state === filter.state;
           const Icon = ICONS[filter.icon];
           return (
             <button
@@ -231,14 +238,14 @@ export function PymesQueue({ port, onOpen }: PymesQueueProps) {
                     Cargando…
                   </td>
                 </tr>
-              ) : visible.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-secondary">
                     {emptyMessage}
                   </td>
                 </tr>
               ) : (
-                visible.map((item) => {
+                items.map((item) => {
                   const displayState = queueDisplayState(item.state);
                   const action = queueActionFor(displayState);
                   return (

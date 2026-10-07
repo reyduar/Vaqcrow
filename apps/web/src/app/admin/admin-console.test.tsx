@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { queueDisplayState } from "@/application/admin/queue";
 import type {
   AdminQueueItem,
   AdminQueuePage,
@@ -45,10 +46,23 @@ const APPROVED = item({ applicationId: "VQ-0003", name: "Café Tostadero", secto
 const REJECTED = item({ applicationId: "VQ-0004", name: "Gimnasio Forja", sector: "Salud y deporte", state: "rejected", updatedAt: "2026-09-02T12:00:00.000Z" });
 const MISSING = item({ applicationId: "VQ-0005", name: "Sin dato", sector: "Sin dato", state: "awaiting_assessment", updatedAt: "2026-09-01T12:00:00.000Z" });
 
+/** A test-only default for the global counts, derived from the page for convenience. */
+function countsOf(items: readonly AdminQueueItem[]): AdminQueuePage["counts"] {
+  const counts = { pending: 0, changes: 0, approved: 0, rejected: 0 };
+  for (const entry of items) counts[queueDisplayState(entry.state)] += 1;
+  return counts;
+}
+
 function pageOf(items: readonly AdminQueueItem[], over: Partial<AdminQueuePage> = {}): AdminQueueResult {
   return {
     ok: true,
-    page: { items, page: over.page ?? 1, pageSize: over.pageSize ?? 20, total: over.total ?? items.length }
+    page: {
+      items,
+      page: over.page ?? 1,
+      pageSize: over.pageSize ?? 20,
+      total: over.total ?? items.length,
+      counts: over.counts ?? countsOf(items)
+    }
   };
 }
 
@@ -193,7 +207,9 @@ describe("admin shell", () => {
     pathname.current = "/admin/pymes";
     const fake = adminSession();
     await fake.signIn({ email: "op@vaqcrow.test", password: "secret-123" });
-    const queue = new FakeAdminQueuePort(() => pageOf([PENDING, APPROVED]));
+    const queue = new FakeAdminQueuePort(() =>
+      pageOf([PENDING, APPROVED], { counts: { pending: 9, changes: 0, approved: 1, rejected: 0 } })
+    );
     render(
       <SessionStoreProvider port={fake}>
         <AdminShell queuePort={queue}>
@@ -217,10 +233,11 @@ describe("admin shell", () => {
     expect(screen.getByRole("group", { name: "Tema" })).toBeInTheDocument();
   });
 
-  it("shows the pending count on the PyMEs nav item", async () => {
+  it("shows the global pending count on the PyMEs nav item, not the loaded page", async () => {
     await renderShell();
     const link = await screen.findByRole("link", { name: /PyMEs/ });
-    expect(await within(link).findByText("1")).toBeInTheDocument();
+    // The page holds one pending row, but the server reports nine: the badge is global.
+    expect(await within(link).findByText("9")).toBeInTheDocument();
   });
 
   it("renders Usuarios as an inert nav item instead of a dead link", async () => {
@@ -260,19 +277,36 @@ describe("PyMEs queue", () => {
     expect(screen.getAllByRole("button", { name: "Ver detalle" })).toHaveLength(3);
   });
 
-  it("filters the table by a KPI card and clears it on a second click", async () => {
-    renderQueue(pageOf([PENDING, APPROVED]));
+  it("drives the KPI numbers from the global server counts, not the loaded page", async () => {
+    renderQueue(pageOf([PENDING], { counts: { pending: 7, changes: 3, approved: 5, rejected: 2 } }));
+
+    const kpi = await screen.findByRole("button", { name: /Pendientes de revisión/ });
+    expect(within(kpi).getByText("7")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: /Requieren cambios/ })).getByText("3")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: /Aprobadas/ })).getByText("5")).toBeInTheDocument();
+  });
+
+  it("sets the server-side state filter through a KPI card and clears it on a second click", async () => {
+    const queue = renderQueue((query) =>
+      query.state === "pending"
+        ? pageOf([PENDING], { counts: { pending: 1, changes: 1, approved: 1, rejected: 1 } })
+        : pageOf([PENDING, APPROVED], { counts: { pending: 1, changes: 0, approved: 1, rejected: 0 } })
+    );
+    await screen.findByText("Panadería Horizonte SRL");
     const kpi = await screen.findByRole("button", { name: /Pendientes de revisión/ });
     expect(kpi).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(kpi);
     expect(kpi).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Panadería Horizonte SRL")).toBeInTheDocument();
+    await waitFor(() => expect(queue.queries.at(-1)?.state).toBe("pending"));
+    expect(queue.queries.at(-1)?.page).toBe(1);
+    expect(await screen.findByText("Panadería Horizonte SRL")).toBeInTheDocument();
     expect(screen.queryByText("Café Tostadero")).not.toBeInTheDocument();
 
     fireEvent.click(kpi);
     expect(kpi).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Café Tostadero")).toBeInTheDocument();
+    await waitFor(() => expect(queue.queries.at(-1)?.state).toBeUndefined());
+    expect(await screen.findByText("Café Tostadero")).toBeInTheDocument();
   });
 
   it("searches through the port and resets to the first page", async () => {
@@ -292,15 +326,9 @@ describe("PyMEs queue", () => {
   });
 
   it("paginates and sorts server-side", async () => {
-    const queue = renderQueue((query) => ({
-      ok: true,
-      page: {
-        items: query.page === 1 ? [PENDING] : [CHANGES],
-        page: query.page,
-        pageSize: 20,
-        total: 21
-      }
-    }));
+    const queue = renderQueue((query) =>
+      pageOf(query.page === 1 ? [PENDING] : [CHANGES], { page: query.page, total: 21 })
+    );
     await screen.findByText("Panadería Horizonte SRL");
 
     fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));

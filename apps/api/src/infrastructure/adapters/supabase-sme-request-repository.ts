@@ -1,8 +1,13 @@
 import { applicationReviewStateSchema, parseApplicationId, parseSmeRequest } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import { MISSING_BUSINESS_LABEL } from "../../application/ports/sme-request-repository-port.js";
+import {
+  ADMIN_QUEUE_RAW_STATES_BY_DISPLAY,
+  MISSING_BUSINESS_LABEL
+} from "../../application/ports/sme-request-repository-port.js";
 import type {
+  AdminQueueCounts,
+  AdminQueueDisplayState,
   AdminQueueItem,
   AdminQueuePage,
   AdminQueueQuery,
@@ -120,9 +125,17 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
         .select("*", { count: "exact" })
         .order(QUEUE_COLUMN_BY_SORT[query.sort], { ascending: query.order === "asc" });
 
-      const filtered = query.search === undefined ? base : base.or(this.queueSearchFilter(query.search));
+      const searched = query.search === undefined ? base : base.or(this.queueSearchFilter(query.search));
+      const filtered =
+        query.state === undefined
+          ? searched
+          : searched.in("state", [...ADMIN_QUEUE_RAW_STATES_BY_DISPLAY[query.state]]);
 
-      const { data, error, count } = await filtered.range(first, last);
+      // The page and the four global counts are independent reads; the counts
+      // are never narrowed by the requested page or the active filter.
+      const [pageResponse, counts] = await Promise.all([filtered.range(first, last), this.readDisplayCounts()]);
+
+      const { data, error, count } = pageResponse;
 
       if (error) {
         // A read has no correlation in hand; the queue subject is the listing itself.
@@ -136,10 +149,42 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
       }
 
       const rows = data as readonly unknown[];
-      return { ok: true, value: { items: rows.map((row) => this.toQueueItem(row)), total: count } };
+      return { ok: true, value: { items: rows.map((row) => this.toQueueItem(row)), total: count, counts } };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
     }
+  }
+
+  /**
+   * One count-only read per display group, each filtered to the raw review
+   * states that group folds. PostgREST has no group-by, so this is four bounded
+   * `HEAD` counts instead of a scan of every row; a failure is fatal so the
+   * caller never renders fabricated KPIs.
+   */
+  private async readDisplayCounts(): Promise<AdminQueueCounts> {
+    const displays = Object.keys(ADMIN_QUEUE_RAW_STATES_BY_DISPLAY) as AdminQueueDisplayState[];
+
+    const entries = await Promise.all(
+      displays.map(async (display) => {
+        const { count, error } = await this.client
+          .from(ADMIN_QUEUE_VIEW)
+          .select("*", { count: "exact", head: true })
+          .in("state", [...ADMIN_QUEUE_RAW_STATES_BY_DISPLAY[display]]);
+
+        if (error) {
+          this.toRepositoryError(error);
+          throw new Error("queue display count failed");
+        }
+
+        if (count === null || count === undefined) {
+          throw new Error("queue display count failed");
+        }
+
+        return [display, count] as const;
+      })
+    );
+
+    return Object.fromEntries(entries) as AdminQueueCounts;
   }
 
   /**

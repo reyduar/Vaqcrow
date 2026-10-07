@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { IoBriefcaseOutline, IoLogOutOutline, IoPeopleOutline } from "react-icons/io5";
 import { ADMIN_CONSOLE_PATH } from "@/application/admin/admin-guard";
-import { countQueueStates, DEFAULT_ADMIN_QUEUE_QUERY } from "@/application/admin/queue";
+import { DEFAULT_ADMIN_QUEUE_QUERY } from "@/application/admin/queue";
 import { SIGN_OUT_ERROR } from "@/application/navigation/shell-nav";
 import type { AdminQueuePort } from "@/application/ports/admin-queue-port";
 import type { NotificationPort } from "@/application/ports/notification-port";
@@ -47,9 +47,8 @@ export interface AdminShellProps {
  * nav item but as an inert, disabled control, so the shell never ships a dead
  * link (it is not a full users screen either).
  *
- * The `PyMEs` badge shows the pending count of the queue's default first page.
- * The T1 listing exposes no per-state count, so this is the honest count of
- * the loaded default page, documented in the task log.
+ * The `PyMEs` badge shows the API's global pending count (T1b), never the
+ * pending rows of the loaded page.
  */
 export function AdminShell({ children, queuePort, bellPort }: AdminShellProps) {
   const pathname = usePathname();
@@ -59,7 +58,7 @@ export function AdminShell({ children, queuePort, bellPort }: AdminShellProps) {
   const [resolvedQueuePort] = useState<AdminQueuePort>(() => queuePort ?? createBrowserAdminQueuePort());
   const [signOutFailed, setSignOutFailed] = useState(false);
   const { page } = useAdminQueue(resolvedQueuePort, DEFAULT_ADMIN_QUEUE_QUERY);
-  const pending = page ? countQueueStates(page.items).pending : 0;
+  const pending = page ? page.counts.pending : 0;
   const displayName = principal?.displayName ?? "";
 
   const pymesActive = pathname === ADMIN_CONSOLE_PATH || pathname.startsWith(`${ADMIN_CONSOLE_PATH}/`);

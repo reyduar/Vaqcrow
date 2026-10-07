@@ -1,5 +1,10 @@
 import type { ApplicationReviewState } from "@vaqcrow/contracts";
-import type { AdminQueueItem, AdminQueueQuery, AdminQueueSortField, AdminQueueSortOrder } from "@/application/ports/admin-queue-port";
+import type {
+  AdminQueueDisplayState,
+  AdminQueueQuery,
+  AdminQueueSortField,
+  AdminQueueSortOrder
+} from "@/application/ports/admin-queue-port";
 
 /**
  * Pure model of the admin PyMEs queue view (`Vaqcrow Admin.dc.html`, view
@@ -8,9 +13,9 @@ import type { AdminQueueItem, AdminQueueQuery, AdminQueueSortField, AdminQueueSo
  *
  * The template's four display states group the six review states the API
  * exposes: everything not yet decided is `pending`. Copy is verbatim from the
- * template's `ST`/`pymeKpis` maps. The template's numeric KPI values are
- * derived from the loaded page, because the T1 listing exposes neither a state
- * filter nor per-state counts.
+ * template's `ST`/`pymeKpis` maps. Since T1b the numeric KPI values come from
+ * the API's global `counts`, and a KPI selection becomes the server-side
+ * `state` filter — neither is derived from the loaded page.
  */
 
 export const ADMIN_QUEUE_PAGE_SIZE = 20;
@@ -25,7 +30,7 @@ export const DEFAULT_ADMIN_QUEUE_QUERY: AdminQueueQuery = Object.freeze({
   order: "desc"
 });
 
-export type QueueDisplayState = "pending" | "changes" | "approved" | "rejected";
+export type QueueDisplayState = AdminQueueDisplayState;
 
 export type QueueIcon = "hourglass" | "create" | "check" | "close";
 
@@ -86,23 +91,21 @@ export function queueActionFor(state: QueueDisplayState): QueueAction {
     : { label: "Ver detalle", primary: false };
 }
 
-/** Narrows the loaded rows to the active KPI filter; `null` keeps them all. */
-export function filterQueueItems(
-  items: readonly AdminQueueItem[],
-  filter: QueueFilterState | null
-): readonly AdminQueueItem[] {
-  if (filter === null) return items;
-  return items.filter((item) => queueDisplayState(item.state) === filter);
-}
-
-/** Counts the loaded rows per KPI filter. */
-export function countQueueStates(items: readonly AdminQueueItem[]): Readonly<Record<QueueFilterState, number>> {
-  const counts = { pending: 0, changes: 0, approved: 0 };
-  for (const item of items) {
-    const state = queueDisplayState(item.state);
-    if (state !== "rejected") counts[state] += 1;
-  }
-  return counts;
+/**
+ * Applies a KPI selection to the query as the server-side `state` filter,
+ * always returning to the first page. Selecting the already-active group clears
+ * the filter; an active search term is preserved.
+ */
+export function queueQueryToggleFilter(query: AdminQueueQuery, state: QueueFilterState): AdminQueueQuery {
+  const toggled = query.state === state ? null : state;
+  return {
+    page: 1,
+    pageSize: query.pageSize,
+    sort: query.sort,
+    order: query.order,
+    ...(query.search === undefined ? {} : { search: query.search }),
+    ...(toggled === null ? {} : { state: toggled })
+  };
 }
 
 function pad2(value: number): string {

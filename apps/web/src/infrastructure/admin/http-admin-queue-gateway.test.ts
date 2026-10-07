@@ -17,7 +17,8 @@ const WIRE_PAGE = {
   ],
   page: 2,
   pageSize: 20,
-  total: 41
+  total: 41,
+  counts: { pending: 5, changes: 2, approved: 30, rejected: 4 }
 };
 
 interface Call {
@@ -59,6 +60,35 @@ describe("HttpAdminQueueGateway.list", () => {
 
     expect(calls[0]!.params).toEqual({ page: 1, pageSize: 20, sort: "name", order: "asc" });
     expect(calls[0]!.headers).toBeUndefined();
+  });
+
+  it("sends the display-state filter as the state query parameter", async () => {
+    const { client, calls } = fakeClient({ status: 200, data: WIRE_PAGE });
+    const gateway = new HttpAdminQueueGateway(client);
+
+    await gateway.list({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc", state: "changes" });
+
+    expect(calls[0]!.params).toEqual({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc", state: "changes" });
+  });
+
+  it("rejects a page without global counts instead of fabricating the KPIs", async () => {
+    const { client } = fakeClient({
+      status: 200,
+      data: { items: [], page: 1, pageSize: 20, total: 0 }
+    });
+    const gateway = new HttpAdminQueueGateway(client);
+
+    expect(await gateway.list(QUERY)).toEqual({ ok: false, code: "unavailable" });
+  });
+
+  it("rejects a page whose counts are not non-negative integers", async () => {
+    const { client } = fakeClient({
+      status: 200,
+      data: { ...WIRE_PAGE, counts: { ...WIRE_PAGE.counts, approved: -1 } }
+    });
+    const gateway = new HttpAdminQueueGateway(client);
+
+    expect(await gateway.list(QUERY)).toEqual({ ok: false, code: "unavailable" });
   });
 
   it("maps a sanitized provider failure to unavailable", async () => {

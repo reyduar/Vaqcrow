@@ -24,8 +24,10 @@ import { submitSmeRequest } from "../../../application/use-cases/submit-sme-requ
  * `GET /sme-requests` is the ADMIN-only PyMEs queue (#386/T1): a
  * server-side-paginated, sorted and searched page of every application with its
  * company name, sector, review state and last change (the queue's own
- * `items`/`page`/`pageSize`/`total` envelope). A malformed query is a
- * sanitized `400`, a provider failure a sanitized `503`.
+ * `items`/`page`/`pageSize`/`total` envelope). T1b adds an optional `state`
+ * display-group filter and the global `counts` object (one number per display
+ * group, never page-scoped). A malformed query, including an unknown `state`,
+ * is a sanitized `400`; a provider failure a sanitized `503`.
  */
 
 export interface SmeRequestRouteDependencies {

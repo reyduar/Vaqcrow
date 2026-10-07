@@ -1,30 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { AdminQueueItem } from "@/application/ports/admin-queue-port";
 import {
   ADMIN_QUEUE_PAGE_SIZE,
-  countQueueStates,
   DEFAULT_ADMIN_QUEUE_QUERY,
-  filterQueueItems,
   formatQueueUpdatedAt,
   MISSING_BUSINESS_LABEL,
   QUEUE_KPI_FILTERS,
   QUEUE_STATE_COPY,
   queueActionFor,
   queueDisplayState,
+  queueQueryToggleFilter,
   queueSortToggle,
   queueTotalPages
 } from "./queue";
-
-function item(overrides: Partial<AdminQueueItem> = {}): AdminQueueItem {
-  return {
-    applicationId: "VQ-0001",
-    name: "Panadería Horizonte SRL",
-    sector: "Alimentos",
-    state: "awaiting_assessment",
-    updatedAt: "2026-09-11T12:00:00.000Z",
-    ...overrides
-  };
-}
 
 describe("queueDisplayState", () => {
   it("groups every not-yet-decided state as pending", () => {
@@ -73,26 +60,27 @@ describe("queueActionFor", () => {
   });
 });
 
-describe("filterQueueItems and countQueueStates", () => {
-  const items = [
-    item({ applicationId: "VQ-0001", state: "awaiting_assessment" }),
-    item({ applicationId: "VQ-0002", state: "changes_requested" }),
-    item({ applicationId: "VQ-0003", state: "approved" }),
-    item({ applicationId: "VQ-0004", state: "human_review" })
-  ];
-
-  it("returns every row when no filter is active", () => {
-    expect(filterQueueItems(items, null)).toHaveLength(4);
+describe("queueQueryToggleFilter", () => {
+  it("sets the server-side state filter and returns to the first page", () => {
+    expect(queueQueryToggleFilter({ page: 3, pageSize: 20, sort: "name", order: "asc" }, "pending")).toEqual({
+      page: 1,
+      pageSize: 20,
+      sort: "name",
+      order: "asc",
+      state: "pending"
+    });
   });
 
-  it("keeps only the rows of the active KPI filter", () => {
-    expect(filterQueueItems(items, "pending").map((row) => row.applicationId)).toEqual(["VQ-0001", "VQ-0004"]);
-    expect(filterQueueItems(items, "changes").map((row) => row.applicationId)).toEqual(["VQ-0002"]);
-    expect(filterQueueItems(items, "approved").map((row) => row.applicationId)).toEqual(["VQ-0003"]);
+  it("clears the filter when the active KPI is clicked again", () => {
+    expect(
+      queueQueryToggleFilter({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc", state: "pending" }, "pending")
+    ).toEqual({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc" });
   });
 
-  it("counts the loaded rows per KPI", () => {
-    expect(countQueueStates(items)).toEqual({ pending: 2, changes: 1, approved: 1 });
+  it("preserves an active search term and switches between KPI groups", () => {
+    expect(
+      queueQueryToggleFilter({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc", search: "sol" }, "approved")
+    ).toEqual({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc", search: "sol", state: "approved" });
   });
 });
 

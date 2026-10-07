@@ -1,4 +1,7 @@
+import { ADMIN_QUEUE_DISPLAY_STATES } from "../ports/sme-request-repository-port.js";
 import type {
+  AdminQueueCounts,
+  AdminQueueDisplayState,
   AdminQueueItem,
   AdminQueueQuery,
   AdminQueueSortField,
@@ -9,11 +12,11 @@ import type {
 /**
  * The ADMIN PyMEs queue read (#386/T1).
  *
- * Parses and clamps the HTTP query (`page`, `pageSize`, `sort`, `order`, `q`)
- * into the port's already-resolved `AdminQueueQuery`, then reads one
- * server-side-paginated page. A malformed query is a sanitized
- * `invalid_request` and never reaches the repository; a repository failure is
- * `unavailable`, never an empty-but-successful page.
+ * Parses and clamps the HTTP query (`page`, `pageSize`, `sort`, `order`, `q`,
+ * `state`) into the port's already-resolved `AdminQueueQuery`, then reads one
+ * server-side-paginated page. A malformed query — including an unknown display
+ * `state` — is a sanitized `invalid_request` and never reaches the repository;
+ * a repository failure is `unavailable`, never an empty-but-successful page.
  *
  * The search term is pre-sanitized here because PostgREST has no bound
  * parameters: its filter metacharacters (`,`, `(`, `)`, `*`, `%`, `\`, `"`) are
@@ -36,7 +39,8 @@ const SORT_FIELDS: ReadonlySet<AdminQueueSortField> = new Set([
   "updatedAt"
 ]);
 const SORT_ORDERS: ReadonlySet<AdminQueueSortOrder> = new Set(["asc", "desc"]);
-const QUERY_KEYS: ReadonlySet<string> = new Set(["page", "pageSize", "sort", "order", "q"]);
+const DISPLAY_STATES: ReadonlySet<string> = new Set(ADMIN_QUEUE_DISPLAY_STATES);
+const QUERY_KEYS: ReadonlySet<string> = new Set(["page", "pageSize", "sort", "order", "q", "state"]);
 
 const POSITIVE_INTEGER = /^[1-9]\d*$/;
 const POSTGREST_METACHARACTERS = /[,()*%\\"]+/g;
@@ -70,9 +74,19 @@ export function parseAdminQueueQuery(raw: unknown): AdminQueueQueryParse {
   const search = parseSearch(record["q"]);
   if (search === "invalid") return { ok: false, code: "invalid_request" };
 
+  const state = parseState(record["state"]);
+  if (state === "invalid") return { ok: false, code: "invalid_request" };
+
   return {
     ok: true,
-    value: { page, pageSize, sort, order, ...(search === undefined ? {} : { search }) }
+    value: {
+      page,
+      pageSize,
+      sort,
+      order,
+      ...(search === undefined ? {} : { search }),
+      ...(state === undefined ? {} : { state })
+    }
   };
 }
 
@@ -81,6 +95,7 @@ export interface ListAdminSmeRequestsValue {
   readonly page: number;
   readonly pageSize: number;
   readonly total: number;
+  readonly counts: AdminQueueCounts;
 }
 
 export type ListAdminSmeRequestsResult =
@@ -111,7 +126,8 @@ export async function listAdminSmeRequests(
       items: page.value.items,
       page: parsed.value.page,
       pageSize: parsed.value.pageSize,
-      total: page.value.total
+      total: page.value.total,
+      counts: page.value.counts
     }
   };
 }
@@ -154,6 +170,15 @@ function parseOrder(value: unknown): AdminQueueSortOrder | undefined {
   return typeof raw === "string" && SORT_ORDERS.has(raw as AdminQueueSortOrder)
     ? (raw as AdminQueueSortOrder)
     : undefined;
+}
+
+/** A known display group narrows the page; anything else is a sanitized 400. */
+function parseState(value: unknown): AdminQueueDisplayState | undefined | "invalid" {
+  if (value === undefined) return undefined;
+
+  const raw = readString(value);
+  if (typeof raw !== "string") return "invalid";
+  return DISPLAY_STATES.has(raw) ? (raw as AdminQueueDisplayState) : "invalid";
 }
 
 function parseSearch(value: unknown): string | undefined | "invalid" {
