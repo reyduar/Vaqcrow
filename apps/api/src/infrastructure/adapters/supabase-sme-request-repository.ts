@@ -1,7 +1,12 @@
-import { parseApplicationId, parseSmeRequest } from "@vaqcrow/contracts";
+import { applicationReviewStateSchema, parseApplicationId, parseSmeRequest } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { MISSING_BUSINESS_LABEL } from "../../application/ports/sme-request-repository-port.js";
 import type {
+  AdminQueueItem,
+  AdminQueuePage,
+  AdminQueueQuery,
+  AdminQueueSortField,
   SmeRequestRecord,
   SmeRequestRepositoryError,
   SmeRequestRepositoryPort,
@@ -12,6 +17,21 @@ import type {
 const TABLE = "sme_request";
 const SUBMIT_SME_REQUEST_FUNCTION = "submit_sme_request";
 const POSTGRES_CHECK_VIOLATION = "23514";
+
+// The read-only join view (#386/T1): sme_request + application_review +
+// businesses, exposed so the ADMIN queue's pagination/sort/search happen in the
+// database (see 20261007120000_create_admin_sme_request_queue_view.sql).
+const ADMIN_QUEUE_VIEW = "admin_sme_request_queue";
+
+const QUEUE_COLUMN_BY_SORT: Readonly<Record<AdminQueueSortField, string>> = {
+  applicationId: "application_id",
+  name: "name",
+  sector: "sector",
+  state: "state",
+  updatedAt: "updated_at"
+};
+
+const QUEUE_SEARCH_COLUMNS: readonly string[] = ["name", "application_id", "sector"];
 
 /** Columns shared by the RPC result and a plain table row. */
 interface SmeRequestColumns {
@@ -88,6 +108,78 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
     } catch {
       return { ok: false, error: { code: "unavailable" } };
     }
+  }
+
+  async listAdminQueue(query: AdminQueueQuery): Promise<SmeRequestRepositoryResult<AdminQueuePage>> {
+    try {
+      const first = (query.page - 1) * query.pageSize;
+      const last = first + query.pageSize - 1;
+
+      const base = this.client
+        .from(ADMIN_QUEUE_VIEW)
+        .select("*", { count: "exact" })
+        .order(QUEUE_COLUMN_BY_SORT[query.sort], { ascending: query.order === "asc" });
+
+      const filtered = query.search === undefined ? base : base.or(this.queueSearchFilter(query.search));
+
+      const { data, error, count } = await filtered.range(first, last);
+
+      if (error) {
+        // A read has no correlation in hand; the queue subject is the listing itself.
+        return { ok: false, error: this.toRepositoryError(error) };
+      }
+
+      // Without an exact count the caller cannot paginate honestly, so a missing
+      // count is `unavailable` rather than a page pretending to be whole.
+      if (count === null || count === undefined) {
+        return { ok: false, error: { code: "unavailable" } };
+      }
+
+      const rows = data as readonly unknown[];
+      return { ok: true, value: { items: rows.map((row) => this.toQueueItem(row)), total: count } };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * Rebuilds one queue row. A missing company is the declared
+   * `MISSING_BUSINESS_LABEL`; a malformed row (a non-string timestamp or an
+   * unknown review state) throws and is caught by `listAdminQueue` as
+   * `unavailable`, never silently widened.
+   */
+  private toQueueItem(row: unknown): AdminQueueItem {
+    const record = row as {
+      application_id?: unknown;
+      name?: unknown;
+      sector?: unknown;
+      state?: unknown;
+      updated_at?: unknown;
+    };
+
+    const updatedAt = record.updated_at;
+    if (typeof updatedAt !== "string") {
+      throw new Error("malformed queue row");
+    }
+
+    return {
+      applicationId: parseApplicationId(record.application_id),
+      name: this.businessLabel(record.name),
+      sector: this.businessLabel(record.sector),
+      state: applicationReviewStateSchema.parse(record.state),
+      updatedAt
+    };
+  }
+
+  /** The PostgREST `or` filter for the free-text search over the row's fields. */
+  private queueSearchFilter(search: string): string {
+    return QUEUE_SEARCH_COLUMNS.map((column) => `${column}.ilike.*${search}*`).join(",");
+  }
+
+  private businessLabel(value: unknown): string {
+    if (value === null || value === undefined) return MISSING_BUSINESS_LABEL;
+    if (typeof value === "string") return value;
+    throw new Error("malformed queue row");
   }
 
   /**

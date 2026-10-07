@@ -1,6 +1,45 @@
-import type { ApplicationId, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
+import type { ApplicationId, ApplicationReviewState, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
 
 export type SmeRequestRepositoryErrorCode = "not_found" | "invalid_request" | "unavailable";
+
+/**
+ * The honest value rendered for an application whose owner has no `businesses`
+ * row (#386/T1). It is a declared absence, never an invented company name and
+ * never a zero.
+ */
+export const MISSING_BUSINESS_LABEL = "Sin dato";
+
+/** The queue row fields an operator may sort by (see `GET /sme-requests`). */
+export type AdminQueueSortField = "applicationId" | "name" | "sector" | "state" | "updatedAt";
+
+export type AdminQueueSortOrder = "asc" | "desc";
+
+/**
+ * A validated queue query (the use case owns validation and clamping; the port
+ * receives already-resolved values). `search` is optional and pre-sanitized for
+ * PostgREST's filter syntax.
+ */
+export interface AdminQueueQuery {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly sort: AdminQueueSortField;
+  readonly order: AdminQueueSortOrder;
+  readonly search?: string;
+}
+
+/** One PyME queue row: the application plus its company and review state. */
+export interface AdminQueueItem {
+  readonly applicationId: ApplicationId;
+  readonly name: string;
+  readonly sector: string;
+  readonly state: ApplicationReviewState;
+  readonly updatedAt: string;
+}
+
+export interface AdminQueuePage {
+  readonly items: readonly AdminQueueItem[];
+  readonly total: number;
+}
 
 export interface SmeRequestRepositoryError {
   readonly code: SmeRequestRepositoryErrorCode;
@@ -43,4 +82,12 @@ export interface SmeRequestRepositoryPort {
 
   /** `not_found` means no SME request exists for that application. */
   findByApplicationId(applicationId: ApplicationId): Promise<SmeRequestRepositoryResult<SmeRequestRecord>>;
+
+  /**
+   * The ADMIN-only PyMEs queue read model (#386/T1): every submitted application
+   * with its company name, sector, review state and last change, joined and
+   * paginated server-side. A missing company is mapped to
+   * `MISSING_BUSINESS_LABEL`, never dropped or invented.
+   */
+  listAdminQueue(query: AdminQueueQuery): Promise<SmeRequestRepositoryResult<AdminQueuePage>>;
 }

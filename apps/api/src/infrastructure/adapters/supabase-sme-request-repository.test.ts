@@ -193,3 +193,163 @@ describe("SupabaseSmeRequestRepository.findByApplicationId", () => {
     }
   });
 });
+
+interface QueueStep {
+  readonly data?: unknown;
+  readonly count?: number | null;
+  readonly error?: { code: string; message: string; details: string; hint: string } | null;
+  readonly reject?: Error;
+}
+
+function fakeQueueClient(step: QueueStep): {
+  client: SupabaseClient;
+  from: string[];
+  select: Array<readonly [string, unknown]>;
+  order: Array<readonly [string, unknown]>;
+  or: string[];
+  range: Array<readonly [number, number]>;
+} {
+  const from: string[] = [];
+  const select: Array<readonly [string, unknown]> = [];
+  const order: Array<readonly [string, unknown]> = [];
+  const or: string[] = [];
+  const range: Array<readonly [number, number]> = [];
+  const result = () =>
+    step.reject
+      ? Promise.reject(step.reject)
+      : Promise.resolve({ data: step.data ?? null, error: step.error ?? null, count: step.count ?? null });
+  const builder = {
+    select: (columns: string, options?: unknown) => {
+      select.push([columns, options]);
+      return builder;
+    },
+    order: (column: string, options?: unknown) => {
+      order.push([column, options]);
+      return builder;
+    },
+    or: (filter: string) => {
+      or.push(filter);
+      return builder;
+    },
+    range: (first: number, last: number) => {
+      range.push([first, last]);
+      return result();
+    }
+  };
+  return {
+    client: {
+      from: (table: string) => {
+        from.push(table);
+        return builder;
+      }
+    } as unknown as SupabaseClient,
+    from,
+    select,
+    order,
+    or,
+    range
+  };
+}
+
+describe("SupabaseSmeRequestRepository.listAdminQueue", () => {
+  const QUEUE_ROW = {
+    application_id: "11111111-1111-4111-8111-111111111111",
+    name: "Panadería Sol",
+    sector: "Alimentos",
+    state: "human_review",
+    updated_at: "2026-10-04T12:00:00.000Z"
+  };
+
+  it("reads the joined view with server-side order/range and maps the page", async () => {
+    const { client, from, select, order, range } = fakeQueueClient({ data: [QUEUE_ROW], count: 1 });
+
+    const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 2,
+      pageSize: 20,
+      sort: "name",
+      order: "asc"
+    });
+
+    expect(from).toEqual(["admin_sme_request_queue"]);
+    expect(select).toEqual([["*", { count: "exact" }]]);
+    expect(order).toEqual([["name", { ascending: true }]]);
+    expect(range).toEqual([[20, 39]]);
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        items: [
+          {
+            applicationId: QUEUE_ROW.application_id,
+            name: "Panadería Sol",
+            sector: "Alimentos",
+            state: "human_review",
+            updatedAt: QUEUE_ROW.updated_at
+          }
+        ],
+        total: 1
+      }
+    });
+  });
+
+  it("searches server-side over name, application id and sector", async () => {
+    const { client, or } = fakeQueueClient({ data: [], count: 0 });
+
+    await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 1,
+      pageSize: 20,
+      sort: "updatedAt",
+      order: "desc",
+      search: "sol"
+    });
+
+    expect(or).toEqual(["name.ilike.*sol*,application_id.ilike.*sol*,sector.ilike.*sol*"]);
+  });
+
+  it("renders a missing business as 'Sin dato', never an invented name", async () => {
+    const { client } = fakeQueueClient({ data: [{ ...QUEUE_ROW, name: null, sector: null }], count: 1 });
+
+    const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 1,
+      pageSize: 20,
+      sort: "updatedAt",
+      order: "desc"
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        items: [
+          {
+            applicationId: QUEUE_ROW.application_id,
+            name: "Sin dato",
+            sector: "Sin dato",
+            state: "human_review",
+            updatedAt: QUEUE_ROW.updated_at
+          }
+        ],
+        total: 1
+      }
+    });
+  });
+
+  it("is unavailable on a Postgres error, a missing count or a malformed row without leaking text", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const step of [
+      { error: pgError("42501") },
+      { data: [QUEUE_ROW] },
+      { data: [{ ...QUEUE_ROW, state: "not_a_state" }], count: 1 },
+      { data: [{ ...QUEUE_ROW, updated_at: null }], count: 1 },
+      { reject: new Error("network SECRET") }
+    ] as const) {
+      const { client } = fakeQueueClient(step);
+      const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+        page: 1,
+        pageSize: 20,
+        sort: "updatedAt",
+        order: "desc"
+      });
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(JSON.stringify(result)).not.toContain("SECRET");
+    }
+  });
+});

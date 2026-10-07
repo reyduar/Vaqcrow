@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
 import { getSmeRequest } from "../../../application/use-cases/get-sme-request.js";
+import { listAdminSmeRequests } from "../../../application/use-cases/list-admin-sme-requests.js";
 import { submitSmeRequest } from "../../../application/use-cases/submit-sme-request.js";
 
 /**
@@ -19,6 +20,12 @@ import { submitSmeRequest } from "../../../application/use-cases/submit-sme-requ
  * monthly sales series; a malformed id is `400`, an unknown application `404`.
  * A request that belongs to another owner is reported as `404` too (R1-002):
  * the caller's principal scopes every read.
+ *
+ * `GET /sme-requests` is the ADMIN-only PyMEs queue (#386/T1): a
+ * server-side-paginated, sorted and searched page of every application with its
+ * company name, sector, review state and last change (the queue's own
+ * `items`/`page`/`pageSize`/`total` envelope). A malformed query is a
+ * sanitized `400`, a provider failure a sanitized `503`.
  */
 
 export interface SmeRequestRouteDependencies {
@@ -50,6 +57,26 @@ export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeR
     }
 
     return reply.code(503).send({ code: "unavailable" });
+  });
+
+  app.get<{ Querystring: Record<string, unknown> }>("/sme-requests", async (request, reply) => {
+    const principal = request.principal;
+    if (principal === undefined) {
+      return reply.code(401).send({ code: "unauthenticated" });
+    }
+
+    const result = await listAdminSmeRequests(
+      { repository: dependencies.repository },
+      { query: request.query }
+    );
+
+    if (result.ok) {
+      return reply.code(200).send(result.value);
+    }
+
+    return result.error.code === "invalid_request"
+      ? reply.code(400).send({ code: "invalid_request" })
+      : reply.code(503).send({ code: "unavailable" });
   });
 
   app.get<{ Params: { applicationId: string } }>("/sme-requests/:applicationId", async (request, reply) => {

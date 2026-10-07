@@ -43,6 +43,7 @@ function build(
       repository: {
         submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true, ownerUserId: OWNER } }),
         findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
+        listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
         ...repository
       },
       salesData: {
@@ -224,5 +225,75 @@ describe("GET /sme-requests/:applicationId with the simulated sales feed", () =>
 
     expect(response.statusCode).toBe(200);
     expect(response.json().salesPeriods).toEqual([]);
+  });
+});
+
+describe("GET /sme-requests", () => {
+  const item = {
+    applicationId: APPLICATION_ID,
+    name: "Panadería Sol",
+    sector: "Alimentos",
+    state: "human_review",
+    updatedAt: "2026-10-04T12:00:00.000Z"
+  };
+
+  function buildAdmin(repository: Partial<SmeRequestRepositoryPort> = {}): FastifyInstance {
+    app = buildAppAs("ADMIN", {
+      smeRequest: {
+        repository: {
+          submit: vi.fn(),
+          findByApplicationId: vi.fn(),
+          listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
+          ...repository
+        },
+        salesData: {
+          getPeriods: vi.fn().mockResolvedValue({ ok: true, value: [] })
+        },
+        generateApplicationId: () => APPLICATION_ID
+      }
+    });
+    return app;
+  }
+
+  it("returns the page envelope and passes the parsed query to the repository", async () => {
+    const listAdminQueue = vi.fn().mockResolvedValue({ ok: true, value: { items: [item], total: 1 } });
+
+    const response = await buildAdmin({ listAdminQueue }).inject({
+      method: "GET",
+      url: "/sme-requests?page=2&pageSize=10&sort=name&order=asc&q=sol"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ items: [item], page: 2, pageSize: 10, total: 1 });
+    expect(listAdminQueue).toHaveBeenCalledWith({ page: 2, pageSize: 10, sort: "name", order: "asc", search: "sol" });
+  });
+
+  it("returns the defaults for an empty query", async () => {
+    const listAdminQueue = vi.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } });
+
+    const response = await buildAdmin({ listAdminQueue }).inject({ method: "GET", url: "/sme-requests" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ items: [], page: 1, pageSize: 20, total: 0 });
+    expect(listAdminQueue).toHaveBeenCalledWith({ page: 1, pageSize: 20, sort: "updatedAt", order: "desc" });
+  });
+
+  it("answers a sanitized 400 for a malformed query without touching the repository", async () => {
+    const listAdminQueue = vi.fn();
+
+    const response = await buildAdmin({ listAdminQueue }).inject({ method: "GET", url: "/sme-requests?sort=bogus" });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(listAdminQueue).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 unavailable when the read fails, never an empty 200", async () => {
+    const listAdminQueue = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
+
+    const response = await buildAdmin({ listAdminQueue }).inject({ method: "GET", url: "/sme-requests" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });
