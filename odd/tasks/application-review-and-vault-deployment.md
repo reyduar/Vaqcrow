@@ -200,6 +200,44 @@ Autorizado por el owner, se aplicaron al proyecto remoto Supabase las tres migra
 
 El CLI no está linkeado al remoto y `.env.cloud` no trae la contraseña de base, así que se aplicaron vía el MCP de Supabase. El MCP registra un version generado; cada version se alineó al del repositorio con un `update` sobre `supabase_migrations.schema_migrations`, de modo que el historial remoto coincide exactamente con `supabase/migrations/`. Los advisors de seguridad no reportan hallazgos nuevos (el INFO de RLS-sin-policy es el patrón service_role-only ya usado por todas las tablas).
 
+## Próximo work unit — T5b: aprobación → deploy con lifecycle persistido
+
+Decisión del owner (2026-10-06): modelo 2, lifecycle persistido observable.
+
+Contrato:
+
+- Tabla `public.campaign_deployment` (una fila por aplicación): `application_id` PK, `state` (`pending`/`deploying`/`confirmed`/`failed`), `attempts`, `last_error` (código saneado, nunca texto del proveedor), `campaign_id` nullable, `last_correlation_id`, timestamps; RLS on y `service_role` select/insert/update.
+- Puerto + adaptador `CampaignDeploymentRepositoryPort` con `findByApplicationId`, `markPending` (idempotente), `beginAttempt`, `markConfirmed`, `markFailed`.
+- Caso de uso `deployApprovedCampaign`: sólo con la aplicación aprobada; resuelve owner (`sme_request`), términos del negocio (deadline requerido; `goal_ars`→stroops vía la tasa vigente con los guardrails enteros de T3a), public key del wallet; llama al engine existente `openCampaign` (idempotente); en éxito marca `confirmed` + publica `pyme.approved_published` a la PyME; en fallo marca `failed` con código saneado. Replay de `confirmed` no redespliega.
+- Endpoints ADMIN: `POST /application-reviews/:applicationId/deployment` (desplegar/reintentar) y `GET /application-reviews/:applicationId/deployment` (detalle de sólo lectura).
+- Disparo: una decisión `approved` aplicada marca `pending` y avanza el deploy best-effort, sin bloquear ni romper la respuesta de la decisión.
+
+Fuera de T5b: la consola admin (#386) que muestra los estados, y el listado de marketplace (#414).
+
+### T5b — Aprobación → deploy con lifecycle persistido (backend-first)
+
+- **RED.** Los focused tests nuevos fallaron antes de implementar: **16 failed / 23 passed (4 archivos)**. Módulos `deploy-approved-campaign` y `supabase-campaign-deployment-repository` inexistentes; las rutas `/application-reviews/:id/deployment` respondían 404; el disparo de deploy no existía; y la matriz de autorización sumó **16 failed / 296 passed** en `authorization.test.ts`, más el caso nuevo de la ruta de decisión. Total RED observado: 33 fallos.
+- **GREEN.**
+  - Migración local `20261006150000_create_campaign_deployment.sql`: tabla `public.campaign_deployment` con `application_id` PK → `application_review(application_id) on delete restrict`, `state` (`pending`/`deploying`/`confirmed`/`failed`), `attempts`, `last_error`, `campaign_id`, `last_correlation_id`, timestamps y trigger de `updated_at`; RLS on, cero policies y `service_role` select/insert/update (sin delete); comentario de reversión. **Sin aplicar** (ni local ni remota); el owner la aplica aparte.
+  - Puerto + adaptador `CampaignDeploymentRepositoryPort`: `markPending` es insert-if-absent (una violación única devuelve la fila existente; nunca pisa una confirmada); `beginAttempt` lee estado/attempts y hace el UPDATE condicional `state in ('pending','failed')`, así un intento concurrente no puede duplicar el incremento; `markConfirmed` fija `campaign_id`; `markFailed` guarda sólo el código saneado. Los errores de Postgres colapsan a `unavailable` sin texto del proveedor.
+  - Caso de uso `deployApprovedCampaign`: sólo `approved`; el replay de `confirmed` devuelve la fila sin redesplegar ni notificar; resuelve owner (`sme_request`), deadline y `goal_ars` del negocio, y la public key del wallet; convierte ARS→stroops con enteros (ver desvío) y valida con `validateCampaignGuardrails`; llama a `openCampaign`; en éxito `markConfirmed` y publica `pyme.approved_published` direccionado al owner con `eventKey application:<id>:deployment:confirmed`; en fallo `markFailed` con código saneado. Deadline ausente, empresa ausente, clave ausente y tasa inusable son fallos saneados, nunca excepciones; un `markFailed` que falla no cambia el resultado.
+  - HTTP ADMIN: `POST /application-reviews/:applicationId/deployment` y `GET /application-reviews/:applicationId/deployment` (detalle de sólo lectura con `lastError`/`campaignId`, sin `lastCorrelationId`), registrados en `route-policy.ts`, `build-app.ts` e `index.ts`.
+  - Disparo: `recordHumanDecision` acepta un cuarto colaborador opcional `DecisionDeploymentDependencies`; en un apply `approved` invoca `onApproved` sin esperarlo (fire-and-forget) y traga rechazos/throws, así que nunca bloquea ni rompe la respuesta de decisión. La ruta pasa el colaborador; `index.ts` compone `deployApprovedCampaign`.
+- **DESVÍO DOCUMENTADO (conversión ARS→stroops).** La fórmula del encargo `goalUsdScaled = goalArs * RATE_SCALE / usdToArs; goalStroops = goalUsdScaled * stroopsPerUsd / RATE_SCALE` es inconsistente con la convención del repositorio: `RateSnapshot.usdToArs` se almacena **ya escalado por RATE_SCALE** (ver el puerto y `rate-table.route.test.ts`, que publica `120000000` para 120 ARS/USD), mientras `stroopsPerUsd` es nativo; la fórmula literal subescala el objetivo por 1e6 (5.000 USD → 0,005 XLM). Se implementó la conversión correcta preservando los dos pasos y añadiendo la escala de almacenamiento una sola vez: `goalUsdScaled = goalArs * RATE_SCALE * RATE_SCALE / usdToArs`; `goalStroops = goalUsdScaled * stroopsPerUsd / RATE_SCALE`, ambas divisiones truncan hacia cero. Un test fija el caso real: 12.000.000 ARS a 1.200 ARS/USD y 10.000.000 stroops/USD → 100.000.000.000 stroops.
+- **REFACTOR.** La resolución del owner pasó de un sentinel de string a un resultado discriminado (`{ ok, ownerUserId }`), eliminando la colisión entre el id y el sentinel.
+- **Verificación observada.**
+  - RED: `pnpm --filter @vaqcrow/api exec vitest run <4 archivos>` → **16 failed / 23 passed**; `authorization.test.ts` + `human-decision.route.test.ts` → **17 failed / 295 passed**.
+  - GREEN: 6 archivos + `build-app.test.ts` → **402 passed (7 archivos)**.
+  - Suite completa: `pnpm --filter @vaqcrow/api test` → **2065 passed (91 archivos)**.
+  - `pnpm --filter @vaqcrow/api typecheck` → **pass**.
+  - `pnpm run boundaries` → **sin violaciones** (833 módulos, 2693 dependencias).
+  - `pnpm run test:boundaries` → **164 passed (10 archivos)**.
+- **Límite explícito.** Backend-first: no se tocó `apps/web`, `packages/contracts`, `contracts/` (Rust), Testnet ni ninguna migración remota. La migración local queda **sin aplicar**; el owner decide cuándo aplicarla (local y remota). La consola admin (#386) y el listado de marketplace (#414) quedan fuera.
+
+## Próximo paso
+
+T5b implementado (persistencia + caso de uso + HTTP + disparo). Falta aplicar la migración `campaign_deployment` (local y remota), el paso de operador de T3b (redesplegar/re-apuntar la fábrica), el campo de plazo del wizard, la consola admin #386 que expone los estados y el listado de marketplace #414.
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.

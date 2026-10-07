@@ -1,4 +1,5 @@
 import type {
+  ApplicationId,
   ApplicationReviewState,
   CorrelationId,
   HumanDecisionCommand,
@@ -33,10 +34,25 @@ export interface DecisionNotificationDependencies {
   readonly notifications: Pick<NotificationPublisherPort, "publish">;
 }
 
+/**
+ * The collaborator that advances the vault deployment when an `approved`
+ * decision is actually recorded (#410/T5b). It is a single callback rather than
+ * the campaign ports so this use case stays independent of the deploy engine;
+ * invoking it is best-effort and fire-and-forget — a slow or failing deploy must
+ * never block or fail the decision response.
+ */
+export interface DecisionDeploymentDependencies {
+  readonly onApproved: (input: {
+    readonly applicationId: ApplicationId;
+    readonly correlationId: CorrelationId;
+  }) => Promise<unknown>;
+}
+
 export async function recordHumanDecision(
   repository: ApplicationReviewRepositoryPort,
   input: { readonly command: HumanDecisionCommand; readonly correlationId: CorrelationId },
-  notification?: DecisionNotificationDependencies
+  notification?: DecisionNotificationDependencies,
+  deployment?: DecisionDeploymentDependencies
 ): Promise<RecordHumanDecisionResult> {
   const result = await repository.recordHumanDecision(input);
 
@@ -48,6 +64,12 @@ export async function recordHumanDecision(
     // missing or failing collaborator must never fail the decision.
     if (value.applied && notification !== undefined) {
       await notifyDecisionOutcome(notification, value.decision);
+    }
+
+    // An applied approval starts the deploy, but never on the response path:
+    // the callback is invoked and its promise deliberately not awaited.
+    if (value.applied && deployment !== undefined && value.decision.outcome === "approved") {
+      triggerDeployment(deployment, value.decision);
     }
 
     return { ok: true, value };
@@ -113,5 +135,32 @@ async function notifyDecisionOutcome(
     await notification.notifications.publish(event);
   } catch {
     // Delivery is best-effort by contract; the decision is already recorded.
+  }
+}
+
+/**
+ * Starts the vault deployment for an approved application without blocking the
+ * decision response. The callback is invoked immediately (so the durable
+ * pending row is created promptly) but its promise is deliberately not awaited;
+ * a rejection or a synchronous throw is swallowed because the deploy is
+ * best-effort and the decision is already recorded. The explicit
+ * `POST /application-reviews/:applicationId/deployment` route remains the retry
+ * and observation surface.
+ */
+function triggerDeployment(
+  deployment: DecisionDeploymentDependencies,
+  decision: HumanDecisionRecord
+): void {
+  try {
+    void Promise.resolve(
+      deployment.onApproved({
+        applicationId: decision.applicationId,
+        correlationId: decision.correlationId
+      })
+    ).catch(() => {
+      // Best-effort: the admin can retry from the review console.
+    });
+  } catch {
+    // A synchronously-throwing collaborator must never fail the decision.
   }
 }

@@ -4,6 +4,7 @@ import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/co
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
+import { deployApprovedCampaign } from "./application/use-cases/deploy-approved-campaign.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
 import { createAdminReviewContextRouteDependencies } from "./infrastructure/http/routes/admin-review-context.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
@@ -19,6 +20,7 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
+import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
@@ -176,6 +178,42 @@ const storageAdapter = new SupabaseStorageAdapter(supabase);
 const pymeDocumentRepository = new SupabasePymeDocumentRepository(supabase);
 const rateTableRepository = new SupabaseRateTableRepository(supabase);
 
+// The vault-deployment lifecycle (#410/T5b): one durable row per approved
+// application. The admin route deploys/retries explicitly, and an applied
+// `approved` decision advances it best-effort. It reuses the campaign group's
+// engine, so it is only wired when the campaign vault slice is enabled.
+const deploymentRepository = new SupabaseCampaignDeploymentRepository(supabase);
+
+const deployApproved =
+  campaign === undefined
+    ? undefined
+    : (input: { readonly applicationId: ApplicationId; readonly correlationId: CorrelationId }) =>
+        deployApprovedCampaign(
+          {
+            applicationReviews: applicationReviewRepository,
+            deployments: deploymentRepository,
+            smeRequests: smeRequestRepository,
+            businesses: businessRepository,
+            wallet: walletRepository,
+            // The same rate table the campaign snapshot reads; the conversion
+            // for goal ARS->stroops uses its current row.
+            rates: rateTableRepository,
+            campaigns: campaign.campaigns,
+            accounts: campaign.accounts,
+            factory: campaign.factory,
+            chain: campaign.chain,
+            network: campaign.network,
+            tokenContractId: campaign.tokenContractId,
+            notifications: notificationPublisher
+          },
+          input
+        );
+
+const campaignDeployment =
+  deployApproved === undefined ? undefined : { deployments: deploymentRepository, deploy: deployApproved };
+
+const humanDecisionDeployment = deployApproved === undefined ? undefined : { onApproved: deployApproved };
+
 // The completeness check (#402/T1a, extended by U5): the declared rules run
 // first, then the persisted documents are read and judged. Gaps warn, they never
 // block the send.
@@ -196,6 +234,9 @@ const app = buildApp({
     smeRequests: smeRequestRepository,
     notifications: notificationPublisher
   },
+  // An applied approval advances the vault deploy without blocking the
+  // decision response (#410/T5b).
+  humanDecisionDeployment,
   adminReviewContext: createAdminReviewContextRouteDependencies({
     applicationReviews: applicationReviewRepository,
     smeRequests: smeRequestRepository,
@@ -217,6 +258,7 @@ const app = buildApp({
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
+  campaignDeployment,
   salesFeed: { provider: salesDataProvider, businesses: businessRepository },
   smeRequest: {
     repository: smeRequestRepository,

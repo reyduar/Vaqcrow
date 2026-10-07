@@ -9,6 +9,7 @@ import type {
   HumanDecisionRepositoryOutcome
 } from "../ports/application-review-repository-port.js";
 import { recordHumanDecision } from "./record-human-decision.js";
+import type { DecisionDeploymentDependencies } from "./record-human-decision.js";
 
 const command = parseHumanDecisionCommand({
   decisionId: "11111111-1111-4111-8111-111111111111",
@@ -261,5 +262,100 @@ describe("recordHumanDecision decision notifications", () => {
       ok: true,
       value: { decision: record, applied: true }
     });
+  });
+});
+
+describe("recordHumanDecision deployment trigger", () => {
+  it("advances the deploy for an applied approved decision", async () => {
+    const approved = outcomeRecord("approved");
+    const repository = repositoryReturning({ ok: true, value: { record: approved, applied: true } });
+    const onApproved = vi.fn().mockResolvedValue(undefined);
+
+    const result = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("approved"), correlationId },
+      undefined,
+      { onApproved }
+    );
+
+    expect(result).toEqual({ ok: true, value: { decision: approved, applied: true } });
+    expect(onApproved).toHaveBeenCalledWith({
+      applicationId: approved.applicationId,
+      correlationId: approved.correlationId
+    });
+  });
+
+  it.each(["changes_requested", "rejected"] as const)(
+    "does not advance the deploy for an applied %s decision",
+    async (outcome) => {
+      const decided = outcomeRecord(outcome);
+      const repository = repositoryReturning({ ok: true, value: { record: decided, applied: true } });
+      const onApproved = vi.fn().mockResolvedValue(undefined);
+
+      await recordHumanDecision(
+        repository,
+        { command: outcomeCommand(outcome), correlationId },
+        undefined,
+        { onApproved }
+      );
+
+      expect(onApproved).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not advance the deploy on a replay", async () => {
+    const approved = outcomeRecord("approved");
+    const repository = repositoryReturning({ ok: true, value: { record: approved, applied: false } });
+    const onApproved = vi.fn().mockResolvedValue(undefined);
+
+    await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("approved"), correlationId },
+      undefined,
+      { onApproved }
+    );
+
+    expect(onApproved).not.toHaveBeenCalled();
+  });
+
+  it("never fails the decision when the deployment trigger rejects or throws", async () => {
+    const approved = outcomeRecord("approved");
+    const repository = repositoryReturning({ ok: true, value: { record: approved, applied: true } });
+
+    const rejecting: DecisionDeploymentDependencies = {
+      onApproved: vi.fn().mockRejectedValue(new Error("deploy unavailable"))
+    };
+    const throwing: DecisionDeploymentDependencies = {
+      onApproved: vi.fn().mockImplementation(() => {
+        throw new Error("deploy unavailable");
+      })
+    };
+
+    for (const deployment of [rejecting, throwing]) {
+      await expect(
+        recordHumanDecision(
+          repository,
+          { command: outcomeCommand("approved"), correlationId },
+          undefined,
+          deployment
+        )
+      ).resolves.toEqual({ ok: true, value: { decision: approved, applied: true } });
+    }
+  });
+
+  it("keeps the decision response independent of a slow trigger", async () => {
+    const approved = outcomeRecord("approved");
+    const repository = repositoryReturning({ ok: true, value: { record: approved, applied: true } });
+    // A trigger that never settles would block the response if it were awaited.
+    const onApproved = vi.fn().mockImplementation(() => new Promise<void>(() => undefined));
+
+    const result = await recordHumanDecision(
+      repository,
+      { command: outcomeCommand("approved"), correlationId },
+      undefined,
+      { onApproved }
+    );
+
+    expect(result).toEqual({ ok: true, value: { decision: approved, applied: true } });
   });
 });

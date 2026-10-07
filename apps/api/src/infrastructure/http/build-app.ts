@@ -4,7 +4,7 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
-import type { DecisionNotificationDependencies } from "../../application/use-cases/record-human-decision.js";
+import type { DecisionDeploymentDependencies, DecisionNotificationDependencies } from "../../application/use-cases/record-human-decision.js";
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
@@ -19,6 +19,8 @@ import { registerBusinessRoute } from "./routes/business.route.js";
 import type { BusinessRouteDependencies } from "./routes/business.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
 import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
+import { registerCampaignDeploymentRoute } from "./routes/campaign-deployment.route.js";
+import type { CampaignDeploymentRouteDependencies } from "./routes/campaign-deployment.route.js";
 import { registerCompletenessCheckRoute } from "./routes/completeness-check.route.js";
 import type { CompletenessCheckRouteDependencies } from "./routes/completeness-check.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
@@ -88,12 +90,22 @@ export function buildApp(dependencies: {
    * omitted, decisions still record but do not notify.
    */
   readonly humanDecisionNotifications?: DecisionNotificationDependencies;
+  /**
+   * Optional trigger that advances the vault deployment for an applied approved
+   * decision (#410/T5b). When omitted, decisions still record but do not deploy.
+   */
+  readonly humanDecisionDeployment?: DecisionDeploymentDependencies | undefined;
   readonly adminReviewContext?: AdminReviewContextRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
   readonly assessment?: AssessmentRouteDependencies;
   readonly applicationAssessment?: ApplicationAssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
+  /**
+   * The vault-deployment lifecycle surface (#410/T5b): deploy/retry and the
+   * read-only detail. Omitted when the campaign vault slice is disabled.
+   */
+  readonly campaignDeployment?: CampaignDeploymentRouteDependencies | undefined;
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly smeRequest?: SmeRequestRouteDependencies;
   readonly storage?: StorageRouteDependencies;
@@ -151,9 +163,13 @@ export function buildApp(dependencies: {
     registerHumanDecisionRoute(
       app,
       dependencies.applicationReviewRepository,
-      dependencies.humanDecisionNotifications
+      dependencies.humanDecisionNotifications,
+      dependencies.humanDecisionDeployment
     );
     registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });
+  }
+  if (dependencies.campaignDeployment) {
+    registerCampaignDeploymentRoute(app, dependencies.campaignDeployment);
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);

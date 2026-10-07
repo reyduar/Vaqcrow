@@ -1,7 +1,10 @@
 import { parseApplicationId, parseCorrelationId, parseHumanDecisionCommand } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { recordHumanDecision } from "../../../application/use-cases/record-human-decision.js";
-import type { DecisionNotificationDependencies } from "../../../application/use-cases/record-human-decision.js";
+import type {
+  DecisionDeploymentDependencies,
+  DecisionNotificationDependencies
+} from "../../../application/use-cases/record-human-decision.js";
 import type { ApplicationReviewRepositoryPort } from "../../../application/ports/application-review-repository-port.js";
 
 const BODY_KEYS = new Set(["decisionId", "outcome", "reason", "approvedLimitArs"]);
@@ -18,7 +21,8 @@ function hasExactBodyKeys(input: unknown): input is Record<string, unknown> {
 export function registerHumanDecisionRoute(
   app: FastifyInstance,
   repository: ApplicationReviewRepositoryPort,
-  decisionNotifications?: DecisionNotificationDependencies
+  decisionNotifications?: DecisionNotificationDependencies,
+  decisionDeployment?: DecisionDeploymentDependencies
 ): void {
   app.post<{ Params: { applicationId: string }; Body: unknown }>(
     "/application-reviews/:applicationId/decisions",
@@ -53,7 +57,8 @@ export function registerHumanDecisionRoute(
           command,
           correlationId: parseCorrelationId(request.id)
         },
-        decisionNotifications
+        decisionNotifications,
+        decisionDeployment
       );
 
       if (result.ok) {

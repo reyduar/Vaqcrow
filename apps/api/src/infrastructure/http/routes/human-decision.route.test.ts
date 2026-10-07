@@ -275,6 +275,27 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
       recipientUserIds: [ownerUserId]
     });
   });
+
+  it("advances the vault deployment for an applied approved decision when wired", async () => {
+    const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
+    const onApproved = vi.fn().mockResolvedValue(undefined);
+    app = buildAppAs("ADMIN", {
+      applicationReviewRepository: fake.repository,
+      humanDecisionDeployment: { onApproved }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: body
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(onApproved).toHaveBeenCalledWith({
+      applicationId: decision.applicationId,
+      correlationId: decision.correlationId
+    });
+  });
 });
 
 describe("GET /application-reviews/:applicationId/decisions", () => {

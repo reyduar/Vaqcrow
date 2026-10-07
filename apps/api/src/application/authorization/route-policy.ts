@@ -50,6 +50,10 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /application-reviews/:applicationId/manual-review": only("ADMIN"),
   "POST /application-reviews/:applicationId/decisions": only("ADMIN"),
   "GET /application-reviews/:applicationId/decisions": only("ADMIN"),
+  // Vault deployment lifecycle (#410/T5b): only an admin deploys/retries and
+  // reads the read-only detail.
+  "POST /application-reviews/:applicationId/deployment": only("ADMIN"),
+  "GET /application-reviews/:applicationId/deployment": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),
