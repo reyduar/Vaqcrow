@@ -271,6 +271,22 @@ Nada en `main`; el trabajo vive en la rama de integración, **bloqueado de forma
 
 T1a, T1b, T3, T3a, T3b, T4a, T5a, T5b y T5 implementados. Faltan: corregir los dos errores de lint de `apps/api` que dejan `verify` en rojo; el paso de operador de T3b (redesplegar/re-apuntar la fábrica); el productor del evento `admin.pending_transaction` (AC4); el campo de plazo del wizard (AC7); y la consola admin #386 que expone la vista de revisión y los estados de despliegue (AC1/AC2). El listado de marketplace #414 queda fuera.
 
+## T3c — Smoke de CI respeta el tope por inversor (`campaign-smoke.sh`)
+
+El job `contracts` de `.github/workflows/ci.yml` corre `contracts/scripts/campaign-smoke.sh`, que todavía aportaba 400 + 600 desde la **misma** cuenta con `GOAL=1000`. Con el tope `goal/10 = 100` de T3b, el aporte de 400 es rechazado y el job se rompería en cualquier PR de esta rama. La corrección es sólo del script: no se toca el contrato Rust, cuyo comportamiento ya está cubierto por `cargo test`.
+
+- **Cambios.**
+  - `invoke_as <cuenta> ...` firma la invocación con la cuenta indicada; `invoke` delega en la cuenta por defecto. `contribute` exige la autorización del inversor, así que cada aporte lo firma su propia clave.
+  - `ensure_identity <nombre>` generaliza el patrón existente del deployer: genera y fondea con Friendbot **sólo si la clave no existe**, así una re-ejecución en la red local persistente reutiliza las identidades. No se agrega ninguna dependencia externa.
+  - **Campaña A** (`GOAL=1000`, tope 100): diez inversores distintos de 100. El tope se afirma mientras la campaña sigue `Funding`: el inversor 01 aporta sus 100 (aceptado) y un segundo aporte de 100 es rechazado por el tope —el rechazo no puede ser por saldo, porque el primero ya movió tokens reales—; el script además exige que el error sea `Error(Contract, #10)` y que el total no se mueva. Tras nueve aportes (900) la campaña sigue `Funding`; el décimo la liquida en 1000.
+  - **Campaña B** (`GOAL_B=3000`, tope 300): un inversor propio aporta 300, dentro del tope; el deadline vence sin objetivo y el `refund` permissionless (lo dispara el deployer, no el inversor) devuelve 300 y pasa a `Refunding`.
+  - Se conservan `set -euo pipefail`, `fail`/`ok`, la lectura del reloj del ledger y el margen de 45 s + `sleep 60`.
+- **Verificación observada (2026-10-07, red local `vaqcrow-local`).**
+  - `cargo test` (desde `contracts/`) → **39 passed; 0 failed** (`campaign-factory` 3 + `campaign-vault` 36).
+  - `./contracts/scripts/campaign-smoke.sh` → **pasó de punta a punta en la red local**: tope rechazado con `#10`, 9×100 = 900 sigue `Funding`, el décimo liquida en 1000, campaña B reembolsa 300 y pasa a `Refunding`. Segunda corrida consecutiva → volvió a pasar **sin** imprimir "no identity yet", es decir reutilizó las identidades (fondeo idempotente).
+  - `shellcheck contracts/scripts/campaign-smoke.sh` → **sin hallazgos**.
+- **Límite explícito.** No se tocaron el contrato Rust (`campaign-vault`/`campaign-factory`), `apps/web`, `apps/api`, `packages/contracts`, migraciones locales ni remotas, ni Testnet. La primera corrida real en Testnet sería el propio job de CI.
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.
