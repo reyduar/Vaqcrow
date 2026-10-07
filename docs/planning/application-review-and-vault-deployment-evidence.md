@@ -5,6 +5,9 @@
 > [!warning] Estado de entrega: nada de #410 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault`, apilada sobre las ramas de integración de #406/#399 y de #402. Nada llega a `main`: la Feature está **bloqueada de forma nativa por [#386](https://github.com/reyduar/Vaqcrow/issues/386)** (la consola `/admin` todavía no existe) y por la **Opción A del owner** (la pila se mergea junta con el retiro del recorrido de seis pasos, [#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la revisión real ni despliega bóvedas desde la aprobación.
 
+> [!info] Actualización 2026-10-07: fase UI (U1–U7)
+> Las secciones 1–9 registran el cierre **backend-first** del 2026-10-06 y se conservan como registro histórico. Después, la rama de #410 integró la consola `/admin` de #386 (merge `f930365`) y construyó la vista de revisión en una cadena de work units U1–U7. La §10 documenta esa fase y trae la **tabla de criterios vigente** (§10.5), que reemplaza a la de la §7 donde difieren (criterios 1 y 2). Nada de eso está en `main`.
+
 > [!important] Alcance backend-first
 > Por decisión del owner (D5, 2026-10-06) #410 se implementa **backend-first en paralelo**: la API, la persistencia, los guardrails y el despliegue idempotente se entregan ahora; la integración con la consola admin (la vista de revisión de las secciones 1–3 y los veredictos por documento) queda para después de #386. Por eso varios criterios de aceptación están **PARCIALES o no entregados** por dependencia de frontend, y así se declaran aquí.
 
@@ -149,6 +152,9 @@ Decisiones registradas en la bitácora (2026-10-06) antes de implementar los flu
 
 ## 7. Mapeo de criterios de aceptación
 
+> [!note] Tabla del cierre backend-first (2026-10-06)
+> Se conserva como registro de ese momento. La tabla vigente, tras la fase UI, es la §10.5.
+
 | # | Criterio (verbatim, issue #410) | Resultado | Fuente |
 |---|---|---|---|
 | 1 | "The review view reproduces sections 1 to 3, validations and the confirmation dialog, on real applications." | ❌ **NO ENTREGADO (frontend, depende de #386).** La vista es de la consola admin. El backend la habilita con el contexto agregado de revisión (`/application-reviews/:id/context`, T1b) y el visor privado de documentos (`/storage/uploads`, T1a); sin #386 no hay superficie visual sobre solicitudes reales. | Lectura de rutas; bitácora T1a/T1b; §5.1 |
@@ -181,3 +187,112 @@ Decisiones registradas en la bitácora (2026-10-06) antes de implementar los flu
 > 4. Ejecutar el paso de operador de T3b (redeploy/re-apuntado de la fábrica en Testnet) y verificar el tope de forma acotada.
 > 5. Definir el campo de plazo del wizard cuando se toque la pantalla de onboarding (§6).
 > 6. Re-ejecutar `pnpm run test:db` en un stack local limpio para apartar la falla ambiental del bucket (§5.3).
+
+## 10. Fase UI (U1–U7): vista de revisión en la consola admin
+
+Fuente: bitácora [[odd/tasks/application-review-and-vault-deployment|§Fase UI]] (U1–U6, 2026-10-07) y re-ejecución en este árbol de trabajo (U7, 2026-10-07).
+
+### 10.1 Cadena de entrega
+
+La rama de #410 integró la consola `/admin` de #386 por merge `f930365` (decisión del owner, 2026-10-07) y la vista de revisión se construyó dentro de ella. Estrategia del owner: **`feature-branch-chain`**, cada work unit en una rama hija con su PR contra la rama padre inmediata. Todos los PR están **abiertos**; ninguno está mergeado y **nada de esta fase está en `main`**.
+
+| Slice | Contenido | Commit(s) | PR | Base |
+|---|---|---|---|---|
+| Tracker | rama de #410 en `f930365` (borrador, no se mergea) | — | [#453](https://github.com/reyduar/Vaqcrow/pull/453) | rama de #406 |
+| U1 | veredictos por documento persistidos (API, migración, contrato) | `5cdc1a6`, `af8556e` | [#454](https://github.com/reyduar/Vaqcrow/pull/454) | tracker |
+| U2 | ruta `/admin/pymes/[applicationId]`, contexto y encabezado | `06dfa53`, `ea57be9` | [#455](https://github.com/reyduar/Vaqcrow/pull/455) | `-02` |
+| U3 | sección «1 · KYC/KYB» y visor privado | `84a881c`, `edc160f`, `06e798a` | [#456](https://github.com/reyduar/Vaqcrow/pull/456) | `-03` |
+| U4 | sección «2 · Recomendación de IA» | `dea2071`, `0fdff8d` | [#457](https://github.com/reyduar/Vaqcrow/pull/457) | `-04` |
+| U5 | sección «3 · Decisión humana» y `alertdialog` | `91999f3`, `3bd54fa` | [#458](https://github.com/reyduar/Vaqcrow/pull/458) | `-05` |
+| U6 | panel de despliegue de la bóveda (D3) | `398627c`, `8796cb8` | [#459](https://github.com/reyduar/Vaqcrow/pull/459) | `-06` |
+| U7 | e2e del flujo admin, verificación y esta evidencia | _pendiente_ | PR de U7 (pendiente de apertura) | `-07` |
+
+El PR anterior [#452](https://github.com/reyduar/Vaqcrow/pull/452) (cierre backend-first) se mergeó en la rama de #406, no en `main`.
+
+### 10.2 Decisiones del owner de la fase UI
+
+| # | Pregunta | Resolución | Fuente |
+|---|---|---|---|
+| D7 | ¿Cómo se comporta «Límite aprobado (ARS)» si el admin no ingresa límites (D4)? | **Resuelta (2026-10-07):** de solo lectura, precargado con el objetivo declarado por la PyME (`company.goalArs`), enviado como `approvedLimitArs` al aprobar. El contrato no cambia. | Bitácora §Decisiones |
+| D8 | ¿Los veredictos por documento («Válido / Pedir / Inválido») se persisten? | **Resuelta (2026-10-07):** sí, con tabla nueva (RLS on, escritura sólo `service_role`), endpoint ADMIN y actor tomado del principal verificado. | Bitácora §Decisiones |
+
+### 10.3 Migración remota
+
+`20261007130000_create_document_verdict` (U1) se probó primero en el stack local (pgTAP `supabase/tests/document_verdict.sql` **34/34**) y luego, con autorización explícita del owner, se **aplicó al proyecto remoto el 2026-10-07** vía el MCP de Supabase. Verificado entonces: RLS on, 0 policies, grants sólo `service_role` `select`/`insert`/`update`, PK/FKs/checks presentes, historial de migraciones alineado con la versión del repositorio y advisors sin hallazgos nuevos (sólo el INFO de RLS-sin-policy del patrón `service_role`-only). **Fuente:** bitácora U1; **no se re-verificó el remoto en U7.**
+
+### 10.4 Verificación re-ejecutada en este árbol de trabajo (U7, 2026-10-07)
+
+Rama `…vault-08-verification-evidence` (contiene U1–U6), Node `v24.21.0`. Todo con dobles: ningún comando de U7 tocó Supabase remoto, Testnet, Horizon, el LLM ni Resend.
+
+**E2E del flujo admin (nuevo, `apps/web/e2e/admin-review.spec.ts`).** Corre contra el doble de la API (`e2e/support/stub-admin-review-routes.mjs`, enganchado en `stub-api-server.mjs`) y el doble de Supabase Auth (`stub-supabase-server.mjs`, que suma `POST /__seed-admin` para crear un `ADMIN` confirmado, como el seed manual del super admin). Las formas de respuesta siguen las rutas reales (`admin-review-context.route.ts`, `document-verdict.route.ts`, `human-decision.route.ts`, `campaign-deployment.route.ts`, `storage.route.ts`, cola `GET /sme-requests`); el doble exige un Bearer y rechaza con `400` un body de decisión que no tenga exactamente `{ decisionId, outcome, reason, approvedLimitArs }`.
+
+```sh
+$ pnpm --filter @vaqcrow/web exec playwright test admin-review.spec.ts
+  ✓ an admin opens an application from the queue, reviews it, approves it and sees the vault deployment
+  ✓ a decision recorded elsewhere while the form is open is refused with 409 and nothing is claimed
+  ✓ an already-approved application opens read-only with its deployment state
+  3 passed
+
+$ pnpm --filter @vaqcrow/web exec playwright test      # suite e2e completa
+  44 passed (1.1m)
+exit 0
+```
+
+Qué prueba el primer escenario, en un Chromium real: el admin ingresa por `/admin` → cola `/admin/pymes` → «Revisar solicitud» → encabezado «Revisión: Panadería Horizonte SRL» y las secciones «1 · KYC/KYB», «2 · Recomendación de IA» y «3 · Decisión humana»; marca «Válido» en «Constancia de CUIT» (`aria-pressed` pasa a `true` tras persistir); «Abrir Foto 1» hace un `GET /storage/uploads?path=…` con `Authorization: Bearer` y abre una pestaña nueva en un `blob:` (nunca una URL pública); el límite muestra «12.000.000» de solo lectura (D7); una razón de menos de 10 caracteres se rechaza en línea sin abrir el diálogo; el `alertdialog` dice «Aprobada con límite ARS 12.000.000. Queda atribuida a Admin Vaqcrow…»; tras «Confirmar», la línea `role="status"` «Registrada por Admin Vaqcrow · … · Aprobada» viene del servidor, el body enviado tiene exactamente las cuatro claves (sin `actor`) y los veredictos quedan deshabilitados; el panel de despliegue muestra «Despliegue fallido» con el motivo honesto de la tasa ausente, **Reintentar** lo lleva a «Bóveda confirmada / PyME publicada» y **Ver detalle** muestra el ID de campaña. El segundo escenario prueba el `409 state_conflict` honesto («Esta solicitud ya tiene una decisión registrada. No se registró tu decisión.») y la recarga al registro real; el tercero, la apertura de solo lectura de una solicitud ya aprobada.
+
+**Gate completo.**
+
+```sh
+$ pnpm run verify          # 1.ª corrida
+ @vaqcrow/web:test:  Test Files  2 failed | 179 passed (181)
+ @vaqcrow/web:test:       Tests  2 failed | 1799 passed (1801)
+exit 1
+
+$ pnpm run verify          # 2.ª corrida, sin cambios entre ambas
+lint            Tasks: 5 successful, 5 total   (0 errores, 1 warning preexistente `_request` en apps/web)
+typecheck       Tasks: 8 successful, 8 total
+test            domain 120 · contracts 545 · ai 143 · api 2151 (95 archivos) · web 1801 (181 archivos)
+build           Tasks: 5 successful, 5 total
+boundaries      ✔ no dependency violations found (925 modules, 2995 dependencies cruised)
+test:boundaries Test Files 10 passed (10) · Tests 164 passed (164)
+exit 0
+```
+
+Las dos fallas de la primera corrida fueron **timeouts de 5 s** bajo la carga paralela de turbo (`auth-screen.test.tsx` «renders the template's two panels in signup mode» y `pyme-onboarding-wizard.test.tsx` «persists the company and then sends the request from step 4»), en archivos que U7 no toca; la segunda corrida, sin cambios, da **exit 0**. Es la inestabilidad conocida del gate bajo carga, no una regresión de esta fase.
+
+**No re-ejecutado en U7:** `pnpm run test:db` (U7 no cambia el esquema; la última corrida registrada es la de U1) ni nada contra el proyecto remoto.
+
+### 10.5 Mapeo de criterios de aceptación (vigente)
+
+| # | Criterio (verbatim, issue #410) | Resultado | Fuente |
+|---|---|---|---|
+| 1 | "The review view reproduces sections 1 to 3, validations and the confirmation dialog, on real applications." | ⚠️ **PARCIAL.** La vista `/admin/pymes/[applicationId]` reproduce las secciones 1–3 del template, la validación de la razón (≥ 10, error en línea) y el `alertdialog` de confirmación, y se ejercitó en un navegador real (e2e de U7). Lo que falta para «on real applications»: sólo se probó con **dobles** (unitarias de U2–U6 y el e2e contra el stub), nunca contra la API desplegada ni con una solicitud real; y hay diferencias nombradas con el template (sin fecha «enviada el…» ni «corr» porque la API no los expone, copy no diseñada pendiente del owner, §10.6). | E2E y `verify` re-ejecutados (§10.4); bitácora U2–U6 |
+| 2 | "Per-document verdicts, the human decision with reason and limit, and the audit entry are persisted and attributed." | ✅ **CUMPLIDO en la rama.** Veredictos por documento persistidos en `public.document_verdict`, atribuidos al admin verificado (`actor` + `actor_user_id`), idempotentes (U1; migración aplicada al remoto). La decisión con razón y límite (D7) se registra vía el RPC `record_human_decision` atribuida al principal verificado; la UI nunca envía `actor` (lo prueban la suite web y el e2e). La entrada de auditoría es la de la decisión humana (§7, criterio 2); el `audit_log` genérico sigue sin consumidores (`apps/api/src/index.ts`, `void auditLog`). | Suites API/web re-ejecutadas; e2e re-ejecutado; bitácora U1/U5 |
+| 3 | "Approval deploys exactly one vault with the PyME's public key as immutable destination, then publishes the campaign; a replayed approval does not redeploy." | ✅ **CUMPLIDO** (sin cambios respecto de §7). El panel de U6 sólo lee y reintenta; no agrega otro camino de despliegue. | Suite API re-ejecutada (2151); bitácora T5b/U6 |
+| 4 | "Changes-requested, rejection and approval notify the PyME; a pending deployment notifies admins." | ⚠️ **PARCIAL** (sin cambios). `admin.pending_transaction` **sigue sin productor**. | Lectura de código; bitácora T4a/T5b |
+| 5 | "The AI recommendation never approves or transfers funds." | ✅ **CUMPLIDO.** La sección 2 («Consultiva · no aprueba») no tiene ningún control; sólo la decisión humana confirmada escribe. | Suite web re-ejecutada; bitácora U4 |
+| 6 | "Required evidence and failure behavior are covered." | ✅ **CUMPLIDO.** Además de §7: fallos de la UI con copy honesta (409 decidido/no editable, 404, 503/red sin afirmar registro, despliegue fallido con Reintentar, lectura de despliegue fallida), cubiertos por unitarias de U3–U6 y por el e2e (409 y despliegue fallido → confirmado). | Suites y e2e re-ejecutados (§10.4) |
+| 7 | "Every item under \"Not designed in the template (open question)\" is decided by the owner before it is implemented; none is invented." | ⚠️ **PARCIAL.** D1–D8 decididas por el owner. **Excepciones nombradas:** el campo de plazo del wizard sigue abierto, y la fase UI dejó copy y estados no diseñados (vacíos, errores, ubicación del panel de despliegue, filas de fotos) implementados de forma mínima y neutral **a confirmar por el owner** (§10.6). No se afirma que estén decididos. | Bitácora U2–U6 |
+| 8 | "No unsupported production claims or secrets are introduced." | ✅ **CUMPLIDO.** Los dobles e2e usan datos sintéticos y una clave publicable falsa; la contraseña del admin e2e es un literal de prueba contra el doble local, no una credencial real; el panel dice Testnet y «sin valor económico». | Revisión de este documento y de `apps/web/e2e/` |
+
+### 10.6 Preguntas abiertas consolidadas (U2–U6)
+
+1. **`deploying` trabado sin salida.** `apps/api/src/application/use-cases/deploy-approved-campaign.ts:122-126` rechaza un nuevo intento mientras la fila está en `deploying` (`unavailable`) y no hay timeout de «trabado» ni en la API ni en la UI: si el proceso muere a mitad de despliegue, el panel sondea indefinidamente sin ofrecer Reintentar.
+2. **No hay acción explícita «Desplegar».** D3 sólo define Reintentar tras un fallo. Si el disparo fire-and-forget falla antes de crear la fila, el panel muestra «Todavía no hay un despliegue registrado…» con «Actualizar» y el admin queda sin acción, aunque `POST …/deployment` lo admitiría.
+3. **La API no expone fecha de envío ni correlation ID** al contexto: el encabezado omite «enviada el dd/mm/aaaa» y el pie de IA omite «corr …» en vez de inventarlos (cambio de API/contrato si el owner los quiere).
+4. **Copy no diseñada por el template**, implementada mínima y neutral, a confirmar: estados cargando/no encontrada/error de la vista (U2); mensajes de veredicto y visor (U3); textos de anomalías, evidencia de razones, riesgo bajo/alto (U4); errores de validación, nota del límite D7, vista de solo lectura (U5); título, ubicación, mensajes por estado y detalle del panel de despliegue (U6).
+5. **Decisiones de presentación a confirmar:** «Contrato social» (template) vs «Estatuto» (wizard); si las fotos llevan veredicto o sólo visor; fila «Documento de identidad» sin archivo; tono verde de «Válido»/«Aprobar con límite» frente a `demo-ui.md` §2.
+6. **«PyME publicada» sin marketplace.** El rótulo D3 se muestra en `confirmed`, pero la publicación en el marketplace (#414) no existe todavía; sólo la notificación `pyme.approved_published`.
+7. **Trazabilidad al ledger.** El detalle muestra el `campaignId` interno; el contract id y el hash de la transacción no viajan por este endpoint, así que no hay enlace verificable al explorador.
+
+### 10.7 Estado de entrega y próximos pasos
+
+- **Nada de #410 está en `main`.** La cadena U1–U7 vive en ramas hijas con PR abiertos contra su padre inmediato; el merge a `main` sigue atado a la Opción A del owner (pila junto con el retiro del recorrido de seis pasos, #438).
+- La Feature #410 sigue **abierta**; su cierre lo decide el owner.
+
+> [!todo] Pendientes tras la fase UI
+> 1. Ejercitar la vista contra la API desplegada con una solicitud real (cierra la parte «on real applications» del criterio 1), sin Testnet real salvo autorización explícita.
+> 2. Decidir el `deploying` trabado (timeout o acción de recuperación) y si existe un «Desplegar» explícito (§10.6, 1–2).
+> 3. Agregar el productor de `admin.pending_transaction` (criterio 4).
+> 4. Confirmar con el owner la copy y los estados no diseñados (§10.6, 4–5) y el campo de plazo del wizard (criterio 7).
+> 5. Ejecutar el paso de operador de T3b (redeploy/re-apuntado de la fábrica) cuando se autorice.
