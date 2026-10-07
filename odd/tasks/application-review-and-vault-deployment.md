@@ -37,6 +37,8 @@ La pila anterior ya permite que la PyME complete la solicitud, conecte Freighter
 | D4 | ¿Qué controla «Límite aprobado» y quién define deadline/mínimo de contribución? | **Resuelta (2026-10-06):** el admin no ingresa ni modifica límites; la PyME define los términos del proyecto durante el registro. La plataforma impone un máximo de USD 50.000 equivalentes por campaña y un máximo por inversor igual al menor de 10% del objetivo y USD 5.000 equivalentes. |
 | D5 | ¿Se espera a #386 antes de tocar #410? | **Resuelta (2026-10-06):** se autoriza implementar backend-first en paralelo; la integración con la consola admin queda para después de #386. |
 | D6 | ¿Cómo se convierte el tope USD a ARS/XLM mientras la conversión siga simulada? | **Resuelta (2026-10-06):** tabla de tasas configurable por ADMIN, actualizada manualmente ahora y reemplazable por una fuente confiable en el futuro. Cada tasa tendrá versión, vigencia, autor, origen `manual`/`provider` y valores enteros de precisión fija; los términos de cada campaña guardarán el snapshot usado. |
+| D7 | ¿Cómo se comporta «Límite aprobado (ARS)» si el admin no ingresa límites (D4)? | **Resuelta (2026-10-07):** se muestra de solo lectura, precargado con el objetivo declarado por la PyME (`company.goalArs`), y la UI lo envía como `approvedLimitArs` al aprobar. El contrato no cambia. |
+| D8 | ¿Los veredictos por documento («Válido / Pedir / Inválido») se persisten? | **Resuelta (2026-10-07):** sí, de verdad: tabla nueva con RLS y escritura sólo `service_role`, endpoint ADMIN y actor tomado del principal verificado. Cierra AC2. |
 
 ## Tareas
 
@@ -288,6 +290,51 @@ El job `contracts` de `.github/workflows/ci.yml` corre `contracts/scripts/campai
 - **Límite explícito.** No se tocaron el contrato Rust (`campaign-vault`/`campaign-factory`), `apps/web`, `apps/api`, `packages/contracts`, migraciones locales ni remotas, ni Testnet. La primera corrida real en Testnet sería el propio job de CI.
 
 - **Work-unit commit.** `73d0833 test(contracts): respect the investor cap in the campaign smoke`.
+
+## Fase UI — vista de revisión en la consola admin (desde 2026-10-07)
+
+La rama de #410 integra la línea #382/#386 por merge `f930365` (decisión del owner, 2026-10-07): la vista de revisión se construye dentro de la consola `/admin` de #386. Mapa de la exploración: el backend está completo; no existe la ruta `/admin/pymes/[applicationId]` y la fila de la cola llama a un `onOpen` que nadie pasa. El gateway legado `http-human-decision-gateway.ts` envía `actor` en el body y la API lo rechaza con 400: el flujo admin usa un gateway propio.
+
+Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (un único writer), con spot-check del parent antes del commit.
+
+- [ ] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
+- [ ] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
+- [ ] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
+- [ ] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
+- [ ] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
+- [ ] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
+- [ ] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
+
+Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400): estrategia de entrega por defecto `ask-on-risk`, a confirmar con el owner antes de superar el presupuesto en la rama.
+
+### U1 — Veredictos por documento persistidos (backend)
+
+Ruta: **delegado** (un writer; migración + contrato + port/adapter + caso de uso + ruta + contexto, 2+ archivos no triviales). Sin cambios en `apps/web`.
+
+- **RED.**
+  - Contrato: `pnpm --filter @vaqcrow/contracts exec vitest run src/document-verdict.test.ts` → **1 archivo fallido, sin tests** (módulo `document-verdict.js` inexistente).
+  - pgTAP: `supabase test db --local supabase/tests/document_verdict.sql` antes de la migración → **falla en el subtest 1** (`document_verdict` no existe; el plan no llegó a correr).
+  - API: los 6 archivos enfocados (adapter, caso de uso, ruta, contexto use case/ruta, `authorization.test.ts`) → **5 archivos fallidos / 1 pasado; 28 failed / 306 passed**: módulos `supabase-document-verdict-repository` y `set-document-verdict` inexistentes, `PUT …/verdict` respondía 404, el contexto no traía `documentVerdicts`, la matriz de autorización no encontraba la ruta y el preflight CORS no permitía `PUT`.
+- **GREEN.**
+  - Contrato `packages/contracts/src/document-verdict.ts`: `documentVerdictValueSchema` (`valid`/`request`/`invalid`), `pymeDocumentIdSchema` (uuid), comando estricto `{ verdict }` (un `actor` en el body es inválido, nunca se ignora en silencio) y forma de lectura estricta `{ documentId, verdict, actor, updatedAt }`; exportados desde el índice.
+  - Migración `20261007130000_create_document_verdict.sql`: `public.document_verdict` con PK `(application_id, document_id)`, FKs `on delete restrict` a `application_review` y `pyme_document`, `verdict` con check, `actor` no nulo (1–120 tras `btrim`), `actor_user_id` uuid no nulo (sin FK a propósito: la atribución sobrevive cambios de cuenta), timestamps, índice en `document_id` para la FK y trigger propio `set_document_verdict_updated_at` (search_path vacío, `security invoker`, sin `execute` para public/anon/authenticated). En la misma migración: RLS on, cero policies, `revoke all` a public/anon/authenticated/service_role y `grant select, insert, update` sólo a `service_role` (sin delete). pgTAP `supabase/tests/document_verdict.sql` → **34/34**.
+  - Puerto `DocumentVerdictRepositoryPort` (`listByApplication`, `setVerdict`) y adaptador Supabase: semántica de valor actual sin upsert — INSERT; ante `23505` un UPDATE condicional `verdict <> $nuevo`; si no afecta filas es un replay y devuelve la fila existente con `applied: false` (no re-sella actor ni `updated_at`). `23503` → `not_found`; cualquier otro error de Postgres → `unavailable`, con `message`/`details`/`hint` sólo en el log del servidor.
+  - Caso de uso `setDocumentVerdict`: sólo `awaiting_assessment`/`human_review` permiten editar; otro estado → `state_conflict` con `actualState` y sin escribir. El documento debe pertenecer al owner de la solicitud (`sme_request.ownerUserId` + `pyme_document.listByOwner`), si no `not_found`; owner ausente (fila legada) → `unavailable`, igual que el contexto. Actor = `displayName` + `userId` del principal verificado.
+  - HTTP ADMIN: `PUT /application-reviews/:applicationId/documents/:documentId/verdict` → `200 { applied, verdict }`; 400 `invalid_request`, 404, 409 `{ code: "state_conflict", actualState }`, 503 `unavailable` saneado (también ante un throw). Registrada en `route-policy.ts`, `build-app.ts` e `index.ts`. CORS suma `PUT` a los métodos permitidos (la consola web lo necesita en el preflight).
+  - Contexto: `GET /application-reviews/:applicationId/context` incluye `documentVerdicts: [...]`; un fallo al leerlos hace el contexto `503`, coherente con el resto de dependencias sin ausencia legítima.
+- **REFACTOR.** El input del caso de uso pasó a llamarse `SetDocumentVerdictRequest` para no colisionar con `SetDocumentVerdictInput` del puerto; `route-policy.test.ts` acepta `PUT` en el formato de claves.
+- **Desvío menor.** No se creó un caso de uso `listDocumentVerdicts` separado: el contexto lee el puerto directamente, como hace con los demás repositorios; envolverlo no agregaba lógica.
+- **Verificación observada.**
+  - `pnpm --filter @vaqcrow/contracts test` → **545 passed (16 archivos)**.
+  - `pnpm --filter @vaqcrow/api test` → **2151 passed (95 archivos)**.
+  - `pnpm run typecheck` → **8/8**.
+  - `pnpm run lint` → **5/5 sin errores** (1 warning preexistente en `apps/web`, `_request` sin usar, ajeno a U1).
+  - `pnpm run boundaries` → **sin violaciones** (871 módulos, 2822 dependencias).
+  - `supabase migration up --local` → aplicó `20261007120000_create_admin_sme_request_queue_view.sql` (pendiente en el stack local) y `20261007130000_create_document_verdict.sql`.
+  - `pnpm run test:db` → Files=16, Tests=449; todo **ok** salvo `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`), **ambiental y preexistente** (objetos sobrantes en el bucket local).
+- **Límite explícito.** Migración aplicada sólo **localmente**; el remoto queda pendiente de la autorización explícita (parent). Entre la verificación de estado y la escritura no hay lock: si una decisión cierra la revisión en ese instante, un veredicto puede quedar grabado justo después; es aceptable porque el veredicto es consultivo y no mueve la decisión. No se tocó `apps/web`.
+
+- **Work-unit commit.** _pendiente_
 
 ## Guardrails adoptados
 

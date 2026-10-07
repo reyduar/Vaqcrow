@@ -2,6 +2,7 @@ import type {
   ApplicationAssessmentRead,
   ApplicationId,
   ApplicationReviewSnapshot,
+  DocumentVerdictRecord,
   HumanDecisionRecord
 } from "@vaqcrow/contracts";
 import type { BusinessRecord } from "./business-repository-port.js";
@@ -23,6 +24,8 @@ export interface AdminReviewContext {
   readonly documents: readonly AdminReviewDocumentDescriptor[];
   readonly assessment: ApplicationAssessmentRead | null;
   readonly latestHumanDecision: HumanDecisionRecord | null;
+  /** The current per-document verdicts (#410/U1); empty when none were set. */
+  readonly documentVerdicts: readonly DocumentVerdictRecord[];
 }
 
 export type AdminReviewContextResult =

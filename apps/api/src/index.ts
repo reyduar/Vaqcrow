@@ -7,6 +7,7 @@ import { confirmRevenueShareDistributions } from "./application/use-cases/confir
 import { deployApprovedCampaign } from "./application/use-cases/deploy-approved-campaign.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
 import { createAdminReviewContextRouteDependencies } from "./infrastructure/http/routes/admin-review-context.route.js";
+import { createDocumentVerdictRouteDependencies } from "./infrastructure/http/routes/document-verdict.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
@@ -21,6 +22,7 @@ import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/s
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
 import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
+import { SupabaseDocumentVerdictRepository } from "./infrastructure/adapters/supabase-document-verdict-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
@@ -46,6 +48,10 @@ const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
 const applicationAssessmentRepository = new SupabaseApplicationAssessmentRepository(supabase);
+
+// Per-document KYC/KYB verdicts (#410/U1, D8): written by the ADMIN verdict
+// route and read back into the review context.
+const documentVerdictRepository = new SupabaseDocumentVerdictRepository(supabase);
 
 // The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
 // frozen synthetic data, no I/O — a real authorized source would replace it
@@ -242,7 +248,14 @@ const app = buildApp({
     smeRequests: smeRequestRepository,
     businesses: businessRepository,
     documents: pymeDocumentRepository,
-    assessments: applicationAssessmentRepository
+    assessments: applicationAssessmentRepository,
+    verdicts: documentVerdictRepository
+  }),
+  documentVerdict: createDocumentVerdictRouteDependencies({
+    applicationReviews: applicationReviewRepository,
+    smeRequests: smeRequestRepository,
+    documents: pymeDocumentRepository,
+    verdicts: documentVerdictRepository
   }),
   revenueShareDistribution,
   assessment: {

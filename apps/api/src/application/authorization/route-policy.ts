@@ -53,6 +53,9 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /application-reviews/:applicationId/manual-review": only("ADMIN"),
   "POST /application-reviews/:applicationId/decisions": only("ADMIN"),
   "GET /application-reviews/:applicationId/decisions": only("ADMIN"),
+  // Per-document KYC/KYB verdicts (#410/U1, D8): only an admin records them,
+  // attributed to the verified principal.
+  "PUT /application-reviews/:applicationId/documents/:documentId/verdict": only("ADMIN"),
   // Vault deployment lifecycle (#410/T5b): only an admin deploys/retries and
   // reads the read-only detail.
   "POST /application-reviews/:applicationId/deployment": only("ADMIN"),

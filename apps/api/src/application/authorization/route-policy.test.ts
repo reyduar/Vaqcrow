@@ -12,7 +12,7 @@ describe("resolveRoutePolicy", () => {
 
   it("lists every policy key as METHOD + pattern", () => {
     for (const key of ROUTE_POLICY_KEYS) {
-      expect(key).toMatch(/^(GET|POST|DELETE) \//);
+      expect(key).toMatch(/^(GET|POST|PUT|DELETE) \//);
     }
   });
 
