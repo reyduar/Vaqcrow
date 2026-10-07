@@ -81,7 +81,14 @@ function storageDownloadFailureStatus(code: "not_found" | "invalid_path" | "unav
 }
 
 function contentDisposition(name: string): string {
-  const safeName = name.replace(/[\u0000-\u001f\u007f"\\]/g, "_") || "download";
+  // Replace control characters, DEL, quotes and backslashes with `_` without a
+  // control-character regex (which ESLint's `no-control-regex` forbids): the
+  // header value must never carry a raw control byte or break the quoting.
+  const safeName =
+    Array.from(name, (char) => {
+      const code = char.codePointAt(0) ?? 0;
+      return code <= 0x1f || code === 0x7f || char === '"' || char === "\\" ? "_" : char;
+    }).join("") || "download";
   return `inline; filename="${safeName}"`;
 }
 

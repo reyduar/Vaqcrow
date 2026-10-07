@@ -1,4 +1,4 @@
-import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RateSnapshot, RateTableRepositoryPort, RateTableResult, RateSource } from "../../application/ports/rate-table-repository-port.js";
 
 const TABLE = "fx_rate";
@@ -9,7 +9,7 @@ export class SupabaseRateTableRepository implements RateTableRepositoryPort {
   async create(rate: RateSnapshot): Promise<RateTableResult<RateSnapshot>> {
     try {
       const { data, error } = await this.client.from(TABLE).insert(this.toRow(rate)).select().single();
-      if (error) return { ok: false, error: error.code === "23505" ? { code: "already_exists" } : this.error(error) };
+      if (error) return { ok: false, error: error.code === "23505" ? { code: "already_exists" } : this.error() };
       return { ok: true, value: this.toRecord(data) };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
@@ -19,7 +19,7 @@ export class SupabaseRateTableRepository implements RateTableRepositoryPort {
   async findCurrent(now: string): Promise<RateTableResult<RateSnapshot>> {
     try {
       const { data, error } = await this.client.from(TABLE).select().lte("effective_at", now).order("effective_at", { ascending: false }).order("version", { ascending: false }).limit(1).maybeSingle();
-      if (error) return { ok: false, error: this.error(error) };
+      if (error) return { ok: false, error: this.error() };
       if (!data) return { ok: false, error: { code: "not_found" } };
       return { ok: true, value: this.toRecord(data) };
     } catch {
@@ -45,7 +45,8 @@ export class SupabaseRateTableRepository implements RateTableRepositoryPort {
     throw new Error("Malformed integer rate");
   }
 
-  private error(_error: PostgrestError): { readonly code: "unavailable" } {
+  /** PostgREST failures collapse to one sanitized code; no provider text crosses this boundary. */
+  private error(): { readonly code: "unavailable" } {
     return { code: "unavailable" };
   }
 }
