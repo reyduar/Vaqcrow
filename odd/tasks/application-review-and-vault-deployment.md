@@ -190,6 +190,16 @@ Alcance de T5a (backend-first, sin UI):
 
 T5a quedó implementado (deadline persistido backend-first). Sigue T5b (aprobación→deploy + estados y notificación de publicación tras la confirmación de Testnet). Falta además el paso de operador de T3b (redesplegar/re-apuntar la fábrica) y el campo de plazo del wizard.
 
+## Migraciones aplicadas al proyecto remoto (2026-10-06/07)
+
+Autorizado por el owner, se aplicaron al proyecto remoto Supabase las tres migraciones que estaban solo en local y se verificó esquema, grants/RLS e historial:
+
+- `20261006120000_create_fx_rate` — tabla `fx_rate` con RLS y grants `service_role` (`select`/`insert`, sin `update`/`delete`); `anon`/`authenticated` sin acceso.
+- `20261006130000_add_campaign_rate_snapshot` — columnas nullable y constraint `campaign_rate_snapshot_all_or_none` presentes.
+- `20261006140000_add_business_deadline` — `businesses.deadline timestamptz` nullable; grants de `businesses` intactos (`select`/`insert`/`update`, sin `delete`).
+
+El CLI no está linkeado al remoto y `.env.cloud` no trae la contraseña de base, así que se aplicaron vía el MCP de Supabase. El MCP registra un version generado; cada version se alineó al del repositorio con un `update` sobre `supabase_migrations.schema_migrations`, de modo que el historial remoto coincide exactamente con `supabase/migrations/`. Los advisors de seguridad no reportan hallazgos nuevos (el INFO de RLS-sin-policy es el patrón service_role-only ya usado por todas las tablas).
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.
