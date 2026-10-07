@@ -305,7 +305,19 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [ ] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
 - [ ] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
 
-Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400): estrategia de entrega por defecto `ask-on-risk`, a confirmar con el owner antes de superar el presupuesto en la rama.
+Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400).
+
+### Entrega de la fase UI
+
+Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tracker es la rama de #410 en `f930365` (PR borrador no-merge #453 → rama de #406); cada work unit es una rama hija `…vault-0N-<slug>` creada desde la anterior, con su PR contra la rama padre inmediata.
+
+| Slice | Rama | Commits | PR | Base | Líneas |
+|---|---|---|---|---|---|
+| U1 | `…vault-02-document-verdicts` | `5cdc1a6`, `af8556e` | #454 | tracker | 1397 (`size:exception`) |
+| U2 | `…vault-03-review-route` | `06dfa53`, `ea57be9` | #455 | `-02` | 1164 (`size:exception`) |
+| U3 | `…vault-04-kyc-section` | _en curso_ | — | `-03` | — |
+
+`size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
 ### U1 — Veredictos por documento persistidos (backend)
 
