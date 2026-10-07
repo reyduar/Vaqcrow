@@ -33,6 +33,9 @@ function portOf(respond: () => AdminReviewResult) {
     },
     async downloadDocument() {
       return { ok: false, code: "unavailable" };
+    },
+    async recordDecision() {
+      return { ok: false, code: "unavailable" };
     }
   };
   return { port, calls };

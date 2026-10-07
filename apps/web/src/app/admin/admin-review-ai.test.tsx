@@ -8,6 +8,7 @@ import type {
   AdminReviewContext,
   AdminReviewPort,
   AdminReviewResult,
+  RecordDecisionResult,
   SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
 import { ApplicationReview } from "@/presentation/components/admin/application-review";
@@ -68,6 +69,10 @@ class FakePort implements AdminReviewPort {
   }
 
   async downloadDocument(): Promise<AdminDocumentFileResult> {
+    return { ok: false, code: "unavailable" };
+  }
+
+  async recordDecision(): Promise<RecordDecisionResult> {
     return { ok: false, code: "unavailable" };
   }
 }

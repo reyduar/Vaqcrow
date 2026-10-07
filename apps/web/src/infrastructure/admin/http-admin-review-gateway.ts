@@ -17,6 +17,8 @@ import type {
   AdminDocumentFileResult,
   AdminReviewPort,
   AdminReviewResult,
+  RecordDecisionRequest,
+  RecordDecisionResult,
   SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
 import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-client";
@@ -37,6 +39,11 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * body exactly `{ verdict }`; the actor is the verified admin, never sent) and
  * the private viewer read (`GET /storage/uploads?path=`, bytes as a `Blob`,
  * never a public URL).
+ *
+ * U5 adds the human decision write (`POST …/decisions`, body exactly
+ * `{ decisionId, outcome, reason, approvedLimitArs }`). The legacy
+ * `http-human-decision-gateway.ts` sends an `actor` the API now refuses, so it
+ * is not reused: the actor is the verified admin and is never sent.
  */
 
 /** RFC 6750 `b64token` characters: anything else (spaces, CR/LF) is never put in a header. */
@@ -143,6 +150,30 @@ function parseVerdictWrite(data: unknown, documentId: string): SetDocumentVerdic
   return { ok: true, applied: record["applied"], verdict: verdict.data };
 }
 
+/** The `{ applied, decision }` body for the decision that was sent; any deviation is `undefined`. */
+function parseDecisionWrite(
+  data: unknown,
+  applicationId: string,
+  decisionId: string
+): RecordDecisionResult | undefined {
+  const record = asRecord(data);
+  if (!record || typeof record["applied"] !== "boolean") return undefined;
+  const decision = humanDecisionRecordSchema.safeParse(record["decision"]);
+  if (!decision.success) return undefined;
+  if (decision.data.applicationId !== applicationId || decision.data.decisionId !== decisionId) return undefined;
+  return { ok: true, applied: record["applied"], decision: decision.data };
+}
+
+/** A 409 is either a state conflict with a known state or an idempotency conflict; anything else is `unavailable`. */
+function parseDecisionConflict(data: unknown): RecordDecisionResult {
+  const record = asRecord(data);
+  if (record?.["code"] === "idempotency_conflict") return { ok: false, code: "idempotency_conflict" };
+  const actualState = applicationReviewStateSchema.safeParse(record?.["actualState"]);
+  return record?.["code"] === "state_conflict" && actualState.success
+    ? { ok: false, code: "state_conflict", actualState: actualState.data }
+    : { ok: false, code: "unavailable" };
+}
+
 async function headersFor(provider: AccessTokenProvider | undefined): Promise<Record<string, string> | undefined> {
   if (!provider) return undefined;
   let token: string | null;
@@ -203,6 +234,33 @@ export class HttpAdminReviewGateway implements AdminReviewPort {
       }
       if (response.status !== 200) return { ok: false, code: "unavailable" };
       return parseVerdictWrite(response.data, documentId) ?? { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async recordDecision(applicationId: string, request: RecordDecisionRequest): Promise<RecordDecisionResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success) return { ok: false, code: "not_found" };
+    const headers = await headersFor(this.accessToken);
+    // Rebuilt key by key so nothing but the four contract keys ever travels.
+    const body = {
+      decisionId: request.decisionId,
+      outcome: request.outcome,
+      reason: request.reason,
+      approvedLimitArs: request.approvedLimitArs
+    };
+    try {
+      const response = await this.client.post(`/application-reviews/${encodeURIComponent(applicationId)}/decisions`, body, {
+        ...(headers ? { headers } : {}),
+        validateStatus: () => true
+      });
+      if (response.status === 200 || response.status === 201) {
+        return parseDecisionWrite(response.data, applicationId, request.decisionId) ?? { ok: false, code: "unavailable" };
+      }
+      if (response.status === 409) return parseDecisionConflict(response.data);
+      if (response.status === 400) return { ok: false, code: "invalid_request" };
+      if (response.status === 404) return { ok: false, code: "not_found" };
+      return { ok: false, code: "unavailable" };
     } catch {
       return { ok: false, code: "network" };
     }

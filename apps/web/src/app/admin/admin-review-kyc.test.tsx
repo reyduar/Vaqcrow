@@ -8,6 +8,7 @@ import type {
   AdminReviewContext,
   AdminReviewPort,
   AdminReviewResult,
+  RecordDecisionResult,
   SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
 import type { OpenDocumentWindow, PendingDocumentWindow } from "@/application/ports/document-window-port";
@@ -109,6 +110,10 @@ class FakePort implements AdminReviewPort {
   async downloadDocument(objectPath: string) {
     this.downloads.push(objectPath);
     return this.downloadResult();
+  }
+
+  async recordDecision(): Promise<RecordDecisionResult> {
+    return { ok: false, code: "unavailable" };
   }
 }
 
