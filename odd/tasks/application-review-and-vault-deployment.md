@@ -297,7 +297,7 @@ La rama de #410 integra la línea #382/#386 por merge `f930365` (decisión del o
 
 Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (un único writer), con spot-check del parent antes del commit.
 
-- [ ] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
+- [x] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
 - [ ] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
 - [ ] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
 - [ ] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
@@ -334,7 +334,7 @@ Ruta: **delegado** (un writer; migración + contrato + port/adapter + caso de us
   - `pnpm run test:db` → Files=16, Tests=449; todo **ok** salvo `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`), **ambiental y preexistente** (objetos sobrantes en el bucket local).
 - **Límite explícito.** Migración aplicada sólo **localmente**; el remoto queda pendiente de la autorización explícita (parent). Entre la verificación de estado y la escritura no hay lock: si una decisión cierra la revisión en ese instante, un veredicto puede quedar grabado justo después; es aceptable porque el veredicto es consultivo y no mueve la decisión. No se tocó `apps/web`.
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `5cdc1a6 feat(api): persist per-document review verdicts`. Migración remota (autorizada por el owner, 2026-10-07): `20261007130000_create_document_verdict` aplicada vía MCP; historial alineado al version del repo con `update` sobre `supabase_migrations.schema_migrations`; verificado RLS on, 0 policies, grants sólo `service_role` select/insert/update, constraints PK/FKs/checks presentes; advisors sin hallazgos nuevos (sólo el INFO RLS-sin-policy del patrón service_role-only).
 
 ## Guardrails adoptados
 
