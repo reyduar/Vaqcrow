@@ -3,16 +3,21 @@ import {
   applicationAssessmentReadSchema,
   applicationIdSchema,
   applicationReviewSnapshotSchema,
+  applicationReviewStateSchema,
   documentVerdictRecordSchema,
+  type DocumentVerdictValue,
   humanDecisionRecordSchema,
+  pymeDocumentIdSchema,
   smeRequestSchema
 } from "@vaqcrow/contracts";
 import type {
   AdminReviewCompany,
   AdminReviewContext,
   AdminReviewDocument,
+  AdminDocumentFileResult,
   AdminReviewPort,
-  AdminReviewResult
+  AdminReviewResult,
+  SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
 import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-client";
 
@@ -27,6 +32,11 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * instead of rendering half a context. A 404 is `not_found`, every other
  * non-200 the sanitized `unavailable`, a transport failure `network`. An id the
  * API would reject (not a UUID v4) is `not_found` without a request.
+ *
+ * U3 adds the per-document verdict write (`PUT …/documents/:documentId/verdict`,
+ * body exactly `{ verdict }`; the actor is the verified admin, never sent) and
+ * the private viewer read (`GET /storage/uploads?path=`, bytes as a `Blob`,
+ * never a public URL).
  */
 
 /** RFC 6750 `b64token` characters: anything else (spaces, CR/LF) is never put in a header. */
@@ -124,6 +134,15 @@ function parseContext(data: unknown, applicationId: string): AdminReviewContext 
   };
 }
 
+/** The `200 { applied, verdict }` body for the document that was written; any deviation is `undefined`. */
+function parseVerdictWrite(data: unknown, documentId: string): SetDocumentVerdictResult | undefined {
+  const record = asRecord(data);
+  if (!record || typeof record["applied"] !== "boolean") return undefined;
+  const verdict = documentVerdictRecordSchema.safeParse(record["verdict"]);
+  if (!verdict.success || verdict.data.documentId !== documentId) return undefined;
+  return { ok: true, applied: record["applied"], verdict: verdict.data };
+}
+
 async function headersFor(provider: AccessTokenProvider | undefined): Promise<Record<string, string> | undefined> {
   if (!provider) return undefined;
   let token: string | null;
@@ -158,6 +177,49 @@ export class HttpAdminReviewGateway implements AdminReviewPort {
       if (response.status !== 200) return { ok: false, code: "unavailable" };
       const context = parseContext(response.data, applicationId);
       return context ? { ok: true, context } : { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async setDocumentVerdict(
+    applicationId: string,
+    documentId: string,
+    verdict: DocumentVerdictValue
+  ): Promise<SetDocumentVerdictResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success || !pymeDocumentIdSchema.safeParse(documentId).success) {
+      return { ok: false, code: "not_found" };
+    }
+    const headers = await headersFor(this.accessToken);
+    const url = `/application-reviews/${encodeURIComponent(applicationId)}/documents/${encodeURIComponent(documentId)}/verdict`;
+    try {
+      const response = await this.client.put(url, { verdict }, { ...(headers ? { headers } : {}), validateStatus: () => true });
+      if (response.status === 404) return { ok: false, code: "not_found" };
+      if (response.status === 409) {
+        const actualState = applicationReviewStateSchema.safeParse(asRecord(response.data)?.["actualState"]);
+        return actualState.success
+          ? { ok: false, code: "state_conflict", actualState: actualState.data }
+          : { ok: false, code: "unavailable" };
+      }
+      if (response.status !== 200) return { ok: false, code: "unavailable" };
+      return parseVerdictWrite(response.data, documentId) ?? { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async downloadDocument(objectPath: string): Promise<AdminDocumentFileResult> {
+    if (objectPath.trim().length === 0) return { ok: false, code: "unavailable" };
+    const headers = await headersFor(this.accessToken);
+    try {
+      const response = await this.client.get("/storage/uploads", {
+        params: { path: objectPath },
+        responseType: "blob",
+        ...(headers ? { headers } : {}),
+        validateStatus: () => true
+      });
+      if (response.status !== 200 || !(response.data instanceof Blob)) return { ok: false, code: "unavailable" };
+      return { ok: true, file: response.data };
     } catch {
       return { ok: false, code: "network" };
     }

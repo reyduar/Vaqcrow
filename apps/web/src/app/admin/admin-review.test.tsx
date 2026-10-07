@@ -2,7 +2,13 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
-import type { AdminReviewContext, AdminReviewPort, AdminReviewResult } from "@/application/ports/admin-review-port";
+import type {
+  AdminDocumentFileResult,
+  AdminReviewContext,
+  AdminReviewPort,
+  AdminReviewResult,
+  SetDocumentVerdictResult
+} from "@/application/ports/admin-review-port";
 import { ReviewView } from "@/presentation/components/admin/review-view";
 import AdminReviewPage from "./(console)/pymes/[applicationId]/page";
 
@@ -45,6 +51,12 @@ class FakeAdminReviewPort implements AdminReviewPort {
   async getContext(applicationId: string): Promise<AdminReviewResult> {
     this.calls.push(applicationId);
     return this.respond();
+  }
+  async setDocumentVerdict(): Promise<SetDocumentVerdictResult> {
+    return { ok: false, code: "unavailable" };
+  }
+  async downloadDocument(): Promise<AdminDocumentFileResult> {
+    return { ok: false, code: "unavailable" };
   }
 }
 

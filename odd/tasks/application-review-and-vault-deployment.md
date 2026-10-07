@@ -376,6 +376,39 @@ Ruta: **delegado** (un writer; port + gateway + factory + null object + hook + r
 
 - **Work-unit commit.** `06dfa53 feat(web): add the admin application review route`.
 
+### U3 — Sección 1 · KYC/KYB y visor privado (web)
+
+Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook + adaptador de ventana + sección + composición, 2+ archivos no triviales). Sin cambios en `apps/api` ni `packages/*`.
+
+- **RED.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` sobre los 4 archivos enfocados (gateway, modelo `kyc`, sección/ruta `admin-review-kyc.test.tsx`, `document-window`) → **4 archivos fallidos; 22 failed / 22 passed**: `setDocumentVerdict`/`downloadDocument` no existían en el gateway (`is not a function`) y los módulos `application/admin/kyc`, `presentation/components/admin/application-review` e `infrastructure/admin/document-window` no existían.
+- **GREEN.**
+  - Puerto `admin-review-port.ts`: `setDocumentVerdict(applicationId, documentId, verdict)` → `{ ok, applied, verdict }` o `state_conflict` (con `actualState`) / `not_found` / `unavailable` / `network`; `downloadDocument(objectPath)` → `{ ok, file: Blob }` o `unavailable` / `network`. Puerto aparte `document-window-port.ts` (`OpenDocumentWindow`, `PendingDocumentWindow`) para que `state/` no dependa de `infrastructure/`.
+  - Gateway HTTP (mismo patrón axios + Bearer de la sesión lazy): `PUT /application-reviews/:applicationId/documents/:documentId/verdict` con body exactamente `{ verdict }` (el actor nunca viaja); 200 validado con `documentVerdictRecordSchema` y `documentId` coincidente; 404 → `not_found`; 409 → `state_conflict` sólo si `actualState` es un estado conocido (si no, `unavailable`); otro no-200 o cuerpo malformado → `unavailable`; throw → `network`; ids no UUID → `not_found` sin request. `GET /storage/uploads` con `params: { path }` y `responseType: "blob"`; cualquier no-200 o cuerpo que no sea `Blob` → `unavailable`; path vacío no hace request. El null object devuelve `unavailable` en las tres operaciones.
+  - Modelo puro `application/admin/kyc.ts`: filas en el orden del template (CUIT → contrato → ventas), luego fotos («Foto 1…n») y por último kinds desconocidos («Documento»). Títulos del template donde el kind coincide: `cuit` → «Constancia de CUIT», `articles-of-incorporation` → «Contrato social», `sales-declarations` → «Declaraciones de ventas»; subtítulo = nombre real del archivo (nunca el texto sintético del template). Sin fila para «Documento de identidad» (KYC simulado, no hay archivo) ni para un obligatorio ausente. Mapa «Válido»=`valid`, «Pedir»=`request`, «Inválido»=`invalid`; editable sólo en `awaiting_assessment`/`human_review`.
+  - Hook `state/use-kyc-review.ts`: un guardado a la vez (todos los toggles deshabilitados mientras guarda y en estados no editables); tras un 200 muestra el veredicto del registro que devolvió la API y llama a `reload()` (SWR revalida); ese registro local sólo aplica al contexto contra el que se escribió, así el dato re-leído siempre gana. 409 y 404 también recargan (el badge y los toggles reflejan el estado real).
+  - Visor (D1) `infrastructure/admin/document-window.ts`: PDF/JPG/PNG abren en pestaña nueva abierta **sincrónicamente en el click** (evita el bloqueo de popups) y apuntada al `blob:` cuando llegan los bytes, con `opener = null`; otro tipo, bytes servidos con un tipo no inline o pestaña bloqueada → descarga con `<a download>`. El object URL se revoca a los 60 s. Si la descarga falla, la pestaña se cierra. Nunca se arma una URL pública ni un `<a href>` al endpoint.
+  - Sección `kyc-section.tsx`: «1 · KYC/KYB» + badge `SIMULADO` (borde punteado), fila con ícono, título, archivo, botón «Abrir» (`aria-label` «Abrir {título}») y `role="group"` «Estado de {título}» con toggles `aria-pressed`. Botones de 44 px (template: 36 px) por el área táctil mínima de `demo-ui.md` §5.6, como el selector de tema. Los veredictos persistidos siguen visibles (deshabilitados) en estados decididos; «Abrir» sigue disponible.
+  - Composición `application-review.tsx` (cliente): un único puerto para el contexto y las escrituras, rinde `ReviewView` con el slot `kyc`; la página `/admin/pymes/[applicationId]` (server component, no puede pasar funciones como props) rinde esta composición.
+- **REFACTOR.** Los tipos de la ventana del visor pasaron de `infrastructure/` a `application/ports/document-window-port.ts`; `kycVerdictFailureMessage` recibe directamente `SetDocumentVerdictFailure`. Los fakes de `AdminReviewPort` de U2 (`admin-review.test.tsx`, `use-admin-review.test.tsx`) suman los dos métodos nuevos.
+- **Verificación observada.**
+  - Foco: 4 archivos → **78 passed**; con `src/infrastructure/admin`, `src/application/admin`, `src/app/admin` y el hook de U2 → **11 archivos, 152 passed**.
+  - `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **172 archivos, 1691 passed**.
+  - `pnpm run typecheck` → **8/8**.
+  - `pnpm run lint` → **5/5 sin errores** (1 warning preexistente, `_request` sin usar, ajeno a U3).
+  - `pnpm run boundaries` → **sin violaciones** (903 módulos, 2905 dependencias).
+  - `pnpm --filter @vaqcrow/web build` → compila; `/admin/pymes/[applicationId]` sigue como ruta dinámica (`ƒ`).
+- **Preguntas abiertas.**
+  - **«Contrato social» vs «Estatuto».** El template titula la fila «Contrato social»; el wizard (decisión del owner U1) llama al mismo slot `articles-of-incorporation` «Estatuto». Se usó el título del template, como pide la regla de fuente visual; a confirmar si el admin debe ver el mismo nombre que cargó la PyME.
+  - **Fotos.** El template no diseña filas para las fotos opcionales. Se reutilizó el patrón de fila («Foto 1…n», ícono de imagen, archivo como subtítulo) para poder abrirlas (D1) y marcarles un veredicto (la API lo acepta); a confirmar si las fotos llevan veredicto o sólo visor.
+  - **«Documento de identidad».** La fila del template no tiene un archivo detrás (KYC simulado) y no se renderiza; a confirmar si debe aparecer como fila informativa sin toggles.
+  - **Ubicación del control «Abrir».** El template sólo muestra nombres; se eligió un botón secundario «Abrir» entre el texto y el grupo de toggles.
+  - **Atribución del veredicto.** El registro trae `actor` y `updatedAt`, pero la fila del template no tiene lugar para ellos; no se muestran.
+  - **Tono verde de «Válido».** El template usa `--ok-s/--ok-t` para «Válido» presionado; `demo-ui.md` §2 reserva el verde para resultados confirmados en el ledger. Se siguió el template (con ícono, texto y `aria-pressed`, nunca color solo), igual que el precedente «Aprobada» de la cola; a confirmar.
+  - **Copy no diseñada.** «No hay documentos cargados.», «Esta solicitud ya tiene una decisión registrada. No se modificó ningún dato.» (409 con estado decidido), «Esta solicitud no admite cambios en su estado actual. No se modificó ningún dato.» (409 con otro estado), «No encontramos este documento en la solicitud. No se modificó ningún dato.» (404), «No pudimos guardar el estado del documento. No se modificó ningún dato.» (503/red) y «No pudimos abrir el documento.» (visor). Mínima y neutral, a confirmar por el owner.
+- **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real ni en un navegador real (apertura de pestaña, bloqueo de popups y visor de PDF del navegador quedan para el stub e2e de U7). Secciones 2–3 y despliegue siguen vacías (U4–U6).
+
+- **Work-unit commit.** _pendiente_
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.

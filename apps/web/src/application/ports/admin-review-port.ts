@@ -2,6 +2,7 @@ import type {
   ApplicationAssessmentRead,
   ApplicationReviewState,
   DocumentVerdictRecord,
+  DocumentVerdictValue,
   HumanDecisionRecord,
   SmeRequest
 } from "@vaqcrow/contracts";
@@ -66,6 +67,35 @@ export type AdminReviewResult =
   | { readonly ok: true; readonly context: AdminReviewContext }
   | { readonly ok: false; readonly code: AdminReviewErrorCode };
 
+/**
+ * Outcome of `PUT /application-reviews/:applicationId/documents/:documentId/verdict`
+ * (U3). `applied: false` is an idempotent replay of the current verdict. A
+ * `state_conflict` carries the review's actual state (the review only takes
+ * verdicts in `awaiting_assessment`/`human_review`); `not_found` covers an
+ * unknown application or a document outside it.
+ */
+export type SetDocumentVerdictResult =
+  | { readonly ok: true; readonly applied: boolean; readonly verdict: DocumentVerdictRecord }
+  | { readonly ok: false; readonly code: "state_conflict"; readonly actualState: ApplicationReviewState }
+  | { readonly ok: false; readonly code: "not_found" | "unavailable" | "network" };
+
+export type SetDocumentVerdictFailure = Extract<SetDocumentVerdictResult, { ok: false }>;
+
+/**
+ * Bytes of one private document, read through the ADMIN-only
+ * `GET /storage/uploads?path=` (D1). Any non-200 is the sanitized
+ * `unavailable`: the console never distinguishes why a file could not be read.
+ */
+export type AdminDocumentFileResult =
+  | { readonly ok: true; readonly file: Blob }
+  | { readonly ok: false; readonly code: "unavailable" | "network" };
+
 export interface AdminReviewPort {
   getContext(applicationId: string): Promise<AdminReviewResult>;
+  setDocumentVerdict(
+    applicationId: string,
+    documentId: string,
+    verdict: DocumentVerdictValue
+  ): Promise<SetDocumentVerdictResult>;
+  downloadDocument(objectPath: string): Promise<AdminDocumentFileResult>;
 }
