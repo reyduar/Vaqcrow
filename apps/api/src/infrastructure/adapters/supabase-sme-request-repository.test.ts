@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseApplicationId, parseCorrelationId } from "@vaqcrow/contracts";
 import type { SmeRequest } from "@vaqcrow/contracts";
+import { ADMIN_QUEUE_RAW_STATES_BY_DISPLAY } from "../../application/ports/sme-request-repository-port.js";
 import { SupabaseSmeRequestRepository } from "./supabase-sme-request-repository.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
@@ -234,6 +235,254 @@ describe("SupabaseSmeRequestRepository.findByOwner", () => {
         ok: false,
         error: { code: "unavailable" }
       });
+    }
+  });
+});
+
+interface QueueCall {
+  readonly table: string;
+  readonly select: Array<readonly [string, unknown]>;
+  readonly order: Array<readonly [string, unknown]>;
+  readonly or: string[];
+  readonly in: Array<readonly [string, readonly unknown[]]>;
+  readonly range: Array<readonly [number, number]>;
+}
+
+interface QueueStep {
+  readonly data?: unknown;
+  readonly count?: number | null;
+  readonly error?: { code: string; message: string; details: string; hint: string } | null;
+  readonly reject?: Error;
+}
+
+interface QueueCountStep {
+  readonly counts?: Readonly<Record<string, number>>;
+  readonly error?: { code: string; message: string; details: string; hint: string } | null;
+  readonly reject?: Error;
+}
+
+interface QueueBuilder {
+  select(columns: string, options?: unknown): QueueBuilder;
+  order(column: string, options?: unknown): QueueBuilder;
+  or(filter: string): QueueBuilder;
+  in(column: string, values: readonly unknown[]): QueueBuilder;
+  range(first: number, last: number): Promise<unknown>;
+  then<TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2>;
+}
+
+const DISPLAY_BY_RAW_STATES: ReadonlyMap<string, string> = new Map(
+  (Object.entries(ADMIN_QUEUE_RAW_STATES_BY_DISPLAY) as Array<[string, readonly string[]]>).map(
+    ([display, states]) => [states.join(","), display]
+  )
+);
+
+/**
+ * A fake PostgREST client for the queue: the page query (no `head`) settles on
+ * `.range`, while the four global count queries (`head: true`, one per display
+ * group) settle when awaited and answer from `countStep.counts` keyed by the
+ * display group their `in` filter selects.
+ */
+function fakeQueueClient(
+  step: QueueStep,
+  countStep: QueueCountStep = {}
+): { client: SupabaseClient; calls: QueueCall[] } {
+  const calls: QueueCall[] = [];
+  const client = {
+    from: (table: string): QueueBuilder => {
+      const call: QueueCall = { table, select: [], order: [], or: [], in: [], range: [] };
+      calls.push(call);
+      const isCount = () => Boolean((call.select[0]?.[1] as { head?: boolean } | undefined)?.head);
+      const settle = () => {
+        if (isCount()) {
+          if (countStep.reject) return Promise.reject(countStep.reject);
+          if (countStep.error) return Promise.resolve({ data: null, error: countStep.error, count: null });
+          const display = DISPLAY_BY_RAW_STATES.get((call.in[0]?.[1] ?? []).join(","));
+          return Promise.resolve({ data: null, error: null, count: countStep.counts?.[display ?? ""] ?? 0 });
+        }
+        if (step.reject) return Promise.reject(step.reject);
+        return Promise.resolve({ data: step.data ?? null, error: step.error ?? null, count: step.count ?? null });
+      };
+      const builder: QueueBuilder = {
+        select: (columns, options) => {
+          call.select.push([columns, options]);
+          return builder;
+        },
+        order: (column, options) => {
+          call.order.push([column, options]);
+          return builder;
+        },
+        or: (filter) => {
+          call.or.push(filter);
+          return builder;
+        },
+        in: (column, values) => {
+          call.in.push([column, values]);
+          return builder;
+        },
+        range: (first, last) => {
+          call.range.push([first, last]);
+          return settle();
+        },
+        then: (onfulfilled, onrejected) => settle().then(onfulfilled, onrejected)
+      };
+      return builder;
+    }
+  } as unknown as SupabaseClient;
+  return { client, calls };
+}
+
+describe("SupabaseSmeRequestRepository.listAdminQueue", () => {
+  const QUEUE_ROW = {
+    application_id: "11111111-1111-4111-8111-111111111111",
+    name: "Panadería Sol",
+    sector: "Alimentos",
+    state: "human_review",
+    updated_at: "2026-10-04T12:00:00.000Z"
+  };
+  const COUNTS = { pending: 3, changes: 1, approved: 2, rejected: 4 };
+
+  it("reads the joined view with server-side order/range and global display counts", async () => {
+    const { client, calls } = fakeQueueClient({ data: [QUEUE_ROW], count: 1 }, { counts: COUNTS });
+
+    const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 2,
+      pageSize: 20,
+      sort: "name",
+      order: "asc"
+    });
+
+    expect(calls.map((call) => call.table)).toEqual([
+      "admin_sme_request_queue",
+      "admin_sme_request_queue",
+      "admin_sme_request_queue",
+      "admin_sme_request_queue",
+      "admin_sme_request_queue"
+    ]);
+
+    const page = calls[0]!;
+    expect(page.select).toEqual([["*", { count: "exact" }]]);
+    expect(page.order).toEqual([["name", { ascending: true }]]);
+    expect(page.range).toEqual([[20, 39]]);
+    expect(page.in).toEqual([]);
+
+    // One global count per display group, each narrowed to its raw review states.
+    expect(calls.slice(1).map((call) => call.in[0]?.[1])).toEqual([
+      ["awaiting_assessment", "human_review"],
+      ["changes_requested"],
+      ["approved"],
+      ["rejected"]
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        items: [
+          {
+            applicationId: QUEUE_ROW.application_id,
+            name: "Panadería Sol",
+            sector: "Alimentos",
+            state: "human_review",
+            updatedAt: QUEUE_ROW.updated_at
+          }
+        ],
+        total: 1,
+        counts: COUNTS
+      }
+    });
+  });
+
+  it("narrows the page and the total server-side to the selected display state", async () => {
+    const { client, calls } = fakeQueueClient({ data: [QUEUE_ROW], count: 1 }, { counts: COUNTS });
+
+    await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 1,
+      pageSize: 20,
+      sort: "updatedAt",
+      order: "desc",
+      state: "pending"
+    });
+
+    expect(calls[0]!.in).toEqual([["state", ["awaiting_assessment", "human_review"]]]);
+  });
+
+  it("searches server-side over name, application id and sector", async () => {
+    const { client, calls } = fakeQueueClient({ data: [], count: 0 }, { counts: COUNTS });
+
+    await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 1,
+      pageSize: 20,
+      sort: "updatedAt",
+      order: "desc",
+      search: "sol"
+    });
+
+    expect(calls[0]!.or).toEqual(["name.ilike.*sol*,application_id.ilike.*sol*,sector.ilike.*sol*"]);
+  });
+
+  it("renders a missing business as 'Sin dato', never an invented name", async () => {
+    const { client } = fakeQueueClient({ data: [{ ...QUEUE_ROW, name: null, sector: null }], count: 1 }, { counts: COUNTS });
+
+    const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+      page: 1,
+      pageSize: 20,
+      sort: "updatedAt",
+      order: "desc"
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        items: [
+          {
+            applicationId: QUEUE_ROW.application_id,
+            name: "Sin dato",
+            sector: "Sin dato",
+            state: "human_review",
+            updatedAt: QUEUE_ROW.updated_at
+          }
+        ],
+        total: 1,
+        counts: COUNTS
+      }
+    });
+  });
+
+  it("is unavailable on a Postgres error, a missing count or a malformed row without leaking text", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const step of [
+      { error: pgError("42501") },
+      { data: [QUEUE_ROW] },
+      { data: [{ ...QUEUE_ROW, state: "not_a_state" }], count: 1 },
+      { data: [{ ...QUEUE_ROW, updated_at: null }], count: 1 },
+      { reject: new Error("network SECRET") }
+    ] as const) {
+      const { client } = fakeQueueClient(step, { counts: COUNTS });
+      const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+        page: 1,
+        pageSize: 20,
+        sort: "updatedAt",
+        order: "desc"
+      });
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(JSON.stringify(result)).not.toContain("SECRET");
+    }
+  });
+
+  it("is unavailable when a global count query fails, without leaking provider text", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const countStep of [{ error: pgError("42501") }, { reject: new Error("network SECRET") }] as const) {
+      const { client } = fakeQueueClient({ data: [QUEUE_ROW], count: 1 }, countStep);
+      const result = await new SupabaseSmeRequestRepository(client).listAdminQueue({
+        page: 1,
+        pageSize: 20,
+        sort: "updatedAt",
+        order: "desc"
+      });
+      expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(JSON.stringify(result)).not.toContain("SECRET");
     }
   });
 });

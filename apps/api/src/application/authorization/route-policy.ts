@@ -21,6 +21,9 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /health": PUBLIC,
 
   "POST /sme-requests": only("PYME"),
+  // The ADMIN PyMEs queue (#386/T1) lists every application; it is never
+  // reachable by the PyME that owns one of them.
+  "GET /sme-requests": only("ADMIN"),
   "GET /sme-requests/:applicationId": only("PYME"),
 
   "POST /businesses": only("PYME"),

@@ -11,6 +11,7 @@ type Allowed = readonly Role[] | "public" | "any";
 const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
   ["POST", "/sme-requests", ["PYME"]],
+  ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
   // Application completeness check (#402/T1a): declared-data check for the PyME.
   ["POST", "/completeness-check", ["PYME"]],
