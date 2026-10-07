@@ -336,6 +336,34 @@ Ruta: **delegado** (un writer; migración + contrato + port/adapter + caso de us
 
 - **Work-unit commit.** `5cdc1a6 feat(api): persist per-document review verdicts`. Migración remota (autorizada por el owner, 2026-10-07): `20261007130000_create_document_verdict` aplicada vía MCP; historial alineado al version del repo con `update` sobre `supabase_migrations.schema_migrations`; verificado RLS on, 0 policies, grants sólo `service_role` select/insert/update, constraints PK/FKs/checks presentes; advisors sin hallazgos nuevos (sólo el INFO RLS-sin-policy del patrón service_role-only).
 
+### U2 — Ruta y contexto de revisión (web)
+
+Ruta: **delegado** (un writer; port + gateway + factory + null object + hook + ruta + vista + cola, 2+ archivos no triviales). Sin cambios en `apps/api` ni `packages/*`.
+
+- **RED.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` sobre los 5 archivos enfocados (gateway, modelo `review`, hook, vista/ruta, cola) → **5 archivos fallidos; 2 failed / 19 passed**: los módulos `http-admin-review-gateway`, `application/admin/review`, `use-admin-review`, `review-view` y la página `[applicationId]` no existían, y la cola seguía rindiendo botones sin destino (`findByRole("link", { name: "Revisar solicitud" })` no encontraba nada).
+- **GREEN.**
+  - Puerto `application/ports/admin-review-port.ts` (sin vendor ni React): `AdminReviewContext` con `applicationId`, `state`, `smeRequest`, `company` (nullable; `deadline` ausente → `null`), `documents` (con `objectPath`, la clave del visor privado de T1a, nunca una URL pública), `documentVerdicts` (U1), `assessment` y `latestHumanDecision` (nullables). El `ownerUserId` no cruza el borde. Códigos `not_found` / `unavailable` / `network`.
+  - Gateway `infrastructure/admin/http-admin-review-gateway.ts` con Bearer (mismo patrón que la cola): valida con los schemas de `@vaqcrow/contracts` (`applicationReviewSnapshotSchema`, `smeRequestSchema`, `applicationAssessmentReadSchema`, `humanDecisionRecordSchema`, `documentVerdictRecordSchema`) y a mano la empresa y los descriptores de documento. 404 → `not_found`; otro no-200 → `unavailable`; cuerpo malformado o contexto de otra solicitud → `unavailable`; throw → `network`. Un id que no es UUID v4 es `not_found` sin request (la API respondería 400 y la vista mostraría un error reintentable sin sentido). Más `create-admin-review-port.ts` (sesión lazy) y `unavailable-admin-review-port.ts` (null object).
+  - Hook `state/use-admin-review.ts`: SWR con clave `["admin-review", applicationId]`; a diferencia de la cola expone `errorCode` porque `not_found` tiene su propio estado sin reintento. Un fallo nunca deja un contexto viejo.
+  - Modelo puro `application/admin/review.ts`: `adminReviewPath` (`/admin/pymes/{id}` con `encodeURIComponent`) y `reviewHeaderFor` → «Revisión: {nombre}», «{rubro} · {id}» y el badge con el mapa `ST` de la cola; empresa ausente o en blanco → «Sin dato».
+  - Ruta `app/admin/(console)/pymes/[applicationId]/page.tsx` (Next 16: `params` es una `Promise`, se hace `await`) que rinde `presentation/components/admin/review-view.tsx`: breadcrumb `nav[aria-label="Ruta"]` «PyMEs / Revisión» con «PyMEs» como link a `/admin/pymes`, H1, sub-línea, badge `md` (30px, como el template), estados cargando (`role="status"`), no encontrada y error (`role="alert"` + «Reintentar»), y cuatro slots (`kyc`, `assessment`, `decision`, `deployment`) en las dos columnas del template para U3–U6; un slot ausente no rinde nada.
+  - Navegación: las acciones de la cola («Revisar solicitud» / «Ver detalle») pasan de `<button onClick={onOpen}>` (que nadie cableaba) a `next/link` hacia `adminReviewPath(id)`; se quitó la prop `onOpen`. La shell ya resaltaba PyMEs para `/admin/pymes/*`.
+- **REFACTOR.** El badge de estado (`StatePill`) y los mapas de íconos/tonos salieron de `pymes-queue.tsx` a `admin-state-pill.tsx` con tamaños `sm` (fila de la cola) y `md` (encabezado de revisión); la cola no cambió su salida.
+- **Verificación observada.**
+  - Foco: 6 archivos (gateway, modelo, hook, vista/ruta, cola, `queue.test.ts`) → **77 passed**.
+  - `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **169 archivos, 1635 passed**.
+  - `pnpm run typecheck` → **8/8**.
+  - `pnpm run lint` → **5/5 sin errores** (1 warning preexistente, `_request` sin usar, ajeno a U2).
+  - `pnpm run boundaries` → **sin violaciones** (889 módulos, 2871 dependencias).
+  - `pnpm --filter @vaqcrow/web build` → compila; `/admin/pymes/[applicationId]` aparece como ruta dinámica (`ƒ`).
+- **Preguntas abiertas.**
+  - **Fecha «enviada el dd/mm/aaaa».** El template la muestra, pero el contexto de la API no expone fecha de envío (`smeRequest` sólo trae `smeReference`, total y período). La sub-línea la omite en vez de inventarla; `reviewHeaderFor` ya acepta `submittedAt` para cuando el owner decida exponerla (sería un cambio de API).
+  - **Copy de «no encontrada», error y carga.** El template no diseña estos estados para la vista `review`. Se usó copy mínima y neutral, alineada a la cola: «No encontramos esta solicitud.» (sin reintento), «No pudimos cargar la solicitud. No se modificó ningún dato.» + «Reintentar», y «Cargando…». Sin H1 en esos estados. A confirmar por el owner.
+  - **Panel de despliegue.** El template no ubica el panel de D3; el slot `deployment` quedó debajo de la decisión en la columna angosta, a confirmar en U6.
+- **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Las secciones 1–3 y el despliegue no tienen contenido todavía (U3–U6); no se probó contra la API real (sólo dobles).
+
+- **Work-unit commit.** _pendiente_
+
 ## Guardrails adoptados
 
 - El producto actual es **revenue share**, no acciones ni bonos; no se debe presentar la demo como una emisión de valores negociables.
