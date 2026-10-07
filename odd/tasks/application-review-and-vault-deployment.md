@@ -299,7 +299,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 
 - [x] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
 - [x] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
-- [ ] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
+- [x] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
 - [ ] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
 - [ ] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
 - [ ] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
@@ -315,7 +315,7 @@ Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tra
 |---|---|---|---|---|---|
 | U1 | `…vault-02-document-verdicts` | `5cdc1a6`, `af8556e` | #454 | tracker | 1397 (`size:exception`) |
 | U2 | `…vault-03-review-route` | `06dfa53`, `ea57be9` | #455 | `-02` | 1164 (`size:exception`) |
-| U3 | `…vault-04-kyc-section` | _en curso_ | — | `-03` | — |
+| U3 | `…vault-04-kyc-section` | `84a881c`, `edc160f` + registro | #456 | `-03` | ver PR |
 
 `size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
@@ -407,7 +407,7 @@ Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook + 
   - **Copy no diseñada.** «No hay documentos cargados.», «Esta solicitud ya tiene una decisión registrada. No se modificó ningún dato.» (409 con estado decidido), «Esta solicitud no admite cambios en su estado actual. No se modificó ningún dato.» (409 con otro estado), «No encontramos este documento en la solicitud. No se modificó ningún dato.» (404), «No pudimos guardar el estado del documento. No se modificó ningún dato.» (503/red) y «No pudimos abrir el documento.» (visor). Mínima y neutral, a confirmar por el owner.
 - **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real ni en un navegador real (apertura de pestaña, bloqueo de popups y visor de PDF del navegador quedan para el stub e2e de U7). Secciones 2–3 y despliegue siguen vacías (U4–U6).
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `edc160f feat(web): add the KYC/KYB review section and private viewer`.
 
 ## Guardrails adoptados
 
