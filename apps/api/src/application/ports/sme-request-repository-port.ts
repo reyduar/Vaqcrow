@@ -1,6 +1,80 @@
-import type { ApplicationId, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
+import type { ApplicationId, ApplicationReviewState, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
 
 export type SmeRequestRepositoryErrorCode = "not_found" | "invalid_request" | "unavailable";
+
+/**
+ * The honest value rendered for an application whose owner has no `businesses`
+ * row (#386/T1). It is a declared absence, never an invented company name and
+ * never a zero.
+ */
+export const MISSING_BUSINESS_LABEL = "Sin dato";
+
+/** The queue row fields an operator may sort by (see `GET /sme-requests`). */
+export type AdminQueueSortField = "applicationId" | "name" | "sector" | "state" | "updatedAt";
+
+export type AdminQueueSortOrder = "asc" | "desc";
+
+/**
+ * The four display groups the console's KPIs and table use (#386/T1b). They
+ * fold the six raw `application_review` states into the states an operator
+ * reads, so the `state` filter and the counts are resolved server-side and stay
+ * global instead of being derived from the loaded page.
+ */
+export type AdminQueueDisplayState = "pending" | "changes" | "approved" | "rejected";
+
+export const ADMIN_QUEUE_DISPLAY_STATES: readonly AdminQueueDisplayState[] = Object.freeze([
+  "pending",
+  "changes",
+  "approved",
+  "rejected"
+]);
+
+/**
+ * Display group -> the raw `application_review` states it folds. `pending` is
+ * every state not yet decided; the other three map one to one. Kept in lockstep
+ * with `queueDisplayState` in `apps/web/src/application/admin/queue.ts`.
+ */
+export const ADMIN_QUEUE_RAW_STATES_BY_DISPLAY: Readonly<
+  Record<AdminQueueDisplayState, readonly ApplicationReviewState[]>
+> = Object.freeze({
+  pending: Object.freeze(["awaiting_assessment", "human_review"] as const),
+  changes: Object.freeze(["changes_requested"] as const),
+  approved: Object.freeze(["approved"] as const),
+  rejected: Object.freeze(["rejected"] as const)
+});
+
+/** One number per display group, global across the whole queue (never page-scoped). */
+export type AdminQueueCounts = Readonly<Record<AdminQueueDisplayState, number>>;
+
+/**
+ * A validated queue query (the use case owns validation and clamping; the port
+ * receives already-resolved values). `search` is optional and pre-sanitized for
+ * PostgREST's filter syntax; `state` narrows the page to one display group.
+ */
+export interface AdminQueueQuery {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly sort: AdminQueueSortField;
+  readonly order: AdminQueueSortOrder;
+  readonly search?: string;
+  readonly state?: AdminQueueDisplayState;
+}
+
+/** One PyME queue row: the application plus its company and review state. */
+export interface AdminQueueItem {
+  readonly applicationId: ApplicationId;
+  readonly name: string;
+  readonly sector: string;
+  readonly state: ApplicationReviewState;
+  readonly updatedAt: string;
+}
+
+export interface AdminQueuePage {
+  readonly items: readonly AdminQueueItem[];
+  readonly total: number;
+  /** The global per-display-group counts, independent of the requested page. */
+  readonly counts: AdminQueueCounts;
+}
 
 export interface SmeRequestRepositoryError {
   readonly code: SmeRequestRepositoryErrorCode;
@@ -43,4 +117,12 @@ export interface SmeRequestRepositoryPort {
 
   /** `not_found` means no SME request exists for that application. */
   findByApplicationId(applicationId: ApplicationId): Promise<SmeRequestRepositoryResult<SmeRequestRecord>>;
+
+  /**
+   * The ADMIN-only PyMEs queue read model (#386/T1): every submitted application
+   * with its company name, sector, review state and last change, joined and
+   * paginated server-side. A missing company is mapped to
+   * `MISSING_BUSINESS_LABEL`, never dropped or invented.
+   */
+  listAdminQueue(query: AdminQueueQuery): Promise<SmeRequestRepositoryResult<AdminQueuePage>>;
 }
