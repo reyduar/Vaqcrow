@@ -45,7 +45,7 @@ El issue dice que la cola lee «el engine existente `GET /sme-requests`», pero 
 - [x] **T2 — Login y shell de `/admin`.** Login real (sólo `ADMIN`), guard de ruta (D2), shell con header `Vaqcrow Admin` + `TESTNET · DEMO`, nav PyMEs/Usuarios, tema, campana, chip (D3) y cerrar sesión.
 - [x] **T3 — Cola de PyMEs.** KPIs como filtros (`aria-pressed`), búsqueda, tabla con estados/acciones, paginación/orden y estados de carga/vacío/error (D1).
 - [x] **T4 — Pruebas.** Componentes y guard: errores de login, filtros KPI, búsqueda, paginación/orden, denegación de rol, estados.
-- [ ] **T5 — Evidencia.** Documento en `docs/planning/` y cierre.
+- [x] **T5 — Evidencia.** Documento `docs/planning/admin-login-shell-and-pymes-queue-evidence.md` (cierre de #386) y este registro.
 
 ## Checks aplicables
 
@@ -256,9 +256,42 @@ navega.
 - REFACTOR: corrección del test del adapter para inyectar el cliente falso por
   constructor (como los gateways hermanos); los 4 archivos siguen en verde.
 
+### T5 — Evidencia (2026-10-07)
+
+**Entregado (sin commit; el padre revisa y commitea):**
+
+- `docs/planning/admin-login-shell-and-pymes-queue-evidence.md`: documento de
+  cierre en español, con la estructura de los hermanos (contexto, cómo leer,
+  qué quedó implementado, qué quedó probado, límites, preguntas abiertas,
+  criterios verbatim, estado de entrega). Mapea los 7 criterios de aceptación
+  de #386, cita la fuente de cada resultado (comando re-ejecutado o entrada
+  fechada de esta bitácora) y registra D1–D3 y los desvíos documentados.
+- Este registro T5.
+
+**Verificación de cierre (re-ejecutada en este árbol, 2026-10-07):**
+
+- `pnpm run verify` → **exit 0**. Todos los gates pasan: lint, typecheck,
+  lint:tests, typecheck:tests, test, build, boundaries y test:boundaries, con
+  `contracts` 526, `domain` 120, `ai` 107, `api` 1788 y `web` 1550 tests;
+  `test:boundaries` 162.
+- En una corrida **anterior** del mismo gate, `@vaqcrow/web#test` falló con
+  `Test Files 10 failed | 152 passed (162)` / `Tests 19 failed | 1531 passed
+  (1550)` (18 `Test timed out in 5000ms` bajo la corrida paralela del
+  `turbo run test` y 1 aserción de `registration-step.test.tsx` sensible al
+  orden), en archivos **ajenos a #386**. Esos 10 archivos pasan en aislamiento
+  (`10 passed` / `158 passed`) y la suite web completa pasa con `--maxWorkers=4`
+  (162 / 1550). La re-ejecución del gate completo encadenado da **exit 0**.
+- No se re-ejecutó Testnet, ni escrituras remotas de Supabase, ni
+  `test:integration`. El resultado remoto de la migración (2026-10-07, MCP) se
+  cita de esta bitácora, no se re-corrió.
+
+**Diagnóstico honesto:** la primera corrida de `pnpm run verify` fue un
+artefacto ambiental (flakiness de la corrida paralela), no una regresión de
+#386; la re-ejecución del gate cierra en verde. Queda registrado como brecha
+§5.1 del documento de evidencia.
+
 ## Próximo paso
 
-T5 (documento de evidencia en `docs/planning/` y cierre). El seguimiento
-recomendado (filtro/conteo por estado server-side) quedó entregado en T1b; queda
-sólo el cierre documental. Regla de alineación: la migración de la vista no
-cambió, así que no hay versión remota pendiente.
+#386 queda con su cierre documental entregado y el gate de cierre en verde. No
+hay versión remota pendiente (la migración de la vista no cambió). Nada está en
+`main`; #386 desbloquea las vistas de #410 (revisión) y #390 (usuarios).
