@@ -83,6 +83,31 @@ export class SupabasePymeDocumentRepository implements PymeDocumentRepositoryPor
     }
   }
 
+  async findByObjectPath(objectPath: string): Promise<PymeDocumentRepositoryResult<PymeDocumentRecord | undefined>> {
+    try {
+      const { data, error } = await this.client
+        .from(TABLE)
+        .select()
+        .eq("object_path", objectPath)
+        .maybeSingle();
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error) };
+      }
+      if (data === null) {
+        return { ok: true, value: undefined };
+      }
+
+      try {
+        return { ok: true, value: this.toRecord(data as PymeDocumentColumns) };
+      } catch {
+        return { ok: false, error: { code: "unavailable" } };
+      }
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   async deleteByObjectPath(objectPath: string): Promise<PymeDocumentRepositoryResult<void>> {
     try {
       const { error } = await this.client.from(TABLE).delete().eq("object_path", objectPath);

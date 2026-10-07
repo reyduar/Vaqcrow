@@ -20,6 +20,13 @@ import type { NotificationPayload } from "../notifications/notification-catalogu
 export type NotificationEvent = {
   /** Stable identifier of the event instance, e.g. `application:<uuid>:submitted`. */
   readonly eventKey: string;
+  /**
+   * When present, the event is delivered to exactly these users and the role
+   * directory is never consulted. When absent, the event is addressed by the
+   * catalogue's `NOTIFICATION_AUDIENCE` role, unchanged. This is how a `pyme.*`
+   * event reaches the application's owner instead of every PyME.
+   */
+  readonly recipientUserIds?: readonly string[];
 } & NotificationPayload;
 
 export interface PublishSummary {

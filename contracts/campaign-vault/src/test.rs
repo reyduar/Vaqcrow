@@ -17,7 +17,11 @@ use soroban_sdk::{
 
 const START: u64 = 1_000;
 const DEADLINE: u64 = 2_000;
-const GOAL: i128 = 1_000;
+const GOAL: i128 = 10_000;
+/// The per-investor concentration cap enforced by `contribute`: nobody may hold
+/// more than a tenth of the goal, so settling always needs ten distinct
+/// investors.
+const CAP: i128 = GOAL / 10;
 
 struct Fixture {
     contract: Address,
@@ -58,6 +62,17 @@ fn fund(env: &Env, token: &Address, to: &Address, amount: i128) {
 
 fn balance(env: &Env, token: &Address, of: &Address) -> i128 {
     TokenClient::new(env, token).balance(of)
+}
+
+/// Create and fund a fresh investor, contribute `amount` from them, and return
+/// the address plus the state `contribute` reported. Settlement tests use it
+/// because the per-investor cap forces the goal to be reached by many distinct
+/// investors.
+fn fresh_investor(env: &Env, f: &Fixture, amount: i128) -> (Address, State) {
+    let investor = Address::generate(env);
+    fund(env, &f.token, &investor, amount);
+    let state = f.client(env).contribute(&investor, &amount);
+    (investor, state)
 }
 
 // --- constructor -----------------------------------------------------------
@@ -137,14 +152,19 @@ fn reaching_the_goal_settles_and_pays_the_sme_in_the_same_call() {
     let f = setup(&env, GOAL, DEADLINE);
     let client = f.client(&env);
 
-    let alice = Address::generate(&env);
-    fund(&env, &f.token, &alice, GOAL);
+    // The per-investor cap means the goal can only be reached by many distinct
+    // investors: ten of them, each contributing the full allowance.
+    for _ in 0..9 {
+        fresh_investor(&env, &f, CAP);
+    }
+    assert_eq!(client.state(), State::Funding);
 
-    let state = client.contribute(&alice, &GOAL);
+    let (_, state) = fresh_investor(&env, &f, CAP);
 
     // The transition and the payout are one operation.
     assert_eq!(state, State::Settled);
     assert_eq!(client.state(), State::Settled);
+    assert_eq!(client.contributors().len(), 10);
     assert_eq!(balance(&env, &f.token, &f.sme), GOAL);
     // Nothing is left in the vault.
     assert_eq!(balance(&env, &f.token, &f.contract), 0);
@@ -156,21 +176,102 @@ fn the_contribution_that_crosses_the_goal_pays_the_whole_total() {
     let f = setup(&env, GOAL, DEADLINE);
     let client = f.client(&env);
 
-    let alice = Address::generate(&env);
-    let bob = Address::generate(&env);
-    fund(&env, &f.token, &alice, 600);
-    fund(&env, &f.token, &bob, 500);
-
-    client.contribute(&alice, &600);
+    // Ten investors of 950 leave the campaign 500 short of the 10_000 goal.
+    for _ in 0..10 {
+        fresh_investor(&env, &f, 950);
+    }
     assert_eq!(client.state(), State::Funding);
+    assert_eq!(client.total(), 9_500);
 
-    // 600 + 500 > 1000: the campaign settles and the SME receives everything.
-    client.contribute(&bob, &500);
+    // The next contribution crosses the goal: the campaign settles and the SME
+    // receives everything, including the overshoot.
+    let (_, state) = fresh_investor(&env, &f, CAP);
 
+    assert_eq!(state, State::Settled);
     assert_eq!(client.state(), State::Settled);
-    assert_eq!(client.total(), 1_100);
-    assert_eq!(balance(&env, &f.token, &f.sme), 1_100);
+    assert_eq!(client.total(), 10_500);
+    assert_eq!(balance(&env, &f.token, &f.sme), 10_500);
     assert_eq!(balance(&env, &f.token, &f.contract), 0);
+}
+
+// --- per-investor concentration cap ----------------------------------------
+
+#[test]
+fn a_contribution_exactly_at_the_cap_is_accepted() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, CAP);
+
+    assert_eq!(client.contribute(&alice, &CAP), State::Funding);
+    assert_eq!(client.contribution_of(&alice), CAP);
+    assert_eq!(client.total(), CAP);
+    assert_eq!(balance(&env, &f.token, &f.contract), CAP);
+    assert_eq!(balance(&env, &f.token, &alice), 0);
+}
+
+#[test]
+fn a_contribution_one_stroop_over_the_cap_is_rejected() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, CAP + 1);
+
+    assert_eq!(
+        client.try_contribute(&alice, &(CAP + 1)),
+        Err(Ok(Error::InvestorCapExceeded))
+    );
+
+    // The rejection happens before any state write or token move.
+    assert_eq!(client.contribution_of(&alice), 0);
+    assert_eq!(client.total(), 0);
+    assert_eq!(client.contributors().len(), 0);
+    assert_eq!(balance(&env, &f.token, &alice), CAP + 1);
+    assert_eq!(balance(&env, &f.token, &f.contract), 0);
+}
+
+#[test]
+fn a_second_contribution_that_would_exceed_the_cap_is_rejected() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, CAP + 1);
+
+    assert_eq!(client.contribute(&alice, &CAP), State::Funding);
+
+    // Alice is already at the cap; one stroop more is rejected, and the refused
+    // call moves neither state nor tokens.
+    assert_eq!(
+        client.try_contribute(&alice, &1),
+        Err(Ok(Error::InvestorCapExceeded))
+    );
+    assert_eq!(client.contribution_of(&alice), CAP);
+    assert_eq!(client.total(), CAP);
+    assert_eq!(balance(&env, &f.token, &f.contract), CAP);
+    assert_eq!(balance(&env, &f.token, &alice), 1);
+}
+
+#[test]
+fn a_second_contribution_within_the_remaining_cap_is_accepted() {
+    let env = Env::default();
+    let f = setup(&env, GOAL, DEADLINE);
+    let client = f.client(&env);
+
+    let alice = Address::generate(&env);
+    fund(&env, &f.token, &alice, 600 + 400);
+
+    // 600 then 400 lands exactly on the cap: the rule is about the resulting
+    // total, not about the size of an individual contribution.
+    assert_eq!(client.contribute(&alice, &600), State::Funding);
+    assert_eq!(client.contribute(&alice, &400), State::Funding);
+    assert_eq!(client.contribution_of(&alice), CAP);
+    assert_eq!(client.total(), CAP);
 }
 
 // --- withdrawing -----------------------------------------------------------
@@ -300,21 +401,23 @@ fn a_settled_campaign_accepts_nothing_more() {
     let f = setup(&env, GOAL, DEADLINE);
     let client = f.client(&env);
 
-    let alice = Address::generate(&env);
-    let bob = Address::generate(&env);
-    fund(&env, &f.token, &alice, GOAL);
-    fund(&env, &f.token, &bob, 100);
-
-    client.contribute(&alice, &GOAL);
+    // Reach the goal with ten capped contributions.
+    for _ in 0..10 {
+        fresh_investor(&env, &f, CAP);
+    }
     assert_eq!(client.state(), State::Settled);
+
+    let bob = Address::generate(&env);
+    fund(&env, &f.token, &bob, 100);
 
     assert_eq!(
         client.try_contribute(&bob, &100),
         Err(Ok(Error::WrongState))
     );
-    assert_eq!(client.try_withdraw(&alice), Err(Ok(Error::WrongState)));
-    // The money already left: a refund cannot resurrect it.
-    assert_eq!(client.try_refund(&alice), Err(Ok(Error::WrongState)));
+    // The money already left: neither withdraw nor refund can resurrect it.
+    let stranger = Address::generate(&env);
+    assert_eq!(client.try_withdraw(&stranger), Err(Ok(Error::WrongState)));
+    assert_eq!(client.try_refund(&stranger), Err(Ok(Error::WrongState)));
     assert_eq!(balance(&env, &f.token, &f.contract), 0);
 }
 
@@ -528,17 +631,20 @@ fn a_campaign_settled_before_the_deadline_can_never_be_refunded() {
     let f = setup(&env, GOAL, DEADLINE);
     let client = f.client(&env);
 
-    let alice = Address::generate(&env);
-    fund(&env, &f.token, &alice, GOAL);
-    client.contribute(&alice, &GOAL);
+    let mut investors = soroban_sdk::vec![&env];
+    for _ in 0..10 {
+        let (investor, _) = fresh_investor(&env, &f, CAP);
+        investors.push_back(investor);
+    }
     assert_eq!(client.state(), State::Settled);
 
     // The deadline passing does not reopen anything: the money already left.
     env.ledger().set_timestamp(DEADLINE);
 
-    assert_eq!(client.try_refund(&alice), Err(Ok(Error::WrongState)));
+    let first = investors.get(0).unwrap();
+    assert_eq!(client.try_refund(&first), Err(Ok(Error::WrongState)));
     assert_eq!(
-        client.try_sweep(&soroban_sdk::vec![&env, alice]),
+        client.try_sweep(&investors),
         Err(Ok(Error::WrongState))
     );
     assert_eq!(balance(&env, &f.token, &f.sme), GOAL);
@@ -658,10 +764,13 @@ fn the_contribution_that_settles_publishes_settled_and_contributed() {
     let f = setup(&env, GOAL, DEADLINE);
     let client = f.client(&env);
 
-    let alice = Address::generate(&env);
-    fund(&env, &f.token, &alice, GOAL);
+    for _ in 0..9 {
+        fresh_investor(&env, &f, CAP);
+    }
 
-    client.contribute(&alice, &GOAL);
+    let closer = Address::generate(&env);
+    fund(&env, &f.token, &closer, CAP);
+    client.contribute(&closer, &CAP);
 
     let events = env.events().all().filter_by_contract(&f.contract);
     assert_eq!(events.events().len(), 2);
@@ -676,8 +785,8 @@ fn the_contribution_that_settles_publishes_settled_and_contributed() {
     assert_eq!(
         events.events()[1],
         Contributed {
-            investor: alice.clone(),
-            amount: GOAL,
+            investor: closer.clone(),
+            amount: CAP,
             total: GOAL,
         }
         .to_xdr(&env, &f.contract)

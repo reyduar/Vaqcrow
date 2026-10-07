@@ -47,6 +47,9 @@ function fakeRepository(overrides: Partial<NotificationRepositoryPort> = {}): Fa
     resolveRecipientsByRole: async (): Promise<
       { readonly ok: true; readonly recipients: readonly NotificationRecipient[] } | { readonly ok: false; readonly code: "unavailable" }
     > => ({ ok: true, recipients: [] }),
+    resolveRecipientsByUserIds: async (): Promise<
+      { readonly ok: true; readonly recipients: readonly NotificationRecipient[] } | { readonly ok: false; readonly code: "unavailable" }
+    > => ({ ok: true, recipients: [] }),
     insertIfAbsent: async (): Promise<
       { readonly ok: true; readonly inserted: boolean; readonly id: string } | { readonly ok: false; readonly code: "unavailable" }
     > => ({ ok: true, inserted: true, id: NOTIFICATION_ID }),

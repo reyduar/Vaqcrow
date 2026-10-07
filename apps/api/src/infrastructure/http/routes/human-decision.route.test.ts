@@ -12,7 +12,7 @@ import type {
   ApplicationReviewRepositoryResult,
   HumanDecisionRepositoryOutcome
 } from "../../../application/ports/application-review-repository-port.js";
-import { ADMIN_DISPLAY_NAME, bearer, buildAppAs } from "../test-support/auth.js";
+import { ADMIN_DISPLAY_NAME, bearer, buildAppAs, principalFor } from "../test-support/auth.js";
 
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222";
 const CALLER_CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
@@ -214,6 +214,87 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
 
     expect(generatedCorrelationId).not.toBe(CALLER_CORRELATION_ID);
     expect(response.headers["x-correlation-id"]).toBe(generatedCorrelationId);
+  });
+
+  it("publishes the addressed notification for an applied decision when wired", async () => {
+    const changesBody = { ...body, outcome: "changes_requested", approvedLimitArs: null } as const;
+    const changesCommand = parseHumanDecisionCommand({
+      applicationId: APPLICATION_ID,
+      actor: ACTOR,
+      ...changesBody
+    });
+    const changesDecision = parseHumanDecisionRecord({
+      ...changesCommand,
+      decidedAt: RECORDED_AT,
+      correlationId: storedCorrelationId
+    });
+    const fake = repositoryReturning({ ok: true, value: { record: changesDecision, applied: true } });
+    const ownerUserId = principalFor("PYME").userId;
+    const publish = vi.fn().mockResolvedValue({
+      recipients: 1,
+      inserted: 1,
+      skipped: 0,
+      emailsSent: 1,
+      emailsFailed: 0,
+      failed: false
+    });
+    const findByApplicationId = vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        applicationId: APPLICATION_ID,
+        request: {
+          smeReference: "sme:SYN-PH-0001",
+          declaredTotalArs: 15_000_000,
+          periodStart: "2026-01",
+          periodEnd: "2026-08",
+          simuladoLabel: "SIMULADO"
+        },
+        ownerUserId
+      }
+    });
+    app = buildAppAs("ADMIN", {
+      applicationReviewRepository: fake.repository,
+      humanDecisionNotifications: {
+        smeRequests: { findByApplicationId },
+        notifications: { publish }
+      }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: changesBody
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(findByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledWith({
+      eventKey: `application:${APPLICATION_ID}:decision:${changesDecision.decisionId}:changes_requested`,
+      type: "pyme.changes_requested",
+      recipientUserIds: [ownerUserId]
+    });
+  });
+
+  it("advances the vault deployment for an applied approved decision when wired", async () => {
+    const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
+    const onApproved = vi.fn().mockResolvedValue(undefined);
+    app = buildAppAs("ADMIN", {
+      applicationReviewRepository: fake.repository,
+      humanDecisionDeployment: { onApproved }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: body
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(onApproved).toHaveBeenCalledWith({
+      applicationId: decision.applicationId,
+      correlationId: decision.correlationId
+    });
   });
 });
 

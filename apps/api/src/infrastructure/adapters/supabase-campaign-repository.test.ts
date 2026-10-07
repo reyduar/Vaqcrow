@@ -173,6 +173,49 @@ describe("SupabaseCampaignRepository", () => {
     ]);
   });
 
+  it("persists the FX rate snapshot alongside the chain-observed campaign when one was captured", async () => {
+    const withRate: CampaignRecord = {
+      ...CAMPAIGN,
+      rateSnapshot: { version: 7, usdToArs: 1_000_000_000n, stroopsPerUsd: 10_000_000n }
+    };
+    const { client, calls } = createFakeSupabaseClient([
+      {
+        data: persistedCampaign({ fx_rate_version: "7", usd_to_ars: "1000000000", stroops_per_usd: "10000000" }),
+        error: null
+      }
+    ]);
+
+    const result = await new SupabaseCampaignRepository(client).create({
+      campaign: withRate,
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: true, value: withRate });
+    expect(calls.insert).toEqual([
+      expect.objectContaining({
+        fx_rate_version: 7,
+        usd_to_ars: "1000000000",
+        stroops_per_usd: "10000000"
+      })
+    ]);
+  });
+
+  it("reads back a persisted FX rate snapshot", async () => {
+    const { client } = createFakeSupabaseClient([
+      {
+        data: persistedCampaign({ fx_rate_version: "7", usd_to_ars: "1000000000", stroops_per_usd: "10000000" }),
+        error: null
+      }
+    ]);
+
+    const result = await new SupabaseCampaignRepository(client).findById(CAMPAIGN_ID);
+
+    expect(result).toEqual({
+      ok: true,
+      value: { ...CAMPAIGN, rateSnapshot: { version: 7, usdToArs: 1_000_000_000n, stroopsPerUsd: 10_000_000n } }
+    });
+  });
+
   it("maps a duplicate campaign to already_exists and does not expose PostgREST text", async () => {
     const { client } = createFakeSupabaseClient([{ data: null, error: fakeError("23505") }]);
     const result = await new SupabaseCampaignRepository(client).create({

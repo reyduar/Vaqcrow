@@ -86,6 +86,15 @@ export interface NotificationRepositoryPort {
   resolveRecipientsByRole(role: Role): Promise<ResolveRecipientsResult>;
 
   /**
+   * The active profiles among exactly these user ids that have an email — the
+   * addressed counterpart to `resolveRecipientsByRole`, for an event that
+   * targets one known owner rather than every member of a role. The input is
+   * never empty-broadcast: an empty input or a genuine no-match is `ok` with an
+   * empty list, and only a provider failure is `unavailable`.
+   */
+  resolveRecipientsByUserIds(userIds: readonly string[]): Promise<ResolveRecipientsResult>;
+
+  /**
    * Enqueues one notification per recipient, idempotent on
    * `(event_key, recipient_user_id)`: a replayed event returns `inserted: false`
    * with the existing row's id instead of inserting a duplicate.

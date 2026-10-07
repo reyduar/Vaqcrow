@@ -21,15 +21,23 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/profile/wallet", ["PYME"]],
   ["POST", "/storage/uploads", ["PYME"]],
   ["DELETE", "/storage/uploads", ["PYME"]],
+  ["GET", "/storage/uploads", ["ADMIN"]],
   ["GET", "/businesses/:businessId/sales-periods", ["PYME", "ADMIN"]],
   ["POST", "/businesses/:businessId/sales-periods", ["PYME"]],
   ["POST", "/assessments", ["ADMIN"]],
   ["POST", "/application-reviews/:applicationId/assessments", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/assessment", ["ADMIN"]],
+  ["GET", "/application-reviews/:applicationId/context", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/manual-review", ["ADMIN"]],
   ["POST", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
+  // Vault deployment lifecycle (#410/T5b): the admin deploys or retries and
+  // reads the read-only detail; both are ADMIN-only.
+  ["POST", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
+  ["GET", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
   ["POST", "/campaigns", ["ADMIN"]],
+  ["GET", "/admin/rates/current", ["ADMIN"]],
+  ["POST", "/admin/rates", ["ADMIN"]],
   ["GET", "/campaigns/:campaignId", "any"],
   ["GET", "/campaigns/:campaignId/transactions/:hash", "any"],
   ["POST", "/campaigns/:campaignId/invocations", "any"],
@@ -64,6 +72,8 @@ function buildFullApp(auth?: AuthDependency): {
   const routes: Array<{ method: string; url: string }> = [];
   const app = buildApp({
     applicationReviewRepository: stub,
+    adminReviewContext: stub,
+    campaignDeployment: stub,
     fundingIntent: stub,
     revenueShareDistribution: stub,
     assessment: stub,
@@ -76,6 +86,7 @@ function buildFullApp(auth?: AuthDependency): {
     wallet: stub,
     notification: stub,
     completenessCheck: stub,
+    rateTable: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

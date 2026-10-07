@@ -4,7 +4,9 @@ import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/co
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
+import { deployApprovedCampaign } from "./application/use-cases/deploy-approved-campaign.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
+import { createAdminReviewContextRouteDependencies } from "./infrastructure/http/routes/admin-review-context.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
@@ -18,6 +20,7 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
+import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
@@ -27,6 +30,7 @@ import { SupabaseSmeRequestRepository } from "./infrastructure/adapters/supabase
 import { SupabaseStorageAdapter } from "./infrastructure/adapters/supabase-storage-adapter.js";
 import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/adapters/supabase-revenue-share-distribution-repository.js";
 import { SupabaseWalletRepository } from "./infrastructure/adapters/supabase-wallet-repository.js";
+import { SupabaseRateTableRepository } from "./infrastructure/adapters/supabase-rate-table-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./infrastructure/scheduling/confirmation-policy.js";
@@ -41,6 +45,7 @@ const config = parseApiConfig(process.env);
 const supabase = createSupabaseClient(config.supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
+const applicationAssessmentRepository = new SupabaseApplicationAssessmentRepository(supabase);
 
 // The monthly sales feed runs on the simulated provider (issue #83, D2/D3):
 // frozen synthetic data, no I/O — a real authorized source would replace it
@@ -171,6 +176,43 @@ const notificationPublisher = new NotificationPublisher({
 // service_role client.
 const storageAdapter = new SupabaseStorageAdapter(supabase);
 const pymeDocumentRepository = new SupabasePymeDocumentRepository(supabase);
+const rateTableRepository = new SupabaseRateTableRepository(supabase);
+
+// The vault-deployment lifecycle (#410/T5b): one durable row per approved
+// application. The admin route deploys/retries explicitly, and an applied
+// `approved` decision advances it best-effort. It reuses the campaign group's
+// engine, so it is only wired when the campaign vault slice is enabled.
+const deploymentRepository = new SupabaseCampaignDeploymentRepository(supabase);
+
+const deployApproved =
+  campaign === undefined
+    ? undefined
+    : (input: { readonly applicationId: ApplicationId; readonly correlationId: CorrelationId }) =>
+        deployApprovedCampaign(
+          {
+            applicationReviews: applicationReviewRepository,
+            deployments: deploymentRepository,
+            smeRequests: smeRequestRepository,
+            businesses: businessRepository,
+            wallet: walletRepository,
+            // The same rate table the campaign snapshot reads; the conversion
+            // for goal ARS->stroops uses its current row.
+            rates: rateTableRepository,
+            campaigns: campaign.campaigns,
+            accounts: campaign.accounts,
+            factory: campaign.factory,
+            chain: campaign.chain,
+            network: campaign.network,
+            tokenContractId: campaign.tokenContractId,
+            notifications: notificationPublisher
+          },
+          input
+        );
+
+const campaignDeployment =
+  deployApproved === undefined ? undefined : { deployments: deploymentRepository, deploy: deployApproved };
+
+const humanDecisionDeployment = deployApproved === undefined ? undefined : { onApproved: deployApproved };
 
 // The completeness check (#402/T1a, extended by U5): the declared rules run
 // first, then the persisted documents are read and judged. Gaps warn, they never
@@ -185,6 +227,23 @@ const completenessCheck = createContentAwareCompletenessCheckAdapter({
 const app = buildApp({
   auth,
   applicationReviewRepository,
+  // A recorded changes-requested/rejected decision notifies the application's
+  // owner (#410/T4a): the SME request resolves the owner, the publisher delivers
+  // the in-app row and email addressed to that user alone.
+  humanDecisionNotifications: {
+    smeRequests: smeRequestRepository,
+    notifications: notificationPublisher
+  },
+  // An applied approval advances the vault deploy without blocking the
+  // decision response (#410/T5b).
+  humanDecisionDeployment,
+  adminReviewContext: createAdminReviewContextRouteDependencies({
+    applicationReviews: applicationReviewRepository,
+    smeRequests: smeRequestRepository,
+    businesses: businessRepository,
+    documents: pymeDocumentRepository,
+    assessments: applicationAssessmentRepository
+  }),
   revenueShareDistribution,
   assessment: {
     provider: assessmentProvider,
@@ -192,13 +251,14 @@ const app = buildApp({
   },
   applicationAssessment: {
     repository: applicationReviewRepository,
-    assessments: new SupabaseApplicationAssessmentRepository(supabase),
+    assessments: applicationAssessmentRepository,
     smeRequests: smeRequestRepository,
     salesData: salesDataProvider,
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
   campaign,
+  campaignDeployment,
   salesFeed: { provider: salesDataProvider, businesses: businessRepository },
   smeRequest: {
     repository: smeRequestRepository,
@@ -215,6 +275,7 @@ const app = buildApp({
   // The completeness check (#402/T1a, U5): declared gaps and content findings
   // warn, they never block the send.
   completenessCheck: { checker: completenessCheck },
+  rateTable: { repository: rateTableRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

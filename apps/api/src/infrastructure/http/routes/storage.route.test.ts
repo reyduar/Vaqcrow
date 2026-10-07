@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   PymeDocumentInput,
   PymeDocumentRepositoryPort
@@ -46,11 +46,13 @@ interface FakeStorage {
   readonly port: StoragePort;
   readonly uploaded: UploadObjectInput[];
   readonly removed: string[];
+  readonly downloaded: string[];
 }
 
 function fakeStorage(overrides: Partial<StoragePort> = {}): FakeStorage {
   const uploaded: UploadObjectInput[] = [];
   const removed: string[] = [];
+  const downloaded: string[] = [];
   const port: StoragePort = {
     uploadObject: async (input) => {
       uploaded.push(input);
@@ -60,13 +62,13 @@ function fakeStorage(overrides: Partial<StoragePort> = {}): FakeStorage {
       removed.push(path);
       return { ok: true, value: undefined };
     },
-    downloadObject: async () => ({
-      ok: true,
-      value: { bytes: new Uint8Array(), contentType: "application/octet-stream" }
-    }),
+    downloadObject: async (path) => {
+      downloaded.push(path);
+      return { ok: true, value: { bytes: new Uint8Array(), contentType: "application/octet-stream" } };
+    },
     ...overrides
   };
-  return { port, uploaded, removed };
+  return { port, uploaded, removed, downloaded };
 }
 
 interface FakeDocuments {
@@ -84,6 +86,7 @@ function fakeDocuments(overrides: Partial<PymeDocumentRepositoryPort> = {}): Fak
       return { ok: true, value: { documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", ...input, createdAt: "2026-10-05T19:00:00.000Z" } };
     },
     listByOwner: async () => ({ ok: true, value: [] }),
+    findByObjectPath: async () => ({ ok: true, value: undefined }),
     deleteByObjectPath: async (objectPath) => {
       deleted.push(objectPath);
       return { ok: true, value: undefined };
@@ -536,5 +539,248 @@ describe("DELETE /storage/uploads", () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({ code: "forbidden" });
+  });
+});
+
+describe("GET /storage/uploads", () => {
+  it("returns a persisted document to ADMIN with private cache headers and a safe inline filename", async () => {
+    const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
+    const documents = fakeDocuments({
+      findByObjectPath: async (objectPath) =>
+        objectPath === path
+          ? {
+              ok: true,
+              value: {
+                documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                ownerUserId: USER_ID,
+                kind: "cuit",
+                objectPath: path,
+                name: "cuit.pdf",
+                sizeBytes: PDF.length,
+                contentType: "application/pdf",
+                createdAt: "2026-10-05T19:00:00.000Z"
+              }
+            }
+          : { ok: true, value: undefined }
+    });
+    const fake = fakeStorage({
+      downloadObject: async (objectPath) =>
+        objectPath === path
+          ? { ok: true, value: { bytes: PDF, contentType: "application/pdf" } }
+          : { ok: false, error: { code: "not_found" } }
+    });
+    app = buildAppAs("ADMIN", { storage: deps(fake.port, documents.port) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(Buffer.from(response.body, "latin1")).toEqual(Buffer.from(PDF));
+    expect(response.headers["content-type"]).toMatch(/^application\/pdf/);
+    expect(response.headers["content-disposition"]).toBe('inline; filename="cuit.pdf"');
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+  });
+
+  it("does not download when the path has no persisted descriptor", async () => {
+    const fake = fakeStorage();
+    const documents = fakeDocuments();
+    app = buildAppAs("ADMIN", { storage: deps(fake.port, documents.port) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(`${USER_ID}/cuit/missing.pdf`)}`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(fake.downloaded).toHaveLength(0);
+  });
+
+  it("rejects malformed paths before consulting the repository or storage", async () => {
+    const fake = fakeStorage();
+    const findByObjectPath = vi.fn(async () => ({ ok: true as const, value: undefined }));
+    const documents = fakeDocuments({ findByObjectPath });
+    app = buildAppAs("ADMIN", { storage: deps(fake.port, documents.port) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent("/etc/passwd")}`
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(findByObjectPath).not.toHaveBeenCalled();
+    expect(fake.downloaded).toHaveLength(0);
+  });
+
+  it("maps descriptor and storage failures to sanitized responses", async () => {
+    const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
+    const descriptorFailure = fakeDocuments({
+      findByObjectPath: async () => ({ ok: false, error: { code: "unavailable" } })
+    });
+    app = buildAppAs("ADMIN", { storage: deps(fakeStorage().port, descriptorFailure.port) });
+
+    const unavailable = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(unavailable.statusCode).toBe(503);
+    expect(unavailable.json()).toEqual({ code: "unavailable" });
+    await app.close();
+
+    const invalidDescriptor = fakeDocuments({
+      findByObjectPath: async () => ({ ok: false, error: { code: "invalid_request" } })
+    });
+    app = buildAppAs("ADMIN", { storage: deps(fakeStorage().port, invalidDescriptor.port) });
+
+    const invalidDescriptorResponse = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(invalidDescriptorResponse.statusCode).toBe(503);
+    expect(invalidDescriptorResponse.json()).toEqual({ code: "unavailable" });
+    await app.close();
+
+    const storage = fakeStorage({
+      downloadObject: async () => ({ ok: false, error: { code: "unavailable" } })
+    });
+    const documents = fakeDocuments({
+      findByObjectPath: async () => ({
+        ok: true,
+        value: {
+          documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          ownerUserId: USER_ID,
+          kind: "cuit",
+          objectPath: path,
+          name: "cuit.pdf",
+          sizeBytes: PDF.length,
+          contentType: "application/pdf",
+          createdAt: "2026-10-05T19:00:00.000Z"
+        }
+      })
+    });
+    app = buildAppAs("ADMIN", { storage: deps(storage.port, documents.port) });
+
+    const storageUnavailable = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(storageUnavailable.statusCode).toBe(503);
+    expect(storageUnavailable.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("sanitizes repository and storage exceptions", async () => {
+    const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
+    const repository = fakeDocuments({
+      findByObjectPath: async () => {
+        throw new Error("repository provider detail");
+      }
+    });
+    app = buildAppAs("ADMIN", { storage: deps(fakeStorage().port, repository.port) });
+
+    const repositoryFailure = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(repositoryFailure.statusCode).toBe(503);
+    expect(repositoryFailure.body).toBe(JSON.stringify({ code: "unavailable" }));
+    await app.close();
+
+    const storage = fakeStorage({
+      downloadObject: async () => {
+        throw new Error("storage provider detail");
+      }
+    });
+    const documents = fakeDocuments({
+      findByObjectPath: async () => ({
+        ok: true,
+        value: {
+          documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          ownerUserId: USER_ID,
+          kind: "cuit",
+          objectPath: path,
+          name: "cuit.pdf",
+          sizeBytes: PDF.length,
+          contentType: "application/pdf",
+          createdAt: "2026-10-05T19:00:00.000Z"
+        }
+      })
+    });
+    app = buildAppAs("ADMIN", { storage: deps(storage.port, documents.port) });
+
+    const storageFailure = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(storageFailure.statusCode).toBe(503);
+    expect(storageFailure.body).toBe(JSON.stringify({ code: "unavailable" }));
+  });
+
+  it("denies PYME even when a descriptor exists", async () => {
+    const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
+    const fake = fakeStorage();
+    const documents = fakeDocuments({
+      findByObjectPath: async () => ({
+        ok: true,
+        value: {
+          documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          ownerUserId: USER_ID,
+          kind: "cuit",
+          objectPath: path,
+          name: "cuit.pdf",
+          sizeBytes: PDF.length,
+          contentType: "application/pdf",
+          createdAt: "2026-10-05T19:00:00.000Z"
+        }
+      })
+    });
+    app = buildAppAs("PYME", { storage: deps(fake.port, documents.port) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+  });
+
+  it("maps an invalid storage path to a sanitized 400", async () => {
+    const path = `${USER_ID}/cuit/${OBJECT_ID}-cuit.pdf`;
+    const storage = fakeStorage({
+      downloadObject: async () => ({ ok: false, error: { code: "invalid_path" } })
+    });
+    const documents = fakeDocuments({
+      findByObjectPath: async () => ({
+        ok: true,
+        value: {
+          documentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          ownerUserId: USER_ID,
+          kind: "cuit",
+          objectPath: path,
+          name: "cuit.pdf",
+          sizeBytes: PDF.length,
+          contentType: "application/pdf",
+          createdAt: "2026-10-05T19:00:00.000Z"
+        }
+      })
+    });
+    app = buildAppAs("ADMIN", { storage: deps(storage.port, documents.port) });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/storage/uploads?path=${encodeURIComponent(path)}`
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
   });
 });

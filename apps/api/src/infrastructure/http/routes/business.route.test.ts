@@ -61,6 +61,35 @@ describe("POST /businesses", () => {
     expect(createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft });
   });
 
+  it("accepts an optional deadline and creates the company with it", async () => {
+    const deadline = "2026-12-01T00:00:00.000Z";
+    const createForOwner = vi.fn().mockResolvedValue({ ok: true, value: { ...record, deadline } });
+
+    const response = await build({ createForOwner }).inject({
+      method: "POST",
+      url: "/businesses",
+      payload: { ...draft, deadline }
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({ business: { ...record, deadline } });
+    expect(createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft: { ...draft, deadline } });
+  });
+
+  it("answers 400 with the sanitized envelope for a malformed deadline", async () => {
+    const createForOwner = vi.fn();
+
+    const response = await build({ createForOwner }).inject({
+      method: "POST",
+      url: "/businesses",
+      payload: { ...draft, deadline: "tomorrow" }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ errors: [{ field: "deadline", code: "invalid_format" }] });
+    expect(createForOwner).not.toHaveBeenCalled();
+  });
+
   it("refuses an owner supplied in the body and never persists", async () => {
     const createForOwner = vi.fn();
 

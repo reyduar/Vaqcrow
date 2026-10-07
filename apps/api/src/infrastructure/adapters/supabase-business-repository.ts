@@ -31,6 +31,7 @@ interface BusinessColumns {
   readonly description?: unknown;
   readonly goal_ars?: unknown;
   readonly revenue_share?: unknown;
+  readonly deadline?: unknown;
   readonly created_at?: unknown;
   readonly updated_at?: unknown;
 }
@@ -53,7 +54,12 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
           city: input.draft.city,
           description: input.draft.description,
           goal_ars: input.draft.goalArs,
-          revenue_share: input.draft.revenueShare
+          revenue_share: input.draft.revenueShare,
+          // Absent when the draft carries no deadline: omitting the column
+          // leaves it NULL, exactly as an explicit `null` would.
+          ...(input.draft.deadline === undefined || input.draft.deadline === null
+            ? {}
+            : { deadline: input.draft.deadline })
         })
         .select()
         .single();
@@ -124,6 +130,9 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
     const ownerUserId = row.owner_user_id;
     const createdAt = row.created_at;
     const updatedAt = row.updated_at;
+    // Nullable: a business registered before the deadline column, or without a
+    // declared one, stores NULL and is read back with the field omitted.
+    const deadline = row.deadline;
 
     if (
       typeof businessId !== "string" ||
@@ -146,6 +155,10 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       throw new Error("malformed business row");
     }
 
+    if (deadline !== undefined && deadline !== null && typeof deadline !== "string") {
+      throw new Error("malformed business row");
+    }
+
     return {
       businessId,
       ownerUserId,
@@ -156,6 +169,7 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       description: row.description,
       goalArs,
       revenueShare,
+      ...(typeof deadline === "string" ? { deadline } : {}),
       createdAt,
       updatedAt
     };

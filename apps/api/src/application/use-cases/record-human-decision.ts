@@ -1,10 +1,16 @@
 import type {
+  ApplicationId,
   ApplicationReviewState,
   CorrelationId,
   HumanDecisionCommand,
   HumanDecisionRecord
 } from "@vaqcrow/contracts";
 import type { ApplicationReviewRepositoryPort } from "../ports/application-review-repository-port.js";
+import type {
+  NotificationEvent,
+  NotificationPublisherPort
+} from "../ports/notification-publisher-port.js";
+import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 
 export type RecordHumanDecisionError =
   | { readonly code: "not_found" | "idempotency_conflict" | "unavailable" }
@@ -17,17 +23,56 @@ export type RecordHumanDecisionResult =
     }
   | { readonly ok: false; readonly error: RecordHumanDecisionError };
 
+/**
+ * The collaborators a decision needs to notify the application's owner: the
+ * SME request repository resolves the owner from the application, and the
+ * publisher delivers the in-app row and email. Both are optional so a caller
+ * that does not notify (a read, an older test) keeps the original signature.
+ */
+export interface DecisionNotificationDependencies {
+  readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
+  readonly notifications: Pick<NotificationPublisherPort, "publish">;
+}
+
+/**
+ * The collaborator that advances the vault deployment when an `approved`
+ * decision is actually recorded (#410/T5b). It is a single callback rather than
+ * the campaign ports so this use case stays independent of the deploy engine;
+ * invoking it is best-effort and fire-and-forget — a slow or failing deploy must
+ * never block or fail the decision response.
+ */
+export interface DecisionDeploymentDependencies {
+  readonly onApproved: (input: {
+    readonly applicationId: ApplicationId;
+    readonly correlationId: CorrelationId;
+  }) => Promise<unknown>;
+}
+
 export async function recordHumanDecision(
   repository: ApplicationReviewRepositoryPort,
-  input: { readonly command: HumanDecisionCommand; readonly correlationId: CorrelationId }
+  input: { readonly command: HumanDecisionCommand; readonly correlationId: CorrelationId },
+  notification?: DecisionNotificationDependencies,
+  deployment?: DecisionDeploymentDependencies
 ): Promise<RecordHumanDecisionResult> {
   const result = await repository.recordHumanDecision(input);
 
   if (result.ok) {
-    return {
-      ok: true,
-      value: { decision: result.value.record, applied: result.value.applied }
-    };
+    const value = { decision: result.value.record, applied: result.value.applied };
+
+    // Only a real apply notifies, and never the `approved` outcome: its
+    // notification belongs to the deployment/publish states unit (D3). A
+    // missing or failing collaborator must never fail the decision.
+    if (value.applied && notification !== undefined) {
+      await notifyDecisionOutcome(notification, value.decision);
+    }
+
+    // An applied approval starts the deploy, but never on the response path:
+    // the callback is invoked and its promise deliberately not awaited.
+    if (value.applied && deployment !== undefined && value.decision.outcome === "approved") {
+      triggerDeployment(deployment, value.decision);
+    }
+
+    return { ok: true, value };
   }
 
   if (result.error.code === "state_conflict") {
@@ -48,4 +93,74 @@ export async function recordHumanDecision(
   }
 
   return { ok: false, error: { code: "unavailable" } };
+}
+
+/**
+ * Notifies the application's owner of a changes-requested or rejected decision,
+ * best-effort: an unresolved owner, an unavailable lookup or a throwing
+ * publisher are all swallowed. An unresolved owner skips the send rather than
+ * falling back to a role-wide broadcast, and the event key carries the decision
+ * id so a retried publish is idempotent at the row level.
+ */
+async function notifyDecisionOutcome(
+  notification: DecisionNotificationDependencies,
+  decision: HumanDecisionRecord
+): Promise<void> {
+  if (decision.outcome === "approved") {
+    return;
+  }
+
+  let ownerUserId: string | undefined;
+  try {
+    const owner = await notification.smeRequests.findByApplicationId(decision.applicationId);
+    if (!owner.ok) {
+      return;
+    }
+    ownerUserId = owner.value.ownerUserId;
+  } catch {
+    return;
+  }
+
+  if (ownerUserId === undefined) {
+    return;
+  }
+
+  const eventKey = `application:${decision.applicationId}:decision:${decision.decisionId}:${decision.outcome}`;
+  const event: NotificationEvent =
+    decision.outcome === "changes_requested"
+      ? { eventKey, type: "pyme.changes_requested", recipientUserIds: [ownerUserId] }
+      : { eventKey, type: "pyme.rejected", recipientUserIds: [ownerUserId] };
+
+  try {
+    await notification.notifications.publish(event);
+  } catch {
+    // Delivery is best-effort by contract; the decision is already recorded.
+  }
+}
+
+/**
+ * Starts the vault deployment for an approved application without blocking the
+ * decision response. The callback is invoked immediately (so the durable
+ * pending row is created promptly) but its promise is deliberately not awaited;
+ * a rejection or a synchronous throw is swallowed because the deploy is
+ * best-effort and the decision is already recorded. The explicit
+ * `POST /application-reviews/:applicationId/deployment` route remains the retry
+ * and observation surface.
+ */
+function triggerDeployment(
+  deployment: DecisionDeploymentDependencies,
+  decision: HumanDecisionRecord
+): void {
+  try {
+    void Promise.resolve(
+      deployment.onApproved({
+        applicationId: decision.applicationId,
+        correlationId: decision.correlationId
+      })
+    ).catch(() => {
+      // Best-effort: the admin can retry from the review console.
+    });
+  } catch {
+    // A synchronously-throwing collaborator must never fail the decision.
+  }
 }

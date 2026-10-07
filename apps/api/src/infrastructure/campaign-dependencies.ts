@@ -9,6 +9,7 @@ import { StellarCampaignVaultChain } from "./adapters/stellar-campaign-vault-cha
 import { StellarCampaignVaultInvocation } from "./adapters/stellar-campaign-vault-invocation.js";
 import { StellarPlatformAccount } from "./adapters/stellar-platform-account.js";
 import { SupabaseCampaignRepository } from "./adapters/supabase-campaign-repository.js";
+import { SupabaseRateTableRepository } from "./adapters/supabase-rate-table-repository.js";
 import type { CampaignRouteDependencies } from "./http/routes/campaign.route.js";
 
 /**
@@ -45,6 +46,10 @@ export function buildCampaignDependencies(
   return {
     applicationReviews: clients.applicationReviews,
     campaigns: new SupabaseCampaignRepository(clients.supabase),
+    // A fresh deployment resolves the current rate against this table and
+    // snapshots it with the campaign's terms (#410/T3a). The same `fx_rate`
+    // table backs the admin rate routes; both adapters only read/write it.
+    rates: new SupabaseRateTableRepository(clients.supabase),
     accounts: new StellarPlatformAccount(config.stellar, signer),
     factory: new StellarCampaignFactory(
       { ...config.stellar, factoryId: config.campaignVault.factoryId, readSourceAccountId: signer.publicKey },

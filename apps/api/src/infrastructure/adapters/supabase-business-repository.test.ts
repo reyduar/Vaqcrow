@@ -124,6 +124,54 @@ describe("SupabaseBusinessRepository.createForOwner", () => {
     expect(result).toEqual({ ok: true, value: EXPECTED });
   });
 
+  it("persists and reads the deadline when the draft carries one", async () => {
+    const deadline = "2026-12-01T00:00:00.000Z";
+    const { client, calls } = fakeClient({ data: { ...ROW, deadline } });
+
+    const result = await new SupabaseBusinessRepository(client).createForOwner({
+      ownerUserId: OWNER,
+      draft: { ...DRAFT, deadline }
+    });
+
+    expect(calls.insert).toEqual([
+      {
+        owner_user_id: OWNER,
+        name: "Panadería Sol",
+        cuit: "20123456789",
+        sector: "Alimentos",
+        city: "CABA",
+        description: "Panadería artesanal de barrio",
+        goal_ars: 5_000_000,
+        revenue_share: 5,
+        deadline
+      }
+    ]);
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, deadline } });
+  });
+
+  it("omits the deadline column when the draft carries none", async () => {
+    const { client, calls } = fakeClient({ data: ROW });
+
+    const result = await new SupabaseBusinessRepository(client).createForOwner({
+      ownerUserId: OWNER,
+      draft: { ...DRAFT, deadline: null }
+    });
+
+    expect(calls.insert).toEqual([
+      {
+        owner_user_id: OWNER,
+        name: "Panadería Sol",
+        cuit: "20123456789",
+        sector: "Alimentos",
+        city: "CABA",
+        description: "Panadería artesanal de barrio",
+        goal_ars: 5_000_000,
+        revenue_share: 5
+      }
+    ]);
+    expect(result).toEqual({ ok: true, value: EXPECTED });
+  });
+
   it("maps a check violation to invalid_request without leaking Postgres text", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient({ error: pgError("23514") });
@@ -166,6 +214,25 @@ describe("SupabaseBusinessRepository.findByOwner", () => {
     expect(calls.eq).toEqual([["owner_user_id", OWNER]]);
     expect(calls.maybeSingle).toBe(1);
     expect(result).toEqual({ ok: true, value: EXPECTED });
+  });
+
+  it("reads a stored deadline back into the record", async () => {
+    const deadline = "2026-12-01T00:00:00.000Z";
+    const { client } = fakeClient({ data: { ...ROW, deadline } });
+
+    const result = await new SupabaseBusinessRepository(client).findByOwner(OWNER);
+
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, deadline } });
+  });
+
+  it("is unavailable when the stored deadline is not a string", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ data: { ...ROW, deadline: 42 } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
   });
 
   it("is not_found when the owner has no company", async () => {

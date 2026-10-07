@@ -38,6 +38,7 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
 
   "POST /storage/uploads": only("PYME"),
   "DELETE /storage/uploads": only("PYME"),
+  "GET /storage/uploads": only("ADMIN"),
 
   "GET /businesses/:businessId/sales-periods": only("PYME", "ADMIN"),
   "POST /businesses/:businessId/sales-periods": only("PYME"),
@@ -45,11 +46,18 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /assessments": only("ADMIN"),
   "POST /application-reviews/:applicationId/assessments": only("ADMIN"),
   "GET /application-reviews/:applicationId/assessment": only("ADMIN"),
+  "GET /application-reviews/:applicationId/context": only("ADMIN"),
   "GET /application-reviews/:applicationId/manual-review": only("ADMIN"),
   "POST /application-reviews/:applicationId/decisions": only("ADMIN"),
   "GET /application-reviews/:applicationId/decisions": only("ADMIN"),
+  // Vault deployment lifecycle (#410/T5b): only an admin deploys/retries and
+  // reads the read-only detail.
+  "POST /application-reviews/:applicationId/deployment": only("ADMIN"),
+  "GET /application-reviews/:applicationId/deployment": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
+  "POST /admin/rates": only("ADMIN"),
+  "GET /admin/rates/current": only("ADMIN"),
   "GET /campaigns/:campaignId": AUTHENTICATED,
   "GET /campaigns/:campaignId/transactions/:hash": AUTHENTICATED,
   "POST /campaigns/:campaignId/invocations": AUTHENTICATED,

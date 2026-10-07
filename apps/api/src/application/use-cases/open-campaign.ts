@@ -4,8 +4,10 @@ import type { ApplicationReviewRepositoryPort } from "../ports/application-revie
 import type { CampaignFactoryPort } from "../ports/campaign-factory-port.js";
 import type { CampaignVaultChainPort, VaultChainState } from "../ports/campaign-vault-chain-port.js";
 import { mapVaultStateToCampaignState } from "../ports/campaign-vault-chain-port.js";
-import type { CampaignRecord, CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { CampaignRateSnapshot, CampaignRecord, CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { RateTableRepositoryPort } from "../ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../ports/stellar-account-port.js";
+import { validateCampaignGuardrails } from "./campaign-guardrails.js";
 
 /**
  * Opens the campaign vault after human approval (D5 in
@@ -43,6 +45,8 @@ export type OpenCampaignErrorCode =
   | "application_not_approved"
   | "sme_account_unavailable"
   | "vault_state_mismatch"
+  | "rate_unavailable"
+  | "goal_limit_exceeded"
   | "unavailable";
 
 export interface OpenCampaignError {
@@ -59,6 +63,13 @@ export interface OpenCampaignDependencies {
   readonly accounts: StellarAccountPort;
   readonly factory: CampaignFactoryPort;
   readonly chain: CampaignVaultChainPort;
+  /**
+   * Resolves the rate a fresh deployment's terms are validated against and
+   * snapshotted with (#410/T3a, D6). Not consulted on a replay or when an
+   * already-deployed vault is adopted: idempotency must not depend on a rate
+   * that may have changed (or a table that may be down) since the deploy.
+   */
+  readonly rates: RateTableRepositoryPort;
   readonly network: string;
   /** The vault's payment asset (native XLM SAC in this demo). Config-level, not per-application. */
   readonly tokenContractId: string;
@@ -118,8 +129,34 @@ export async function openCampaign(
   }
 
   let contractAddress = predicted.value;
+  let rateSnapshot: CampaignRateSnapshot | undefined;
 
   if (!probe.ok) {
+    // The hard campaign cap (D4/D6) is enforced at creation, in integer
+    // arithmetic only — the goal must not exceed USD 50,000 at the current
+    // rate. An unusable rate is reported as `rate_unavailable`, never as a
+    // 5xx or with any provider text.
+    const rate = await deps.rates.findCurrent(new Date().toISOString());
+    if (!rate.ok) {
+      return { ok: false, error: { code: "rate_unavailable" } };
+    }
+
+    const guardrail = validateCampaignGuardrails({ goalStroops: command.goalStroops, rate: rate.value });
+    if (!guardrail.ok) {
+      return {
+        ok: false,
+        error: { code: guardrail.code === "goal_limit_exceeded" ? "goal_limit_exceeded" : "rate_unavailable" }
+      };
+    }
+
+    // Snapshotted with the terms: the values copied here are what the cap was
+    // checked against, so a later rate change never moves this campaign's cap.
+    rateSnapshot = {
+      version: rate.value.version,
+      usdToArs: rate.value.usdToArs,
+      stroopsPerUsd: rate.value.stroopsPerUsd
+    };
+
     const accountReady = await ensureSmeAccount(deps.accounts, command.smeAccountId);
     if (!accountReady) {
       return { ok: false, error: { code: "sme_account_unavailable" } };
@@ -162,7 +199,8 @@ export async function openCampaign(
       state: mapVaultStateToCampaignState(chainState.value.state),
       totalStroops: chainState.value.totalStroops,
       reconciliationStatus: "in_sync",
-      lastReconciledAt: chainState.value.observedAt.toISOString()
+      lastReconciledAt: chainState.value.observedAt.toISOString(),
+      ...(rateSnapshot === undefined ? {} : { rateSnapshot })
     },
     correlationId
   });

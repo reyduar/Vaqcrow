@@ -78,6 +78,36 @@ describe("validateBusinessDraft", () => {
     expect(validateBusinessDraft({ ...draft, revenueShare: 1 }).ok).toBe(true);
     expect(validateBusinessDraft({ ...draft, revenueShare: 10 }).ok).toBe(true);
   });
+
+  it("accepts an optional ISO deadline and passes it through", () => {
+    const deadline = "2026-12-01T00:00:00.000Z";
+
+    expect(validateBusinessDraft({ ...draft, deadline })).toEqual({
+      ok: true,
+      value: { ...draft, deadline }
+    });
+  });
+
+  it("leaves the deadline absent when the body does not carry one", () => {
+    expect(validateBusinessDraft(draft)).toEqual({ ok: true, value: draft });
+  });
+
+  it("treats an explicit null deadline as none", () => {
+    expect(validateBusinessDraft({ ...draft, deadline: null })).toEqual({ ok: true, value: draft });
+  });
+
+  it.each([
+    ["a date without time or offset", "2026-12-01"],
+    ["a non-ISO string", "next tuesday"],
+    ["a blank string", "   "],
+    ["a wrong type", 123]
+  ])("rejects %s as an invalid deadline", (_name, deadline) => {
+    const result = validateBusinessDraft({ ...draft, deadline });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected a rejection");
+    expect(result.fieldErrors).toContainEqual({ field: "deadline", code: "invalid_format" });
+  });
 });
 
 describe("createBusiness", () => {
@@ -103,6 +133,19 @@ describe("createBusiness", () => {
     const result = await createBusiness({ repository: repo }, { ownerUserId: OWNER, body: draft });
 
     expect(repo.createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft });
+    expect(result).toEqual({ ok: true, value: record });
+  });
+
+  it("passes an optional deadline through to the repository", async () => {
+    const repo = repository();
+    const deadline = "2026-12-01T00:00:00.000Z";
+
+    const result = await createBusiness(
+      { repository: repo },
+      { ownerUserId: OWNER, body: { ...draft, deadline } }
+    );
+
+    expect(repo.createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft: { ...draft, deadline } });
     expect(result).toEqual({ ok: true, value: record });
   });
 

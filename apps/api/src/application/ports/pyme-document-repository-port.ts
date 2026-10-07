@@ -49,6 +49,9 @@ export interface PymeDocumentRepositoryPort {
   /** The owner's documents, oldest first; an empty array when none exist. */
   listByOwner(ownerUserId: string): Promise<PymeDocumentRepositoryResult<readonly PymeDocumentRecord[]>>;
 
+  /** Looks up one persisted descriptor by its server-generated object path. */
+  findByObjectPath(objectPath: string): Promise<PymeDocumentRepositoryResult<PymeDocumentRecord | undefined>>;
+
   /**
    * Removes the descriptor for `objectPath`. Removing a missing row is not an
    * error (idempotent), matching the storage port's removal semantics.

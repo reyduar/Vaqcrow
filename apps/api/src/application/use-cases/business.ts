@@ -26,10 +26,24 @@ const DRAFT_KEYS: ReadonlySet<string> = new Set([
   "city",
   "description",
   "goalArs",
-  "revenueShare"
+  "revenueShare",
+  "deadline"
 ]);
 
 const CUIT_PATTERN = /^[0-9]{11}$/;
+
+/**
+ * Matches the campaign contract's deadline shape (`z.iso.datetime({ offset: true })`):
+ * a full date-time with an explicit `Z` or `±HH:MM` offset. The `Date.parse`
+ * round-trip rejects impossible dates the pattern alone would let through
+ * (for example a `2026-13-01` month).
+ */
+const ISO_DATETIME_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function isIsoDateTime(value: string): boolean {
+  return ISO_DATETIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value));
+}
 
 export type BusinessValidation =
   | { readonly ok: true; readonly value: BusinessDraft }
@@ -111,6 +125,16 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
     revenueShare = revenueValue;
   }
 
+  const deadlineValue = record["deadline"];
+  let deadline: string | undefined;
+  if (deadlineValue !== undefined && deadlineValue !== null) {
+    if (typeof deadlineValue !== "string" || !isIsoDateTime(deadlineValue.trim())) {
+      errors.push({ field: "deadline", code: "invalid_format" });
+    } else {
+      deadline = deadlineValue.trim();
+    }
+  }
+
   if (errors.length > 0) {
     return { ok: false, fieldErrors: errors };
   }
@@ -124,7 +148,8 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
       city: city as string,
       description: description as string,
       goalArs: goalArs as number,
-      revenueShare: revenueShare as number
+      revenueShare: revenueShare as number,
+      ...(deadline === undefined ? {} : { deadline })
     }
   };
 }

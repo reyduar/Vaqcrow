@@ -4,9 +4,12 @@ import { generateCorrelationId } from "@vaqcrow/contracts";
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
+import type { DecisionDeploymentDependencies, DecisionNotificationDependencies } from "../../application/use-cases/record-human-decision.js";
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
+import { registerAdminReviewContextRoute } from "./routes/admin-review-context.route.js";
+import type { AdminReviewContextRouteDependencies } from "./routes/admin-review-context.route.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
 import type { ApplicationAssessmentRouteDependencies } from "./routes/application-assessment.route.js";
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
@@ -16,6 +19,8 @@ import { registerBusinessRoute } from "./routes/business.route.js";
 import type { BusinessRouteDependencies } from "./routes/business.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
 import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
+import { registerCampaignDeploymentRoute } from "./routes/campaign-deployment.route.js";
+import type { CampaignDeploymentRouteDependencies } from "./routes/campaign-deployment.route.js";
 import { registerCompletenessCheckRoute } from "./routes/completeness-check.route.js";
 import type { CompletenessCheckRouteDependencies } from "./routes/completeness-check.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
@@ -34,6 +39,8 @@ import { registerStorageRoute } from "./routes/storage.route.js";
 import type { StorageRouteDependencies } from "./routes/storage.route.js";
 import { registerWalletRoute } from "./routes/wallet.route.js";
 import type { WalletRouteDependencies } from "./routes/wallet.route.js";
+import { registerRateTableRoute } from "./routes/rate-table.route.js";
+import type { RateTableRouteDependencies } from "./routes/rate-table.route.js";
 
 /**
  * Fastify's own 4xx errors (body parsing, media type, body size, schema
@@ -78,11 +85,27 @@ function assertRandomUUIDAvailable(): void {
 
 export function buildApp(dependencies: {
   readonly applicationReviewRepository?: ApplicationReviewRepositoryPort;
+  /**
+   * Optional audience for a recorded decision's owner notification. When
+   * omitted, decisions still record but do not notify.
+   */
+  readonly humanDecisionNotifications?: DecisionNotificationDependencies;
+  /**
+   * Optional trigger that advances the vault deployment for an applied approved
+   * decision (#410/T5b). When omitted, decisions still record but do not deploy.
+   */
+  readonly humanDecisionDeployment?: DecisionDeploymentDependencies | undefined;
+  readonly adminReviewContext?: AdminReviewContextRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
   readonly assessment?: AssessmentRouteDependencies;
   readonly applicationAssessment?: ApplicationAssessmentRouteDependencies;
   readonly campaign?: CampaignRouteDependencies | undefined;
+  /**
+   * The vault-deployment lifecycle surface (#410/T5b): deploy/retry and the
+   * read-only detail. Omitted when the campaign vault slice is disabled.
+   */
+  readonly campaignDeployment?: CampaignDeploymentRouteDependencies | undefined;
   readonly salesFeed?: SalesFeedRouteDependencies;
   readonly smeRequest?: SmeRequestRouteDependencies;
   readonly storage?: StorageRouteDependencies;
@@ -90,6 +113,7 @@ export function buildApp(dependencies: {
   readonly wallet?: WalletRouteDependencies;
   readonly notification?: NotificationRouteDependencies;
   readonly completenessCheck?: CompletenessCheckRouteDependencies;
+  readonly rateTable?: RateTableRouteDependencies;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -132,9 +156,20 @@ export function buildApp(dependencies: {
     });
   }
   registerHealthRoute(app);
+  if (dependencies.adminReviewContext) {
+    registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
+  }
   if (dependencies.applicationReviewRepository) {
-    registerHumanDecisionRoute(app, dependencies.applicationReviewRepository);
+    registerHumanDecisionRoute(
+      app,
+      dependencies.applicationReviewRepository,
+      dependencies.humanDecisionNotifications,
+      dependencies.humanDecisionDeployment
+    );
     registerApplicationManualReviewRoute(app, { repository: dependencies.applicationReviewRepository });
+  }
+  if (dependencies.campaignDeployment) {
+    registerCampaignDeploymentRoute(app, dependencies.campaignDeployment);
   }
   if (dependencies.fundingIntent) {
     registerFundingIntentRoute(app, dependencies.fundingIntent);
@@ -177,6 +212,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.completenessCheck) {
     registerCompletenessCheckRoute(app, dependencies.completenessCheck);
+  }
+  if (dependencies.rateTable) {
+    registerRateTableRoute(app, dependencies.rateTable);
   }
   return app;
 }
