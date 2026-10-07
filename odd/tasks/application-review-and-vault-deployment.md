@@ -237,9 +237,39 @@ Fuera de T5b: la consola admin (#386) que muestra los estados, y el listado de m
 
 - **Work-unit commit.** `0b0abff feat(api): deploy approved campaigns with a persisted lifecycle`.
 
+## T5 — Verificación y evidencia de cierre
+
+Redacción del documento de cierre de Feature [[docs/planning/application-review-and-vault-deployment-evidence|Evidencia de cierre de la Feature #410]] (español, misma estructura que el hermano de #382) y re-ejecución del gate local en este árbol de trabajo (2026-10-06). **Este work unit es sólo documentación: no toca código de producción.**
+
+### Verificación re-ejecutada (2026-10-06)
+
+- `pnpm run verify` → **PASA (exit 0)**. En la primera corrida falló en el gate de lint por dos errores **reales de producción** de #410, en archivos que **no existen en `main`** (defecto de esta rama, no ambiental): `supabase-rate-table-repository.ts:48` (`_error` sin usar, T3) y `storage.route.ts:84` (`no-control-regex`, regex de `contentDisposition`, T1a). Se corrigieron en el mismo work unit (saneo sin regex de control y parámetro eliminado); la re-ejecución del gate completo encadenado da **exit 0**.
+- Gates re-ejecutados **por separado** (todos verdes): `pnpm run typecheck` → 8/8; `pnpm run lint:tests` → sin hallazgos; `pnpm run typecheck:tests` → sin hallazgos; `pnpm run test` → 8/8 con `@vaqcrow/api` **2065 passed (91 archivos)**; `pnpm run build` → 5/5; `pnpm run boundaries` → sin violaciones (833 módulos, 2693 dependencias); `pnpm run test:boundaries` → **164 passed (10 archivos)**.
+- `pnpm run test:db` → **14/15 archivos ok** (Files=15, Tests=415). `campaign_deployment.sql`, `campaign_persistence.sql` y `businesses_ownership.sql` **ok**; la única falla es `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`), **ambiental y preexistente** por objetos ajenos en el bucket local, ya documentada en T3a y ajena al esquema de #410.
+- **No ejecutado:** Testnet, escrituras remotas de Supabase, `test:integration`, Playwright.
+
+### Hallazgo de verificación (corregido en este work unit)
+
+El gate de lint de `pnpm run verify` falló en la primera corrida por dos errores de producción de #410 (§ arriba), defectos de esta rama. Se corrigieron en el mismo work unit — `contentDisposition` sanea sin regex de caracteres de control y el método `error()` del repo de tasas pierde el parámetro sin usar — y `pnpm run verify` pasa **exit 0**. Los tests enfocados de ambos archivos siguen verdes (31 passed).
+
+### Estado honesto de los criterios de aceptación
+
+- **AC1 — NO ENTREGADO** (frontend, depende de #386). El backend lo habilita con el contexto agregado de revisión (T1b) y el visor privado (T1a).
+- **AC2 — PARCIAL.** `record_human_decision` persiste y atribuye la decisión humana con motivo/límite y su auditoría (transición condicional desde `human_review`, idempotente); los veredictos por documento son UI (#386).
+- **AC3 — CUMPLIDO.** `deployApprovedCampaign` (T5b) despliega una vez vía `openCampaign`, publica sólo tras la confirmación y un replay confirmado es no-op.
+- **AC4 — PARCIAL.** `changes_requested`/`rejected` (T4a) y `approved_published` (T5b) notifican a la PyME; `admin.pending_transaction` **no tiene productor**.
+- **AC5 — CUMPLIDO.** La IA es consultiva; el deploy sólo corre para un `approved` humano.
+- **AC6 — CUMPLIDO** por el documento de evidencia.
+- **AC7 — PARCIAL.** D1–D6 decididas antes de implementar; el campo de plazo del wizard sigue abierto y no se inventó UI.
+- **AC8 — CUMPLIDO.** Sin secretos ni claims de producción.
+
+### Entrega
+
+Nada en `main`; el trabajo vive en la rama de integración, **bloqueado de forma nativa por #386** (abierta). Las cuatro migraciones (`fx_rate`, snapshot de `campaign`, `businesses.deadline`, `campaign_deployment`) están aplicadas y verificadas en el proyecto remoto. El paso de operador de T3b (redeploy/re-apuntado de la fábrica en Testnet) sigue **pendiente y no ejecutado**.
+
 ## Próximo paso
 
-T5b implementado (persistencia + caso de uso + HTTP + disparo). Falta aplicar la migración `campaign_deployment` (local y remota), el paso de operador de T3b (redesplegar/re-apuntar la fábrica), el campo de plazo del wizard, la consola admin #386 que expone los estados y el listado de marketplace #414.
+T1a, T1b, T3, T3a, T3b, T4a, T5a, T5b y T5 implementados. Faltan: corregir los dos errores de lint de `apps/api` que dejan `verify` en rojo; el paso de operador de T3b (redesplegar/re-apuntar la fábrica); el productor del evento `admin.pending_transaction` (AC4); el campo de plazo del wizard (AC7); y la consola admin #386 que expone la vista de revisión y los estados de despliegue (AC1/AC2). El listado de marketplace #414 queda fuera.
 
 ## Guardrails adoptados
 
