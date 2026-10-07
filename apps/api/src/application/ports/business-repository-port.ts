@@ -22,6 +22,12 @@ export interface BusinessDraft {
   readonly goalArs: number;
   /** The revenue-share percentage, inclusive of 1 and 10. */
   readonly revenueShare: number;
+  /**
+   * The campaign deadline the PyME declared, as an ISO 8601 datetime string
+   * with an explicit offset. `null` or absent means none — the wizard does not
+   * send it yet, so no business is required to carry one (#410/T5a).
+   */
+  readonly deadline?: string | null;
 }
 
 export interface BusinessRecord extends BusinessDraft {

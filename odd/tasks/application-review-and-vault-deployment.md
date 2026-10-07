@@ -156,9 +156,39 @@ Diseño verificado contra los seams actuales:
 
 - **Work-unit commit.** `50fc044 feat(api): notify PyME owner of decision outcomes`.
 
+## T5a — Deadline de la PyME persistido (backend-first)
+
+Diseño verificado contra los seams actuales:
+
+- Hallazgo: el template de onboarding (`Vaqcrow Onboarding PyME.dc.html`) diseña solo «Meta de financiamiento (ARS)» y «Revenue share propuesto (%)»; **no diseña un campo de plazo**, y `businesses` hoy guarda `goal_ars` y `revenue_share` pero ningún deadline. `openCampaign` recibe el deadline por el body de `POST /campaigns`.
+
+Decisión del owner (2026-10-06): la PyME define el deadline (opción 2). Se registra como decisión explícita que **excede lo que el template diseña**; el campo del wizard queda como pregunta abierta para cuando se toque esa pantalla y **no se inventa UI ahora**.
+
+Alcance de T5a (backend-first, sin UI):
+1. Migración local: `deadline timestamptz` nullable en `public.businesses`, sin backfill.
+2. El comando/registro de empresa acepta `deadline` opcional (ISO), lo persiste y lo lee; el comportamiento previo queda intacto cuando falta.
+3. Tests deterministas; no se tocan `apps/web` ni `packages/contracts`.
+
+- **RED.** Los focused tests nuevos fallaron antes de implementar: **12 failed / 47 passed (3 archivos)**. Fallos observados con salida real: `validateBusinessDraft` rechazaba `deadline` como clave desconocida (`{ field: "body", code: "invalid" }`); `createBusiness` no llegaba al repositorio con un deadline; el adaptador no persistía ni leía la columna; la ruta respondía `400` con cuerpo inválido en lugar de `201` (deadline válido) o `{ field: "deadline", code: "invalid_format" }` (malformado).
+- **GREEN.**
+  - Migración `20261006140000_add_business_deadline.sql`: `deadline timestamptz` nullable con `add column if not exists`, sin backfill, sin FK y sin cambios de grants/RLS — el grant a nivel de tabla ya cubre la columna nueva y RLS sigue enabled / zero policies / `service_role`-only. Comentario de reversión incluido.
+  - `BusinessDraft`/`BusinessRecord` ganan `deadline?: string | null` (`null`/ausente = ninguno).
+  - `validateBusinessDraft` acepta `deadline` opcional como ISO 8601 con offset explícito (`Z` o `±HH:MM`; regex más round-trip de `Date.parse` para rechazar fechas imposibles) y devuelve `{ field: "deadline", code: "invalid_format" }` saneado para cualquier valor provisto que no sea válido; `null`/ausente lo omite, dejando el comportamiento previo intacto. `createBusiness` lo pasa a través sin cambios.
+  - El adaptador Supabase inserta `deadline` sólo cuando viene (omitir la columna deja NULL) y lo lee de vuelta sólo cuando es string; un valor no-string en disco se degrada a `unavailable` (fila malformada).
+  - `business.route.ts` no cambió: la validación vive en el caso de uso, así que el deadline válido fluye a `201` y el malformado a la forma saneada `400 { errors: [{ field, code }] }` ya existente.
+- **REFACTOR.** Sin refactor adicional; el diff es mínimo y sigue el patrón de columna opcional del snapshot de tasa de T3a (`...(absent ? {} : { ... })`).
+- **Verificación observada.**
+  - RED: `pnpm --filter @vaqcrow/api exec vitest run src/application/use-cases/business.test.ts src/infrastructure/adapters/supabase-business-repository.test.ts src/infrastructure/http/routes/business.route.test.ts` → **12 failed / 47 passed**.
+  - GREEN: mismo comando → **59 passed (3 archivos)**; suite completa `pnpm --filter @vaqcrow/api test` → **1996 passed (88 archivos)**.
+  - `pnpm --filter @vaqcrow/api typecheck` → **pass**.
+  - Migración local: `supabase migration up --local` aplicó `20261006140000_add_business_deadline.sql`; la columna quedó verificada como `timestamp with time zone` nullable y los grants de `service_role` intactos (`select`/`insert`/`update`, sin `delete`). `pnpm run test:db` → 13/14 archivos ok, con `businesses_ownership.sql` **ok**; falla ambiental **preexistente y ajena** en `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`, los mismos objetos locales preexistentes de T3a). No se aplicó ninguna migración remota ni se tocó Testnet.
+- **Límite explícito.** Backend-first: no se tocó `apps/web` ni `packages/contracts`; el campo de plazo del wizard queda como pregunta abierta y no se inventó UI. T5b conecta aprobación→deploy desde los términos persistidos (goal ARS→stroops vía la tasa, deadline del negocio, public key del wallet), publica `pyme.approved_published` tras la confirmación y expone los estados de despliegue.
+
+- **Work-unit commit.** Pendiente — lo inspecciona y commitea el padre (no se commiteó desde este unit).
+
 ## Próximo paso
 
-T4a quedó implementado (direccionamiento por destinatario + notificaciones de cambios/rechazo). Sigue el unit de estados de despliegue/aprobación (notificación de aprobación/publicación tras la confirmación de Testnet, D3). Falta además el paso de operador —redesplegar/re-apuntar la fábrica— que T3b documenta pero no ejecuta.
+T5a quedó implementado (deadline persistido backend-first). Sigue T5b (aprobación→deploy + estados y notificación de publicación tras la confirmación de Testnet). Falta además el paso de operador de T3b (redesplegar/re-apuntar la fábrica) y el campo de plazo del wizard.
 
 ## Guardrails adoptados
 
