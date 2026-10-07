@@ -112,9 +112,8 @@ el único archivo nuevo.
   name/sector/state/updated_at, `or(...ilike...)`, count exacto) responden 200.
   Prueba transaccional con `rollback`: una solicitud con negocio devuelve
   nombre/rubro y una sin negocio devuelve NULL.
-- **Pendiente del padre:** aplicar la migración al proyecto remoto con autorización
-  explícita (la política del repo pide local+remoto en la misma unidad; la tarea
-  reservó el remoto al padre).
+- **Aplicación remota (2026-10-07).** El padre aplicó `20261007120000_create_admin_sme_request_queue_view.sql` al proyecto remoto vía el MCP de Supabase (version alineado al del repo) y verificó: vista `relkind=v`, `security_invoker=true`, `service_role` con SELECT y `anon`/`authenticated` sin acceso; historial remoto con la versión del repo. Los advisors de seguridad no reportan hallazgos nuevos.
+- **Work-unit commit.** `d94e91b feat(api): add the admin PyMEs queue listing`.
 
 ## Próximo paso
 
