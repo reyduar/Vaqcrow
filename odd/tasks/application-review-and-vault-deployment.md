@@ -300,7 +300,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [x] **U1 — Persistir veredictos por documento (backend, D8).** Migración (tabla + RLS + grants atómicos, `service_role`-only), port + adapter Supabase, `PUT`/`GET` ADMIN sobre la solicitud, actor del principal, idempotente; probar local (`test:db`) y aplicar al remoto con autorización explícita.
 - [x] **U2 — Ruta y contexto de revisión (web).** Port/gateway/factory/null-object/hook del contexto (`GET /application-reviews/:id/context`), ruta `/admin/pymes/[applicationId]`, navegación desde la cola, encabezado «Revisión: {nombre}», breadcrumb, badge de estado y estados cargando/no encontrada/error.
 - [x] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
-- [ ] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
+- [x] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
 - [ ] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
 - [ ] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
 - [ ] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
@@ -316,6 +316,7 @@ Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tra
 | U1 | `…vault-02-document-verdicts` | `5cdc1a6`, `af8556e` | #454 | tracker | 1397 (`size:exception`) |
 | U2 | `…vault-03-review-route` | `06dfa53`, `ea57be9` | #455 | `-02` | 1164 (`size:exception`) |
 | U3 | `…vault-04-kyc-section` | `84a881c`, `edc160f` + registro | #456 | `-03` | ver PR |
+| U4 | `…vault-05-ai-section` | `dea2071` + registro | #457 | `-04` | ver PR |
 
 `size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
@@ -437,7 +438,7 @@ Ruta: **delegado** (un writer; modelo puro + sección + composición + tests, 2+
   - **`SIMULADO` y estado sin assessment.** No diseñados en esta vista; se aplicó `demo-ui.md` §2 (Simulación explícita) y la copy existente del flujo legado. Los estados «procesando / inválida / timeout / respaldo» del brief (pantalla 17) no tienen dato en el contexto (sólo assessment o `null`) y no se representan.
 - **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real ni en un navegador real. Sección 3 y despliegue siguen vacías (U5–U6).
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `dea2071 feat(web): add the AI recommendation review section`.
 
 ## Guardrails adoptados
 
