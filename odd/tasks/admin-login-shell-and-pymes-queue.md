@@ -41,9 +41,9 @@ El issue dice que la cola lee «el engine existente `GET /sme-requests`», pero 
 ## Tareas
 
 - [x] **T1 — Endpoint de listado admin.** `GET` de solicitudes para `ADMIN` con nombre, rubro, estado y último cambio, paginación, orden y búsqueda server-side (requirió una vista SQL read-only, ver Progreso); tests y ruta registrada.
-- [ ] **T2 — Login y shell de `/admin`.** Login real (sólo `ADMIN`), guard de ruta (D2), shell con header `Vaqcrow Admin` + `TESTNET · DEMO`, nav PyMEs/Usuarios, tema, campana, chip (D3) y cerrar sesión.
-- [ ] **T3 — Cola de PyMEs.** KPIs como filtros (`aria-pressed`), búsqueda, tabla con estados/acciones, paginación/orden y estados de carga/vacío/error (D1).
-- [ ] **T4 — Pruebas.** Componentes y guard: errores de login, filtros KPI, búsqueda, paginación/orden, denegación de rol, estados.
+- [x] **T2 — Login y shell de `/admin`.** Login real (sólo `ADMIN`), guard de ruta (D2), shell con header `Vaqcrow Admin` + `TESTNET · DEMO`, nav PyMEs/Usuarios, tema, campana, chip (D3) y cerrar sesión.
+- [x] **T3 — Cola de PyMEs.** KPIs como filtros (`aria-pressed`), búsqueda, tabla con estados/acciones, paginación/orden y estados de carga/vacío/error (D1).
+- [x] **T4 — Pruebas.** Componentes y guard: errores de login, filtros KPI, búsqueda, paginación/orden, denegación de rol, estados.
 - [ ] **T5 — Evidencia.** Documento en `docs/planning/` y cierre.
 
 ## Checks aplicables
@@ -115,7 +115,96 @@ el único archivo nuevo.
 - **Aplicación remota (2026-10-07).** El padre aplicó `20261007120000_create_admin_sme_request_queue_view.sql` al proyecto remoto vía el MCP de Supabase (version alineado al del repo) y verificó: vista `relkind=v`, `security_invoker=true`, `service_role` con SELECT y `anon`/`authenticated` sin acceso; historial remoto con la versión del repo. Los advisors de seguridad no reportan hallazgos nuevos.
 - **Work-unit commit.** `d94e91b feat(api): add the admin PyMEs queue listing`.
 
+### T2 — Login, guard y shell de `/admin` (frontend)
+
+**Entregado (sin commit; el padre revisa y commitea):**
+
+- `apps/web/src/app/admin/page.tsx` → `/admin`: renderiza `AdminLoginScreen`
+  (cliente). Login real con Supabase Auth: sólo `ADMIN` entra; un `ADMIN` ya
+  firmado que visita `/admin` va a `/admin/pymes`; una cuenta no-admin (o
+  desactivada) se rechaza con el mensaje genérico `Correo o contraseña
+  incorrectos.` y se descarta la sesión que hubiera abierto, sin revelar la
+  consola (D2). No se embarca la nota «Demo: cualquier correo y contraseña te
+  dejan entrar.» ni `sessionStorage['vaqcrow-admin']`.
+- `apps/web/src/app/admin/(console)/layout.tsx` → guard + shell para
+  `/admin/pymes` (y futuras rutas de consola). `AdminConsoleGate` decide con
+  `adminConsoleDecision` (puro): `loading` espera, `signed-out` y no-admin
+  redirigen a `/admin` sin montar la consola. El layout de consola no cubre
+  `/admin` (está fuera del route group `(console)`).
+- `AdminShell`: aside con marca `Vaqcrow Admin` + `TESTNET · DEMO`, nav
+  `PyMEs`/`Usuarios`, `ThemeSwitcher` y «Cerrar sesión»; barra superior con
+  badge `TESTNET`, `NotificationBell` y chip de usuario (nombre + línea de rol
+  «Administrador», D3). Reutiliza `ThemeSwitcher`/`NotificationBell`/`Badge`/
+  `BrandIsotipo` de `apps/web/src/presentation`.
+- **Nav `Usuarios` (decisión):** es la vista de #390 y no existe todavía. Se
+  renderiza como el ítem diseñado pero como `button` inerte y `disabled`, de
+  modo que la consola no publica un enlace muerto y no se inventa una pantalla
+  de usuarios. Evidencia en `admin-console.test.tsx` («renders Usuarios as an
+  inert nav item instead of a dead link»).
+- **Tema:** se reutiliza el `ThemeSwitcher` de tres opciones (claro/oscuro/
+  sistema) ya establecido en la app, no el toggle de dos estados del template,
+  porque el alcance autorizado pide reutilizar ese componente; desvío
+  registrado.
+- **Rol del chip (D3):** «Administrador»; no se inventa un cargo que no se
+  recolecta («Operadora · compliance» del template no se replica).
+
+### T3 — Cola de PyMEs (frontend)
+
+- `apps/web/src/application/ports/admin-queue-port.ts`: puerto vendor-free y
+  React-free (`AdminQueueQuery`/`AdminQueueItem`/`AdminQueuePage`/`AdminQueuePort`),
+  `ApplicationReviewState` importado **type-only** de `@vaqcrow/contracts`.
+- `apps/web/src/application/admin/queue.ts`: selectores puros — agrupación de
+  los 6 estados del API en los 4 del template (`pending`/`changes`/`approved`/
+  `rejected`), copys verbatim del template, filtros KPI, acción por estado,
+  filtro/conteo de filas, `dd/mm/aaaa` con degradado honesto a «Sin dato»,
+  toggle de orden y total de páginas.
+- `apps/web/src/infrastructure/admin/http-admin-queue-gateway.ts`: adapter HTTP
+  sobre `GET /sme-requests` con Bearer; valida el sobre `{items,page,pageSize,total}`
+  y rechaza item malformado o estado desconocido como `unavailable`; `network`
+  en fallo de transporte; todo non-200 → `unavailable` (nunca filtra el mensaje
+  del proveedor). `create-admin-queue-port.ts` + `unavailable-admin-queue-port.ts`
+  (null object cuando no hay `NEXT_PUBLIC_API_BASE_URL`).
+- `apps/web/src/state/use-admin-queue.ts`: SWR por query resuelta (`page`/`pageSize`/
+  `sort`/`order`/`q`), `reload` para el reintento, `page: null` (nunca página
+  vacía) ante fallo.
+- `apps/web/src/presentation/components/admin/pymes-queue.tsx`: título/subtítulo,
+  KPIs como filtros (`aria-pressed`, borde de acento al activo, segundo clic
+  limpia), búsqueda server-side por nombre/id/rubro (submit del form), tabla
+  (PyME nombre+id, Rubro, Estado, Último cambio, Acciones) con orden server-side
+  por encabezado (`aria-sort`), estados `Pendiente de revisión`/`Requiere
+  cambios`/`Aprobada`/`Rechazada` con ícono+texto, acción `Revisar solicitud`
+  (primaria) para pendientes y `Ver detalle` (secundaria) para el resto,
+  `Sin dato` cuando falta el negocio, paginación (`Anterior`/`Página X de Y`/
+  `Siguiente`), y estados de carga/vacío/error con «Reintentar».
+
+**Limitación registrada (dato, no diseño):** el contrato de T1 no ofrece filtro
+por estado ni conteo por estado, y `apps/api` está fuera de esta superficie. Por
+eso los KPIs (número y filtro) y el badge «Pendientes» del nav operan sobre la
+página cargada —para los datos de la demo (≤ tamaño de página) coincide con el
+total—. Un filtro/conteo por estado server-side es el seguimiento recomendado;
+no se expandió el backend en silencio.
+
+**Acciones de fila:** `onOpen` es un prop opcional; #410 es la vista de
+revisión. En esta rebanada el botón se renderiza como lo diseña el template y no
+navega.
+
+**Verificación (RED→GREEN→REFACTOR):**
+
+- RED: `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4
+  src/application/admin/queue.test.ts src/application/admin/admin-guard.test.ts
+  src/infrastructure/admin/http-admin-queue-gateway.test.ts
+  src/app/admin/admin-console.test.tsx` → 4 archivos fallando (módulos/casos de
+  uso inexistentes).
+- GREEN: mismos 4 archivos → 51 tests passed; `pnpm --filter @vaqcrow/web exec
+  vitest run --maxWorkers=4` → 162 archivos / 1546 tests passed;
+  `pnpm --filter @vaqcrow/web typecheck` → limpio; `pnpm run boundaries` → sin
+  violaciones (797 módulos); `pnpm run lint` → 0 errores (1 warning preexistente
+  en `fetch-http-client.ts`, ajeno a esta unidad).
+- REFACTOR: corrección del test del adapter para inyectar el cliente falso por
+  constructor (como los gateways hermanos); los 4 archivos siguen en verde.
+
 ## Próximo paso
 
-T2 (login real y shell de `/admin`) y T3 (cola de PyMEs en `apps/web`, consumiendo
-`GET /sme-requests`).
+T5 (documento de evidencia en `docs/planning/` y cierre). Seguimiento
+recomendado: filtro/conteo por estado server-side en `GET /sme-requests` para
+que los KPIs y el badge dejen de ser de página.
