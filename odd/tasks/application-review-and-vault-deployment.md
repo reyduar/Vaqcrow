@@ -303,7 +303,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [x] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
 - [x] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
 - [x] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
-- [ ] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
+- [x] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
 
 Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400).
 
@@ -319,6 +319,7 @@ Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tra
 | U4 | `…vault-05-ai-section` | `dea2071` + registro | #457 | `-04` | ver PR |
 | U5 | `…vault-06-decision-section` | `91999f3` + registro | #458 | `-05` | ver PR |
 | U6 | `…vault-07-deployment-panel` | `398627c` + registro | #459 | `-06` | ver PR |
+| U7 | `…vault-08-verification-evidence` | `3dac970` + registro | #460 | `-07` | ver PR |
 
 `size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
@@ -528,7 +529,7 @@ Ruta: **delegado** (un writer; dobles e2e + spec + evidencia + bitácora, 2+ arc
 - **Límite explícito.** Todo contra dobles: ni API desplegada, ni Supabase remoto, ni Testnet, ni LLM. No se re-ejecutó `pnpm run test:db` (U7 no cambia el esquema). El e2e no prueba el visor de PDF del navegador (abre la foto PNG, que se renderiza en línea de forma determinista) ni el polling real de `pending`/`deploying`.
 - **Próximos pasos.** (1) Ejercitar la vista contra la API desplegada con una solicitud real para cerrar AC1. (2) Decidir el `deploying` trabado (`deploy-approved-campaign.ts:122-126`, sin timeout) y si existe un «Desplegar» explícito. (3) Productor de `admin.pending_transaction` (AC4). (4) Confirmar con el owner la copy/estados no diseñados de U2–U6 y el campo de plazo (AC7). (5) Abrir el PR de U7 contra `…vault-07-deployment-panel`.
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `3dac970 test(web): cover the admin review flow end to end`.
 
 ## Guardrails adoptados
 

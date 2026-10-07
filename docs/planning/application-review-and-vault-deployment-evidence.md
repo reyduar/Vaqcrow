@@ -205,7 +205,7 @@ La rama de #410 integró la consola `/admin` de #386 por merge `f930365` (decisi
 | U4 | sección «2 · Recomendación de IA» | `dea2071`, `0fdff8d` | [#457](https://github.com/reyduar/Vaqcrow/pull/457) | `-04` |
 | U5 | sección «3 · Decisión humana» y `alertdialog` | `91999f3`, `3bd54fa` | [#458](https://github.com/reyduar/Vaqcrow/pull/458) | `-05` |
 | U6 | panel de despliegue de la bóveda (D3) | `398627c`, `8796cb8` | [#459](https://github.com/reyduar/Vaqcrow/pull/459) | `-06` |
-| U7 | e2e del flujo admin, verificación y esta evidencia | _pendiente_ | PR de U7 (pendiente de apertura) | `-07` |
+| U7 | e2e del flujo admin, verificación y esta evidencia | _pendiente_ | #460 (U7) | `-07` |
 
 El PR anterior [#452](https://github.com/reyduar/Vaqcrow/pull/452) (cierre backend-first) se mergeó en la rama de #406, no en `main`.
 
