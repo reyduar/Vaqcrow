@@ -302,7 +302,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [x] **U3 — Sección 1 · KYC/KYB.** Filas por documento con «Válido / Pedir / Inválido» persistidos (U1), badge `SIMULADO` y visor privado por blob autenticado (D1, sin URLs públicas).
 - [x] **U4 — Sección 2 · Recomendación de IA.** Riesgo, confianza «0,72», razones, anomalías, preguntas sugeridas, pie modelo/fecha/correlación; caso sin assessment.
 - [x] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
-- [ ] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
+- [x] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
 - [ ] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
 
 Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400).
@@ -318,6 +318,7 @@ Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tra
 | U3 | `…vault-04-kyc-section` | `84a881c`, `edc160f` + registro | #456 | `-03` | ver PR |
 | U4 | `…vault-05-ai-section` | `dea2071` + registro | #457 | `-04` | ver PR |
 | U5 | `…vault-06-decision-section` | `91999f3` + registro | #458 | `-05` | ver PR |
+| U6 | `…vault-07-deployment-panel` | `398627c` + registro | #459 | `-06` | ver PR |
 
 `size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
@@ -504,7 +505,7 @@ Ruta: **delegado** (un writer; puerto + gateway + null object + modelo + hook co
   - **ID de campaña.** Se muestra el `campaignId` interno (UUID); el contract id de la bóveda y el hash de la transacción no viajan en este endpoint, así que el detalle no ofrece un enlace verificable al ledger (`demo-ui.md` §2, trazabilidad).
 - **Límite explícito.** No se tocaron `apps/api` ni `packages/*`. Sólo dobles: no se probó contra la API real, Testnet ni en un navegador real (el polling real, el tiempo del `POST` síncrono contra Testnet y el foco quedan para el stub e2e de U7).
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `398627c feat(web): add the vault deployment review panel`.
 
 ## Guardrails adoptados
 
