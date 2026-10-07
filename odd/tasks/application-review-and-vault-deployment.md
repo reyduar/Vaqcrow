@@ -184,7 +184,7 @@ Alcance de T5a (backend-first, sin UI):
   - Migración local: `supabase migration up --local` aplicó `20261006140000_add_business_deadline.sql`; la columna quedó verificada como `timestamp with time zone` nullable y los grants de `service_role` intactos (`select`/`insert`/`update`, sin `delete`). `pnpm run test:db` → 13/14 archivos ok, con `businesses_ownership.sql` **ok**; falla ambiental **preexistente y ajena** en `pyme_documents_bucket.sql` (subtests 9, 16, 18: `have: 9, want: 3`, los mismos objetos locales preexistentes de T3a). No se aplicó ninguna migración remota ni se tocó Testnet.
 - **Límite explícito.** Backend-first: no se tocó `apps/web` ni `packages/contracts`; el campo de plazo del wizard queda como pregunta abierta y no se inventó UI. T5b conecta aprobación→deploy desde los términos persistidos (goal ARS→stroops vía la tasa, deadline del negocio, public key del wallet), publica `pyme.approved_published` tras la confirmación y expone los estados de despliegue.
 
-- **Work-unit commit.** Pendiente — lo inspecciona y commitea el padre (no se commiteó desde este unit).
+- **Work-unit commit.** `d5a8e2a feat(api): persist the PyME campaign deadline`.
 
 ## Próximo paso
 
