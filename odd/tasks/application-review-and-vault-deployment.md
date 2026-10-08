@@ -304,6 +304,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [x] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
 - [x] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
 - [x] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
+- [ ] **U8 — Recuperar un despliegue trabado y desplegar explícitamente (API + web).** Un intento en `deploying` sin actualizarse durante más de un umbral (10 min por defecto, en el servidor) se puede reclamar con un UPDATE condicional (`state = 'deploying' AND updated_at < corte`); un intento fresco responde `409 deployment_in_progress` en lugar de `503`; `GET …/deployment` expone `retryable`; la UI ofrece **Reintentar** cuando `retryable` y **Desplegar** cuando la solicitud está aprobada sin registro. Sin migración. Decidido por el owner el 2026-10-08 («resolvé el despliegue»); umbral por defecto elegido por el parent.
 
 Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400).
 
