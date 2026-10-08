@@ -4,6 +4,7 @@ import {
   applicationIdSchema,
   applicationReviewSnapshotSchema,
   applicationReviewStateSchema,
+  campaignIdSchema,
   documentVerdictRecordSchema,
   type DocumentVerdictValue,
   humanDecisionRecordSchema,
@@ -11,12 +12,19 @@ import {
   smeRequestSchema
 } from "@vaqcrow/contracts";
 import type {
+  AdminDeployment,
   AdminReviewCompany,
   AdminReviewContext,
   AdminReviewDocument,
   AdminDocumentFileResult,
   AdminReviewPort,
   AdminReviewResult,
+  CampaignDeploymentState,
+  DeployFailureCode,
+  DeployResult,
+  GetDeploymentResult,
+  RecordDecisionRequest,
+  RecordDecisionResult,
   SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
 import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-client";
@@ -37,6 +45,15 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * body exactly `{ verdict }`; the actor is the verified admin, never sent) and
  * the private viewer read (`GET /storage/uploads?path=`, bytes as a `Blob`,
  * never a public URL).
+ *
+ * U5 adds the human decision write (`POST …/decisions`, body exactly
+ * `{ decisionId, outcome, reason, approvedLimitArs }`). The legacy
+ * `http-human-decision-gateway.ts` sends an `actor` the API now refuses, so it
+ * is not reused: the actor is the verified admin and is never sent.
+ *
+ * U6 adds the vault-deployment read (`GET …/deployment`) and the deploy/retry
+ * write (`POST …/deployment`, empty body). Both bodies are `{ deployment }` and
+ * are validated field by field; a 422/503 keeps only a code the API documents.
  */
 
 /** RFC 6750 `b64token` characters: anything else (spaces, CR/LF) is never put in a header. */
@@ -143,6 +160,83 @@ function parseVerdictWrite(data: unknown, documentId: string): SetDocumentVerdic
   return { ok: true, applied: record["applied"], verdict: verdict.data };
 }
 
+/** The `{ applied, decision }` body for the decision that was sent; any deviation is `undefined`. */
+function parseDecisionWrite(
+  data: unknown,
+  applicationId: string,
+  decisionId: string
+): RecordDecisionResult | undefined {
+  const record = asRecord(data);
+  if (!record || typeof record["applied"] !== "boolean") return undefined;
+  const decision = humanDecisionRecordSchema.safeParse(record["decision"]);
+  if (!decision.success) return undefined;
+  if (decision.data.applicationId !== applicationId || decision.data.decisionId !== decisionId) return undefined;
+  return { ok: true, applied: record["applied"], decision: decision.data };
+}
+
+/** A 409 is either a state conflict with a known state or an idempotency conflict; anything else is `unavailable`. */
+function parseDecisionConflict(data: unknown): RecordDecisionResult {
+  const record = asRecord(data);
+  if (record?.["code"] === "idempotency_conflict") return { ok: false, code: "idempotency_conflict" };
+  const actualState = applicationReviewStateSchema.safeParse(record?.["actualState"]);
+  return record?.["code"] === "state_conflict" && actualState.success
+    ? { ok: false, code: "state_conflict", actualState: actualState.data }
+    : { ok: false, code: "unavailable" };
+}
+
+const DEPLOYMENT_STATES: ReadonlySet<string> = new Set<CampaignDeploymentState>([
+  "pending",
+  "deploying",
+  "confirmed",
+  "failed"
+]);
+
+/** The 422 preconditions `POST …/deployment` documents; any other 422 is `unavailable`. */
+const DEPLOY_PRECONDITIONS: ReadonlySet<string> = new Set<DeployFailureCode>([
+  "owner_unresolved",
+  "terms_unavailable",
+  "wallet_required",
+  "goal_limit_exceeded"
+]);
+
+function optionalString(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return null;
+  return typeof value === "string" ? value : undefined;
+}
+
+/** The `{ deployment }` envelope for the application that was asked; any deviation is `undefined`. */
+function parseDeployment(data: unknown, applicationId: string): AdminDeployment | undefined {
+  const record = asRecord(asRecord(data)?.["deployment"]);
+  if (!record) return undefined;
+  const { state, attempts, createdAt, updatedAt } = record;
+  if (record["applicationId"] !== applicationId) return undefined;
+  if (typeof state !== "string" || !DEPLOYMENT_STATES.has(state)) return undefined;
+  if (!isNonNegativeInteger(attempts)) return undefined;
+  if (typeof createdAt !== "string" || typeof updatedAt !== "string") return undefined;
+  const lastError = optionalString(record["lastError"]);
+  const campaignId = optionalString(record["campaignId"]);
+  if (lastError === undefined || campaignId === undefined) return undefined;
+  if (campaignId !== null && !campaignIdSchema.safeParse(campaignId).success) return undefined;
+  return {
+    applicationId,
+    state: state as CampaignDeploymentState,
+    attempts,
+    campaignId,
+    lastError,
+    createdAt,
+    updatedAt
+  };
+}
+
+function deployFailure(status: number, data: unknown): DeployFailureCode {
+  const code = asRecord(data)?.["code"];
+  if (status === 404) return "application_not_found";
+  if (status === 409) return "application_not_approved";
+  if (status === 422 && typeof code === "string" && DEPLOY_PRECONDITIONS.has(code)) return code as DeployFailureCode;
+  if (status === 503 && code === "rate_unavailable") return "rate_unavailable";
+  return "unavailable";
+}
+
 async function headersFor(provider: AccessTokenProvider | undefined): Promise<Record<string, string> | undefined> {
   if (!provider) return undefined;
   let token: string | null;
@@ -152,6 +246,10 @@ async function headersFor(provider: AccessTokenProvider | undefined): Promise<Re
     return undefined;
   }
   return typeof token === "string" && BEARER_TOKEN_PATTERN.test(token) ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
+function deploymentPath(applicationId: string): string {
+  return `/application-reviews/${encodeURIComponent(applicationId)}/deployment`;
 }
 
 export class HttpAdminReviewGateway implements AdminReviewPort {
@@ -203,6 +301,67 @@ export class HttpAdminReviewGateway implements AdminReviewPort {
       }
       if (response.status !== 200) return { ok: false, code: "unavailable" };
       return parseVerdictWrite(response.data, documentId) ?? { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async recordDecision(applicationId: string, request: RecordDecisionRequest): Promise<RecordDecisionResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success) return { ok: false, code: "not_found" };
+    const headers = await headersFor(this.accessToken);
+    // Rebuilt key by key so nothing but the four contract keys ever travels.
+    const body = {
+      decisionId: request.decisionId,
+      outcome: request.outcome,
+      reason: request.reason,
+      approvedLimitArs: request.approvedLimitArs
+    };
+    try {
+      const response = await this.client.post(`/application-reviews/${encodeURIComponent(applicationId)}/decisions`, body, {
+        ...(headers ? { headers } : {}),
+        validateStatus: () => true
+      });
+      if (response.status === 200 || response.status === 201) {
+        return parseDecisionWrite(response.data, applicationId, request.decisionId) ?? { ok: false, code: "unavailable" };
+      }
+      if (response.status === 409) return parseDecisionConflict(response.data);
+      if (response.status === 400) return { ok: false, code: "invalid_request" };
+      if (response.status === 404) return { ok: false, code: "not_found" };
+      return { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async getDeployment(applicationId: string): Promise<GetDeploymentResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success) return { ok: false, code: "not_found" };
+    const headers = await headersFor(this.accessToken);
+    try {
+      const response = await this.client.get(deploymentPath(applicationId), {
+        ...(headers ? { headers } : {}),
+        validateStatus: () => true
+      });
+      if (response.status === 404) return { ok: false, code: "not_found" };
+      if (response.status !== 200) return { ok: false, code: "unavailable" };
+      const deployment = parseDeployment(response.data, applicationId);
+      return deployment ? { ok: true, deployment } : { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async deploy(applicationId: string): Promise<DeployResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success) return { ok: false, code: "application_not_found" };
+    const headers = await headersFor(this.accessToken);
+    try {
+      const response = await this.client.post(
+        deploymentPath(applicationId),
+        {},
+        { ...(headers ? { headers } : {}), validateStatus: () => true }
+      );
+      if (response.status !== 200) return { ok: false, code: deployFailure(response.status, response.data) };
+      const deployment = parseDeployment(response.data, applicationId);
+      return deployment ? { ok: true, deployment } : { ok: false, code: "unavailable" };
     } catch {
       return { ok: false, code: "network" };
     }
