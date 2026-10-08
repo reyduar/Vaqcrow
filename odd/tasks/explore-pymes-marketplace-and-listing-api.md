@@ -50,7 +50,7 @@ La pila ya permite que una PyME se registre, sea revisada y aprobada, y que la b
 - [x] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
 - [x] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
 - [x] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
-- [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md`.
+- [x] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md`.
 
 Forecast: ~1.500–2.200 líneas autoradas (por encima de ~400 → estrategia de entrega a decidir con el owner).
 
@@ -146,3 +146,12 @@ Ruta: **delegado** (un writer; extensión de `filters` + la vista de explore + e
 - **Límite explícito.** El alta (`/signup`) no recibe `returnTo` (fuera de alcance; el enlace de cambio de modo lo descarta). Falta WU6 (evidencia).
 
 - **Work-unit commit.** `d473edd feat(web): add marketplace favorites and the anonymous sign-in return (#414)`.
+
+#### WU6 — Verificación y evidencia
+
+Ruta: **directa** (documento de evidencia + re-ejecución de suites; no hay código nuevo).
+
+- **Documento.** `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md` (español, estructura de la serie de evidencia de Feature): contexto, qué se implementó (WU1–WU5 + rutas/contratos), qué se probó (re-ejecutado + verificación independiente por WU + cobertura), límites, decisiones del owner y **mapeo de los 7 criterios de aceptación del issue #414 citados textualmente**.
+- **Re-ejecutado 2026-10-08 (rama de #414).** `pnpm run verify` **exit 0**: lint 5/5 sin errores (1 warning preexistente ajeno); typecheck 8/8; test — domain 120 · contracts 554 · ai 143 · **api 2315** (105 archivos) · **web 1960** (192 archivos); build 5/5; boundaries sin violaciones (**989 módulos, 3211 dependencias**); test:boundaries 164. `pnpm run test:db` → **18 archivos / 534 tests, PASS** (incluye `marketplace_campaign.sql` y `campaign_favorite.sql`).
+- **No re-ejecutado.** Supabase remoto (migraciones sólo locales), Testnet/Horizon/RPC y `test:integration`.
+- **Resultado.** Los 7 criterios quedan **CUMPLIDOS**; la brecha operativa central es que las tres migraciones de #414 están aplicadas **sólo en local** (aplicación al remoto pendiente de autorización del owner).

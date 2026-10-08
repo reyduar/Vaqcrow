@@ -5,9 +5,10 @@ import type { PrincipalRole } from "@/application/ports/auth-session-port";
  *
  * Signed out shows the public header of `Vaqcrow Landing.dc.html`; INVERSOR
  * and PYME follow the owner's menus. Routes are always in English; links to
- * pages that do not exist yet (`/explore`, `/about`, the guides, `/reports`,
+ * pages that do not exist yet (`/about`, the guides, `/reports`,
  * `/#how-it-works`) are shown on purpose — the owner accepted a 404 until
- * #414/#394/#430/#418 build them. No view ever links to `/admin`.
+ * #394/#430/#418 build them. (`/explore` is now built by #414.) No view ever
+ * links to `/admin`.
  */
 export interface ShellLink {
   readonly label: string;
