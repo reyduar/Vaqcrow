@@ -215,3 +215,180 @@ describe("HttpAdminReviewGateway.getContext", () => {
     expect(await new HttpAdminReviewGateway(client).getContext(APPLICATION_ID)).toEqual({ ok: false, code: "network" });
   });
 });
+
+interface WriteCall {
+  readonly url: string;
+  readonly body: unknown;
+  readonly headers: Record<string, string> | undefined;
+}
+
+function fakeWriteClient(result: { status: number; data: unknown } | Error) {
+  const calls: WriteCall[] = [];
+  const client = {
+    put: async (url: string, body: unknown, config: { headers?: Record<string, string> }) => {
+      calls.push({ url, body, headers: config.headers });
+      if (result instanceof Error) throw result;
+      return result;
+    }
+  } as unknown as AxiosInstance;
+  return { client, calls };
+}
+
+describe("HttpAdminReviewGateway.setDocumentVerdict", () => {
+  const verdictUrl = `/application-reviews/${APPLICATION_ID}/documents/${DOCUMENT_ID}/verdict`;
+
+  it("PUTs exactly { verdict } with the Bearer token and maps the persisted record", async () => {
+    const { client, calls } = fakeWriteClient({ status: 200, data: { applied: true, verdict: VERDICT } });
+    const gateway = new HttpAdminReviewGateway(client, async () => "token-123");
+
+    const result = await gateway.setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe(verdictUrl);
+    expect(calls[0]!.body).toStrictEqual({ verdict: "valid" });
+    expect(calls[0]!.headers).toEqual({ Authorization: "Bearer token-123" });
+    expect(result).toEqual({ ok: true, applied: true, verdict: VERDICT });
+  });
+
+  it("keeps applied: false for an idempotent replay", async () => {
+    const { client } = fakeWriteClient({ status: 200, data: { applied: false, verdict: VERDICT } });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid")).toEqual({
+      ok: true,
+      applied: false,
+      verdict: VERDICT
+    });
+  });
+
+  it("maps 404 to not_found", async () => {
+    const { client } = fakeWriteClient({ status: 404, data: { code: "not_found" } });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "request")).toEqual({
+      ok: false,
+      code: "not_found"
+    });
+  });
+
+  it("maps 409 to state_conflict with the actual state", async () => {
+    const { client } = fakeWriteClient({ status: 409, data: { code: "state_conflict", actualState: "approved" } });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "invalid")).toEqual({
+      ok: false,
+      code: "state_conflict",
+      actualState: "approved"
+    });
+  });
+
+  it("collapses a 409 without a known actual state to unavailable", async () => {
+    const { client } = fakeWriteClient({ status: 409, data: { code: "state_conflict", actualState: "teleported" } });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid")).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it.each([503, 500, 400, 403])("maps %s to unavailable without leaking the body", async (status) => {
+    const { client } = fakeWriteClient({ status, data: { code: "unavailable", message: "leak" } });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid")).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it.each([
+    ["a missing verdict", { applied: true }],
+    ["a verdict for another document", { applied: true, verdict: { ...VERDICT, documentId: APPLICATION_ID } }],
+    ["a non-boolean applied", { applied: "yes", verdict: VERDICT }]
+  ])("collapses %s to unavailable", async (_label, data) => {
+    const { client } = fakeWriteClient({ status: 200, data });
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid")).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it("treats ids the API would never accept as not_found without a request", async () => {
+    const { client, calls } = fakeWriteClient({ status: 200, data: { applied: true, verdict: VERDICT } });
+    const gateway = new HttpAdminReviewGateway(client);
+    expect(await gateway.setDocumentVerdict("nope", DOCUMENT_ID, "valid")).toEqual({ ok: false, code: "not_found" });
+    expect(await gateway.setDocumentVerdict(APPLICATION_ID, "nope", "valid")).toEqual({ ok: false, code: "not_found" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("maps a thrown transport to network", async () => {
+    const { client } = fakeWriteClient(new Error("ECONNREFUSED"));
+    expect(await new HttpAdminReviewGateway(client).setDocumentVerdict(APPLICATION_ID, DOCUMENT_ID, "valid")).toEqual({
+      ok: false,
+      code: "network"
+    });
+  });
+});
+
+interface DownloadCall {
+  readonly url: string;
+  readonly params: unknown;
+  readonly responseType: unknown;
+  readonly headers: Record<string, string> | undefined;
+}
+
+function fakeDownloadClient(result: { status: number; data: unknown } | Error) {
+  const calls: DownloadCall[] = [];
+  const client = {
+    get: async (
+      url: string,
+      config: { params?: unknown; responseType?: unknown; headers?: Record<string, string> }
+    ) => {
+      calls.push({ url, params: config.params, responseType: config.responseType, headers: config.headers });
+      if (result instanceof Error) throw result;
+      return result;
+    }
+  } as unknown as AxiosInstance;
+  return { client, calls };
+}
+
+describe("HttpAdminReviewGateway.downloadDocument", () => {
+  it("fetches the private object as a blob through the ADMIN endpoint with the Bearer token", async () => {
+    const blob = new Blob(["%PDF-1.7"], { type: "application/pdf" });
+    const { client, calls } = fakeDownloadClient({ status: 200, data: blob });
+    const gateway = new HttpAdminReviewGateway(client, async () => "token-123");
+
+    const result = await gateway.downloadDocument(DOCUMENT.objectPath);
+
+    expect(calls).toEqual([
+      {
+        url: "/storage/uploads",
+        params: { path: DOCUMENT.objectPath },
+        responseType: "blob",
+        headers: { Authorization: "Bearer token-123" }
+      }
+    ]);
+    expect(result).toEqual({ ok: true, file: blob });
+  });
+
+  it.each([404, 400, 403, 503])("maps %s to unavailable", async (status) => {
+    const { client } = fakeDownloadClient({ status, data: new Blob(['{"code":"not_found"}']) });
+    expect(await new HttpAdminReviewGateway(client).downloadDocument(DOCUMENT.objectPath)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it("collapses a non-blob body to unavailable", async () => {
+    const { client } = fakeDownloadClient({ status: 200, data: "not bytes" });
+    expect(await new HttpAdminReviewGateway(client).downloadDocument(DOCUMENT.objectPath)).toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it("never sends a request for an empty path", async () => {
+    const { client, calls } = fakeDownloadClient({ status: 200, data: new Blob([]) });
+    expect(await new HttpAdminReviewGateway(client).downloadDocument("  ")).toEqual({ ok: false, code: "unavailable" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("maps a thrown transport to network", async () => {
+    const { client } = fakeDownloadClient(new Error("ECONNREFUSED"));
+    expect(await new HttpAdminReviewGateway(client).downloadDocument(DOCUMENT.objectPath)).toEqual({
+      ok: false,
+      code: "network"
+    });
+  });
+});

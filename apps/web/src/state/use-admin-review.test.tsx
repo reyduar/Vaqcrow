@@ -27,6 +27,21 @@ function portOf(respond: () => AdminReviewResult) {
     async getContext(applicationId) {
       calls.push(applicationId);
       return respond();
+    },
+    async setDocumentVerdict() {
+      return { ok: false, code: "unavailable" };
+    },
+    async downloadDocument() {
+      return { ok: false, code: "unavailable" };
+    },
+    async recordDecision() {
+      return { ok: false, code: "unavailable" };
+    },
+    async getDeployment() {
+      return { ok: false, code: "not_found" };
+    },
+    async deploy() {
+      return { ok: false, code: "unavailable" };
     }
   };
   return { port, calls };

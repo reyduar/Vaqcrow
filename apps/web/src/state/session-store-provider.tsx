@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useStore } from "zustand";
 import type { AuthSessionPort } from "@/application/ports/auth-session-port";
 import { createSessionStore, type SessionState, type SessionStore } from "./session-store";
@@ -38,4 +38,17 @@ export function useSession<T>(selector: (state: SessionState) => T): T {
   const store = useContext(SessionStoreContext);
   if (!store) throw new Error("useSession must be used within a SessionStoreProvider.");
   return useStore(store, selector);
+}
+
+const NO_SUBSCRIPTION = () => () => {};
+
+/**
+ * The signed-in principal's display name, or `null` when there is none or no
+ * provider is mounted (a section rendered on its own in a test). Unlike
+ * `useSession` it never throws: callers phrase their copy without a name.
+ */
+export function useOptionalDisplayName(): string | null {
+  const store = useContext(SessionStoreContext);
+  const read = () => store?.getState().principal?.displayName ?? null;
+  return useSyncExternalStore(store ? store.subscribe : NO_SUBSCRIPTION, read, read);
 }
