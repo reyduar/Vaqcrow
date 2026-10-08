@@ -22,6 +22,21 @@ vi.mock("@/infrastructure/wallet/create-wallet-connection-port", async () => {
   return { createBrowserWalletConnectionPort: () => new FakeWalletConnection() };
 });
 
+/**
+ * Without a `gateway` prop the wizard must send through the session-aware
+ * browser gateway, never the unauthenticated module default (the U9 live
+ * rehearsal got 401 on `POST /sme-requests`). The mock records which factory
+ * the wizard used: the anonymous one answers `null` («no backend»).
+ */
+const browserSme = vi.hoisted(() => ({
+  submit: vi.fn(),
+  load: vi.fn()
+}));
+vi.mock("@/infrastructure/sme/default-gateway", () => ({
+  createSmeRequestGateway: () => null,
+  createBrowserSmeRequestGateway: () => browserSme
+}));
+
 function renderWizard(fake = new FakeKyc()) {
   const onBack = vi.fn();
   render(<PymeOnboardingWizard kyc={fake} onBack={onBack} />);
@@ -362,6 +377,40 @@ describe("PymeOnboardingWizard steps 3 and 4", () => {
 
     expect(business.creates).toHaveLength(1);
     expect(gw.submit).toHaveBeenCalledWith(SAVED_REQUEST);
+    expect(screen.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeInTheDocument();
+  });
+
+  it("sends from step 4 through the session-aware browser gateway when none is injected", async () => {
+    browserSme.submit.mockResolvedValue({ applicationId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10", request: SAVED_REQUEST });
+    const kyc = new FakeKyc();
+    render(
+      <PymeOnboardingWizard
+        kyc={kyc}
+        upload={new FakeUpload()}
+        ai={new FakeAiEvaluation()}
+        completeness={new FakeCompleteness()}
+        wallet={new FakeWallet({ publicKey: "GBXK1234567890ABCD7Q2M" })}
+        business={new FakeBusiness()}
+        onBack={vi.fn()}
+      />
+    );
+
+    await advanceToRegistration(kyc);
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    await uploadRequiredDocuments();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar a evaluación AI" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Continuar/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Enviar a revisión/ }));
+    });
+
+    expect(browserSme.submit).toHaveBeenCalledWith(SAVED_REQUEST);
     expect(screen.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeInTheDocument();
   });
 
