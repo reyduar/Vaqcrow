@@ -8,6 +8,7 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
 import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
 import { getSmeRequest } from "./get-sme-request.js";
 import { submitSmeRequest } from "./submit-sme-request.js";
+import type { SubmissionAssessmentDependencies } from "./submit-sme-request.js";
 
 const APPLICATION_ID = parseApplicationId("11111111-1111-4111-8111-111111111111");
 const EXISTING_ID = parseApplicationId("33333333-3333-4333-8333-333333333333");
@@ -69,6 +70,7 @@ interface SubmitDeps {
   readonly businesses: Pick<BusinessRepositoryPort, "findByOwner">;
   readonly notifications: Pick<NotificationPublisherPort, "publish">;
   readonly generateApplicationId: () => ApplicationId;
+  readonly assessment?: SubmissionAssessmentDependencies;
 }
 
 function wallet(overrides: Partial<Pick<WalletRepositoryPort, "readPublicKey">> = {}): Pick<WalletRepositoryPort, "readPublicKey"> {
@@ -261,6 +263,107 @@ describe("submitSmeRequest", () => {
 
     expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
     expect(JSON.stringify(result)).not.toContain("SECRET");
+  });
+
+  describe("automatic assessment (U12)", () => {
+    it("starts the assessment exactly once on a real apply, with the application and correlation ids", async () => {
+      const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+      const result = await submitSmeRequest(deps({ assessment: { onSubmitted } }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
+      expect(onSubmitted).toHaveBeenCalledTimes(1);
+      expect(onSubmitted).toHaveBeenCalledWith({ applicationId: APPLICATION_ID, correlationId: CORRELATION_ID });
+    });
+
+    it("never awaits the assessment: a run that never settles does not hold the submission", async () => {
+      const onSubmitted = vi.fn().mockReturnValue(new Promise<never>(() => undefined));
+
+      const result = await submitSmeRequest(deps({ assessment: { onSubmitted } }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
+      expect(onSubmitted).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not assess an owner+content replay", async () => {
+      const repo = repository({
+        findByOwner: vi
+          .fn()
+          .mockResolvedValue({ ok: true, value: [{ applicationId: EXISTING_ID, request, ownerUserId: OWNER }] })
+      });
+      const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+      const result = await submitSmeRequest(deps({ repository: repo, assessment: { onSubmitted } }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(result).toEqual({ ok: true, value: { applicationId: EXISTING_ID, request, applied: false } });
+      expect(onSubmitted).not.toHaveBeenCalled();
+    });
+
+    it("does not assess a transport replay the repository reports as not applied", async () => {
+      const repo = repository({
+        submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: false } })
+      });
+      const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+      await submitSmeRequest(deps({ repository: repo, assessment: { onSubmitted } }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(onSubmitted).not.toHaveBeenCalled();
+    });
+
+    it("does not assess a submission that failed", async () => {
+      const repo = repository({ submit: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+      const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+      const result = await submitSmeRequest(deps({ repository: repo, assessment: { onSubmitted } }), {
+        body: request,
+        correlationId: CORRELATION_ID,
+        ownerUserId: OWNER
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "unavailable", fieldErrors: [] } });
+      expect(onSubmitted).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["rejects", () => Promise.reject(new Error("SECRET provider failure"))],
+      [
+        "throws synchronously",
+        () => {
+          throw new Error("SECRET provider failure");
+        }
+      ]
+    ])("keeps the submission result unchanged when the assessment %s", async (_name, implementation) => {
+      const onSubmitted = vi.fn().mockImplementation(implementation);
+      const publish = vi.fn().mockResolvedValue(summary);
+
+      const result = await submitSmeRequest(
+        deps({ assessment: { onSubmitted }, notifications: notifications({ publish }) }),
+        { body: request, correlationId: CORRELATION_ID, ownerUserId: OWNER }
+      );
+      // Let a rejected promise settle: an unhandled rejection would fail the run.
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(result).toEqual({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true } });
+      expect(JSON.stringify(result)).not.toContain("SECRET");
+      // The admin notification still goes out.
+      expect(publish).toHaveBeenCalledTimes(1);
+    });
   });
 
   it.each([
