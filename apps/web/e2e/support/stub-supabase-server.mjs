@@ -21,7 +21,10 @@
  *   by the verified bearer token (mirror of RLS `profile_select_own`).
  *
  * Test-only controls: `POST /__confirm { email }` confirms an account (the
- * email link a real project would send), `POST /__reset` forgets every user.
+ * email link a real project would send), `POST /__reset` forgets every user,
+ * and `POST /__seed-admin { email, password, displayName }` creates a confirmed
+ * `ADMIN` (#410 / U7) — the stand-in for the manual super-admin seed script,
+ * since `ADMIN` is never self-assigned through signup.
  *
  * Unlike `stub-api-server.mjs`, this double reads the clock and generates a
  * key pair per start: the client rejects an expired JWT, so `exp` must follow
@@ -224,6 +227,20 @@ async function route(request, response) {
     if (!user) return send(response, 404, { error: "unknown_email" });
     user.confirmed = true;
     return send(response, 200, { confirmed: true });
+  }
+
+  if (method === "POST" && pathname === "/__seed-admin") {
+    const body = await readJson(request);
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    const displayName = String(body.displayName ?? "").trim();
+    if (!email.includes("@") || password.length < 6 || displayName.length < 2) {
+      return send(response, 400, { error: "invalid_seed" });
+    }
+    const user = { id: randomUUID(), email, password, confirmed: true, userMetadata: { display_name: displayName } };
+    users.set(email, user);
+    profiles.set(user.id, { user_id: user.id, role: "ADMIN", display_name: displayName });
+    return send(response, 201, { seeded: true });
   }
 
   if (method === "GET" && pathname === "/auth/v1/.well-known/jwks.json") return send(response, 200, { keys: [PUBLIC_JWK] });

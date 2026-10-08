@@ -1,14 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import type { IconType } from "react-icons";
-import {
-  IoCheckmarkCircleOutline,
-  IoCloseCircleOutline,
-  IoCreateOutline,
-  IoHourglassOutline,
-  IoSearchOutline
-} from "react-icons/io5";
+import { IoSearchOutline } from "react-icons/io5";
 import {
   DEFAULT_ADMIN_QUEUE_QUERY,
   formatQueueUpdatedAt,
@@ -21,42 +15,20 @@ import {
   queueSearchOrUndefined,
   queueSortToggle,
   queueTotalPages,
-  type QueueFilterState,
-  type QueueIcon,
-  type QueueTone
+  type QueueFilterState
 } from "@/application/admin/queue";
+import { adminReviewPath } from "@/application/admin/review";
 import type {
   AdminQueueCounts,
-  AdminQueueItem,
   AdminQueuePort,
   AdminQueueQuery,
   AdminQueueSortField
 } from "@/application/ports/admin-queue-port";
 import { createBrowserAdminQueuePort } from "@/infrastructure/admin/create-admin-queue-port";
 import { useAdminQueue } from "@/state/use-admin-queue";
+import { ADMIN_ICONS, ADMIN_TONE_TEXT, AdminStatePill } from "./admin-state-pill";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
-
-const ICONS: Readonly<Record<QueueIcon, IconType>> = {
-  hourglass: IoHourglassOutline,
-  create: IoCreateOutline,
-  check: IoCheckmarkCircleOutline,
-  close: IoCloseCircleOutline
-};
-
-const TONE_TEXT: Readonly<Record<QueueTone, string>> = {
-  caution: "text-trust-caution",
-  info: "text-trust-info",
-  success: "text-trust-success",
-  critical: "text-trust-critical"
-};
-
-const TONE_SURFACE: Readonly<Record<QueueTone, string>> = {
-  caution: "bg-trust-caution-surface text-trust-caution",
-  info: "bg-trust-info-surface text-trust-info",
-  success: "bg-trust-success-surface text-trust-success",
-  critical: "bg-trust-critical-surface text-trust-critical"
-};
 
 /** Shown while the first page is in flight or failed; never a fabricated total. */
 const EMPTY_COUNTS: AdminQueueCounts = { pending: 0, changes: 0, approved: 0, rejected: 0 };
@@ -69,24 +41,9 @@ function sectorOrMissing(sector: string): string {
   return sector.trim() === "" ? MISSING_BUSINESS_LABEL : sector;
 }
 
-function StatePill({ state }: { state: AdminQueueItem["state"] }) {
-  const copy = QUEUE_STATE_COPY[queueDisplayState(state)];
-  const Icon = ICONS[copy.icon];
-  return (
-    <span
-      className={`inline-flex h-6 items-center gap-1 rounded-pill px-2.5 text-xs font-semibold whitespace-nowrap ${TONE_SURFACE[copy.tone]}`}
-    >
-      <Icon aria-hidden="true" focusable="false" className="text-[14px]" />
-      {copy.label}
-    </span>
-  );
-}
-
 export interface PymesQueueProps {
   /** Injected in tests; production builds the browser port once. */
   readonly port?: AdminQueuePort;
-  /** Where a row action leads; #410 owns the review view. */
-  readonly onOpen?: (item: AdminQueueItem) => void;
 }
 
 /**
@@ -99,7 +56,7 @@ export interface PymesQueueProps {
  * honest; a missing business renders the API's "Sin dato", never an invented
  * company or a zero.
  */
-export function PymesQueue({ port, onOpen }: PymesQueueProps) {
+export function PymesQueue({ port }: PymesQueueProps) {
   const [resolvedPort] = useState<AdminQueuePort>(() => port ?? createBrowserAdminQueuePort());
   const [query, setQuery] = useState<AdminQueueQuery>(DEFAULT_ADMIN_QUEUE_QUERY);
   const [searchInput, setSearchInput] = useState("");
@@ -153,7 +110,7 @@ export function PymesQueue({ port, onOpen }: PymesQueueProps) {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
         {QUEUE_KPI_FILTERS.map((filter) => {
           const pressed = query.state === filter.state;
-          const Icon = ICONS[filter.icon];
+          const Icon = ADMIN_ICONS[filter.icon];
           return (
             <button
               key={filter.state}
@@ -164,7 +121,7 @@ export function PymesQueue({ port, onOpen }: PymesQueueProps) {
                 pressed ? "border-2 border-brand-accent-text" : "border border-page-border"
               }`}
             >
-              <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${TONE_TEXT[filter.tone]}`}>
+              <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${ADMIN_TONE_TEXT[filter.tone]}`}>
                 <Icon aria-hidden="true" focusable="false" className="text-base" />
                 {filter.label}
               </span>
@@ -256,21 +213,20 @@ export function PymesQueue({ port, onOpen }: PymesQueueProps) {
                       </th>
                       <td className="px-4 py-3.5">{sectorOrMissing(item.sector)}</td>
                       <td className="px-4 py-3.5">
-                        <StatePill state={item.state} />
+                        <AdminStatePill copy={QUEUE_STATE_COPY[displayState]} />
                       </td>
                       <td className="px-4 py-3.5 text-text-secondary">{formatQueueUpdatedAt(item.updatedAt)}</td>
                       <td className="px-4 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => onOpen?.(item)}
-                          className={`h-[38px] rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap ${FOCUS_RING} ${
+                        <Link
+                          href={adminReviewPath(item.applicationId)}
+                          className={`inline-flex h-[38px] items-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap no-underline ${FOCUS_RING} ${
                             action.primary
                               ? "bg-brand-accent text-on-accent hover:bg-brand-accent-hover"
                               : "border border-control bg-transparent text-text-primary hover:bg-page-surface"
                           }`}
                         >
                           {action.label}
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );
