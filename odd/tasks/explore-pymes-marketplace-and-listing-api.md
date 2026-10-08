@@ -48,7 +48,7 @@ La pila ya permite que una PyME se registre, sea revisada y aprobada, y que la b
 - [x] **WU1 — Endpoint de listado (backend).** Contrato en `packages/contracts`, port, adaptador (join a `businesses`), caso de uso, ruta PUBLIC y política. Sólo campañas publicadas. Sin `apps/web`.
 - [x] **WU2 — Favoritos persistidos (backend).** Tabla `campaign_favorite` (por usuario, RLS user-only), repositorio y endpoints AUTHENTICATED (listar/activar/desactivar). El listado puede marcar `isFavorite` del solicitante.
 - [x] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
-- [ ] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
+- [x] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
 - [ ] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md`.
 
@@ -121,3 +121,16 @@ Ruta: **delegado** (un writer; 2 ports + 3 módulos puros + 8 archivos de infra 
 - **Límite explícito.** Sin `apps/web` de UI; sin página ni componentes. El `href` del CTA es el **provisional** `/campaigns/<id>` (la ruta de detalle la define #422).
 
 - **Work-unit commit.** `876288c feat(web): add the marketplace listing and favorites data layer (#414)`.
+
+#### WU4b — Vista `/explore` (commit `623aed4`)
+
+Ruta: **delegado** (un writer; extensión de `CampaignCard` + 3 componentes nuevos + la página + tests).
+
+- **Diseño.** `CampaignCard` sumó tres puntos de extensión opcionales (compatibles hacia atrás, los 17 tests previos siguen verdes): `image` (cabecera 16/10 que mueve los badges de riesgo + `SIMULADO` al overlay y cambia la fila «Riesgo» del `<dl>` por «Cierre»), `overlayAction` (slot superior derecho; el corazón) y `progressSlot` (reemplaza la barra interna). `ExploreMarketplace` es el controlador puro (ports por props; sin hook de sesión) y `ExploreMarketplaceContainer` cablea los ports del navegador + `useSession`. La grilla es **pública** (la compuerta del template «Ingresá para explorar PyMEs» **no se renderiza**, override del issue #414); el `/explore` no está en `RouteGate` ni en el matcher del proxy. Estados carga/error/vacío con prioridad y sin fabricar datos; modal de filtros avanzados con borrador inicializado desde los filtros aplicados (cierre por ×/Escape/overlay descarta; «Restablecer» resetea; sólo el botón aplica) y contador en vivo sobre el borrador + el texto de búsqueda. El corazón se muestra **sólo con sesión** (provisional; el comportamiento anónimo es WU5).
+- **RED/GREEN observado.** RED: 3 archivos, 7 fallidos de 24. GREEN tras la corrección acotada: **45/45** (card 26, modal 8, explore 11); `typecheck` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (989 módulos, 3210 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off) — un bloqueante, corregido.** El verifier marcó como **bloqueante** que el CTA visible de la tarjeta mostraba la forma larga («Ver evidencia y riesgo de …») cuando el template (`Vaqcrow Explorar PyMEs.dc.html:249`) muestra «Ver evidencia y riesgo» y reserva la forma larga para `aria-label`. Corrección acotada: `CampaignCardAction` ganó `ariaLabel?` y la vista pasa `{ label: "Ver evidencia y riesgo", ariaLabel: view.ctaLabel, href }`; se sumó un test de nombre accesible separado del visible. Se endureció además el `<dd>` vacío latente (la fila «Cierre» ahora se renderiza sólo si hay fecha). Advisories restantes (no bloqueantes, aceptados): Escape/overlay del modal sin test propio, contador con texto no vacío sin test, sin test de la página `/explore` (cubierta por el controlador), 6 `Skeleton` anidados con `role="status"`, falta el ícono decorativo del campo de localización, tarjetas sin imagen caen al layout legado y el contador `aria-live` dice «0 PyMEs» durante un error (comportamiento del template en estado estable).
+- **Límite explícito.** Sin «Mis favoritos» (filtro + contador) ni la decisión final del corazón anónimo → **WU5**. El `href` del CTA sigue el **provisional** `/campaigns/<id>` (#422 define la ruta real).
+
+- **Work-unit commit.** `623aed4 feat(web): add the /explore marketplace view (#414)`.
+
+- [ ] **WU4 (cerrado):** WU4a + WU4b entregadas y verificadas.
