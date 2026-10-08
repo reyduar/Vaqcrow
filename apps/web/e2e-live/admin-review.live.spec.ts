@@ -202,7 +202,15 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await expect(page.getByRole("heading", { level: 1, name: "Evaluación AI" })).toBeVisible({ timeout: 30_000 });
     const continueButton = page.getByRole("button", { name: "Continuar" });
     await expect(continueButton).toBeVisible({ timeout: 180_000 });
-    record("step3Text", (await page.locator("main").innerText()).slice(0, 1500));
+    record(
+      "step3Text",
+      (
+        await page
+          .locator("section")
+          .filter({ has: page.getByRole("heading", { level: 1, name: "Evaluación AI" }) })
+          .innerText()
+      ).slice(0, 2000)
+    );
     await continueButton.click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Qué pasa ahora" })).toBeVisible();
@@ -211,6 +219,9 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
       networkPassphrase: TESTNET_PASSPHRASE,
       network: "TESTNET"
     });
+    // Like the deterministic spec: the first send is gated on the mandatory wallet, which reveals «Conectar Freighter».
+    await page.getByRole("button", { name: "Enviar a revisión" }).click();
+    await expect(page.getByText("Conectá tu wallet Freighter para poder enviar la solicitud a revisión.")).toBeVisible();
     await page.getByRole("button", { name: "Conectar Freighter" }).click();
     await expect(page.getByText(/Wallet Freighter conectada/)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Enviar a revisión" }).click();
@@ -234,7 +245,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await expect(row).toBeVisible({ timeout: 30_000 });
     record("queueRowText", await row.innerText());
     await row.getByRole("link", { name: "Revisar solicitud" }).click();
-    await expect(page).toHaveURL(/\/admin\/pymes\/[0-9a-f-]{36}$/);
+    await expect(admin).toHaveURL(/\/admin\/pymes\/[0-9a-f-]{36}$/);
     applicationId = new URL(admin.url()).pathname.split("/").pop() ?? "";
     record("applicationId", applicationId);
     await expect(admin.getByRole("heading", { level: 1, name: `Revisión: ${companyName}` })).toBeVisible({
@@ -307,7 +318,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     }
 
     if (await failed.isVisible()) {
-      const panelText = await page
+      const panelText = await admin
         .getByRole("heading", { level: 2, name: "Despliegue de la bóveda" })
         .locator("xpath=ancestor::section[1]")
         .innerText();
