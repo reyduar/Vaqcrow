@@ -3,10 +3,13 @@
 > Documento de cierre de Feature. Consolida la evidencia de las Tasks [#411](https://github.com/reyduar/Vaqcrow/issues/411) (implementación), [#412](https://github.com/reyduar/Vaqcrow/issues/412) (pruebas) y [#413](https://github.com/reyduar/Vaqcrow/issues/413) (evidencia) de la Feature [#410](https://github.com/reyduar/Vaqcrow/issues/410) ("Feature: Review applications and approve to deploy and publish the vault"), re-ejecuta las verificaciones locales en este árbol de trabajo y mapea cada criterio de aceptación de la Feature, citado textualmente, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/application-review-and-vault-deployment|Bitácora: revisión, aprobación y despliegue de la bóveda]].
 
 > [!warning] Estado de entrega: nada de #410 está en `main`
-> El trabajo vive en la rama de integración `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault`, apilada sobre las ramas de integración de #406/#399 y de #402. Nada llega a `main`: la Feature está **bloqueada de forma nativa por [#386](https://github.com/reyduar/Vaqcrow/issues/386)** (la consola `/admin` todavía no existe) y por la **Opción A del owner** (la pila se mergea junta con el retiro del recorrido de seis pasos, [#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la revisión real ni despliega bóvedas desde la aprobación.
+> El trabajo vive en la rama de integración `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault`, apilada sobre las ramas de integración de #406/#399 y de #402. Nada llega a `main`: la consola `/admin` de [#386](https://github.com/reyduar/Vaqcrow/issues/386) **ya está integrada en esta rama** (merge `f930365`), así que el bloqueo vigente es sólo la **Opción A del owner** (la pila se mergea junta con el retiro del recorrido de seis pasos, [#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la revisión real ni despliega bóvedas desde la aprobación.
 
 > [!info] Actualización 2026-10-07: fase UI (U1–U7)
-> Las secciones 1–9 registran el cierre **backend-first** del 2026-10-06 y se conservan como registro histórico. Después, la rama de #410 integró la consola `/admin` de #386 (merge `f930365`) y construyó la vista de revisión en una cadena de work units U1–U7. La §10 documenta esa fase y trae la **tabla de criterios vigente** (§10.5), que reemplaza a la de la §7 donde difieren (criterios 1 y 2). Nada de eso está en `main`.
+> Las secciones 1–9 registran el cierre **backend-first** del 2026-10-06 y se conservan como registro histórico. Después, la rama de #410 integró la consola `/admin` de #386 (merge `f930365`) y construyó la vista de revisión en una cadena de work units U1–U7. La §10 documenta esa fase y trae la **tabla de criterios de esa fase** (§10.5), que reemplazó a la de la §7 donde difieren (criterios 1 y 2). Nada de eso está en `main`.
+
+> [!info] Actualización 2026-10-08: continuación U8–U13 y ensayo en vivo
+> Después de la §10 (que probó la fase U1–U7 **contra dobles**), una cadena U8–U13 sumó la recuperación de un despliegue trabado y el «Desplegar» explícito (U8), el **ensayo en vivo** en el perfil docker (U9) con sus arreglos de producto (U10–U12) y la duración de campaña 30/60/90 días (U13). La **§11** documenta esa continuación y trae la **tabla de criterios vigente (§11.5)**, que reemplaza a la de la §10.5 y a la de la §7. La cadena completa de PR se mergeó a la rama de #406 (tip `014ed8d`); nada de eso está en `main`.
 
 > [!important] Alcance backend-first
 > Por decisión del owner (D5, 2026-10-06) #410 se implementa **backend-first en paralelo**: la API, la persistencia, los guardrails y el despliegue idempotente se entregan ahora; la integración con la consola admin (la vista de revisión de las secciones 1–3 y los veredictos por documento) queda para después de #386. Por eso varios criterios de aceptación están **PARCIALES o no entregados** por dependencia de frontend, y así se declaran aquí.
@@ -169,7 +172,7 @@ Decisiones registradas en la bitácora (2026-10-06) antes de implementar los flu
 ## 8. Riesgos, contradicciones y limitaciones aceptadas
 
 - **Bloqueo nativo por #386.** La Feature no puede cerrar su parte visual hasta que exista la consola admin; está declarado como dependencia registrada, no como olvido.
-- **Lint rojo en la rama de integración.** Dos errores de lint en código de producción de #410 mantienen `pnpm run verify` en rojo aunque el resto de los gates pase (§5.2). Es un defecto real a corregir antes del merge a `main`.
+- **Lint corregido en el mismo cierre backend-first.** Los dos errores de lint de producción de #410 (`storage.route.ts` `no-control-regex`; `supabase-rate-table-repository.ts` `no-unused-vars`) se corrigieron en ese work unit y `pnpm run verify` pasa `exit 0` desde entonces (§4.1, §5.2); las re-ejecuciones posteriores (U7, U8, U11, U13) lo confirman (§10.4, §11.4). No queda ningún defecto de lint pendiente.
 - **Falla ambiental de `test:db`.** Restringida a `pyme_documents_bucket.sql` por objetos ajenos en el bucket local (§5.3); no afecta al esquema de #410.
 - **Criterio 4 medido de forma parcial.** El evento admin de despliegue pendiente no tiene productor (§5.4).
 - **Paso de operador de Testnet sin ejecutar.** El tope on-chain sólo es efectivo en Testnet tras redesplegar/re-apuntar la fábrica (§5.5); no se afirma que esté activo.
@@ -181,6 +184,7 @@ Decisiones registradas en la bitácora (2026-10-06) antes de implementar los flu
 - La Feature #410 **no está en `main`**, está **bloqueada por #386** y su cierre lo decide el owner.
 
 > [!todo] Condiciones antes del merge a `main` de la pila de #410
+> _Superado por §10 y §11: ver §11.7 para el estado vigente. La consola `/admin` de #386 ya está integrada en la rama (merge `f930365`), así que ese bloqueo ya no aplica; el de lint se corrigió (§5.2) y el campo de plazo del wizard se resolvió en U13._
 > 1. Resolver #386 (consola `/admin`) y montar la vista de revisión, los veredictos por documento y los estados de despliegue: cierra los criterios 1 y 2.
 > 2. Corregir los dos errores de lint de `apps/api` que dejan `verify` en rojo (§5.2) y volver a correr `pnpm run verify` completo.
 > 3. Agregar el productor del evento admin de despliegue pendiente (`admin.pending_transaction`), cerrando el criterio 4.
@@ -262,7 +266,10 @@ Las dos fallas de la primera corrida fueron **timeouts de 5 s** bajo la carga pa
 
 **No re-ejecutado en U7:** `pnpm run test:db` (U7 no cambia el esquema; la última corrida registrada es la de U1) ni nada contra el proyecto remoto.
 
-### 10.5 Mapeo de criterios de aceptación (vigente)
+### 10.5 Mapeo de criterios de aceptación (fase U1–U7)
+
+> [!note] Superada por §11.5
+> Esta tabla registra la fase U1–U7, probada **contra dobles**. La tabla vigente, tras U8–U13 y el ensayo en vivo, es la **§11.5**.
 
 | # | Criterio (verbatim, issue #410) | Resultado | Fuente |
 |---|---|---|---|
@@ -304,8 +311,80 @@ Las dos fallas de la primera corrida fueron **timeouts de 5 s** bajo la carga pa
 - La Feature #410 sigue **abierta**; su cierre lo decide el owner.
 
 > [!todo] Pendientes tras la fase UI
+> _Actualizado por §11.7: los ítems 1–2 se cubrieron con el ensayo en vivo (U9) y U8; el estado vigente está en §11.6–§11.7._
 > 1. Ejercitar la vista contra la API desplegada con una solicitud real (cierra la parte «on real applications» del criterio 1), sin Testnet real salvo autorización explícita.
 > 2. Decidir el `deploying` trabado (timeout o acción de recuperación) y si existe un «Desplegar» explícito (§10.6, 1–2). _Resuelto por U8 (§10.6, 1–2); queda confirmar con el owner la copy «Despliegue sin finalizar» y el umbral de 10 minutos._
 > 3. Agregar el productor de `admin.pending_transaction` (criterio 4).
 > 4. Confirmar con el owner la copy y los estados no diseñados (§10.6, 4–5) y el campo de plazo del wizard (criterio 7). _El campo de plazo se resolvió en U13 (§10.6, 8); queda confirmar su copy y aplicar su migración al remoto._
 > 5. Ejecutar el paso de operador de T3b (redeploy/re-apuntado de la fábrica) cuando se autorice.
+
+---
+
+## 11. Continuación de la fase UI y ensayo en vivo (U8–U13, 2026-10-07/08)
+
+Fuente: bitácora [[odd/tasks/application-review-and-vault-deployment|§Fase UI, U8–U13]] (2026-10-07/08). **Esta sección es el registro vigente**; su tabla de criterios (§11.5) reemplaza a las de §10.5 y §7. Nada de lo que sigue está en `main`.
+
+### 11.1 Cadena de entrega
+
+La fase U1–U7 de la §10 quedó en PR **abiertos** en su momento; todos se mergearon después, en cadena, a la rama padre inmediata (§10.1 los registra como abiertos por ser el estado de ese momento). La continuación U8–U13:
+
+| Slice | Contenido | Commit(s) | PR (base) |
+|---|---|---|---|
+| U8 | recuperación de un `deploying` trabado (10 min), **Desplegar** explícito y escrituras terminales guardadas por intento | `b4b831b`, `d67e351`, `5ed66f5` | [#461](https://github.com/reyduar/Vaqcrow/pull/461) → tracker |
+| U9–U11 | spec `e2e-live` del flujo admin real (red local) + helpers, token de sesión en el envío del wizard, ventas simuladas para cualquier referencia | `5d9bd4b`, `0b66dfa`, `64f2ee3`, `40c277b`, `0451c8d` | [#463](https://github.com/reyduar/Vaqcrow/pull/463) → `-10` |
+| U12 | evaluación de IA automática al enviar la solicitud | `4f4b01d` | [#464](https://github.com/reyduar/Vaqcrow/pull/464) → `-11` |
+| U13 | duración de campaña 30/60/90 días elegida por la PyME | `4d2dcd3` | [#465](https://github.com/reyduar/Vaqcrow/pull/465) → `-12` |
+
+El PR [#462](https://github.com/reyduar/Vaqcrow/pull/462) registró el despliegue de la fábrica con tope en Testnet (ver §11.6). #462–#465 se mergearon a la rama de #406 (tip `014ed8d`); **no hay PRs abiertas**.
+
+### 11.2 Migración remota (U13)
+
+`20261008120000_add_business_campaign_duration` se probó primero en el stack local (pgTAP `businesses_ownership.sql` **ok, 48 tests**) y luego, con **autorización explícita del owner**, se **aplicó al proyecto remoto el 2026-10-08** vía el MCP de Supabase, con el `version` del historial alineado al del repositorio. Verificado entonces: `campaign_duration_days smallint` nullable, `check (campaign_duration_days in (30, 60, 90))`, sin cambios de grants/RLS (RLS on, 0 policies, `service_role` select/insert/update), advisors sin hallazgos nuevos (sólo el INFO de RLS-sin-policy del patrón `service_role`-only). Con esto el proyecto remoto tiene las **seis** migraciones de #410 al día (las cuatro del cierre backend-first, `document_verdict` de U1 y `campaign_duration` de U13). **Fuente:** bitácora U13; **no se re-verificó el remoto en esta sección.**
+
+### 11.3 Ensayo en vivo (U9–U13)
+
+El ensayo `apps/web/e2e-live/admin-review.live.spec.ts` corre contra el **stack real del perfil docker** (Supabase local, la API de esta rama y Stellar Quickstart con la fábrica del wasm con tope): **no Testnet, no Supabase remoto**. El spec recorre todo el flujo por UI/API real: alta de la PyME con confirmación por Mailpit → wizard (KYC simulado, tres PDF y una PNG sintéticos, check de completitud/visión real, Freighter emulado con firma SEP-53) → «Enviar a revisión» → la evaluación de IA arranca sola (U12) → el admin entra por `/admin`, abre la solicitud, marca «Válido» y abre el documento privado autenticado, aprueba con límite y ve la bóveda confirmarse → el tope se rechaza en API y contrato → diez aportes liquidan la campaña.
+
+Corridas finales (2026-10-08): **J** (`6f1b61cc`, solicitud `0d6f47fd…`) y **K** (`bfa51d62`, solicitud `2dfe732e…`), ambas **`1 passed`**. En las dos: evaluación automática con **recomendación real del proveedor** sin llamada admin; veredicto y visor privado; aprobación confirmada en el `alertdialog`; **despliegue `confirmed` en el intento 1** (`attempts: 1`), bóvedas `CAKZHNQR…MGS6` y `CAU2AX3Z…JD55`; `deadline` on-chain = segundo de la aprobación + **90 días** (diferencia 0 s); `422 investor_limit_exceeded` y `Error(Contract, #10)` para el aporte por encima del tope; diez aportes de `goal/10` → `settled` con `150000000000`; saldo de la PyME +`150000000000` stroops. La **corrida I** (`1dd3fee2`) cerró el hallazgo 3: con `LLM_TIMEOUT_MS=120000` la evaluación automática registró una recomendación real (`medium`) a los 90,8 s.
+
+Workarounds que siguen en el spec (registrados como tales): **(1)** la tasa de cambio por `POST /admin/rates` — no hay UI de tasas; **(4)** los aportes por las rutas de invocación — no hay marketplace. Los workarounds 2 (assessment manual) y 3 (`deadline` por psql) se **retiraron** en U12 y U13 respectivamente.
+
+### 11.4 Verificación (U13, 2026-10-08; tomada de la bitácora, no re-ejecutada en esta sección)
+
+- `pnpm run verify` → **exit 0** (2.ª corrida; la 1.ª cae por *timeouts* de 5 s de `@vaqcrow/web` bajo la carga paralela de turbo, inestabilidad conocida y ajena): lint (1 warning preexistente), typecheck 8/8, test (contracts 545 · domain 120 · ai 143 · **api 2227** · **web 1833**), build 5/5, boundaries sin violaciones (**930 módulos, 3028 dependencias**), `test:boundaries` 164.
+- E2E determinista `pnpm --filter @vaqcrow/web exec playwright test` → **45 passed** (incluye los escenarios de `admin-review.spec.ts` de U7–U8 contra el doble).
+- `pnpm run test:db` → **15/16 archivos ok**; la única falla es `pyme_documents_bucket.sql` (subtests 9/16/18: `have: 45, want: 3`), **ambiental y preexistente** por objetos ajenos acumulados en el bucket local (ya documentada en T3a y agravada por los ensayos). `businesses_ownership.sql` **ok (48)**.
+- `cargo test` (desde `contracts/`) → **39 passed / 0 failed** con el wasm con tope (T3b; no re-ejecutado en U8–U13).
+- **No re-ejecutado:** Testnet, Supabase remoto, `test:integration`.
+
+### 11.5 Mapeo de criterios de aceptación (vigente)
+
+| # | Criterio (verbatim, issue #410) | Resultado | Fuente |
+|---|---|---|---|
+| 1 | "The review view reproduces sections 1 to 3, validations and the confirmation dialog, on real applications." | ✅ **CUMPLIDO.** La vista `/admin/pymes/[applicationId]` reproduce las secciones 1–3, la validación de la razón (≥ 10, error en línea) y el `alertdialog`, y se ejercitó **sobre una solicitud real** en el ensayo en vivo (corridas J/K): veredicto «Válido» + visor privado autenticado, encabezado «2 · Recomendación de IA» con la recomendación real del proveedor, aprobación con límite y panel hasta «Bóveda confirmada / PyME publicada». Límites declarados: el entorno es el stack local docker (API de la rama + Stellar local), **no** la API desplegada ni Testnet; el encabezado omite «enviada el…» y el pie de IA omite «corr» porque la API no los expone; la copy no diseñada sigue pendiente de confirmación del owner (§11.6). | Ensayo en vivo `apps/web/e2e-live/admin-review.live.spec.ts` (corridas J/K, `1 passed`) + e2e determinista `admin-review.spec.ts` + `verify` |
+| 2 | "Per-document verdicts, the human decision with reason and limit, and the audit entry are persisted and attributed." | ✅ **CUMPLIDO en la rama.** Veredictos por documento persistidos en `public.document_verdict` y atribuidos al admin verificado (migración remota `20261007130000`); la decisión con razón y límite (D7) se registra vía `record_human_decision` atribuida al principal verificado, y la UI nunca envía `actor`. El ensayo en vivo marca el veredicto y registra la decisión. La entrada de auditoría es la de la decisión humana; el `audit_log` genérico sigue sin consumidores. | Suites API/web re-ejecutadas; ensayo en vivo; bitácora U1/U5 |
+| 3 | "Approval deploys exactly one vault with the PyME's public key as immutable destination, then publishes the campaign; a replayed approval does not redeploy." | ✅ **CUMPLIDO.** Sin cambios de fondo; U8 suma el reclamo de un `deploying` trabado y **Desplegar** sobre el mismo `POST …/deployment`, sin abrir otro camino. En vivo: una sola bóveda por aprobación (intento 1 confirmado), destino = clave de la PyME, publicación tras la confirmación, replay no-op. | Suite API; ensayo en vivo (bóvedas `CAKZHNQR…`/`CAU2AX3Z…`); bitácora T5b/U6/U8 |
+| 4 | "Changes-requested, rejection and approval notify the PyME; a pending deployment notifies admins." | ⚠️ **PARCIAL.** `pyme.changes_requested`/`pyme.rejected` (T4a) y `pyme.approved_published` (T5b) notifican a la PyME; el evento admin de «transacción pendiente de confirmación» (`admin.pending_transaction`) **sigue sin productor**. Es la brecha abierta de este criterio (§11.6). | Lectura de código; bitácora T4a/T5b |
+| 5 | "The AI recommendation never approves or transfers funds." | ✅ **CUMPLIDO.** La sección 2 («Consultiva · no aprueba») no tiene ningún control; sólo la decisión humana confirmada despliega. En vivo, la recomendación real del proveedor no aprobó ni movió fondos. | Suite web; ensayo en vivo; bitácora U4 |
+| 6 | "Required evidence and failure behavior are covered." | ✅ **CUMPLIDO.** Fallos cubiertos con códigos saneados: visor/contexto (`400`/`404`/`503`); `rate_unavailable` (503) y `goal_limit_exceeded` (422); `investor_limit_exceeded` (422); `InvestorCapExceeded` on-chain (#10); `deployment_in_progress` (409) y despliegue trabado con Reintentar; copy honesta en la UI. El ensayo en vivo ejercitó el rechazo por tope en API y contrato. Este documento es la evidencia. | Suites y ensayo en vivo; bitácora T1a–T5b, U3–U8 |
+| 7 | "Every item under \"Not designed in the template (open question)\" is decided by the owner before it is implemented; none is invented." | ✅ **CUMPLIDO.** Todas las preguntas abiertas del issue las decidió el owner antes de implementarse (D1–D8) y ninguna se inventó. La última —el campo de plazo del wizard— la cerró **U13**: la PyME elige 30/60/90 días y el `deadline` se calcula al desplegar. Queda **pendiente de confirmación** sólo la *copy* (campo de duración y estados/mensajes no diseñados de U2–U6), que es redacción, no diseño funcional. | Bitácora §Decisiones y U13; §11.6 |
+| 8 | "No unsupported production claims or secrets are introduced." | ✅ **CUMPLIDO.** Sin secretos, seeds ni PII; Testnet sin valor económico; conversión ARS↔activo simulada; el ensayo usa credenciales sólo locales y una clave publicable falsa. | Revisión de este documento; suites; bitácora U9 |
+
+### 11.6 Estado honesto, brechas y decisiones pendientes
+
+- **AC4 parcial (brecha nombrada).** El evento admin de despliegue pendiente (`admin.pending_transaction`) **no tiene productor**: los estados `pending`/`deploying` se ven en el panel, pero no generan notificación al admin.
+- **La fábrica con tope no está activa en Testnet.** Desplegada y verificada (`CCDNM6W4…SV7J`, `vault_wasm` `966f5b89…`, PR #462) pero Railway construye desde `main`, que todavía tiene el recorrido guionado donde un solo inversor aporta el objetivo completo; se activa re-apuntando `STELLAR_CAMPAIGN_FACTORY_ID` cuando la pila llegue a `main` con #438.
+- **Sin UI de tasa de cambio.** `POST /admin/rates` sólo por API; sin fila vigente el despliegue falla con `rate_unavailable`. El ensayo la crea por API (workaround 1).
+- **La API no persiste el hash de la transacción de despliegue.** `campaign_deployment` guarda el `campaign_id` interno, no el tx hash ni el contract id de la bóveda, así que el panel no ofrece un enlace verificable al explorador (`demo-ui.md` §2, trazabilidad).
+- **Copy y estados no diseñados** (U2–U6 y el campo de duración de U13) implementados de forma mínima y neutral, **a confirmar por el owner**.
+- **Falla ambiental de `test:db`.** Restringida a `pyme_documents_bucket.sql` por objetos ajenos en el bucket local (agravada por los ensayos: `have: 45, want: 3`); no afecta al esquema de #410.
+- **El remoto no se re-verificó en esta sección.** Todo lo del proyecto remoto proviene de la bitácora.
+
+### 11.7 Estado de entrega y próximos pasos
+
+> [!info] Cierre de la Feature (decisión del owner, 2026-10-08)
+> El owner decidió **cerrar #410 y sus Tasks [#411](https://github.com/reyduar/Vaqcrow/issues/411)/[#412](https://github.com/reyduar/Vaqcrow/issues/412)/[#413](https://github.com/reyduar/Vaqcrow/issues/413)** con **AC4 documentado como brecha abierta** (el productor de `admin.pending_transaction`) y el **paso de operador de T3b** (activar la fábrica con tope con #438) como pendientes explícitos. La UI de tasas, la persistencia del hash de despliegue y la confirmación de la copy no diseñada quedan también como pendientes nombrados.
+
+- **Nada de #410 está en `main`.** Todo vive en la rama de #410, integrada en la pila #406 (tip `014ed8d`); el merge a `main` sigue atado a la **Opción A del owner** (la pila se mergea junta con el retiro del recorrido de seis pasos, #438).
+- **Camino a `main`:** #414 (Explorar PyMEs + API de listado) → #422 → #426/#434 → #438. #390, #394, #418 y #430 no son dependencias de #438.
+- El cierre de la Feature lo decide el owner; esta sección sólo registra su decisión.

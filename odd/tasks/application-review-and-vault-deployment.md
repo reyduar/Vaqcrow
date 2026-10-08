@@ -756,3 +756,11 @@ Ruta: **delegado** (un writer; migración + pgTAP, API, wizard web, doble e2e y 
 - El límite debe aplicarse server-side y de forma atómica al reservar/aplicar aportes; la UI sólo lo comunica. El contrato o engine debe rechazar también cualquier aporte que lo exceda.
 - La conversión se toma de una tabla de tasas: versión, `effectiveAt`, autor, origen, `usdToArs` y `stroopsPerUsd` como enteros de precisión fija. Una campaña conserva el snapshot; cambiar la tabla sólo afecta nuevos proyectos o cotizaciones aún no confirmadas.
 - Estos números son una política conservadora de demo, no asesoramiento legal ni una afirmación de que sean los límites regulatorios aplicables al revenue share. La normativa argentina distingue crowdfunding de valores negociables y exige clasificación legal antes de producción.
+
+## Cierre de la Feature (2026-10-08)
+
+El owner decidió cerrar la Feature #410 y sus Tasks #411/#412/#413. La evidencia de cierre `docs/planning/application-review-and-vault-deployment-evidence.md` se actualizó con la **§11** (cadena U8–U13, migración remota de U13, ensayo en vivo —corridas J/K—, verificación y **tabla de criterios vigente**), y se corrigió el claim stale de lint rojo y la cabecera que daba #386 por inexistente.
+
+Resultado honesto de los criterios: **AC1 CUMPLIDO** (la vista se ejercitó sobre solicitudes reales en el ensayo en vivo; el límite declarado es que el entorno es el stack docker, no Testnet), **AC7 CUMPLIDO** (U13 cerró el campo de plazo del wizard), **AC2/AC3/AC5/AC6/AC8 CUMPLIDOS**; **AC4 queda PARCIAL**: `admin.pending_transaction` sigue sin productor.
+
+Pendientes nombrados al cierre: activar la fábrica con tope en Testnet con #438, UI de tasa de cambio, persistir el hash del deploy, y confirmar la copy no diseñada. Nada de #410 está en `main`; el camino a `main` es #414 → #422 → #426/#434 → #438.
