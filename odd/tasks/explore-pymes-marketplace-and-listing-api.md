@@ -46,7 +46,7 @@ La pila ya permite que una PyME se registre, sea revisada y aprobada, y que la b
 ## Tareas
 
 - [x] **WU1 — Endpoint de listado (backend).** Contrato en `packages/contracts`, port, adaptador (join a `businesses`), caso de uso, ruta PUBLIC y política. Sólo campañas publicadas. Sin `apps/web`.
-- [ ] **WU2 — Favoritos persistidos (backend).** Tabla `campaign_favorite` (por usuario, RLS user-only), repositorio y endpoints AUTHENTICATED (listar/activar/desactivar). El listado puede marcar `isFavorite` del solicitante.
+- [x] **WU2 — Favoritos persistidos (backend).** Tabla `campaign_favorite` (por usuario, RLS user-only), repositorio y endpoints AUTHENTICATED (listar/activar/desactivar). El listado puede marcar `isFavorite` del solicitante.
 - [ ] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
 - [ ] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
 - [ ] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
@@ -78,3 +78,15 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + vista
 - **Límite explícito.** Sin `apps/web`; sin imágenes ni favoritos (WU2/WU3).
 
 - **Work-unit commit.** `6141796 feat(api): list published campaigns for the marketplace (#414)`.
+
+### WU2 — Favoritos persistidos por cuenta (commit `ba4660e`)
+
+Ruta: **delegado** (un writer; contrato + port + adaptador + 2 casos de uso + ruta + política + migración, 2+ archivos no triviales). Sin `apps/web`. El primer intento devolvió un resultado **vacío** a mitad (dejó tests + port + adaptador + contrato + migración, sin las implementaciones); un segundo writer acotado completó el work unit.
+
+- **Diseño (D1).** Tabla `public.campaign_favorite` (`user_id`, `campaign_id`, PK compuesta, FK `campaign_id → campaign(campaign_id) on delete cascade`, índice de la FK); RLS on con cero policies y grants sólo `service_role` (`select`/`insert`/`delete`, sin `update`). Endpoints `GET /favorites`, `PUT`/`DELETE /favorites/:campaignId`, todos **AUTHENTICATED**, con `userId` tomado **sólo** de `request.principal.userId` (un `userId` de body/query se ignora). Alta idempotente (`23505` → `applied:false`); baja idempotente; campaña desconocida `404`; id no-UUID `400`; fallo `503`. El listado público de WU1 queda **sin** auth: la web fusiona los favoritos desde `GET /favorites` cuando hay sesión.
+- **RED/GREEN observado.** RED: módulos `list-favorites`/`set-favorite` inexistentes y la ruta `404` (13 fallidos). GREEN: favoritos **31** (4 archivos); contracts **554**; api **2297** (104 archivos); typecheck 8/8; lint 5/5; boundaries sin violaciones (950 módulos, 3091 dependencias); test:boundaries 164.
+- **Migración.** `20261008195155_create_campaign_favorite.sql` probada **en local** (`campaign_favorite.sql` ok; `campaign_persistence.sql` ok tras agregar `drop table if exists public.campaign_favorite` a su reversión, por la FK). **Remoto pendiente de autorización del owner.**
+- **Verificación independiente (RDD off; assess `high`).** Un verifier read-only: **sin bloqueantes**. Advisories bajos (cobertura del pgTAP): afirmar las columnas de la PK compuesta (`col_is_pk`), el conteo cero de policies y el privilegio `update` de `anon`. No afectan la corrección; quedan como hardening del test.
+- **Límite explícito.** Sin `apps/web` (el corazón y «Mis favoritos» son WU5). Sin imágenes (WU3).
+
+- **Work-unit commit.** `ba4660e feat(api): persist per-account campaign favorites (#414)`.
