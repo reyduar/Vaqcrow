@@ -101,3 +101,23 @@ Ruta: **delegado** (un writer; migración de vista + port + adaptador + caso de 
 - **Límite explícito.** Sin `apps/web` (la tarjeta es WU4). Migración **local**; aplicación al remoto pendiente de autorización del owner.
 
 - **Work-unit commit.** `c1c731f feat(api): serve the PyME's real photo to the marketplace (#414)`.
+
+### WU4 — Vista `/explore` (web)
+
+Ruta: **delegado en dos pasadas** (WU4a datos/lógica; WU4b UI), un writer por pasada, con verificación independiente después de cada una. Consume los contratos de WU1 (listado), WU3 (imagen) y WU2 (`GET`/`PUT`/`DELETE /favorites`). `apps/web` sólo consume contratos; `presentation/` no importa `@vaqcrow/contracts` salvo type-only; `application/` (web) sin React.
+
+- **Alcance WU4a (datos y lógica).** Ports `marketplace-port` y `favorite-port`; gateways HTTP + factories con el patrón `create-admin-queue-port` (axios, token opcional vía `createLazyAuthSession`); lógica pura en `application/marketplace/` (filtros, orden, formato `ARS 1.234.567` / `dd/mm/aaaa`, view-model de la tarjeta) y hooks SWR `use-marketplace`/`use-favorites`. El listado público no manda token; los favoritos sí y exigen sesión.
+- **Alcance WU4b (UI).** `CampaignCard` extendida con imagen (16/10) y overlay de badges (riesgo + `SIMULADO`) más slot `imageAction` para el corazón; vista `/explore` pública con búsqueda, modal de filtros avanzados (borrador/aplicar/descartar + contador en vivo), chips, orden y los tres estados (carga/error/vacío). El corazón se muestra y se conecta sólo con sesión; para anónimos queda **oculto de forma provisional** hasta que WU5 decida (ocultar/deshabilitar/pedir login).
+- **Fuera de WU4.** El botón «Mis favoritos» (filtro + contador), el chip «Solo favoritos» y la decisión final del comportamiento anónimo → **WU5**.
+- **Fuente visual.** `docs/design/template/Vaqcrow Explorar PyMEs.dc.html` (git-ignored); el override del owner del issue #414 (**público sin onboarding**; la compuerta «Ingresá para explorar PyMEs» del template **no aplica**) prevalece. Abrir el detalle de una campaña sí exige cuenta (Feature de detalle).
+
+#### WU4a — Datos y lógica (commit `876288c`)
+
+Ruta: **delegado** (un writer; 2 ports + 3 módulos puros + 8 archivos de infra + 2 hooks + tests, muy por encima de 2 archivos no triviales). Sin UI.
+
+- **Diseño.** Ports vendor-free `marketplace-port`/`favorite-port` (contratos type-only; `favorite-port` no importa contratos). El adaptador `HttpMarketplaceGateway` resuelve el `imageUrl` API-relativo del contrato a un `imageSrc` **absoluto** contra el base URL (el wire nunca lleva URL absoluta ni path del bucket); el `HttpFavoriteGateway` manda el Bearer sólo con sesión y mapea 401/403 a `unauthenticated`. Lógica pura en `application/marketplace/`: `filters` (texto case-insensitive, riesgo/sector AND, ciudad substring, meta inclusive con centinela 16, cierre por días con centinela 150, sin mutar), `format` (`Intl` `es-AR`: `ARS 1.234.567`, `dd/mm/aaaa`, `4,5 % de ventas`, `63 % de la meta`), `view-model` (`raisedArs` nulo → «Sin dato», riesgo nulo → «Riesgo sin dato» tono neutro, nunca sólo color). Hooks SWR `use-marketplace` (key `["marketplace-campaigns"]`) y `use-favorites` (key `["favorites"]` sólo con port+sesión; `toggle` re-lee sólo en `ok`, sin estado optimista inventado).
+- **RED/GREEN observado.** RED: 9 archivos fallidos (`Failed to resolve import`), sin tests colectados. GREEN: **9/9 archivos, 73/73 tests**; `typecheck` 8/8; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (976 módulos, 3164 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes**; 6 advisories bajos, todos de cobertura de tests (rama `provider()`→`null`, charset RFC 6750, `toggle` con `enabled:false`, `port.list()` rechazado, empate de orden por clamp de `fundedPercentBps`, multi-riesgo en el predicado). Ninguno afecta corrección. Se corrigió en el mismo work unit un warning de lint introducido (const `BASE` sin usar).
+- **Límite explícito.** Sin `apps/web` de UI; sin página ni componentes. El `href` del CTA es el **provisional** `/campaigns/<id>` (la ruta de detalle la define #422).
+
+- **Work-unit commit.** `876288c feat(web): add the marketplace listing and favorites data layer (#414)`.
