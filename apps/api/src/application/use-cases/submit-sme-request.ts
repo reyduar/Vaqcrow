@@ -19,7 +19,8 @@ import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
  * correlation id is per-request, so an owner's replay is matched against the
  * request it already submitted. On a real apply only, the admin event
  * `admin.new_application` is published best-effort — a delivery failure never
- * fails the submission.
+ * fails the submission — and the advisory AI assessment is started in the
+ * background (U12), never awaited, so it can neither delay nor fail the send.
  */
 
 export interface SmeRequestFieldError {
@@ -39,12 +40,30 @@ export type SubmitSmeRequestResult =
     }
   | { readonly ok: false; readonly error: SubmitSmeRequestError };
 
+/**
+ * The collaborator that starts the advisory AI assessment of a newly applied
+ * submission (U12). It is a single callback rather than the assessment ports so
+ * this use case stays independent of the assessment engine — the same seam the
+ * human decision uses to start a vault deploy. Invoking it is best-effort and
+ * fire-and-forget: a slow or failing assessment never blocks or fails the send.
+ * The assessment itself never decides: it only moves the application to
+ * `human_review` (or to manual review on failure).
+ */
+export interface SubmissionAssessmentDependencies {
+  readonly onSubmitted: (input: {
+    readonly applicationId: ApplicationId;
+    readonly correlationId: CorrelationId;
+  }) => Promise<unknown>;
+}
+
 export interface SubmitSmeRequestDependencies {
   readonly repository: Pick<SmeRequestRepositoryPort, "submit" | "findByOwner">;
   readonly wallet: Pick<WalletRepositoryPort, "readPublicKey">;
   readonly businesses: Pick<BusinessRepositoryPort, "findByOwner">;
   readonly notifications: Pick<NotificationPublisherPort, "publish">;
   readonly generateApplicationId: () => ApplicationId;
+  /** Optional: when omitted, a submission stays in `awaiting_assessment`. */
+  readonly assessment?: SubmissionAssessmentDependencies | undefined;
 }
 
 /** The neutral label used when the owner's company cannot be resolved. */
@@ -104,9 +123,13 @@ export async function submitSmeRequest(
       : { ok: false, error: { code: "unavailable", fieldErrors: [] } };
   }
 
-  // Only a real apply notifies the admin: a replay (owner match or correlation
-  // replay, which reports `applied: false`) must not raise a second event.
+  // Only a real apply notifies the admin and starts the assessment: a replay
+  // (owner match or correlation replay, which reports `applied: false`) must not
+  // raise a second event nor spend a second assessment.
   if (result.value.applied) {
+    if (dependencies.assessment !== undefined) {
+      triggerAssessment(dependencies.assessment, result.value.applicationId, input.correlationId);
+    }
     await publishNewApplication(dependencies, input.ownerUserId, result.value.applicationId);
   }
 
@@ -160,6 +183,28 @@ async function publishNewApplication(
     });
   } catch {
     // Delivery is best-effort by contract; the submission already succeeded.
+  }
+}
+
+/**
+ * Starts the assessment for a newly applied submission without blocking the
+ * response. The callback is invoked immediately but its promise is deliberately
+ * not awaited; a rejection or a synchronous throw is swallowed because the
+ * submission is already persisted. The application then simply stays in
+ * `awaiting_assessment`, and `POST /application-reviews/:id/assessments`
+ * remains the explicit retry surface.
+ */
+function triggerAssessment(
+  assessment: SubmissionAssessmentDependencies,
+  applicationId: ApplicationId,
+  correlationId: CorrelationId
+): void {
+  try {
+    void Promise.resolve(assessment.onSubmitted({ applicationId, correlationId })).catch(() => {
+      // Best-effort: the trigger logs its own sanitized outcome.
+    });
+  } catch {
+    // A synchronously-throwing collaborator must never fail the submission.
   }
 }
 

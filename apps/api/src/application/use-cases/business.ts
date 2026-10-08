@@ -1,7 +1,9 @@
-import type {
-  BusinessDraft,
-  BusinessRecord,
-  BusinessRepositoryPort
+import {
+  CAMPAIGN_DURATION_DAYS,
+  type BusinessDraft,
+  type CampaignDurationDays,
+  type BusinessRecord,
+  type BusinessRepositoryPort
 } from "../ports/business-repository-port.js";
 
 /**
@@ -27,7 +29,8 @@ const DRAFT_KEYS: ReadonlySet<string> = new Set([
   "description",
   "goalArs",
   "revenueShare",
-  "deadline"
+  "deadline",
+  "campaignDurationDays"
 ]);
 
 const CUIT_PATTERN = /^[0-9]{11}$/;
@@ -43,6 +46,11 @@ const ISO_DATETIME_PATTERN =
 
 function isIsoDateTime(value: string): boolean {
   return ISO_DATETIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+/** Only a JSON number exactly equal to 30, 60 or 90 (#410/U13); `"30"` is refused. */
+export function isCampaignDurationDays(value: unknown): value is CampaignDurationDays {
+  return typeof value === "number" && (CAMPAIGN_DURATION_DAYS as readonly number[]).includes(value);
 }
 
 export type BusinessValidation =
@@ -135,6 +143,16 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
     }
   }
 
+  const durationValue = record["campaignDurationDays"];
+  let campaignDurationDays: CampaignDurationDays | undefined;
+  if (durationValue !== undefined && durationValue !== null) {
+    if (!isCampaignDurationDays(durationValue)) {
+      errors.push({ field: "campaignDurationDays", code: "invalid" });
+    } else {
+      campaignDurationDays = durationValue;
+    }
+  }
+
   if (errors.length > 0) {
     return { ok: false, fieldErrors: errors };
   }
@@ -149,7 +167,8 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
       description: description as string,
       goalArs: goalArs as number,
       revenueShare: revenueShare as number,
-      ...(deadline === undefined ? {} : { deadline })
+      ...(deadline === undefined ? {} : { deadline }),
+      ...(campaignDurationDays === undefined ? {} : { campaignDurationDays })
     }
   };
 }
