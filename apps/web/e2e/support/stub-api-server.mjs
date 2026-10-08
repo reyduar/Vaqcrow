@@ -364,6 +364,13 @@ async function handle(request, response) {
       sendJson(response, 400, { code: "invalid_request" });
       return;
     }
+    // Mirrors the API (#410/U13): an optional campaign duration of exactly 30,
+    // 60 or 90 days; anything else is the sanitized field error.
+    const duration = body.campaignDurationDays;
+    if (duration !== undefined && duration !== null && ![30, 60, 90].includes(duration)) {
+      sendJson(response, 400, { errors: [{ field: "campaignDurationDays", code: "invalid" }] });
+      return;
+    }
     currentBusiness = {
       businessId: BUSINESS_ID,
       ownerUserId: OWNER_USER_ID,
@@ -374,6 +381,7 @@ async function handle(request, response) {
       description: String(body.description ?? ""),
       goalArs: Number(body.goalArs ?? 0),
       revenueShare: Number(body.revenueShare ?? 0),
+      ...(duration === undefined || duration === null ? {} : { campaignDurationDays: duration }),
       createdAt: BUSINESS_CREATED_AT,
       updatedAt: BUSINESS_CREATED_AT
     };

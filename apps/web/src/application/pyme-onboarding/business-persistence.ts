@@ -1,5 +1,5 @@
 import type { BusinessDraft, BusinessErrorCode, BusinessPort, BusinessRecord } from "@/application/ports/business-port";
-import { cuitDigits, parseAmount, type RegistrationValues } from "./registration-step";
+import { cuitDigits, durationDays, parseAmount, type RegistrationValues } from "./registration-step";
 
 /**
  * Persists the company from the wizard's step 4 before the SME request is sent
@@ -19,7 +19,9 @@ export function businessDraftFromRegistration(values: RegistrationValues): Busin
     city: values.city.trim(),
     description: values.desc.trim(),
     goalArs: parseAmount(values.goal),
-    revenueShare: parseAmount(values.rs)
+    revenueShare: parseAmount(values.rs),
+    // Step 2 validation requires a duration, so this is never null on a send.
+    campaignDurationDays: durationDays(values.duration)
   };
 }
 

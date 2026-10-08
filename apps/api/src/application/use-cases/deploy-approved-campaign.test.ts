@@ -495,6 +495,116 @@ describe("deployApprovedCampaign", () => {
     expect(factoryPort.calls.deploy).toHaveLength(0);
   });
 
+  describe("campaign duration (#410/U13)", () => {
+    const DAY_MS = 86_400_000;
+    // Millisecond noise on the attempt clock: the vault stores whole seconds.
+    const ATTEMPT_AT = "2026-10-06T12:30:00.750Z";
+    const durationBusiness = (overrides: Partial<BusinessRecord> = {}) =>
+      businesses({ ok: true, value: { ...BUSINESS, deadline: null, campaignDurationDays: 60, ...overrides } });
+
+    it("computes the deadline as the attempt's moment plus the chosen days, in whole seconds", async () => {
+      const expected = new Date(Date.parse("2026-10-06T12:30:00.000Z") + 60 * DAY_MS);
+      const factoryPort = factory();
+      const campaignsPort = campaigns();
+
+      const result = await deployApprovedCampaign(
+        deps({
+          businesses: durationBusiness(),
+          factory: factoryPort,
+          campaigns: campaignsPort,
+          chain: chain({ ok: true, value: fundingChainState({ deadline: expected }) }),
+          now: () => new Date(ATTEMPT_AT)
+        }),
+        { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      );
+
+      expect(result.ok).toBe(true);
+      const deployed = factoryPort.calls.deploy[0] as { deadline: Date };
+      expect(deployed.deadline.toISOString()).toBe("2026-12-05T12:30:00.000Z");
+      const mirrored = campaignsPort.calls.create[0] as { campaign: { deadline: string } };
+      expect(mirrored.campaign.deadline).toBe("2026-12-05T12:30:00.000Z");
+    });
+
+    it("prefers the chosen duration over a persisted legacy deadline", async () => {
+      const expected = new Date(Date.parse(NOW) + 30 * DAY_MS);
+      const factoryPort = factory();
+
+      const result = await deployApprovedCampaign(
+        deps({
+          businesses: durationBusiness({ deadline: DEADLINE_ISO, campaignDurationDays: 30 }),
+          factory: factoryPort,
+          chain: chain({ ok: true, value: fundingChainState({ deadline: expected }) })
+        }),
+        { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      );
+
+      expect(result.ok).toBe(true);
+      expect((factoryPort.calls.deploy[0] as { deadline: Date }).deadline.toISOString()).toBe(expected.toISOString());
+    });
+
+    it("counts a retry on a later day from that retry", async () => {
+      const retryAt = new Date(Date.parse(NOW) + 3 * DAY_MS);
+      const expected = new Date(retryAt.getTime() + 90 * DAY_MS);
+      const failed = deploymentRecord({ state: "failed", attempts: 1, lastError: "terms_unavailable" });
+      const factoryPort = factory();
+
+      const result = await deployApprovedCampaign(
+        deps({
+          deployments: deployments({ found: { ok: true, value: failed } }),
+          businesses: durationBusiness({ campaignDurationDays: 90 }),
+          factory: factoryPort,
+          chain: chain({ ok: true, value: fundingChainState({ deadline: expected }) }),
+          now: () => retryAt
+        }),
+        { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      );
+
+      expect(result.ok).toBe(true);
+      expect((factoryPort.calls.deploy[0] as { deadline: Date }).deadline.toISOString()).toBe(expected.toISOString());
+    });
+
+    it("adopts a vault an earlier attempt already deployed, keeping its on-chain deadline", async () => {
+      // A previous attempt deployed on-chain and failed afterwards; the retry
+      // computes a later deadline, but the vault's own deadline is the truth.
+      const onChain = new Date(Date.parse("2026-10-01T09:00:00.000Z") + 60 * DAY_MS);
+      const vault = fundingChainState({ deadline: onChain });
+      const factoryPort = factory();
+      const campaignsPort = campaigns();
+
+      const result = await deployApprovedCampaign(
+        deps({
+          businesses: durationBusiness(),
+          factory: factoryPort,
+          campaigns: campaignsPort,
+          chain: chain({ ok: true, value: vault }, { ok: true, value: vault })
+        }),
+        { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      );
+
+      expect(result.ok).toBe(true);
+      expect(factoryPort.calls.deploy).toHaveLength(0);
+      const mirrored = campaignsPort.calls.create[0] as { campaign: { deadline: string } };
+      expect(mirrored.campaign.deadline).toBe(onChain.toISOString());
+    });
+
+    it("is terms_unavailable when the business has neither a duration nor a deadline", async () => {
+      const deploymentsPort = deployments();
+      const factoryPort = factory();
+
+      const result = await deployApprovedCampaign(
+        deps({
+          deployments: deploymentsPort,
+          businesses: durationBusiness({ campaignDurationDays: null }),
+          factory: factoryPort
+        }),
+        { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "terms_unavailable" } });
+      expect(factoryPort.calls.deploy).toHaveLength(0);
+    });
+  });
+
   it("fails with wallet_required when the owner has no public key", async () => {
     const deploymentsPort = deployments();
     const factoryPort = factory();

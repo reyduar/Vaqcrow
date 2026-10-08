@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { TransactionBuilder } from "@stellar/stellar-sdk";
 import { accessTokenFor, confirmEmail, signUpThroughAuthApi, type SupabaseTarget } from "./support/auth";
-import { assessmentStatusFor, businessForApplication, setBusinessDeadline, type AssessmentStatus } from "./support/db";
+import { assessmentStatusFor, businessForApplication, type AssessmentStatus } from "./support/db";
 import { readDockerEnv } from "./support/docker-env";
 import { installLiveFreighterEmulator, setLiveFreighterScenario } from "./support/freighter-live-emulator";
 import { nativeBalanceStroops, waitForAccount } from "./support/horizon";
@@ -39,8 +39,10 @@ import {
  * (`POST /campaigns/:id/invocations[/submission]`, signed in this process).
  * The advisory assessment is no longer triggered here: since U12 the API
  * starts it in the background when the submission applies, and the rehearsal
- * only waits (read-only) for the review to reach `human_review`. The one data step is the PyME's deadline, which the wizard
- * cannot capture yet (see `support/db.ts`'s `setBusinessDeadline`).
+ * only waits (read-only) for the review to reach `human_review`. Since U13 the
+ * PyME chooses the campaign duration in the wizard and the deploy computes the
+ * vault deadline from the attempt's moment, so no data step writes the
+ * deadline any more.
  *
  * Option A: every run creates a fresh PyME, application and vault; nothing is
  * reset. Synthetic data only; no Testnet, no remote Supabase.
@@ -49,6 +51,11 @@ import {
 const PASSWORD = "ensayo-u9-Secret-123";
 const DEMO_GOAL_ARS = 15_000_000n;
 const DEMO_GOAL_LABEL = "15.000.000";
+/** #410/U13: the wizard's demo helper picks 60; the rehearsal changes it to prove the choice travels. */
+const CAMPAIGN_DURATION_DAYS = 90;
+const DAY_SECONDS = 86_400;
+/** Allowed drift between the harness clock and the API's attempt clock (same machine, docker). */
+const DEADLINE_TOLERANCE_SECONDS = 5 * 60;
 /** Freighter reports Testnet for the SEP-53 wallet link (`FreighterWallet.signMessage` only links on Testnet); the link itself is network-independent. */
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 const REQUIRED_DOCUMENTS = ["Declaraciones de ventas", "Constancia de CUIT", "Estatuto"] as const;
@@ -196,6 +203,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await page.getByRole("button", { name: "Completar con datos de ejemplo" }).click();
     await page.getByLabel("Razón social").fill(companyName);
     await expect(page.getByLabel("Meta de financiamiento (ARS)")).toHaveValue(DEMO_GOAL_LABEL);
+    await page.getByLabel("Plazo de la campaña").selectOption({ label: `${CAMPAIGN_DURATION_DAYS} días` });
     await uploadDocuments(page, companyName);
     await page.getByRole("button", { name: "Enviar a evaluación AI" }).click();
 
@@ -318,6 +326,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await opened.popup.close();
   });
 
+  let approvedAtMs = 0;
   await test.step("6 · «Aprobar con límite» with a reason, confirmed in the alertdialog", async () => {
     await expect(admin.getByLabel("Límite aprobado (ARS)")).toHaveValue(DEMO_GOAL_LABEL);
     await admin.locator("label").filter({ hasText: "Aprobar con límite" }).click();
@@ -327,6 +336,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     const dialog = admin.getByRole("alertdialog");
     await expect(dialog).toContainText(`Aprobada con límite ARS ${DEMO_GOAL_LABEL}.`);
     record("alertdialogText", await dialog.innerText());
+    approvedAtMs = Date.now();
     await dialog.getByRole("button", { name: "Confirmar" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(admin.getByRole("status").filter({ hasText: /^Registrada por .+ · .+ · Aprobada$/ })).toBeVisible({
@@ -335,6 +345,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
   });
 
   let campaignId = "";
+  let confirmedSeenAtMs = 0;
   await test.step("7 · the deployment panel reaches «Bóveda confirmada / PyME publicada»", async () => {
     await expect(admin.getByRole("heading", { level: 2, name: "Despliegue de la bóveda" })).toBeVisible({ timeout: 30_000 });
     const confirmed = admin.getByText("Bóveda confirmada / PyME publicada", { exact: true });
@@ -348,31 +359,19 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
       await expect(confirmed.or(failed)).toBeVisible({ timeout: 180_000 });
     }
 
+    // Since U13 the first attempt must confirm: the deadline comes from the
+    // PyME's chosen duration, so there is no `terms_unavailable` to work around.
     if (await failed.isVisible()) {
-      const panelText = await admin
-        .getByRole("heading", { level: 2, name: "Despliegue de la bóveda" })
-        .locator("xpath=ancestor::section[1]")
-        .innerText();
       const firstRead = await getDeployment(adminToken, applicationId);
-      record("deploymentFirstAttempt", { panelText, api: firstRead.body.deployment });
-
-      if (firstRead.body.deployment?.lastError !== "terms_unavailable") {
-        throw new Error(`Deployment failed for a reason the rehearsal does not work around: ${JSON.stringify(firstRead.body)}`);
-      }
-      const business = businessForApplication(applicationId);
-      record("businessBeforeDeadline", { businessId: business.businessId, goalArs: business.goalArs.toString(), deadline: business.deadline });
-      const deadlineIso = new Date(Date.now() + 30 * 24 * 60 * 60_000).toISOString().replace(/\.\d{3}Z$/, ".000Z");
-      setBusinessDeadline(business.businessId, deadlineIso);
-      record("deadlineSetByHarness", deadlineIso);
-
-      await admin.getByRole("button", { name: "Reintentar" }).click();
-      await expect(confirmed).toBeVisible({ timeout: 180_000 });
+      throw new Error(`The first deployment attempt failed: ${JSON.stringify(firstRead.body)}`);
     }
+    confirmedSeenAtMs = Date.now();
 
     await admin.getByRole("button", { name: "Ver detalle" }).click();
     const deployment = await getDeployment(adminToken, applicationId);
     expect(deployment.status).toBe(200);
     expect(deployment.body.deployment?.state).toBe("confirmed");
+    expect(deployment.body.deployment?.attempts).toBe(1);
     campaignId = deployment.body.deployment?.campaignId ?? "";
     expect(campaignId).toMatch(/^[0-9a-f-]{36}$/);
     await expect(admin.getByText(campaignId)).toBeVisible();
@@ -389,6 +388,8 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
 
     const business = businessForApplication(applicationId);
     expect(business.goalArs).toBe(DEMO_GOAL_ARS);
+    expect(business.campaignDurationDays).toBe(CAMPAIGN_DURATION_DAYS);
+    expect(business.deadline).toBeNull();
     expect(goalStroops).toBe(expectedGoalStroops(DEMO_GOAL_ARS, rate));
     expect(campaign.smeAccountId).toBe(pymeWallet.publicKey());
     expect(campaign.state).toBe("funding");
@@ -399,9 +400,30 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     const onChainGoal = await readVault(probe.publicKey(), contractAddress, "goal");
     const onChainSme = await readVault(probe.publicKey(), contractAddress, "sme");
     const onChainTotal = await readVault(probe.publicKey(), contractAddress, "total");
-    record("onChain", { goal: String(onChainGoal), sme: onChainSme, total: String(onChainTotal) });
+    const onChainDeadline = BigInt(String(await readVault(probe.publicKey(), contractAddress, "deadline")));
+    record("onChain", {
+      goal: String(onChainGoal),
+      sme: onChainSme,
+      total: String(onChainTotal),
+      deadline: String(onChainDeadline),
+      deadlineIso: new Date(Number(onChainDeadline) * 1000).toISOString()
+    });
     expect(BigInt(onChainGoal as bigint)).toBe(goalStroops);
     expect(onChainSme).toBe(pymeWallet.publicKey());
+
+    // #410/U13: deadline = moment of the deploy attempt + the chosen days. The
+    // attempt starts after the approval is confirmed and before the panel
+    // shows the confirmation, so the deadline falls in that window (± drift).
+    const durationSeconds = BigInt(CAMPAIGN_DURATION_DAYS * DAY_SECONDS);
+    const lowest = BigInt(Math.floor(approvedAtMs / 1000) - DEADLINE_TOLERANCE_SECONDS) + durationSeconds;
+    const highest = BigInt(Math.ceil(confirmedSeenAtMs / 1000) + DEADLINE_TOLERANCE_SECONDS) + durationSeconds;
+    record("deadlineWindow", {
+      approvedAt: new Date(approvedAtMs).toISOString(),
+      confirmedSeenAt: new Date(confirmedSeenAtMs).toISOString(),
+      onChainMinusApprovalSeconds: String(onChainDeadline - BigInt(Math.floor(approvedAtMs / 1000)) - durationSeconds)
+    });
+    expect(onChainDeadline >= lowest && onChainDeadline <= highest).toBe(true);
+    expect(Date.parse(campaign.deadline)).toBe(Number(onChainDeadline) * 1000);
   });
 
   await test.step("9 · contributions: above goal/10 is refused (API and contract); capped investors settle the vault", async () => {

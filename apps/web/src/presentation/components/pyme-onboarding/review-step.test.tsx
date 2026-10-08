@@ -25,7 +25,8 @@ const DRAFT: BusinessDraft = {
   city: "Córdoba",
   description: DEMO_VALUES.desc,
   goalArs: 15000000,
-  revenueShare: 4.5
+  revenueShare: 4.5,
+  campaignDurationDays: 60
 };
 
 function gateway(overrides: Partial<SmeRequestGateway> = {}): SmeRequestGateway {
@@ -79,6 +80,14 @@ describe("ReviewStep before sending", () => {
 
     expect(screen.getByRole("button", { name: /Enviar a revisión/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revisar lo cargado" })).toBeInTheDocument();
+  });
+
+  it("summarizes the chosen campaign duration and when it starts counting (#410/U13)", () => {
+    renderReview({ values: { ...DEMO_VALUES, duration: "90" } });
+
+    expect(screen.getByRole("term")).toHaveTextContent("Plazo de la campaña");
+    expect(screen.getByRole("definition")).toHaveTextContent("90 días");
+    expect(screen.getByRole("definition")).toHaveTextContent("Empieza a contar cuando la campaña se publica.");
   });
 
   it("returns to step 2 with Revisar lo cargado", () => {
@@ -351,7 +360,7 @@ describe("ReviewStep company persistence", () => {
 
     const sentDraft = business.creates[0]!;
     expect(Object.keys(sentDraft).sort()).toEqual(
-      ["city", "cuit", "description", "goalArs", "name", "revenueShare", "sector"].sort()
+      ["campaignDurationDays", "city", "cuit", "description", "goalArs", "name", "revenueShare", "sector"].sort()
     );
     expect(JSON.stringify(sentDraft)).not.toContain("owner");
   });

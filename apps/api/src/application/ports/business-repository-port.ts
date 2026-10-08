@@ -12,6 +12,11 @@
  * (the demo's goals are well within `Number.MAX_SAFE_INTEGER`).
  */
 
+/** The campaign durations the PyME may choose in the wizard (#410/U13). */
+export type CampaignDurationDays = 30 | 60 | 90;
+
+export const CAMPAIGN_DURATION_DAYS: readonly CampaignDurationDays[] = Object.freeze([30, 60, 90]);
+
 export interface BusinessDraft {
   readonly name: string;
   readonly cuit: string;
@@ -28,6 +33,13 @@ export interface BusinessDraft {
    * send it yet, so no business is required to carry one (#410/T5a).
    */
   readonly deadline?: string | null;
+  /**
+   * The campaign duration the PyME chose: 30, 60 or 90 days (#410/U13). The
+   * vault deadline is computed from it at deploy time (the attempt's moment
+   * plus these days), never stored. `null` or absent means none — businesses
+   * registered before the wizard captured it fall back to `deadline`.
+   */
+  readonly campaignDurationDays?: CampaignDurationDays | null;
 }
 
 export interface BusinessRecord extends BusinessDraft {

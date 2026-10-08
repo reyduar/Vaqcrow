@@ -93,6 +93,10 @@ test.describe("PyME onboarding wizard", () => {
     // Step 2 — registration: demo values, the three mandatory documents, submit.
     await expect(page.getByRole("heading", { level: 1, name: "Registrá tu PyME" })).toBeVisible();
     await page.getByRole("button", { name: "Completar con datos de ejemplo" }).click();
+    // #410/U13: the demo helper picks 60 días; the PyME changes it to 90.
+    const duration = page.getByLabel("Plazo de la campaña");
+    await expect(duration).toHaveValue("60");
+    await duration.selectOption({ label: "90 días" });
     await uploadRequiredDocuments(page);
     await page.getByRole("button", { name: "Enviar a evaluación AI" }).click();
 
@@ -102,6 +106,7 @@ test.describe("PyME onboarding wizard", () => {
 
     // Step 4 — review: the wallet is mandatory, so the first send is gated.
     await expect(page.getByRole("heading", { level: 1, name: "Qué pasa ahora" })).toBeVisible();
+    await expect(page.getByRole("definition")).toContainText("90 días");
     await setFreighterScenario(page, {
       installed: true,
       publicKey: PYME_PUBLIC_KEY,
@@ -128,5 +133,10 @@ test.describe("PyME onboarding wizard", () => {
     expect(recorded.ok()).toBe(true);
     const body: unknown = await recorded.json();
     expect(body).toMatchObject({ request: { smeReference: DEMO_SME_REFERENCE } });
+
+    // The company was persisted with the chosen duration in whole days.
+    const company = await page.request.get(`${STUB_API_BASE_URL}/businesses/mine`);
+    expect(company.ok()).toBe(true);
+    expect(await company.json()).toMatchObject({ business: { campaignDurationDays: 90 } });
   });
 });

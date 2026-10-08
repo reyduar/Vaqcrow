@@ -95,16 +95,24 @@ export function businessForApplication(applicationId: string): {
   readonly businessId: string;
   readonly goalArs: bigint;
   readonly deadline: string | null;
+  /** The duration the PyME chose in the wizard (#410/U13); `null` for a legacy row. */
+  readonly campaignDurationDays: number | null;
 } {
   assertUuid(applicationId);
   const row = queryPsql(
-    `select b.id, b.goal_ars, coalesce(b.deadline::text, '') from public.businesses b ` +
+    `select b.id, b.goal_ars, coalesce(b.deadline::text, ''), coalesce(b.campaign_duration_days::text, '') ` +
+      `from public.businesses b ` +
       `join public.sme_request s on s.owner_user_id = b.owner_user_id ` +
       `where s.application_id = '${applicationId}' order by b.created_at desc limit 1;`
   );
-  const [businessId, goalArs, deadline] = row.split("|");
+  const [businessId, goalArs, deadline, duration] = row.split("|");
   if (!businessId || !goalArs) throw new Error(`No business row found for application ${applicationId}`);
-  return { businessId, goalArs: BigInt(goalArs), deadline: deadline ? deadline : null };
+  return {
+    businessId,
+    goalArs: BigInt(goalArs),
+    deadline: deadline ? deadline : null,
+    campaignDurationDays: duration ? Number(duration) : null
+  };
 }
 
 /** Read-only snapshot of where an application's assessment stands (U12 polls it; nothing is written). */
@@ -141,18 +149,4 @@ export function assessmentStatusFor(applicationId: string): AssessmentStatus {
     failureCode: failureCode ? failureCode : null,
     secondsToOutcome: seconds ? Number(seconds) : null
   };
-}
-
-/**
- * Rehearsal-only data step: writes `businesses.deadline` for the application's
- * owner. The onboarding wizard has no deadline field yet (T5a open question,
- * AC7), so a real application reaches approval with `deadline` NULL and the
- * deploy honestly fails with `terms_unavailable`. The rehearsal records that
- * failure first and only then sets the PyME's deadline here, the same way
- * `seedApprovedApplication` inserts rows no route creates.
- */
-export function setBusinessDeadline(businessId: string, deadlineIso: string): void {
-  assertUuid(businessId);
-  if (Number.isNaN(Date.parse(deadlineIso))) throw new Error(`Not an ISO timestamp: ${deadlineIso}`);
-  runPsql(`update public.businesses set deadline = '${deadlineIso}' where id = '${businessId}';`);
 }

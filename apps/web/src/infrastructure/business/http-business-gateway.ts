@@ -57,6 +57,8 @@ async function headersFor(provider: AccessTokenProvider | undefined): Promise<Re
   return typeof token === "string" && BEARER_TOKEN_PATTERN.test(token) ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const DURATIONS: readonly (30 | 60 | 90)[] = [30, 60, 90];
+
 /** Narrows the `{ business }` envelope to a record; anything malformed is `undefined`. */
 function parseBusiness(data: unknown): BusinessRecord | undefined {
   if (typeof data !== "object" || data === null) return undefined;
@@ -73,6 +75,7 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
     description,
     goalArs,
     revenueShare,
+    campaignDurationDays,
     createdAt,
     updatedAt
   } = candidate as Record<string, unknown>;
@@ -84,6 +87,10 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
   if (typeof goalArs !== "number" || !Number.isFinite(goalArs)) return undefined;
   if (typeof revenueShare !== "number" || !Number.isFinite(revenueShare)) return undefined;
   if (typeof createdAt !== "string" || typeof updatedAt !== "string") return undefined;
+  // #410/U13: absent/null for a company registered before the wizard captured
+  // it; any value other than 30, 60 or 90 is a malformed body.
+  const duration = DURATIONS.find((days) => days === campaignDurationDays);
+  if (campaignDurationDays !== undefined && campaignDurationDays !== null && duration === undefined) return undefined;
 
   return {
     businessId,
@@ -95,6 +102,7 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
     description,
     goalArs,
     revenueShare,
+    ...(duration === undefined ? {} : { campaignDurationDays: duration }),
     createdAt,
     updatedAt
   };

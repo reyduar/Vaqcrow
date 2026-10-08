@@ -1,6 +1,6 @@
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import type { ApplicationReviewRepositoryPort } from "../ports/application-review-repository-port.js";
-import type { BusinessRepositoryPort } from "../ports/business-repository-port.js";
+import type { BusinessRecord, BusinessRepositoryPort } from "../ports/business-repository-port.js";
 import type { CampaignDeploymentRecord, CampaignDeploymentRepositoryPort } from "../ports/campaign-deployment-repository-port.js";
 import type { CampaignFactoryPort } from "../ports/campaign-factory-port.js";
 import type { CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
@@ -21,7 +21,8 @@ import type { OpenCampaignErrorCode } from "./open-campaign.js";
  * the attempt a durable, observable lifecycle in `campaign_deployment`.
  *
  * The PyME defines the terms at registration: this use case resolves the owner
- * from `sme_request`, the goal and deadline from the owner's business, and the
+ * from `sme_request`, the goal and campaign duration (or a legacy deadline)
+ * from the owner's business, and the
  * vault's immutable destination from the stored wallet key. The confirmed case
  * short-circuits before any resolution or deploy, so a replay is a no-op. Every
  * other failure is recorded as a sanitized code and returned, never thrown, so
@@ -162,14 +163,11 @@ export async function deployApprovedCampaign(
     );
   }
 
-  const deadlineIso = business.value.deadline;
-  if (deadlineIso === undefined || deadlineIso === null) {
+  const terms = resolveDeadline(business.value, now);
+  if (terms === undefined) {
     return fail(dependencies.deployments, applicationId, correlationId, "terms_unavailable");
   }
-  const deadline = new Date(deadlineIso);
-  if (Number.isNaN(deadline.getTime())) {
-    return fail(dependencies.deployments, applicationId, correlationId, "terms_unavailable");
-  }
+  const { deadline, fromDuration } = terms;
 
   const key = await dependencies.wallet.readPublicKey(ownerUserId);
   if (!key.ok) return fail(dependencies.deployments, applicationId, correlationId, "unavailable");
@@ -205,7 +203,15 @@ export async function deployApprovedCampaign(
       tokenContractId: dependencies.tokenContractId
     },
     {
-      command: { applicationId, smeAccountId: key.value, goalStroops, deadline },
+      command: {
+        applicationId,
+        smeAccountId: key.value,
+        goalStroops,
+        deadline,
+        // A duration-derived deadline moves with every attempt, so a vault an
+        // earlier attempt already deployed keeps its own on-chain deadline.
+        ...(fromDuration ? { adoptDeployedDeadline: true } : {})
+      },
       correlationId
     }
   );
@@ -230,6 +236,34 @@ export async function deployApprovedCampaign(
   await publishApproved(dependencies.notifications, ownerUserId, applicationId);
 
   return { ok: true, value: { deployment: confirmed.value } };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The vault deadline for this attempt (#410/U13, owner decision 2026-10-08).
+ * A chosen duration counts from the attempt's own moment — the campaign goes
+ * live on the marketplace only once the admin approves and the vault confirms,
+ * so a retry on a later day counts from that retry. The moment is truncated to
+ * whole seconds because the vault stores its deadline as unix seconds and the
+ * engine compares the deployed deadline exactly. Without a duration, a legacy
+ * business falls back to its persisted deadline (T5a); with neither, the terms
+ * are unavailable.
+ */
+function resolveDeadline(
+  business: Pick<BusinessRecord, "campaignDurationDays" | "deadline">,
+  now: Date
+): { readonly deadline: Date; readonly fromDuration: boolean } | undefined {
+  const days = business.campaignDurationDays;
+  if (days !== undefined && days !== null) {
+    const wholeSeconds = Math.floor(now.getTime() / 1000) * 1000;
+    return { deadline: new Date(wholeSeconds + days * DAY_MS), fromDuration: true };
+  }
+
+  const persisted = business.deadline;
+  if (persisted === undefined || persisted === null) return undefined;
+  const deadline = new Date(persisted);
+  return Number.isNaN(deadline.getTime()) ? undefined : { deadline, fromDuration: false };
 }
 
 type OwnerResolution =
