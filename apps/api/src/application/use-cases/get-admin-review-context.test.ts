@@ -76,6 +76,12 @@ const DECISION = parseHumanDecisionRecord({
   decidedAt: "2026-09-01T12:03:00.000Z",
   correlationId: "77777777-7777-4777-8777-777777777777"
 });
+const VERDICT = {
+  documentId: DOCUMENT.documentId,
+  verdict: "request",
+  actor: "Admin Vaqcrow",
+  updatedAt: "2026-09-01T12:04:00.000Z"
+} as const;
 
 function dependencies(overrides: Record<string, unknown> = {}) {
   return {
@@ -95,6 +101,9 @@ function dependencies(overrides: Record<string, unknown> = {}) {
     assessments: {
       findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
     },
+    verdicts: {
+      listByApplication: vi.fn().mockResolvedValue({ ok: true, value: [] })
+    },
     ...overrides
   };
 }
@@ -113,11 +122,13 @@ describe("getAdminReviewContext", () => {
         company: null,
         documents: [],
         assessment: null,
-        latestHumanDecision: null
+        latestHumanDecision: null,
+        documentVerdicts: []
       }
     });
     expect(deps.businesses.findByOwner).toHaveBeenCalledWith(OWNER_ID);
     expect(deps.documents.listByOwner).toHaveBeenCalledWith(OWNER_ID);
+    expect(deps.verdicts.listByApplication).toHaveBeenCalledWith(APPLICATION_ID);
   });
 
   it("includes the company, document descriptors, assessment, and latest decision when present", async () => {
@@ -125,6 +136,7 @@ describe("getAdminReviewContext", () => {
       businesses: { findByOwner: vi.fn().mockResolvedValue({ ok: true, value: COMPANY }) },
       documents: { listByOwner: vi.fn().mockResolvedValue({ ok: true, value: [DOCUMENT] }) },
       assessments: { findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: ASSESSMENT }) },
+      verdicts: { listByApplication: vi.fn().mockResolvedValue({ ok: true, value: [VERDICT] }) },
       applicationReviews: {
         findById: vi.fn().mockResolvedValue({ ok: true, value: REVIEW }),
         readLatestHumanDecision: vi.fn().mockResolvedValue({ ok: true, value: DECISION })
@@ -151,7 +163,8 @@ describe("getAdminReviewContext", () => {
           }
         ],
         assessment: ASSESSMENT,
-        latestHumanDecision: DECISION
+        latestHumanDecision: DECISION,
+        documentVerdicts: [VERDICT]
       }
     });
   });
@@ -168,13 +181,14 @@ describe("getAdminReviewContext", () => {
     });
   });
 
-  it.each(["applicationReviews", "smeRequests", "businesses", "documents", "assessments"])(
+  it.each(["applicationReviews", "smeRequests", "businesses", "documents", "assessments", "verdicts"])(
     "maps unavailable dependency %s to unavailable",
     async (dependency) => {
       const methods = dependency === "applicationReviews" ? { findById: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) } :
         dependency === "smeRequests" ? { findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) } :
         dependency === "businesses" ? { findByOwner: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) } :
         dependency === "documents" ? { listByOwner: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) } :
+        dependency === "verdicts" ? { listByApplication: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) } :
         { findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) };
       const deps = dependencies({ [dependency]: methods });
 

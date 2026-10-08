@@ -23,7 +23,15 @@ const CONTEXT = {
   company: null,
   documents: [],
   assessment: null,
-  latestHumanDecision: null
+  latestHumanDecision: null,
+  documentVerdicts: [
+    {
+      documentId: "55555555-5555-4555-8555-555555555555",
+      verdict: "valid",
+      actor: "Admin Vaqcrow",
+      updatedAt: "2026-10-07T12:00:00.000Z"
+    }
+  ]
 } as const;
 
 function appFor(result: Awaited<ReturnType<AdminReviewContextPort["get"]>>): FastifyInstance {

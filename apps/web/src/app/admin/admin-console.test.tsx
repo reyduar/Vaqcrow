@@ -273,8 +273,18 @@ describe("PyMEs queue", () => {
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
     expect(screen.getByText("Rechazada")).toBeInTheDocument();
     expect(screen.getByText("VQ-0001")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Revisar solicitud" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Ver detalle" })).toHaveLength(3);
+    expect(screen.getAllByRole("link", { name: "Revisar solicitud" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Ver detalle" })).toHaveLength(3);
+  });
+
+  it("links every row action to that application's review", async () => {
+    renderQueue(pageOf([PENDING, CHANGES]));
+
+    expect(await screen.findByRole("link", { name: "Revisar solicitud" })).toHaveAttribute(
+      "href",
+      "/admin/pymes/VQ-0001"
+    );
+    expect(screen.getByRole("link", { name: "Ver detalle" })).toHaveAttribute("href", "/admin/pymes/VQ-0002");
   });
 
   it("drives the KPI numbers from the global server counts, not the loaded page", async () => {
