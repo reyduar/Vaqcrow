@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { TransactionBuilder } from "@stellar/stellar-sdk";
 import { accessTokenFor, confirmEmail, signUpThroughAuthApi, type SupabaseTarget } from "./support/auth";
-import { businessForApplication, setBusinessDeadline } from "./support/db";
+import { assessmentStatusFor, businessForApplication, setBusinessDeadline, type AssessmentStatus } from "./support/db";
 import { readDockerEnv } from "./support/docker-env";
 import { installLiveFreighterEmulator, setLiveFreighterScenario } from "./support/freighter-live-emulator";
 import { nativeBalanceStroops, waitForAccount } from "./support/horizon";
@@ -18,7 +18,6 @@ import {
   getCampaign,
   getDeployment,
   prepareContribution,
-  runAssessment,
   submitContribution,
   transactionStatus,
   type WireRate
@@ -36,10 +35,11 @@ import {
  *
  * Where the role-based UI has no control for a step, the rehearsal calls the
  * same real route the product would and says so in the step title:
- * the FX rate (`POST /admin/rates`), the advisory assessment
- * (`POST /application-reviews/:id/assessments`) and the investors'
- * contributions (`POST /campaigns/:id/invocations[/submission]`, signed in
- * this process). The one data step is the PyME's deadline, which the wizard
+ * the FX rate (`POST /admin/rates`) and the investors' contributions
+ * (`POST /campaigns/:id/invocations[/submission]`, signed in this process).
+ * The advisory assessment is no longer triggered here: since U12 the API
+ * starts it in the background when the submission applies, and the rehearsal
+ * only waits (read-only) for the review to reach `human_review`. The one data step is the PyME's deadline, which the wizard
  * cannot capture yet (see `support/db.ts`'s `setBusinessDeadline`).
  *
  * Option A: every run creates a fresh PyME, application and vault; nothing is
@@ -184,6 +184,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await signInPymeThroughUi(page, pymeEmail);
   });
 
+  let submittedAt = 0;
   await test.step("2 · onboarding wizard: KYC, registration with real uploads, AI checks, wallet and send to review", async () => {
     await page.getByRole("button", { name: "Registrar mi PyME" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Verificación de identidad" })).toBeVisible();
@@ -228,6 +229,8 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     await expect(page.getByText("Solicitud enviada a revisión. Te avisamos cuando haya una decisión.")).toBeVisible({
       timeout: 60_000
     });
+    // U12: the API starts the assessment when the submission applies; step 4 times it from here.
+    submittedAt = Date.now();
     await expect(
       page.getByRole("region", { name: "Revisión humana" }).getByText("En proceso", { exact: true })
     ).toBeVisible();
@@ -253,21 +256,30 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     });
   });
 
-  await test.step("4 · advisory assessment (POST /application-reviews/:id/assessments — the console has no trigger)", async () => {
-    // The decision section always renders «Registrar decisión»; it is disabled
-    // unless the review is in `human_review` with no decision (`decisionFormOpen`),
-    // so «open» means enabled, not present.
-    const register = admin.getByRole("button", { name: "Registrar decisión" });
-    await expect(register).toBeVisible({ timeout: 30_000 });
-    const decisionOpenBefore = await register.isEnabled();
-    record("decisionFormOpenBeforeAssessment", decisionOpenBefore);
-    if (!decisionOpenBefore) {
-      const assessed = await runAssessment(adminToken, applicationId);
-      record("assessment", { status: assessed.status, body: assessed.body });
-      expect([200, 201]).toContain(assessed.status);
-      await admin.reload();
+  await test.step("4 · the automatic assessment (U12) moves the review to human_review; the decision opens", async () => {
+    // No admin call: the submission itself started the assessment. Poll the
+    // review read-only (bounded; the real model call can take tens of seconds).
+    const status = await pollUntil<AssessmentStatus>(
+      () => Promise.resolve(assessmentStatusFor(applicationId)),
+      (value) => value.state !== "awaiting_assessment",
+      { timeoutMs: 180_000, intervalMs: 2_000, description: `application ${applicationId} to leave awaiting_assessment` }
+    );
+    record("autoAssessment", {
+      ...status,
+      secondsFromSendToObserved: Math.round((Date.now() - submittedAt) / 100) / 10
+    });
+    expect(status.state).toBe("human_review");
+    // Exactly one outcome: a recorded advisory assessment keyed by the application id, or the manual-review handoff.
+    expect(status.attemptId === applicationId || status.failureCode !== null).toBe(true);
+
+    await admin.reload();
+    if (status.attemptId !== null) {
+      await expect(admin.getByRole("heading", { level: 2, name: "2 · Recomendación de IA" })).toBeVisible({
+        timeout: 30_000
+      });
     }
-    await expect(admin.getByRole("heading", { level: 2, name: "2 · Recomendación de IA" })).toBeVisible({ timeout: 30_000 });
+    // The decision section always renders «Registrar decisión»; it is enabled
+    // only in `human_review` with no decision (`decisionFormOpen`).
     await expect(admin.getByRole("button", { name: "Registrar decisión" })).toBeEnabled({ timeout: 30_000 });
   });
 

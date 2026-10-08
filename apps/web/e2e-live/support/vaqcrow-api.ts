@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { LIVE_API_BASE_URL } from "./live-targets";
 
 /**
@@ -76,11 +75,6 @@ export function expectedGoalStroops(goalArs: bigint, rate: WireRate): bigint {
   const stroopsPerUsd = BigInt(rate.stroopsPerUsd);
   const goalUsdScaled = (goalArs * RATE_SCALE * RATE_SCALE) / usdToArs;
   return (goalUsdScaled * stroopsPerUsd) / RATE_SCALE;
-}
-
-/** `POST /application-reviews/:id/assessments` — the real advisory assessment (LLM provider, simulated sales). */
-export function runAssessment(adminToken: string, applicationId: string): Promise<ApiResponse> {
-  return call(adminToken, "POST", `/application-reviews/${applicationId}/assessments`, { handoffId: randomUUID() });
 }
 
 export interface WireDeployment {
