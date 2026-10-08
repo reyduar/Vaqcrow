@@ -29,6 +29,8 @@ import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
+import { registerMarketplaceRoute } from "./routes/marketplace.route.js";
+import type { MarketplaceRouteDependencies } from "./routes/marketplace.route.js";
 import { registerNotificationRoute } from "./routes/notification.route.js";
 import type { NotificationRouteDependencies } from "./routes/notification.route.js";
 import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
@@ -118,6 +120,8 @@ export function buildApp(dependencies: {
   readonly notification?: NotificationRouteDependencies;
   readonly completenessCheck?: CompletenessCheckRouteDependencies;
   readonly rateTable?: RateTableRouteDependencies;
+  /** The public marketplace listing (#414/WU1). Omitted when unwired. */
+  readonly marketplace?: MarketplaceRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -222,6 +226,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.rateTable) {
     registerRateTableRoute(app, dependencies.rateTable);
+  }
+  if (dependencies.marketplace) {
+    registerMarketplaceRoute(app, dependencies.marketplace);
   }
   return app;
 }

@@ -254,6 +254,18 @@ describe("buildApp", () => {
     });
   });
 
+  describe("marketplace dependency", () => {
+    it("registers the public marketplace listing when the dependency is present", async () => {
+      const campaigns = { listPublished: async () => ({ ok: true as const, value: [] }) };
+      app = buildApp({ marketplace: { campaigns } });
+
+      const response = await app.inject({ method: "GET", url: "/marketplace/campaigns" });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ items: [] });
+    });
+  });
+
   describe("CORS", () => {
     const ALLOWED_ORIGIN = "https://vaqcrow-web.example.com";
     const DISALLOWED_ORIGIN = "https://not-allowed.example.com";

@@ -175,6 +175,14 @@ export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
 
 export {
+  marketplaceCampaignListSchema,
+  marketplaceCampaignSchema,
+  parseMarketplaceCampaignList,
+  riskBandSchema
+} from "./marketplace.js";
+export type { MarketplaceCampaign, MarketplaceCampaignList, RiskBand } from "./marketplace.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,

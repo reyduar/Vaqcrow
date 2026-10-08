@@ -19,6 +19,9 @@ const only = (...roles: Role[]): RoutePolicy => ({ kind: "roles", roles });
  */
 const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /health": PUBLIC,
+  // Public marketplace (#414/WU1): anyone can browse published PyMEs; the
+  // listing carries no PII and only confirmed/open campaigns.
+  "GET /marketplace/campaigns": PUBLIC,
 
   "POST /sme-requests": only("PYME"),
   // The ADMIN PyMEs queue (#386/T1) lists every application; it is never

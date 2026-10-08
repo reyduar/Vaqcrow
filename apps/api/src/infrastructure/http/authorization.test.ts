@@ -10,6 +10,8 @@ type Allowed = readonly Role[] | "public" | "any";
 // Written independently of route-policy.ts on purpose: this is the spec table.
 const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
+  // Public marketplace listing (#414/WU1): reachable without a token.
+  ["GET", "/marketplace/campaigns", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
@@ -91,6 +93,9 @@ function buildFullApp(auth?: AuthDependency): {
     notification: stub,
     completenessCheck: stub,
     rateTable: stub,
+    // The public marketplace route is actually invoked by the matrix (unlike
+    // the other stubs), so its repository must answer an empty list.
+    marketplace: { campaigns: { listPublished: async () => ({ ok: true as const, value: [] }) } },
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

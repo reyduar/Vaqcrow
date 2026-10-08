@@ -112,6 +112,9 @@ drop table public.campaign_contribution;
 -- (20260930173441 adds revenue_share_distribution.campaign_id).
 alter table public.revenue_share_distribution
   drop constraint if exists revenue_share_distribution_campaign_id_fkey;
+-- A later migration (#414) adds a view over campaign, so the campaign mirror is
+-- reversed only after that view.
+drop view if exists public.marketplace_campaign;
 drop table public.campaign;
 drop function public.set_campaign_updated_at();
 alter table public.funding_intent_legacy rename to funding_intent;

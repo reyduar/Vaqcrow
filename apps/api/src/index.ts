@@ -25,6 +25,7 @@ import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/
 import { SupabaseDocumentVerdictRepository } from "./infrastructure/adapters/supabase-document-verdict-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
+import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
 import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
@@ -185,6 +186,11 @@ const storageAdapter = new SupabaseStorageAdapter(supabase);
 const pymeDocumentRepository = new SupabasePymeDocumentRepository(supabase);
 const rateTableRepository = new SupabaseRateTableRepository(supabase);
 
+// The public marketplace listing (#414/WU1): reads the joined
+// `marketplace_campaign` view as service_role. It carries no PII and only
+// published (confirmed vault, open campaign) rows.
+const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -301,6 +307,8 @@ const app = buildApp({
   // warn, they never block the send.
   completenessCheck: { checker: completenessCheck },
   rateTable: { repository: rateTableRepository },
+  // The public marketplace listing (#414/WU1): published campaigns only.
+  marketplace: { campaigns: marketplaceCampaignRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).
