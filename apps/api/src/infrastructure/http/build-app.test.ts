@@ -266,6 +266,22 @@ describe("buildApp", () => {
     });
   });
 
+  describe("favorite dependency", () => {
+    it("registers the favorites surface when the dependency is present", async () => {
+      const favorites = {
+        listCampaignIds: async () => ({ ok: true as const, value: [] }),
+        add: async () => ({ ok: true as const, value: { applied: true } }),
+        remove: async () => ({ ok: true as const, value: { applied: true } })
+      };
+      app = buildApp({ auth: { port: fakeAuthPort() }, favorite: { favorites } });
+
+      const response = await app.inject({ method: "GET", url: "/favorites", headers: bearer("INVERSOR") });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ campaignIds: [] });
+    });
+  });
+
   describe("CORS", () => {
     const ALLOWED_ORIGIN = "https://vaqcrow-web.example.com";
     const DISALLOWED_ORIGIN = "https://not-allowed.example.com";

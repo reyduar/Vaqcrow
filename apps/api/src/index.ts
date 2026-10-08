@@ -23,6 +23,7 @@ import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapte
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
 import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
 import { SupabaseDocumentVerdictRepository } from "./infrastructure/adapters/supabase-document-verdict-repository.js";
+import { SupabaseFavoriteRepository } from "./infrastructure/adapters/supabase-favorite-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
@@ -191,6 +192,11 @@ const rateTableRepository = new SupabaseRateTableRepository(supabase);
 // published (confirmed vault, open campaign) rows.
 const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(supabase);
 
+// The per-account favorites surface (#414/WU2): reads and writes
+// `campaign_favorite` as service_role, always scoped by the verified
+// principal's user_id. Anonymous visitors retain nothing (owner decision D1).
+const favoriteRepository = new SupabaseFavoriteRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -309,6 +315,8 @@ const app = buildApp({
   rateTable: { repository: rateTableRepository },
   // The public marketplace listing (#414/WU1): published campaigns only.
   marketplace: { campaigns: marketplaceCampaignRepository },
+  // Per-account favorites (#414/WU2): the signed-in caller's own rows only.
+  favorite: { favorites: favoriteRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

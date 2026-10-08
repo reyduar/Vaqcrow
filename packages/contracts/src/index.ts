@@ -183,6 +183,14 @@ export {
 export type { MarketplaceCampaign, MarketplaceCampaignList, RiskBand } from "./marketplace.js";
 
 export {
+  favoriteCampaignListSchema,
+  favoriteCampaignResultSchema,
+  parseFavoriteCampaignList,
+  parseFavoriteCampaignResult
+} from "./favorite.js";
+export type { FavoriteCampaignList, FavoriteCampaignResult } from "./favorite.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,

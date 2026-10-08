@@ -44,4 +44,20 @@ describe("resolveRoutePolicy", () => {
       expect(resolveRoutePolicy(method, pattern)).toEqual({ kind: "authenticated" });
     }
   });
+
+  it("lists the favorites routes as authenticated for every role (#414/WU2)", () => {
+    const routes = [
+      "GET /favorites",
+      "PUT /favorites/:campaignId",
+      "DELETE /favorites/:campaignId"
+    ] as const;
+
+    for (const key of routes) {
+      expect(ROUTE_POLICY_KEYS).toContain(key);
+    }
+    for (const key of routes) {
+      const [method, pattern] = key.split(" ") as [string, string];
+      expect(resolveRoutePolicy(method, pattern)).toEqual({ kind: "authenticated" });
+    }
+  });
 });

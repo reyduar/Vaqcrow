@@ -83,6 +83,13 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /notifications/:notificationId/read": AUTHENTICATED,
   "POST /notifications/read-all": AUTHENTICATED,
 
+  // Per-account favorites (#414/WU2): every signed-in role lists, adds and
+  // removes only its own rows. The owner is the verified principal, never the
+  // request, so a caller cannot touch another account's favorites.
+  "GET /favorites": AUTHENTICATED,
+  "PUT /favorites/:campaignId": AUTHENTICATED,
+  "DELETE /favorites/:campaignId": AUTHENTICATED,
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

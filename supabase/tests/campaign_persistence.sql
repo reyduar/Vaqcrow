@@ -115,6 +115,9 @@ alter table public.revenue_share_distribution
 -- A later migration (#414) adds a view over campaign, so the campaign mirror is
 -- reversed only after that view.
 drop view if exists public.marketplace_campaign;
+-- A later migration (#414/WU2) adds campaign_favorite with a foreign key to
+-- campaign, so it is reversed before the campaign mirror.
+drop table if exists public.campaign_favorite;
 drop table public.campaign;
 drop function public.set_campaign_updated_at();
 alter table public.funding_intent_legacy rename to funding_intent;

@@ -58,7 +58,12 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/notifications", "any"],
   ["GET", "/notifications/unread-count", "any"],
   ["POST", "/notifications/:notificationId/read", "any"],
-  ["POST", "/notifications/read-all", "any"]
+  ["POST", "/notifications/read-all", "any"],
+  // Per-account favorites (#414/WU2): any signed-in role lists, adds and
+  // removes only its own rows; the owner is the verified principal.
+  ["GET", "/favorites", "any"],
+  ["PUT", "/favorites/:campaignId", "any"],
+  ["DELETE", "/favorites/:campaignId", "any"]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -96,6 +101,7 @@ function buildFullApp(auth?: AuthDependency): {
     // The public marketplace route is actually invoked by the matrix (unlike
     // the other stubs), so its repository must answer an empty list.
     marketplace: { campaigns: { listPublished: async () => ({ ok: true as const, value: [] }) } },
+    favorite: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });
