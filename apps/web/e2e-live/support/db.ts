@@ -67,3 +67,56 @@ export function seedApprovedApplication(applicationId: string = randomUUID()): S
 
   return { applicationId, correlationId };
 }
+
+/** Runs one read query and returns its tuples-only, unaligned output (`psql -At`). */
+function queryPsql(sql: string): string {
+  const result = spawnSync(
+    "docker",
+    ["exec", "-i", LIVE_DB_CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-At", "-v", "ON_ERROR_STOP=1"],
+    { input: sql, encoding: "utf8", timeout: 15_000 }
+  );
+  if (result.error) {
+    throw new Error(`Could not reach the local Supabase database container "${LIVE_DB_CONTAINER}" (${result.error.message}).`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`psql exited ${String(result.status)} querying the local database:\n${result.stderr}`);
+  }
+  return result.stdout.trim();
+}
+
+function assertUuid(value: string): void {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`Not a uuid: ${value}`);
+  }
+}
+
+/** The persisted `businesses` row behind one application (via `sme_request.owner_user_id`). */
+export function businessForApplication(applicationId: string): {
+  readonly businessId: string;
+  readonly goalArs: bigint;
+  readonly deadline: string | null;
+} {
+  assertUuid(applicationId);
+  const row = queryPsql(
+    `select b.id, b.goal_ars, coalesce(b.deadline::text, '') from public.businesses b ` +
+      `join public.sme_request s on s.owner_user_id = b.owner_user_id ` +
+      `where s.application_id = '${applicationId}' order by b.created_at desc limit 1;`
+  );
+  const [businessId, goalArs, deadline] = row.split("|");
+  if (!businessId || !goalArs) throw new Error(`No business row found for application ${applicationId}`);
+  return { businessId, goalArs: BigInt(goalArs), deadline: deadline ? deadline : null };
+}
+
+/**
+ * Rehearsal-only data step: writes `businesses.deadline` for the application's
+ * owner. The onboarding wizard has no deadline field yet (T5a open question,
+ * AC7), so a real application reaches approval with `deadline` NULL and the
+ * deploy honestly fails with `terms_unavailable`. The rehearsal records that
+ * failure first and only then sets the PyME's deadline here, the same way
+ * `seedApprovedApplication` inserts rows no route creates.
+ */
+export function setBusinessDeadline(businessId: string, deadlineIso: string): void {
+  assertUuid(businessId);
+  if (Number.isNaN(Date.parse(deadlineIso))) throw new Error(`Not an ISO timestamp: ${deadlineIso}`);
+  runPsql(`update public.businesses set deadline = '${deadlineIso}' where id = '${businessId}';`);
+}
