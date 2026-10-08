@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import type { RiskBand } from "@vaqcrow/contracts";
-import { IoCloseOutline, IoFunnelOutline, IoOptionsOutline, IoSearchOutline } from "react-icons/io5";
+import { useRouter } from "next/navigation";
+import {
+  IoCloseOutline,
+  IoFunnelOutline,
+  IoHeart,
+  IoHeartOutline,
+  IoOptionsOutline,
+  IoSearchOutline
+} from "react-icons/io5";
 import {
   activeFilterCount,
   CLOSE_ANY_DAYS,
@@ -36,19 +44,33 @@ import { MarketplaceFavoriteHeart } from "./marketplace-favorite-heart";
 import { MARKETPLACE_FILTERS_DIALOG_ID, MarketplaceFiltersModal } from "./marketplace-filters-modal";
 
 /**
- * Explorar PyMEs (Feature #414, WU4b) — the public marketplace grid. The
+ * Explorar PyMEs (Feature #414, WU4b/WU5) — the public marketplace grid. The
  * controller is pure: it takes its ports as props (the container injects the
  * browser ones) so tests never touch the network or the session store. The
  * grid is public by owner decision (issue #414): the template's "Ingresá para
- * explorar PyMEs" gate does not apply and is never rendered. Only the favorite
- * heart is provisional and appears for a signed-in visitor (the anonymous
- * behaviour is WU5).
+ * explorar PyMEs" gate does not apply and is never rendered.
+ *
+ * The favorite heart is visible to everyone (owner, 2026-10-08): a signed-in
+ * visitor toggles the server favorite, while an anonymous one is sent to
+ * `/login?returnTo=/explore`. Favorites are per account, so the "Mis favoritos"
+ * toggle and the favorites-only chip exist only once signed in.
  *
  * Filtering and sorting are the pure `application/marketplace` functions; this
  * component owns only the control state and never re-derives a label.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
+
+/**
+ * "Mis favoritos" toggle (template `Vaqcrow Explorar PyMEs.dc.html:113`): a
+ * 44 px pill whose `favBtnBg`/`favBtnBorder` turn to the accent tint/text while
+ * the favorites-only view is active. The count badge reuses the surface/border
+ * treatment (`favBtnBg`'s sibling in the template).
+ */
+const FAVORITES_BUTTON_BASE =
+  "inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-control px-4 text-sm font-semibold text-text-primary";
+const FAVORITES_BUTTON_ON = "border border-brand-accent-text bg-brand-accent-tint";
+const FAVORITES_BUTTON_OFF = "border border-control bg-transparent";
 
 const SEARCH_PLACEHOLDER = "Buscá por nombre, sector o ciudad";
 /** Template `Vaqcrow Explorar PyMEs.dc.html:249`: visible text; the name goes in `aria-label`. */
@@ -102,6 +124,7 @@ export interface ExploreMarketplaceProps {
 }
 
 export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: ExploreMarketplaceProps) {
+  const router = useRouter();
   // Captured once: an omitted prop stays null (the container injects the
   // browser port), so a test can inject fakes and nothing re-creates a port.
   const [port] = useState(() => marketplacePort ?? null);
@@ -114,13 +137,19 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
   const [filters, setFilters] = useState<MarketplaceFilters>(EMPTY_MARKETPLACE_FILTERS);
   const [sort, setSort] = useState<MarketplaceSort>("close");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [today] = useState(() => new Date());
 
   const cards = marketplace.items;
   const sectors = marketplaceSectors(cards);
   const cities = marketplaceCities(cards);
 
-  const filtered = filterMarketplaceCards(cards, { text, filters }, today);
+  const filtered = filterMarketplaceCards(
+    cards,
+    { text, filters, ...(onlyFavorites ? { onlyFavorites: true } : {}) },
+    today,
+    favorites.campaignIds
+  );
   const sorted = sortMarketplaceCards(filtered, sort);
   const views = marketplaceCardViews(sorted);
   const filterCount = activeFilterCount(filters);
@@ -128,6 +157,7 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
   const clearAll = () => {
     setText("");
     setFilters(EMPTY_MARKETPLACE_FILTERS);
+    setOnlyFavorites(false);
   };
 
   const chips: FilterChipDescriptor[] = [];
@@ -181,10 +211,36 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
       onRemove: () => setFilters((current) => ({ ...current, closeMaxDays: CLOSE_ANY_DAYS }))
     });
   }
+  if (onlyFavorites) {
+    chips.push({
+      key: "favorites",
+      label: "Solo favoritos",
+      ariaLabel: "Quitar filtro de favoritos",
+      onRemove: () => setOnlyFavorites(false)
+    });
+  }
+
+  const FavIcon = onlyFavorites ? IoHeart : IoHeartOutline;
+  // Favorites are per account (WU2), so the toggle only exists once signed in;
+  // an anonymous visitor keeps none.
+  const favoritesToggle = signedIn ? (
+    <button
+      type="button"
+      aria-pressed={onlyFavorites}
+      onClick={() => setOnlyFavorites((active) => !active)}
+      className={`${FAVORITES_BUTTON_BASE} ${onlyFavorites ? FAVORITES_BUTTON_ON : FAVORITES_BUTTON_OFF} ${FOCUS_RING}`}
+    >
+      <FavIcon aria-hidden="true" focusable="false" className="text-[18px] text-brand-accent-text" />
+      Mis favoritos
+      <span className="inline-grid h-[22px] min-w-[22px] place-items-center rounded-pill border border-border bg-page-surface px-1.5 text-xs">
+        {favorites.campaignIds.size}
+      </span>
+    </button>
+  ) : null;
 
   return (
     <>
-      <PageHeading title={TITLE} subtitle={SUBTITLE} />
+      <PageHeading title={TITLE} subtitle={SUBTITLE} {...(favoritesToggle ? { action: favoritesToggle } : {})} />
 
       <div className="flex flex-wrap gap-3">
         <div
@@ -279,12 +335,21 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
           retryLabel="Reintentar"
         />
       ) : views.length === 0 ? (
-        <EmptyState
-          title="Ninguna campaña coincide"
-          body="Probá quitar algún filtro o ampliar el plazo de cierre. Los filtros de riesgo y sector suelen ser los más restrictivos."
-          action={{ label: "Limpiar filtros y búsqueda", onPress: clearAll }}
-          icon={IoFunnelOutline}
-        />
+        onlyFavorites && favorites.campaignIds.size === 0 ? (
+          <EmptyState
+            title="Todavía no guardaste favoritos"
+            body="Tocá el corazón de una campaña para seguirla desde acá."
+            action={{ label: "Limpiar filtros y búsqueda", onPress: clearAll }}
+            icon={IoHeartOutline}
+          />
+        ) : (
+          <EmptyState
+            title="Ninguna campaña coincide"
+            body="Probá quitar algún filtro o ampliar el plazo de cierre. Los filtros de riesgo y sector suelen ser los más restrictivos."
+            action={{ label: "Limpiar filtros y búsqueda", onPress: clearAll }}
+            icon={IoFunnelOutline}
+          />
+        )
       ) : (
         <ul
           aria-label="Resultados"
@@ -297,19 +362,19 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
                 smeName={view.name}
                 subtitle={view.meta}
                 {...(view.imageSrc ? { image: { src: view.imageSrc, alt: view.imageAlt } } : {})}
-                {...(signedIn
-                  ? {
-                      overlayAction: (
-                        <MarketplaceFavoriteHeart
-                          isFavorite={favorites.campaignIds.has(view.campaignId)}
-                          name={view.name}
-                          onToggle={() => {
-                            void favorites.toggle(view.campaignId);
-                          }}
-                        />
-                      )
-                    }
-                  : {})}
+                overlayAction={
+                  <MarketplaceFavoriteHeart
+                    isFavorite={signedIn && favorites.campaignIds.has(view.campaignId)}
+                    name={view.name}
+                    onToggle={() => {
+                      // The heart is visible to everyone: a signed-in visitor
+                      // toggles the server favorite, an anonymous one is sent
+                      // to sign in and returns here afterwards.
+                      if (signedIn) void favorites.toggle(view.campaignId);
+                      else router.push("/login?returnTo=/explore");
+                    }}
+                  />
+                }
                 progressSlot={<MarketplaceProgress view={view} />}
                 revenueShareTerms={view.revenueShareLabel}
                 closeDateLabel={view.closeLabel}

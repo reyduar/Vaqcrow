@@ -5,6 +5,7 @@ import {
   authHref,
   homeRouteFor,
   roleFromParam,
+  safeReturnTo,
   signInRoleMismatch,
   validateAuthForm,
   type AuthFormValues
@@ -38,6 +39,34 @@ describe("homeRouteFor", () => {
     ["ADMIN", "/"]
   ] as const)("sends %s to %s", (role, route) => {
     expect(homeRouteFor(role)).toBe(route);
+  });
+});
+
+describe("safeReturnTo", () => {
+  it("accepts a same-origin internal path", () => {
+    expect(safeReturnTo("/explore")).toBe("/explore");
+    expect(safeReturnTo("/portfolio?tab=1")).toBe("/portfolio?tab=1");
+    expect(safeReturnTo("/campaigns/abc")).toBe("/campaigns/abc");
+  });
+
+  it.each([
+    [null],
+    [undefined],
+    [""],
+    ["//evil.test"],
+    ["https://evil.test"],
+    ["/login"],
+    ["/login?role=pyme"],
+    ["/signup"],
+    ["/signup?role=pyme"],
+    ["/explore\\evil"],
+    ["/\t//evil.test"],
+    ["/explore\n"],
+    ["/ explore"],
+    ["explore"],
+    ["\\\\evil.test"]
+  ])("rejects %j", (value) => {
+    expect(safeReturnTo(value)).toBeNull();
   });
 });
 

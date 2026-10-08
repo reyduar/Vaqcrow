@@ -37,6 +37,31 @@ export function homeRouteFor(role: PrincipalRole): "/portfolio" | "/company" | "
   return "/";
 }
 
+/** `/login` and `/signup` return paths would bounce straight back into auth. */
+const AUTH_PATHS = ["/login", "/signup"] as const;
+
+/**
+ * Guards an untrusted `?returnTo=` query value for a post-sign-in redirect.
+ *
+ * Returns the value only when it is a safe same-origin internal path: a
+ * non-empty string that starts with a single `/`, carries no backslash, no
+ * control character and no whitespace, and is not `/login`/`/signup` or
+ * anything under them. Rejecting backslashes, protocol-relative forms
+ * (`//evil.test`) and control/whitespace characters prevents an open redirect
+ * (a browser can trim a leading tab/space and turn `"/\t//evil"` into
+ * `"//evil"`); rejecting the auth routes themselves prevents a sign-in loop.
+ * Every other value is `null`, so the caller falls back to `homeRouteFor`.
+ */
+export function safeReturnTo(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  if (!value.startsWith("/") || value.startsWith("//")) return null;
+  if (value.includes("\\")) return null;
+  // eslint-disable-next-line no-control-regex -- deliberately rejecting control chars here
+  if (/[\u0000-\u0020\u007f]/.test(value)) return null;
+  if (AUTH_PATHS.some((path) => value.startsWith(path))) return null;
+  return value;
+}
+
 export interface AuthFormValues {
   readonly name: string;
   readonly email: string;

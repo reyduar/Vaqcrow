@@ -25,6 +25,7 @@ import {
   MODE_COPY,
   PASSWORD_MIN_LENGTH,
   ROLE_COPY,
+  safeReturnTo,
   SCREEN_COPY,
   SIGNED_IN_UNREADABLE_MESSAGE,
   signInRoleMismatch,
@@ -50,6 +51,13 @@ const NO_PRODUCTION = disclosures["no-production"];
 export interface AuthScreenProps {
   readonly mode: AuthMode;
   readonly initialRole: AccountRole;
+  /**
+   * Untrusted `?returnTo=` value from the route. When it is a safe internal
+   * path it wins over the role's home route after a verified sign-in (e.g. an
+   * anonymous favorite click sends the visitor back to `/explore`); otherwise
+   * the default `homeRouteFor` applies unchanged.
+   */
+  readonly returnTo?: string;
 }
 
 /** Sanitized diagnostics: the failure code only, never the provider message or the email. */
@@ -67,7 +75,7 @@ function logDiscardFailure(cause: AuthErrorCode): void {
  * closed at once (D14). The email lives in its input only: it is never
  * rendered back, and the password is cleared once the account exists.
  */
-export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
+export function AuthScreen({ mode, initialRole, returnTo }: AuthScreenProps) {
   const router = useRouter();
   const session = useSessionStoreApi();
   const [role, setRole] = useState<AccountRole>(initialRole);
@@ -126,7 +134,7 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
         return;
       }
       // Keep the busy state while navigating away.
-      router.push(homeRouteFor(result.principal.role));
+      router.push(safeReturnTo(returnTo) ?? homeRouteFor(result.principal.role));
       return;
     }
 
@@ -148,7 +156,7 @@ export function AuthScreen({ mode, initialRole }: AuthScreenProps) {
       const principal = session.getState().principal;
       setPassword("");
       setPasswordShown(false);
-      if (principal) router.push(homeRouteFor(principal.role));
+      if (principal) router.push(safeReturnTo(returnTo) ?? homeRouteFor(principal.role));
       else fail(SIGNED_IN_UNREADABLE_MESSAGE);
       return;
     }

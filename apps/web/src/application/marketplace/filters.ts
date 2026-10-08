@@ -48,6 +48,8 @@ export const EMPTY_MARKETPLACE_FILTERS: MarketplaceFilters = Object.freeze({
 export interface MarketplaceQuery {
   readonly text: string;
   readonly filters: MarketplaceFilters;
+  /** When `true`, only cards present in the caller-supplied favorite id set survive. */
+  readonly onlyFavorites?: boolean;
 }
 
 /**
@@ -71,14 +73,21 @@ const MS_PER_DAY = 86_400_000;
  * injected so the close window is deterministic and testable. An unparseable
  * `closeDate` is excluded while the close filter is active (it cannot honestly
  * satisfy a window), and kept when the filter is open.
+ *
+ * `favoriteIds` is only consulted when `query.onlyFavorites` is `true`: an
+ * active favorites view with no id set (or a set with no match) keeps nothing —
+ * an honest empty result, never "all cards". Omitting it leaves the query
+ * unchanged, which is why it stays an optional fourth argument.
  */
 export function filterMarketplaceCards(
   cards: readonly MarketplaceCard[],
   query: MarketplaceQuery,
-  today: Date
+  today: Date,
+  favoriteIds?: ReadonlySet<string>
 ): readonly MarketplaceCard[] {
   const text = query.text.trim().toLowerCase();
   const { filters } = query;
+  const onlyFavorites = query.onlyFavorites === true;
   const location = filters.location.trim().toLowerCase();
   const hasRisks = filters.risks.length > 0;
   const hasSectors = filters.sectors.length > 0;
@@ -88,6 +97,7 @@ export function filterMarketplaceCards(
   const todayMs = today.getTime();
 
   return cards.filter((card) => {
+    if (onlyFavorites && favoriteIds?.has(card.campaignId) !== true) return false;
     if (text.length > 0) {
       const haystack = `${card.name} ${card.sector} ${card.city}`.toLowerCase();
       if (!haystack.includes(text)) return false;

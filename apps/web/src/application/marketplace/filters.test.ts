@@ -137,6 +137,58 @@ describe("filterMarketplaceCards", () => {
   });
 });
 
+describe("filterMarketplaceCards onlyFavorites", () => {
+  const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const C = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+  it("keeps only the cards whose campaignId is in favoriteIds", () => {
+    const cards = [card({ campaignId: A }), card({ campaignId: B, name: "Ferretería Sur" })];
+    const result = filterMarketplaceCards(
+      cards,
+      { text: "", filters: EMPTY_MARKETPLACE_FILTERS, onlyFavorites: true },
+      TODAY,
+      new Set([A])
+    );
+    expect(result.map((entry) => entry.campaignId)).toEqual([A]);
+  });
+
+  it("keeps nothing when onlyFavorites is active but favoriteIds is omitted", () => {
+    const cards = [card({ campaignId: A })];
+    const result = filterMarketplaceCards(cards, { text: "", filters: EMPTY_MARKETPLACE_FILTERS, onlyFavorites: true }, TODAY);
+    expect(result).toHaveLength(0);
+  });
+
+  it("combines onlyFavorites with text and facets using AND", () => {
+    const cards = [
+      card({ campaignId: A, name: "Panadería Horizonte SRL" }),
+      card({ campaignId: B, name: "Café Tostadero del Paraná" }),
+      card({ campaignId: C, name: "Gimnasio Forja" })
+    ];
+    const result = filterMarketplaceCards(
+      cards,
+      { text: "café", filters: EMPTY_MARKETPLACE_FILTERS, onlyFavorites: true },
+      TODAY,
+      new Set([A, B])
+    );
+    expect(result.map((entry) => entry.campaignId)).toEqual([B]);
+  });
+
+  it("ignores favoriteIds when onlyFavorites is not active", () => {
+    const cards = [card({ campaignId: A })];
+    expect(
+      filterMarketplaceCards(cards, { text: "", filters: EMPTY_MARKETPLACE_FILTERS }, TODAY, new Set())
+    ).toHaveLength(1);
+  });
+
+  it("does not mutate the input array", () => {
+    const cards = [card({ campaignId: A }), card({ campaignId: B })];
+    const snapshot = [...cards];
+    filterMarketplaceCards(cards, { text: "", filters: EMPTY_MARKETPLACE_FILTERS, onlyFavorites: true }, TODAY, new Set([A]));
+    expect(cards).toEqual(snapshot);
+  });
+});
+
 describe("sortMarketplaceCards", () => {
   const cards = [
     card({ campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10", name: "A", closeDate: "2026-12-31T00:00:00.000Z", fundedPercentBps: 5_000, goalArs: 9_000_000 }),

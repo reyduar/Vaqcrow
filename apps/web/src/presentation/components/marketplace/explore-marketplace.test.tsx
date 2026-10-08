@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FavoritePort } from "@/application/ports/favorite-port";
 import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marketplace-port";
 import { ExploreMarketplace } from "./explore-marketplace";
+
+// The anonymous heart navigates to `/login`; the component reads `useRouter`.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 
 /**
  * A fresh SWR provider per render keeps each case on its own cache; the module
@@ -90,6 +95,10 @@ function headingOrder(): (string | null)[] {
 }
 
 describe("ExploreMarketplace", () => {
+  beforeEach(() => {
+    push.mockReset();
+  });
+
   it("renders the template title and subtitle with no action slot", async () => {
     renderExplore({ signedIn: false, marketplacePort: okPort() });
 
@@ -210,11 +219,59 @@ describe("ExploreMarketplace", () => {
     ]);
   });
 
-  it("hides the favorite heart for an anonymous visitor", async () => {
+  it("shows the heart for an anonymous visitor and sends them to sign in", async () => {
     renderExplore({ signedIn: false, marketplacePort: okPort() });
     await screen.findByRole("heading", { level: 3, name: "Panadería Horizonte SRL" });
 
-    expect(screen.queryByRole("button", { name: /favoritos/ })).not.toBeInTheDocument();
+    const heart = screen.getByRole("button", { name: "Agregar a favoritos: Panadería Horizonte SRL" });
+    expect(heart).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(heart);
+    expect(push).toHaveBeenCalledWith("/login?returnTo=/explore");
+  });
+
+  it("does not render the favorites toggle for an anonymous visitor", async () => {
+    renderExplore({ signedIn: false, marketplacePort: okPort() });
+    await screen.findByRole("heading", { level: 3, name: "Panadería Horizonte SRL" });
+
+    expect(screen.queryByRole("button", { name: /Mis favoritos/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the favorites toggle with the count for a signed-in visitor and filters to favorites", async () => {
+    const list = vi.fn().mockResolvedValue({ ok: true, campaignIds: [A_ID, B_ID] });
+    const favoritePort: FavoritePort = { list, add: vi.fn(), remove: vi.fn() };
+
+    renderExplore({ signedIn: true, marketplacePort: okPort(), favoritePort });
+    await screen.findByRole("heading", { level: 3, name: "Panadería Horizonte SRL" });
+
+    const toggle = await screen.findByRole("button", { name: /Mis favoritos/ });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() => expect(toggle).toHaveTextContent("2"));
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Quitar filtro de favoritos" })).toHaveTextContent("Solo favoritos");
+    // A (Panadería) and B (Café) are favorites; C (Gimnasio) is filtered out.
+    await waitFor(() => expect(headingOrder()).toHaveLength(2));
+    expect(headingOrder()).not.toContain("Gimnasio Forja");
+  });
+
+  it("renders the favorite empty state when the toggle is active with no favorites", async () => {
+    const list = vi.fn().mockResolvedValue({ ok: true, campaignIds: [] });
+    const favoritePort: FavoritePort = { list, add: vi.fn(), remove: vi.fn() };
+
+    renderExplore({ signedIn: true, marketplacePort: okPort(), favoritePort });
+    await screen.findByRole("heading", { level: 3, name: "Panadería Horizonte SRL" });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Mis favoritos/ }));
+
+    expect(await screen.findByText("Todavía no guardaste favoritos")).toBeInTheDocument();
+    expect(screen.getByText("Tocá el corazón de una campaña para seguirla desde acá.")).toBeInTheDocument();
+    expect(screen.queryByText("Ninguna campaña coincide")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros y búsqueda" }));
+    expect(headingOrder()).toHaveLength(3);
   });
 
   it("shows the heart for a signed-in visitor and adds a favorite through the port", async () => {
