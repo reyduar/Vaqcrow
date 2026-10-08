@@ -124,3 +124,110 @@ describe("CampaignCard", () => {
     expect(onPress).toHaveBeenCalledOnce();
   });
 });
+
+/**
+ * Feature #414 (WU4b): the image header, top-right overlay slot and
+ * caller-composed progress block the marketplace grid needs. The no-image
+ * cases above stay untouched; these lock the with-image layout and the two new
+ * extension points.
+ */
+const IMAGE = { src: "https://cdn.example.test/pyme.jpg", alt: "Foto de la panadería" };
+
+describe("CampaignCard — image and marketplace extensions", () => {
+  it("renders an image header with the caller's src and alt", () => {
+    render(<CampaignCard {...BASE_PROPS} image={IMAGE} />);
+
+    const img = screen.getByRole("img", { name: "Foto de la panadería" });
+    expect(img).toHaveAttribute("src", "https://cdn.example.test/pyme.jpg");
+  });
+
+  it("overlays the risk and SIMULADO badges on the image and replaces the risk row with a close row", () => {
+    render(<CampaignCard {...BASE_PROPS} simuladoLabel="SIMULADO" closeDateLabel="30/11/2026" image={IMAGE} />);
+
+    expect(screen.getByText("SIMULADO")).toBeInTheDocument();
+    expect(screen.getByText("Riesgo medio")).toBeInTheDocument();
+    expect(screen.getByText("Cierre")).toBeInTheDocument();
+    expect(screen.queryByText("Riesgo")).not.toBeInTheDocument();
+  });
+
+  it("renders the close date inside the details list (not under the bar) when an image is present", () => {
+    render(<CampaignCard {...BASE_PROPS} closeDateLabel="Cierra el 30/11/2026" image={IMAGE} />);
+
+    expect(screen.getByText("Cierre").closest("dl")).toHaveTextContent("Cierra el 30/11/2026");
+    expect(screen.getAllByText("Cierra el 30/11/2026")).toHaveLength(1);
+  });
+
+  it("keeps the legacy layout without an image: SIMULADO next to the name, a risk row and the close under the bar", () => {
+    render(<CampaignCard {...BASE_PROPS} simuladoLabel="SIMULADO" closeDateLabel="Cierra el 30/11/2026" />);
+
+    expect(screen.getByText("Riesgo")).toBeInTheDocument();
+    expect(screen.queryByText("Cierre")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Cierra el 30/11/2026")).toHaveLength(1);
+  });
+
+  it("renders overlayAction with and without an image", () => {
+    const { unmount } = render(
+      <CampaignCard {...BASE_PROPS} overlayAction={<button type="button">Corazón</button>} />
+    );
+    expect(screen.getByRole("button", { name: "Corazón" })).toBeInTheDocument();
+    unmount();
+
+    render(<CampaignCard {...BASE_PROPS} image={IMAGE} overlayAction={<button type="button">Corazón</button>} />);
+    expect(screen.getByRole("button", { name: "Corazón" })).toBeInTheDocument();
+  });
+
+  it("lets progressSlot replace the built-in progress bar", () => {
+    render(<CampaignCard {...BASE_PROPS} progressSlot={<div>Progreso del marketplace</div>} />);
+
+    expect(screen.getByText("Progreso del marketplace")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("renders a neutral, labelled risk badge when only the label is provided (no level)", () => {
+    render(<CampaignCard {...BASE_PROPS} riskLevel={null} riskLabel="Riesgo sin dato" />);
+
+    const badge = screen.getByText("Riesgo sin dato").closest("[data-variant='risk']");
+    expect(badge).toHaveAttribute("data-tone", "neutral");
+    expect(badge?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("renders no risk badge or row when riskLabel is omitted", () => {
+    // Explicitly built without the risk props: `exactOptionalPropertyTypes`
+    // rejects an explicit `undefined` for an optional prop.
+    render(
+      <CampaignCard
+        smeName={BASE_PROPS.smeName}
+        subtitle={BASE_PROPS.subtitle}
+        raisedLabel={BASE_PROPS.raisedLabel}
+        raisedValue={BASE_PROPS.raisedValue}
+        goal={BASE_PROPS.goal}
+        formatRaised={BASE_PROPS.formatRaised}
+        revenueShareTerms={BASE_PROPS.revenueShareTerms}
+      />
+    );
+
+    expect(screen.queryByText("Riesgo")).not.toBeInTheDocument();
+  });
+
+  it("separates the visible action label from its accessible name", () => {
+    render(
+      <CampaignCard
+        {...BASE_PROPS}
+        action={{
+          label: "Ver evidencia y riesgo",
+          ariaLabel: "Ver evidencia y riesgo de Panadería Horizonte SRL",
+          href: "/campaigns/panaderia"
+        }}
+      />
+    );
+
+    const link = screen.getByRole("link", { name: "Ver evidencia y riesgo de Panadería Horizonte SRL" });
+    expect(link).toHaveTextContent("Ver evidencia y riesgo");
+  });
+
+  it("omits the close row instead of rendering an empty value when an image has no close date", () => {
+    render(<CampaignCard {...BASE_PROPS} image={IMAGE} />);
+
+    expect(screen.queryByText("Cierre")).not.toBeInTheDocument();
+  });
+});
