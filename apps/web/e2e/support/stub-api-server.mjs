@@ -15,6 +15,7 @@
 import { createServer } from "node:http";
 import { resetCampaignFixtures, tryHandleCampaignRequest } from "./stub-campaign-routes.mjs";
 import { resetDistributionFixtures, tryHandleDistributionRequest } from "./stub-distribution-routes.mjs";
+import { resetAdminReviewFixtures, tryHandleAdminReviewRequest } from "./stub-admin-review-routes.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env["STUB_API_PORT"] ?? 4310);
@@ -107,7 +108,7 @@ const recordedAssessments = new Map();
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
   // `Authorization` is required by the upload and business clients, which attach
   // the signed-in session's bearer token; without it their CORS preflight fails.
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
@@ -254,8 +255,21 @@ async function handle(request, response) {
     recordedAssessments.clear();
     resetCampaignFixtures();
     resetDistributionFixtures();
+    resetAdminReviewFixtures();
     response.writeHead(204, CORS_HEADERS);
     response.end();
+    return;
+  }
+
+  // The admin review console (#410 / U7): queue, review context, verdicts, the
+  // decision for its own application, the vault deployment and private document reads.
+  if (
+    await tryHandleAdminReviewRequest(request, response, request.method, pathname, url, {
+      sendJson,
+      readJsonBody,
+      corsHeaders: CORS_HEADERS
+    })
+  ) {
     return;
   }
 
