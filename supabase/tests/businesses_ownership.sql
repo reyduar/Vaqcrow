@@ -1,6 +1,6 @@
 begin;
 
-select plan(42);
+select plan(48);
 
 -- PyME company model and per-row ownership (Feature #398, Task #399 / T3a,
 -- owner decision 5 = option A). This unit is the database foundation only; the
@@ -34,6 +34,18 @@ select has_column('public', 'businesses', 'city', 'businesses has a city column'
 select has_column('public', 'businesses', 'description', 'businesses has a description column');
 select has_column('public', 'businesses', 'goal_ars', 'businesses has a goal_ars column');
 select has_column('public', 'businesses', 'revenue_share', 'businesses has a revenue_share column');
+select has_column(
+  'public', 'businesses', 'campaign_duration_days',
+  'businesses has a campaign_duration_days column (#410/U13)'
+);
+select col_type_is(
+  'public', 'businesses', 'campaign_duration_days', 'smallint',
+  'campaign_duration_days is a smallint'
+);
+select col_is_null(
+  'public', 'businesses', 'campaign_duration_days',
+  'campaign_duration_days is nullable for businesses registered before U13'
+);
 select has_column('public', 'businesses', 'created_at', 'businesses has a created_at column');
 select has_column('public', 'businesses', 'updated_at', 'businesses has an updated_at column');
 
@@ -221,6 +233,44 @@ select throws_ok(
     )$$,
   '23502', null,
   'a business must have an owner'
+);
+
+-- Campaign duration (#410/U13): only 30, 60 or 90 days; NULL stays allowed
+-- for businesses registered before the wizard captured it.
+insert into public.businesses (
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share,
+  campaign_duration_days
+) values (
+  'e1111111-1111-4111-8111-111111111111', 'Plazo Treinta', '20123456703',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5, 30
+), (
+  'e1111111-1111-4111-8111-111111111111', 'Plazo Noventa', '20123456704',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5, 90
+);
+
+select is(
+  (select array_agg(campaign_duration_days order by campaign_duration_days)
+     from public.businesses where name in ('Plazo Treinta', 'Plazo Noventa')),
+  array[30, 90]::smallint[],
+  'a campaign duration of 30 or 90 days is accepted'
+);
+
+select throws_ok(
+  $$insert into public.businesses (
+      owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share,
+      campaign_duration_days
+    ) values (
+      'e1111111-1111-4111-8111-111111111111', 'Plazo Raro', '20123456705',
+      'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5, 45
+    )$$,
+  '23514', null,
+  'a campaign duration other than 30, 60 or 90 days is rejected'
+);
+
+select throws_ok(
+  $$update public.businesses set campaign_duration_days = 0 where name = 'Plazo Treinta'$$,
+  '23514', null,
+  'an update cannot set a campaign duration outside 30, 60 or 90 days'
 );
 
 insert into public.application_review (application_id, state, last_correlation_id)

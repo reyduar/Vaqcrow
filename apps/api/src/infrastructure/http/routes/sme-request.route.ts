@@ -9,6 +9,7 @@ import type { WalletRepositoryPort } from "../../../application/ports/wallet-rep
 import { getSmeRequest } from "../../../application/use-cases/get-sme-request.js";
 import { listAdminSmeRequests } from "../../../application/use-cases/list-admin-sme-requests.js";
 import { submitSmeRequest } from "../../../application/use-cases/submit-sme-request.js";
+import type { SubmissionAssessmentDependencies } from "../../../application/use-cases/submit-sme-request.js";
 
 /**
  * The HTTP surface of the SME request (Feature #30, Task #95 / T2a).
@@ -20,7 +21,8 @@ import { submitSmeRequest } from "../../../application/use-cases/submit-sme-requ
  * contract is refused with `400 { errors: [{ field, code }] }`, the envelope
  * `apps/web` already understands; persistence failures are a sanitized `503`.
  * On a real apply only, the admin `new_application` event is published
- * best-effort.
+ * best-effort and the advisory assessment is started in the background (U12),
+ * never awaited: neither can change the response.
  *
  * `GET /sme-requests/:applicationId` returns the persisted request with its
  * monthly sales series; a malformed id is `400`, an unknown application `404`.
@@ -43,6 +45,8 @@ export interface SmeRequestRouteDependencies {
   readonly businesses: Pick<BusinessRepositoryPort, "findByOwner">;
   readonly notifications: Pick<NotificationPublisherPort, "publish">;
   readonly generateApplicationId: () => ApplicationId;
+  /** Optional background assessment of an applied submission (U12). */
+  readonly assessment?: SubmissionAssessmentDependencies | undefined;
 }
 
 export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeRequestRouteDependencies): void {
@@ -58,7 +62,8 @@ export function registerSmeRequestRoute(app: FastifyInstance, dependencies: SmeR
         wallet: dependencies.wallet,
         businesses: dependencies.businesses,
         notifications: dependencies.notifications,
-        generateApplicationId: dependencies.generateApplicationId
+        generateApplicationId: dependencies.generateApplicationId,
+        assessment: dependencies.assessment
       },
       { body: request.body, correlationId: parseCorrelationId(request.id), ownerUserId: principal.userId }
     );

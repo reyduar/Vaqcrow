@@ -11,7 +11,8 @@ const DRAFT: BusinessDraft = {
   city: "Córdoba",
   description: DEMO_VALUES.desc,
   goalArs: 15000000,
-  revenueShare: 4.5
+  revenueShare: 4.5,
+  campaignDurationDays: 60
 };
 
 describe("businessDraftFromRegistration", () => {
@@ -25,7 +26,12 @@ describe("businessDraftFromRegistration", () => {
     expect(draft.cuit).toBe("30712345678");
     expect(Object.keys(draft)).not.toContain("ownerUserId");
     expect(Object.keys(draft)).not.toContain("owner_user_id");
-    expect(Object.keys(draft)).toHaveLength(7);
+    expect(Object.keys(draft)).toHaveLength(8);
+  });
+
+  it("sends the chosen campaign duration as whole days (#410/U13)", () => {
+    expect(businessDraftFromRegistration({ ...DEMO_VALUES, duration: "30" }).campaignDurationDays).toBe(30);
+    expect(businessDraftFromRegistration({ ...DEMO_VALUES, duration: "90" }).campaignDurationDays).toBe(90);
   });
 });
 

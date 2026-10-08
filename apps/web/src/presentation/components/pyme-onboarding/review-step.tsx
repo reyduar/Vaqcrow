@@ -28,7 +28,11 @@ import {
   type ReviewStepIcon,
   type ReviewStepTone
 } from "@/application/pyme-onboarding/review-step";
-import type { RegistrationValues } from "@/application/pyme-onboarding/registration-step";
+import {
+  REGISTRATION_COPY,
+  durationLabel,
+  type RegistrationValues
+} from "@/application/pyme-onboarding/registration-step";
 import type { BusinessPort } from "@/application/ports/business-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { WalletConnection, WalletConnectionPort } from "@/application/ports/wallet-connection-port";
@@ -181,6 +185,15 @@ export function ReviewStep({ wallet, gateway, business, connection, values, onEd
           </div>
         </div>
       )}
+
+      {/* #410/U13: not designed by the template; copy pending owner review. */}
+      <dl className="m-0 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-card border border-page-border px-4 py-3 text-sm">
+        <dt className="font-semibold">{REGISTRATION_COPY.fields.duration.label}</dt>
+        <dd className="m-0">
+          <span className="font-[650]">{durationLabel(values.duration)}</span>{" "}
+          <span className="text-text-secondary">{REGISTRATION_COPY.fields.duration.hint}</span>
+        </dd>
+      </dl>
 
       <h1 className="m-0 text-[clamp(30px,3.6vw,40px)] leading-[1.15] font-bold tracking-[-0.025em]">
         {REVIEW_STEP_COPY.heading}

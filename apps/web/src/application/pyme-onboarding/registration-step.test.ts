@@ -13,6 +13,8 @@ import {
   salesMissing,
   salesMonthAria,
   validateRegistration,
+  DURATION_OPTIONS,
+  durationDays,
   type RegistrationValues
 } from "./registration-step";
 
@@ -24,6 +26,7 @@ const VALID: RegistrationValues = {
   desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
   goal: "15.000.000",
   rs: "4,5",
+  duration: "60",
   sales: ["3.150.000", "3.320.500", "3.410.750", "", "3.580.900", "6.240.000", "3.690.300", "3.745.800"]
 };
 
@@ -70,7 +73,13 @@ describe("REGISTRATION_COPY", () => {
         placeholder: "Qué vendés, a quién y para qué necesitás el financiamiento"
       },
       goal: { label: "Meta de financiamiento (ARS)", placeholder: "15.000.000" },
-      rs: { label: "Revenue share propuesto (%)", placeholder: "4,5", hint: "Entre 1 % y 10 % de las ventas mensuales" }
+      rs: { label: "Revenue share propuesto (%)", placeholder: "4,5", hint: "Entre 1 % y 10 % de las ventas mensuales" },
+      // #410/U13: not in the template; owner-pending copy.
+      duration: {
+        label: "Plazo de la campaña",
+        placeholder: "Elegí un plazo",
+        hint: "Empieza a contar cuando la campaña se publica."
+      }
     });
   });
 });
@@ -104,13 +113,14 @@ describe("REGISTRATION_ERRORS", () => {
       desc: "Contanos un poco más: al menos 20 caracteres.",
       sales: "Cargá al menos 6 de los 8 meses.",
       goal: "La meta mínima es ARS 1.000.000.",
-      rs: "Debe estar entre 1 % y 10 %."
+      rs: "Debe estar entre 1 % y 10 %.",
+      duration: "Elegí el plazo de la campaña."
     });
   });
 });
 
 describe("DEMO_VALUES", () => {
-  it("copies the template's fillDemo values verbatim, with the empty 4th month", () => {
+  it("copies the template's fillDemo values verbatim, with the empty 4th month, plus a 60-day duration", () => {
     expect(DEMO_VALUES).toEqual({
       name: "Panadería Horizonte SRL",
       cuit: "30-71234567-8",
@@ -119,6 +129,7 @@ describe("DEMO_VALUES", () => {
       desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
       goal: "15.000.000",
       rs: "4,5",
+      duration: "60",
       sales: ["3.150.000", "3.320.500", "3.410.750", "", "3.580.900", "6.240.000", "3.690.300", "3.745.800"]
     });
   });
@@ -134,6 +145,7 @@ describe("EMPTY_REGISTRATION_VALUES", () => {
       desc: "",
       goal: "",
       rs: "",
+      duration: "",
       sales: ["", "", "", "", "", "", "", ""]
     });
   });
@@ -168,7 +180,9 @@ describe("validateRegistration", () => {
       "Cargá al menos 6 de los 8 meses."
     ],
     ["goal", { goal: "999.999" }, "La meta mínima es ARS 1.000.000."],
-    ["rs", { rs: "12" }, "Debe estar entre 1 % y 10 %."]
+    ["rs", { rs: "12" }, "Debe estar entre 1 % y 10 %."],
+    ["duration", { duration: "" }, "Elegí el plazo de la campaña."],
+    ["duration", { duration: "45" }, "Elegí el plazo de la campaña."]
   ] as const)("reports the template message for an invalid %s", (field, patch, message) => {
     const errors = validateRegistration(withValues(patch as Partial<RegistrationValues>));
     expect(errors).toEqual([{ field, message }]);
@@ -199,7 +213,8 @@ describe("validateRegistration", () => {
       desc: "",
       sales: ["", "", "", "", "", "", "", ""],
       goal: "",
-      rs: ""
+      rs: "",
+      duration: ""
     });
     expect(validateRegistration(invalid).map((error) => error.field)).toEqual([
       "name",
@@ -209,8 +224,38 @@ describe("validateRegistration", () => {
       "desc",
       "sales",
       "goal",
-      "rs"
+      "rs",
+      "duration"
     ]);
+  });
+});
+
+describe("campaign duration (#410/U13; copy pending owner review)", () => {
+  it("offers exactly 30, 60 and 90 days, labelled in days", () => {
+    expect(DURATION_OPTIONS).toEqual([
+      { value: "30", label: "30 días", days: 30 },
+      { value: "60", label: "60 días", days: 60 },
+      { value: "90", label: "90 días", days: 90 }
+    ]);
+  });
+
+  it("labels the control and its placeholder option", () => {
+    expect(REGISTRATION_COPY.fields.duration).toEqual({
+      label: "Plazo de la campaña",
+      placeholder: "Elegí un plazo",
+      hint: "Empieza a contar cuando la campaña se publica."
+    });
+  });
+
+  it("maps a chosen option to its whole number of days and anything else to null", () => {
+    expect(durationDays("30")).toBe(30);
+    expect(durationDays("90")).toBe(90);
+    expect(durationDays("")).toBeNull();
+    expect(durationDays("45")).toBeNull();
+  });
+
+  it.each(["30", "60", "90"])("accepts %s days", (duration) => {
+    expect(registrationValid(withValues({ duration }))).toBe(true);
   });
 });
 

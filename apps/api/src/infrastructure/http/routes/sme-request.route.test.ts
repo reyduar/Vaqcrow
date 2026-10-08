@@ -7,6 +7,7 @@ import type { NotificationPublisherPort } from "../../../application/ports/notif
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
 import type { WalletRepositoryPort } from "../../../application/ports/wallet-repository-port.js";
+import type { SubmissionAssessmentDependencies } from "../../../application/use-cases/submit-sme-request.js";
 import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
 import { buildAppAs, principalFor } from "../test-support/auth.js";
 
@@ -59,6 +60,7 @@ interface SubmitOverrides {
   readonly wallet?: Pick<WalletRepositoryPort, "readPublicKey">;
   readonly businesses?: Pick<BusinessRepositoryPort, "findByOwner">;
   readonly notifications?: Pick<NotificationPublisherPort, "publish">;
+  readonly assessment?: SubmissionAssessmentDependencies;
 }
 
 function build(
@@ -83,7 +85,8 @@ function build(
       wallet: overrides.wallet ?? { readPublicKey: vi.fn().mockResolvedValue({ ok: true, value: WALLET_KEY }) },
       businesses: overrides.businesses ?? { findByOwner: vi.fn().mockResolvedValue({ ok: true, value: business }) },
       notifications: overrides.notifications ?? { publish: vi.fn().mockResolvedValue(summary) },
-      generateApplicationId: () => APPLICATION_ID
+      generateApplicationId: () => APPLICATION_ID,
+      ...(overrides.assessment === undefined ? {} : { assessment: overrides.assessment })
     }
   });
   return app;
@@ -138,6 +141,58 @@ describe("POST /sme-requests", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ applicationId: APPLICATION_ID, request });
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("starts the automatic assessment once for an applied submission (U12)", async () => {
+    const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+    const response = await build({}, {}, { assessment: { onSubmitted } }).inject({
+      method: "POST",
+      url: "/sme-requests",
+      payload: request
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(onSubmitted).toHaveBeenCalledTimes(1);
+    expect(onSubmitted).toHaveBeenCalledWith({
+      applicationId: APPLICATION_ID,
+      // The same transport correlation the submission itself persisted.
+      correlationId: response.headers["x-correlation-id"]
+    });
+  });
+
+  it("does not start the assessment on a 200 replay (U12)", async () => {
+    const submit = vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: false } });
+    const onSubmitted = vi.fn().mockResolvedValue(undefined);
+
+    const response = await build({ submit }, {}, { assessment: { onSubmitted } }).inject({
+      method: "POST",
+      url: "/sme-requests",
+      payload: request
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(onSubmitted).not.toHaveBeenCalled();
+  });
+
+  it("answers the same 201 when the automatic assessment fails or never settles (U12)", async () => {
+    for (const onSubmitted of [
+      vi.fn().mockRejectedValue(new Error("SECRET provider failure")),
+      vi.fn().mockReturnValue(new Promise<never>(() => undefined))
+    ]) {
+      const response = await build({}, {}, { assessment: { onSubmitted } }).inject({
+        method: "POST",
+        url: "/sme-requests",
+        payload: request
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).toEqual({ applicationId: APPLICATION_ID, request });
+      expect(response.body).not.toContain("SECRET");
+      expect(onSubmitted).toHaveBeenCalledTimes(1);
+      await app?.close();
+      app = undefined;
+    }
   });
 
   it("answers 409 wallet_required when the principal has no stored key", async () => {
@@ -295,8 +350,25 @@ describe("GET /sme-requests/:applicationId with the simulated sales feed", () =>
     expect(body.salesPeriods[0]).toMatchObject({ period: "2026-01", simuladoLabel: "SIMULADO" });
   });
 
-  it("still declares an empty series for an unknown SME reference", async () => {
-    const unknown = { ...request, smeReference: "sme:UNKNOWN" };
+  it("serves a synthetic simulated series for a wizard (CUIT) reference (U11)", async () => {
+    const wizard = { ...request, smeReference: "30712345678" };
+    const findByApplicationId = vi
+      .fn()
+      .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: wizard, ownerUserId: OWNER } });
+
+    const response = await build({ findByApplicationId }, createSimulatedSalesDataProvider()).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    const periods = response.json().salesPeriods;
+    expect(periods).toHaveLength(8);
+    expect(periods[0]).toMatchObject({ period: "2026-01", status: "reported", simuladoLabel: "SIMULADO" });
+  });
+
+  it("still declares an empty series for a malformed SME reference", async () => {
+    const unknown = { ...request, smeReference: "sme UNKNOWN" };
     const findByApplicationId = vi
       .fn()
       .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: unknown, ownerUserId: OWNER } });

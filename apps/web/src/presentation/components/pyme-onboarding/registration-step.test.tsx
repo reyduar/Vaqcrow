@@ -80,6 +80,16 @@ describe("RegistrationStep copy and layout", () => {
     expect(screen.getByLabelText("Revenue share propuesto (%)")).toHaveAttribute("placeholder", "4,5");
     expect(screen.getByText("Entre 1 % y 10 % de las ventas mensuales")).toBeInTheDocument();
 
+    // #410/U13: undesigned by the template; copy pending owner review.
+    const duration = screen.getByLabelText("Plazo de la campaña");
+    expect(duration.tagName).toBe("SELECT");
+    expect(duration).toHaveValue("");
+    expect(screen.getByRole("option", { name: "Elegí un plazo" })).toHaveValue("");
+    expect(screen.getByRole("option", { name: "30 días" })).toHaveValue("30");
+    expect(screen.getByRole("option", { name: "60 días" })).toHaveValue("60");
+    expect(screen.getByRole("option", { name: "90 días" })).toHaveValue("90");
+    expect(screen.getByText("Empieza a contar cuando la campaña se publica.")).toBeInTheDocument();
+
     expect(screen.getByText("Ventas mensuales 2026 (ARS)")).toBeInTheDocument();
     expect(screen.getByText("SIMULADO")).toBeInTheDocument();
     expect(
@@ -129,7 +139,7 @@ describe("RegistrationStep validation", () => {
 
     submit();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 8 campos.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 9 campos.");
     expect(screen.getByRole("alert")).toHaveTextContent("Están marcados abajo.");
     expect(screen.getByText("Ingresá la razón social.")).toBeInTheDocument();
     expect(screen.getByText("El CUIT debe tener 11 dígitos.")).toBeInTheDocument();
@@ -139,6 +149,7 @@ describe("RegistrationStep validation", () => {
     expect(screen.getByText("Cargá al menos 6 de los 8 meses.")).toBeInTheDocument();
     expect(screen.getByText("La meta mínima es ARS 1.000.000.")).toBeInTheDocument();
     expect(screen.getByText("Debe estar entre 1 % y 10 %.")).toBeInTheDocument();
+    expect(screen.getByText("Elegí el plazo de la campaña.")).toBeInTheDocument();
 
     expect(screen.getByLabelText("Razón social")).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -180,7 +191,25 @@ describe("RegistrationStep validation", () => {
     fireEvent.change(screen.getByLabelText("Razón social"), { target: { value: "Panadería Horizonte SRL" } });
     submit();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 7 campos.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 8 campos.");
+  });
+
+  it("links the missing campaign duration error to its select and clears it once chosen", () => {
+    renderStep();
+
+    submit();
+
+    const duration = screen.getByLabelText("Plazo de la campaña");
+    expect(duration).toHaveAttribute("aria-invalid", "true");
+    const describedBy = (duration.getAttribute("aria-describedby") ?? "").split(" ");
+    expect(describedBy.map((id) => document.getElementById(id)?.textContent)).toContain(
+      "Elegí el plazo de la campaña."
+    );
+
+    fireEvent.change(duration, { target: { value: "90" } });
+    expect(duration).toHaveValue("90");
+    expect(duration).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText("Elegí el plazo de la campaña.")).not.toBeInTheDocument();
   });
 });
 
@@ -197,6 +226,7 @@ describe("RegistrationStep demo values", () => {
     expect(screen.getByLabelText("Breve descripción del negocio")).toHaveValue(DEMO_VALUES.desc);
     expect(screen.getByLabelText("Meta de financiamiento (ARS)")).toHaveValue("15.000.000");
     expect(screen.getByLabelText("Revenue share propuesto (%)")).toHaveValue("4,5");
+    expect(screen.getByLabelText("Plazo de la campaña")).toHaveValue("60");
     expect(screen.getByLabelText("Ventas de junio en ARS")).toHaveValue("6.240.000");
     expect(screen.getByLabelText("Ventas de abril en ARS")).toHaveValue("");
   });

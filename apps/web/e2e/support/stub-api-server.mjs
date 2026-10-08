@@ -114,6 +114,12 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
+/** True when the request carries a non-empty `Authorization: Bearer <token>` header. */
+function hasBearerToken(request) {
+  const header = request.headers["authorization"];
+  return typeof header === "string" && /^Bearer \S+$/.test(header);
+}
+
 function sendJson(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, {
@@ -358,6 +364,13 @@ async function handle(request, response) {
       sendJson(response, 400, { code: "invalid_request" });
       return;
     }
+    // Mirrors the API (#410/U13): an optional campaign duration of exactly 30,
+    // 60 or 90 days; anything else is the sanitized field error.
+    const duration = body.campaignDurationDays;
+    if (duration !== undefined && duration !== null && ![30, 60, 90].includes(duration)) {
+      sendJson(response, 400, { errors: [{ field: "campaignDurationDays", code: "invalid" }] });
+      return;
+    }
     currentBusiness = {
       businessId: BUSINESS_ID,
       ownerUserId: OWNER_USER_ID,
@@ -368,6 +381,7 @@ async function handle(request, response) {
       description: String(body.description ?? ""),
       goalArs: Number(body.goalArs ?? 0),
       revenueShare: Number(body.revenueShare ?? 0),
+      ...(duration === undefined || duration === null ? {} : { campaignDurationDays: duration }),
       createdAt: BUSINESS_CREATED_AT,
       updatedAt: BUSINESS_CREATED_AT
     };
@@ -460,6 +474,16 @@ async function handle(request, response) {
     const body = await readJsonBody(request);
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
       sendJson(response, 400, { errors: [{ field: "body", code: "invalid_shape" }] });
+      return;
+    }
+    // The real API serves this route to an authenticated `PYME` only
+    // (`route-policy.ts`), so the wizard's send must carry the session's Bearer
+    // token: without it the U9 live rehearsal got 401. The retiring scripted
+    // journey (`/request`, synthetic `sme:SYN-` references, #438) never signs in
+    // and stays exempt here until its routes are removed.
+    const scriptedJourney = typeof body.smeReference === "string" && body.smeReference.startsWith("sme:SYN-");
+    if (!scriptedJourney && !hasBearerToken(request)) {
+      sendJson(response, 401, { code: "unauthorized" });
       return;
     }
     currentRequest = body;

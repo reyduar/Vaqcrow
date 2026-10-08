@@ -43,7 +43,7 @@ import { microcopy } from "@/application/trust/disclosures";
 import { SimulatedAiEvaluationAdapter } from "@/infrastructure/ai-evaluation/simulated-ai-evaluation-adapter";
 import { createBrowserBusinessPort } from "@/infrastructure/business/create-business-port";
 import { createBrowserCompletenessPort } from "@/infrastructure/completeness/create-completeness-port";
-import { createSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
+import { createBrowserSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { FOCUS_RING } from "../auth-field";
 import { AiStep } from "./ai-step";
@@ -53,7 +53,6 @@ import { ReviewStep } from "./review-step";
 /** Module-scope defaults stay stable across renders, like the other workspaces. */
 const defaultAi: AiEvaluationPort = new SimulatedAiEvaluationAdapter();
 const defaultWallet: WalletPort = new FreighterWallet();
-const defaultGateway = createSmeRequestGateway(process.env["NEXT_PUBLIC_API_BASE_URL"]);
 
 const PRIMARY_ICONS: Readonly<Record<KycPrimaryIcon, IconType>> = {
   scan: IoScanOutline,
@@ -74,7 +73,11 @@ export interface PymeOnboardingWizardProps {
   readonly completeness?: CompletenessCheckPort;
   /** Wallet capability for step 4; optional so tests can inject a double. */
   readonly wallet?: WalletPort;
-  /** SME-request engine for step 4's send; `null` forces «no backend». */
+  /**
+   * SME-request engine for step 4's send; `null` forces «no backend». Omitted,
+   * the wizard builds the session-aware browser gateway per mount, because the
+   * API serves `POST /sme-requests` to an authenticated `PYME` only.
+   */
   readonly gateway?: SmeRequestGateway | null;
   /** Company persistence for step 4's send; optional so tests can inject a double. */
   readonly business?: BusinessPort;
@@ -107,7 +110,7 @@ export function PymeOnboardingWizard({
   ai = defaultAi,
   completeness,
   wallet = defaultWallet,
-  gateway = defaultGateway,
+  gateway,
   business,
   onBack
 }: PymeOnboardingWizardProps) {
@@ -123,9 +126,12 @@ export function PymeOnboardingWizard({
   // the browser env or the Supabase client.
   const [browserBusiness] = useState<BusinessPort>(() => createBrowserBusinessPort());
   const [browserCompleteness] = useState<CompletenessCheckPort>(() => createBrowserCompletenessPort());
+  const [browserGateway] = useState<SmeRequestGateway | null>(() => createBrowserSmeRequestGateway());
   const requestRef = useRef(0);
 
   const businessPort = business ?? browserBusiness;
+  // `null` is a deliberate «no backend»; only an omitted prop falls back.
+  const smeGateway = gateway === undefined ? browserGateway : gateway;
   const completenessPort = completeness ?? browserCompleteness;
 
   const outcome = result?.outcome ?? null;
@@ -374,7 +380,7 @@ export function PymeOnboardingWizard({
       {stepIndex === 3 && registration ? (
         <ReviewStep
           wallet={wallet}
-          gateway={gateway}
+          gateway={smeGateway}
           business={businessPort}
           values={registration}
           onEdit={() => setStepIndex(1)}

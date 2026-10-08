@@ -17,6 +17,7 @@ import type {
 } from "../../../application/ports/application-assessment-repository-port.js";
 import type { SalesDataProviderPort, SalesDataProviderResult } from "../../../application/ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
+import { createSimulatedSalesDataProvider } from "../../adapters/simulated-sales-data-provider.js";
 import { buildAppAs } from "../test-support/auth.js";
 
 /**
@@ -314,6 +315,32 @@ describe("POST /application-reviews/:applicationId/assessments", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("assesses a wizard application whose reference is a CUIT against the simulated feed (U11): no 409", async () => {
+    const { repository } = portReturning({});
+    const collaborators = collaboratorsFor({
+      smeRequest: {
+        ok: true,
+        value: { applicationId: APPLICATION_ID, request: { ...SME_REQUEST, smeReference: "30712345678" } }
+      }
+    });
+    const salesData = createSimulatedSalesDataProvider();
+    app = buildAppAs("ADMIN", {
+      applicationAssessment: {
+        repository,
+        provider: createSimulatedAssessmentProvider({ output: VALID_OUTPUT, now: () => FIXED_NOW }),
+        timeoutMs: 5_000,
+        ...collaborators.dependencies,
+        salesData
+      }
+    });
+
+    const response = await app.inject({ method: "POST", url: URL, payload: { handoffId: HANDOFF_ID } });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).not.toEqual({ code: "sales_evidence_missing" });
+    expect(collaborators.record).toHaveBeenCalledTimes(1);
   });
 
   it("answers 409 sales_evidence_missing when the request has no sales periods, leaving the application untouched", async () => {

@@ -10,6 +10,7 @@ import {
 } from "react-icons/io5";
 import {
   DEMO_VALUES,
+  DURATION_OPTIONS,
   EMPTY_REGISTRATION_VALUES,
   REGISTRATION_COPY,
   SALES_MONTHS,
@@ -55,6 +56,10 @@ import { DocumentUpload } from "./document-upload";
  *   decisions U1–U5, T4c): three mandatory document slots and up to four
  *   optional photos. Submitting is blocked until the three documents are
  *   uploaded; the photos stay optional.
+ * - «Plazo de la campaña» (30/60/90 días, #410/U13, owner decision
+ *   2026-10-08) is not designed by the template: a native select styled like
+ *   «Rubro», placed next to the goal and revenue share; its copy is pending
+ *   owner review.
  * - Native controls at the template's 48 px / 54 px heights with the repo's
  *   Tailwind tokens, plus `FOCUS_RING`, exactly like step 1 (the shared
  *   primitives are fixed at 44 px and the `Select` renders a popover listbox;
@@ -79,7 +84,8 @@ const FIELD_LABELS: Readonly<Record<RegistrationScalarField, string>> = Object.f
   city: REGISTRATION_COPY.fields.city.label,
   desc: REGISTRATION_COPY.fields.desc.label,
   goal: REGISTRATION_COPY.fields.goal.label,
-  rs: REGISTRATION_COPY.fields.rs.label
+  rs: REGISTRATION_COPY.fields.rs.label,
+  duration: REGISTRATION_COPY.fields.duration.label
 });
 
 const INPUT_BASE =
@@ -141,7 +147,7 @@ export function RegistrationStep({ onSubmit = () => {}, upload = UNAVAILABLE_UPL
 
   function describedBy(field: RegistrationScalarField): string | undefined {
     const ids: string[] = [];
-    if (field === "cuit" || field === "rs") ids.push(hintId(field));
+    if (field === "cuit" || field === "rs" || field === "duration") ids.push(hintId(field));
     if (errorFor(field)) ids.push(errorId(field));
     return ids.length ? ids.join(" ") : undefined;
   }
@@ -454,6 +460,36 @@ export function RegistrationStep({ onSubmit = () => {}, upload = UNAVAILABLE_UPL
               {REGISTRATION_COPY.fields.rs.hint}
             </span>
             {errorFor("rs") ? <ErrorRow id={errorId("rs")} message={errorFor("rs") as string} /> : null}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label htmlFor={controlId("duration")} className="text-sm font-semibold">
+              {FIELD_LABELS.duration}
+            </label>
+            <select
+              id={controlId("duration")}
+              ref={(element) => {
+                controls.current.duration = element;
+              }}
+              value={values.duration}
+              onChange={(event) => setField("duration", event.target.value)}
+              aria-invalid={errorFor("duration") ? "true" : undefined}
+              aria-describedby={describedBy("duration")}
+              className={inputClass(Boolean(errorFor("duration")))}
+            >
+              <option value="">{REGISTRATION_COPY.fields.duration.placeholder}</option>
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span id={hintId("duration")} className="text-xs text-text-secondary">
+              {REGISTRATION_COPY.fields.duration.hint}
+            </span>
+            {errorFor("duration") ? (
+              <ErrorRow id={errorId("duration")} message={errorFor("duration") as string} />
+            ) : null}
           </div>
         </div>
 

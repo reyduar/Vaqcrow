@@ -34,6 +34,7 @@ import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/ada
 import { SupabaseWalletRepository } from "./infrastructure/adapters/supabase-wallet-repository.js";
 import { SupabaseRateTableRepository } from "./infrastructure/adapters/supabase-rate-table-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
+import { createSubmissionAssessment } from "./infrastructure/submission-assessment.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./infrastructure/scheduling/confirmation-policy.js";
 import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-client.js";
@@ -233,6 +234,18 @@ const completenessCheck = createContentAwareCompletenessCheckAdapter({
   vision: visionProvider
 });
 
+// The application-scoped assessment (Feature #22/#30): the admin route and the
+// background run a real submission starts (U12) share these exact dependencies,
+// so both use the same provider, timeout and evidence derivation.
+const applicationAssessmentDependencies = {
+  repository: applicationReviewRepository,
+  assessments: applicationAssessmentRepository,
+  smeRequests: smeRequestRepository,
+  salesData: salesDataProvider,
+  provider: assessmentProvider,
+  timeoutMs: config.llm.timeoutMs
+};
+
 const app = buildApp({
   auth,
   applicationReviewRepository,
@@ -265,14 +278,7 @@ const app = buildApp({
     provider: assessmentProvider,
     timeoutMs: config.llm.timeoutMs
   },
-  applicationAssessment: {
-    repository: applicationReviewRepository,
-    assessments: applicationAssessmentRepository,
-    smeRequests: smeRequestRepository,
-    salesData: salesDataProvider,
-    provider: assessmentProvider,
-    timeoutMs: config.llm.timeoutMs
-  },
+  applicationAssessment: applicationAssessmentDependencies,
   campaign,
   campaignDeployment,
   salesFeed: { provider: salesDataProvider, businesses: businessRepository },
@@ -283,7 +289,10 @@ const app = buildApp({
     wallet: walletRepository,
     businesses: businessRepository,
     notifications: notificationPublisher,
-    generateApplicationId: () => parseApplicationId(randomUUID())
+    generateApplicationId: () => parseApplicationId(randomUUID()),
+    // An applied submission starts the advisory assessment in the background
+    // (U12): never awaited, never failing the send.
+    assessment: createSubmissionAssessment(applicationAssessmentDependencies)
   },
   business: { repository: businessRepository },
   // The in-app notification bell (#382/T1c): the signed-in user's own rows.

@@ -10,10 +10,12 @@ import {
   NEXT_SALES_PERIOD,
   SME_REFERENCE_TO_BUSINESS_ID
 } from "./simulated-sales-dataset.js";
+import { isWellFormedSalesReference, synthesizeSalesSeries } from "./simulated-sales-synthesizer.js";
 
 /**
- * The sales-data provider the demo runs on: frozen constants, no I/O, no
- * clock, no randomness — the same simulated-provider pattern as
+ * The sales-data provider the demo runs on: frozen constants for the demo
+ * business plus a deterministic synthetic series for any other well-formed
+ * reference (U11), no I/O, no clock, no randomness — the same simulated-provider pattern as
  * `packages/ai/src/simulated-assessment-provider.ts`, and honest about it:
  * every datum it serves carries `simuladoLabel: "SIMULADO"` and its own
  * Spanish provenance, so nothing downstream can pass the feed for real
@@ -31,17 +33,34 @@ export type SimulatedSalesDataProviderOptions = {
 };
 
 /**
- * Accepts either the business id or a synthetic SME reference and returns the
- * business id, or `undefined` when the feed knows neither. `Object.hasOwn`
- * keeps inherited keys (`constructor`, `__proto__`) from resolving.
+ * The series one identifier resolves to: `key` names the in-memory recording
+ * slot. The demo business id and its synthetic SME reference share the frozen
+ * dataset (and one slot); any other well-formed reference — a wizard CUIT, for
+ * instance (U11) — gets its deterministic synthetic series. `Object.hasOwn`
+ * keeps inherited keys (`constructor`, `__proto__`) from resolving to the
+ * frozen dataset; a malformed identifier resolves to nothing (`not_found`).
  */
-function resolveBusinessId(identifier: string): string | undefined {
-  if (identifier === DEMO_BUSINESS_ID) {
-    return DEMO_BUSINESS_ID;
+interface ResolvedSeries {
+  readonly key: string;
+  readonly historical: readonly SalesPeriodContract[];
+  readonly next: SalesPeriodContract;
+}
+
+function resolveSeries(identifier: string): ResolvedSeries | undefined {
+  const isDemo =
+    identifier === DEMO_BUSINESS_ID ||
+    (Object.hasOwn(SME_REFERENCE_TO_BUSINESS_ID, identifier) &&
+      SME_REFERENCE_TO_BUSINESS_ID[identifier] === DEMO_BUSINESS_ID);
+
+  if (isDemo) {
+    return { key: DEMO_BUSINESS_ID, historical: HISTORICAL_SALES_PERIODS, next: NEXT_SALES_PERIOD };
   }
-  return Object.hasOwn(SME_REFERENCE_TO_BUSINESS_ID, identifier)
-    ? SME_REFERENCE_TO_BUSINESS_ID[identifier]
-    : undefined;
+
+  if (!isWellFormedSalesReference(identifier)) {
+    return undefined;
+  }
+
+  return { key: `synthetic:${identifier}`, ...synthesizeSalesSeries(identifier) };
 }
 
 export function createSimulatedSalesDataProvider(
@@ -49,7 +68,7 @@ export function createSimulatedSalesDataProvider(
 ): SalesDataProviderPort {
   // Recording state is in-memory per process (decision D2): a restart resets
   // the feed to "next period not yet recorded". No money fact depends on it.
-  let recorded = false;
+  const recorded = new Set<string>();
 
   const unavailable = (): SalesDataProviderResult<never> => ({
     ok: false,
@@ -68,12 +87,13 @@ export function createSimulatedSalesDataProvider(
       if (options.failWith !== undefined) {
         return unavailable();
       }
-      if (resolveBusinessId(businessId) !== DEMO_BUSINESS_ID) {
+      const series = resolveSeries(businessId);
+      if (series === undefined) {
         return notFound();
       }
       return {
         ok: true,
-        value: recorded ? [...HISTORICAL_SALES_PERIODS, NEXT_SALES_PERIOD] : HISTORICAL_SALES_PERIODS
+        value: recorded.has(series.key) ? [...series.historical, series.next] : series.historical
       };
     },
 
@@ -83,15 +103,16 @@ export function createSimulatedSalesDataProvider(
       if (options.failWith !== undefined) {
         return unavailable();
       }
-      if (resolveBusinessId(businessId) !== DEMO_BUSINESS_ID) {
+      const series = resolveSeries(businessId);
+      if (series === undefined) {
         return notFound();
       }
-      // Idempotent: the first call applies the frozen next period; every
-      // replay returns the identical period marked `applied: false`, the
-      // same replay semantics the review repository port established.
-      const applied = !recorded;
-      recorded = true;
-      return { ok: true, value: { period: NEXT_SALES_PERIOD, applied } };
+      // Idempotent: the first call applies the next period; every replay
+      // returns the identical period marked `applied: false`, the same replay
+      // semantics the review repository port established.
+      const applied = !recorded.has(series.key);
+      recorded.add(series.key);
+      return { ok: true, value: { period: series.next, applied } };
     }
   };
 }

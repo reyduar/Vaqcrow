@@ -51,7 +51,8 @@ async function checkSorobanRpcHealth(): Promise<void> {
 /**
  * Confirms the campaign-vault routes are actually wired (not just that some
  * server answers on port 3000): a random, never-seeded campaign id must come
- * back `404 not_found`, not a connection error or an unrelated 5xx.
+ * back `404 not_found` (or the route policy's `401` for this anonymous probe),
+ * not a connection error or an unrelated 5xx.
  */
 async function checkCampaignRoutesAvailable(): Promise<void> {
   const probeId = randomUUID();
@@ -61,9 +62,11 @@ async function checkCampaignRoutesAvailable(): Promise<void> {
   } catch (caught) {
     throw new Error(`Could not reach ${LIVE_API_BASE_URL}/campaigns/:id (${String(caught)}).\n${SETUP_HINT}`);
   }
-  if (response.status !== 404) {
+  // Since #378 `GET /campaigns/:id` is AUTHENTICATED, so an anonymous probe
+  // gets the route policy's 401 before the lookup; both prove the route is wired.
+  if (response.status !== 404 && response.status !== 401) {
     throw new Error(
-      `Expected 404 from an unseeded campaign id at ${LIVE_API_BASE_URL}/campaigns/${probeId}, got ${String(response.status)}. ` +
+      `Expected 404 or 401 from an unseeded campaign id at ${LIVE_API_BASE_URL}/campaigns/${probeId}, got ${String(response.status)}. ` +
         "Is the API container actually running the docker profile against the local network?\n" +
         SETUP_HINT
     );
