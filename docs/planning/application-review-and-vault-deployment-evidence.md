@@ -291,6 +291,12 @@ Las dos fallas de la primera corrida fueron **timeouts de 5 s** bajo la carga pa
 
 ### 10.7 Estado de entrega y próximos pasos
 
+> [!important] Fábrica con tope desplegada en Testnet — **no activa** (2026-10-08)
+> - Fábrica nueva `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J`, leída de la red: `owner` = `GBCOTYYE3KGV745LQ4MELTP4IK2Z2RX2OESRNWP2LY6XLEI73X3PX2ZG` (la clave de plataforma, el mismo `owner` de la fábrica anterior) y `vault_wasm` = `966f5b89c1f690488e87bb550a69dac7a8b1e6a84261be867ef98b9b9895dce4` (wasm con el tope `goal/10` de T3b; build reproducible, 8.708 bytes).
+> - Transacciones: upload `b2eec2379a2618fae57e8807a27b60167ccfd3cba17ef1520cbcee0b4a208df9`, deploy `2b63249f7771e29b46439780d3f39dae9841835a66a5f78e49f5ba67dc36cf92`. Pagó las fees la identidad CLI `vaqcrow-factory-deployer` (`GCOSKYEK2FB3YPK4MRXUDR6NNSNZOICFLNQATKSGCYUXV2WJIGJ5FI3N`, fondeada con Friendbot); el comando lo ejecutó el owner.
+> - **Por qué no está activa:** Railway construye la API desde `main` (`6b9acbe`), que todavía tiene el recorrido guionado donde un solo inversor aporta el objetivo completo (`apps/web/e2e-live/campaign-vault.live.spec.ts:130`). Con el tope, ese aporte se rechaza con `Error(Contract, #10)`. El owner re-apuntó `STELLAR_CAMPAIGN_FACTORY_ID` en Railway y lo **revirtió** a la fábrica anterior `CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ` el mismo día, El deploy con la fábrica nueva (`8a3002b4`) estuvo activo unos 52 s (11:16:31–11:17:24 UTC) sin recibir ninguna petición HTTP (logs de Railway), hasta que lo reemplazó el deploy con la fábrica anterior (`870c3a1e`, `SUCCESS`): ninguna campaña se abrió contra la fábrica nueva.
+> - **Cuándo activarla:** cuando la pila llegue a `main` con #438 (el recorrido por roles respeta el tope), re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` a `CCDNM6W4…SV7J` en Railway. Tras el reset de Testnet del 2026-12-16 hay que redesplegarla otra vez.
+
 - **Nada de #410 está en `main`.** La cadena U1–U7 vive en ramas hijas con PR abiertos contra su padre inmediato; el merge a `main` sigue atado a la Opción A del owner (pila junto con el retiro del recorrido de seis pasos, #438).
 - La Feature #410 sigue **abierta**; su cierre lo decide el owner.
 
