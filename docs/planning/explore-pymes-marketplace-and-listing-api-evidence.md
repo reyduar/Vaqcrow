@@ -64,6 +64,18 @@ Endpoint **PUBLIC** `GET /marketplace/campaigns/:campaignId/image` que sirve los
 
 Contratos en `packages/contracts/src/marketplace.ts` y `favorite.ts`; la política de rutas vive en `apps/api/src/application/authorization/route-policy.ts` (su `MATRIX` espeja `ROUTE_POLICY_KEYS`).
 
+### 3.7 Aplicación remota de las migraciones (2026-10-08)
+
+Con **autorización explícita del owner**, las tres migraciones de #414 se probaron primero en el stack local (`pnpm run test:db`, 18/18) y luego se **aplicaron al proyecto remoto de Supabase** vía el MCP, en el mismo work unit, con el `version` del historial alineado al del repositorio:
+
+| Archivo | `version` alineada |
+|---|---|
+| `20261008130000_create_marketplace_campaign_view.sql` | `20261008130000` |
+| `20261008195155_create_campaign_favorite.sql` | `20261008195155` |
+| `20261008202537_add_marketplace_campaign_image.sql` | `20261008202537` |
+
+Verificado en el remoto (consultas al MCP): `marketplace_campaign` con `security_invoker=true` y **16 columnas**, `SELECT` sólo para `service_role` y **cero** grants a `anon`/`authenticated`; `campaign_favorite` con **RLS on, 0 policies** y grants sólo `service_role` (`select`/`insert`/`delete`, sin `update`); el historial remoto termina en las tres versiones del repositorio; y los **advisors no cambian** (sólo el INFO conocido de RLS-sin-policy —que ahora incluye `campaign_favorite`, el patrón intencional `service_role`-only— y el WARN de Auth preexistente).
+
 ## 4. Qué quedó probado
 
 ### 4.1 Re-ejecutado en este árbol de trabajo (2026-10-08)
@@ -106,13 +118,13 @@ Tras cada writer delegado corrió un verificador read-only (el `assess` marca `h
 
 ### 4.4 No re-ejecutado
 
-- **Supabase remoto** (las migraciones de #414 están **sólo en local**; ver §5).
-- **Testnet / Horizon / RPC** y `test:integration` (fuera del gate; requieren credenciales reales).
+- **`test:integration` contra el remoto** (fuera del gate; requiere credenciales reales): sólo se **aplicaron y verificaron** las migraciones de #414 vía MCP (§3.7), no se corrió la suite de integración.
+- **Testnet / Horizon / RPC** (fuera del gate; requieren credenciales reales).
 - El **flake conocido**: `pnpm run verify` cayó en su 1ª corrida por *timeouts* de 5 s de `@vaqcrow/web` bajo la carga paralela de turbo (archivo ajeno, `auth-screen.test.tsx`); la 2ª corrida pasó `exit 0`.
 
 ## 5. Límites y brechas
 
-- **Las tres migraciones de #414 están aplicadas sólo en local.** `20261008130000_create_marketplace_campaign_view.sql`, `20261008195155_create_campaign_favorite.sql` y `20261008202537_add_marketplace_campaign_image.sql` se probaron con `test:db` contra el stack local; su **aplicación al proyecto remoto está pendiente de autorización explícita del owner** y, hasta entonces, la API desplegada no tiene la vista ni la tabla de favoritos.
+- **Migraciones: local y remoto al día.** Las tres migraciones de #414 se probaron en local (`test:db`, 18/18) y se **aplicaron al proyecto remoto** el 2026-10-08 con autorización explícita del owner, con el `version` del historial alineado y el esquema/grants/RLS verificados en el remoto (§3.7).
 - **El marketplace desplegado queda vacío hasta que existan campañas publicadas.** El listado sólo muestra campañas con bóveda confirmada y campaña abierta; no hay datos sembrados.
 - **El `href` del CTA es provisional:** apunta a `/campaigns/<id>`, que define la Feature de detalle ([#422](https://github.com/reyduar/Vaqcrow/issues/422)); hasta entonces es un 404 aceptado (mismo criterio que los links del header a rutas no construidas).
 - **Sin paginación** (D3): una sola grilla, como el template.
@@ -155,5 +167,5 @@ Ninguna pregunta abierta del issue quedó sin decidir antes de implementarse.
 
 - **Nada de #414 está en `main`.** Todo vive en la rama de integración, apilada sobre #406/#410/#382/#386; el merge a `main` sigue atado a la **Opción A** (la pila se mergea junta con #438).
 - **Camino a `main`:** #414 → #422 (detalle y aportes) → #426/#434 → #438. #390, #394, #418 y #430 no son dependencias de #438.
-- **Pendiente del owner:** autorizar la aplicación al **remoto** de las tres migraciones de #414 (probadas en local, §5).
+- **Migraciones remotas: aplicadas (2026-10-08)** con autorización explícita del owner, con el `version` del historial alineado y verificadas en el remoto (§3.7).
 - El cierre de la Feature lo decide el owner; esta sección sólo registra su decisión.
