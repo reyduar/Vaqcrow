@@ -254,16 +254,21 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
   });
 
   await test.step("4 · advisory assessment (POST /application-reviews/:id/assessments — the console has no trigger)", async () => {
-    const decisionOpenBefore = await admin.getByRole("button", { name: "Registrar decisión" }).count();
-    record("decisionFormOpenBeforeAssessment", decisionOpenBefore > 0);
-    if (decisionOpenBefore === 0) {
+    // The decision section always renders «Registrar decisión»; it is disabled
+    // unless the review is in `human_review` with no decision (`decisionFormOpen`),
+    // so «open» means enabled, not present.
+    const register = admin.getByRole("button", { name: "Registrar decisión" });
+    await expect(register).toBeVisible({ timeout: 30_000 });
+    const decisionOpenBefore = await register.isEnabled();
+    record("decisionFormOpenBeforeAssessment", decisionOpenBefore);
+    if (!decisionOpenBefore) {
       const assessed = await runAssessment(adminToken, applicationId);
       record("assessment", { status: assessed.status, body: assessed.body });
       expect([200, 201]).toContain(assessed.status);
       await admin.reload();
     }
     await expect(admin.getByRole("heading", { level: 2, name: "2 · Recomendación de IA" })).toBeVisible({ timeout: 30_000 });
-    await expect(admin.getByRole("button", { name: "Registrar decisión" })).toBeVisible({ timeout: 30_000 });
+    await expect(admin.getByRole("button", { name: "Registrar decisión" })).toBeEnabled({ timeout: 30_000 });
   });
 
   await test.step("5 · a document verdict and the private document viewer", async () => {
@@ -275,16 +280,30 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     const storageRead = admin.waitForResponse(
       (response) => response.request().method() === "GET" && response.url().includes("/storage/uploads?path=")
     );
-    const popupOpened = admin.waitForEvent("popup");
+    // The viewer opens an empty tab first and then points it at a `blob:` URL.
+    // Headless Chromium has no PDF viewer, so that navigation becomes a download
+    // and the frame aborts (`net::ERR_ABORTED`): accept either a `blob:`
+    // navigation or a `blob:` download, both observed from the popup's first event.
+    const popupBlobUrl = new Promise<{ via: "navigation" | "download"; url: string; popup: Page }>((resolve) => {
+      admin.once("popup", (popup) => {
+        popup.on("framenavigated", (frame) => {
+          if (frame === popup.mainFrame() && frame.url().startsWith("blob:")) {
+            resolve({ via: "navigation", url: frame.url(), popup });
+          }
+        });
+        popup.on("download", (download) => {
+          if (download.url().startsWith("blob:")) resolve({ via: "download", url: download.url(), popup });
+        });
+      });
+    });
     await admin.getByRole("button", { name: "Abrir Constancia de CUIT" }).click();
     const read = await storageRead;
     expect(read.status()).toBe(200);
     expect(read.headers()["content-type"]).toContain("application/pdf");
     expect(read.request().headers()["authorization"]).toMatch(/^Bearer \S+$/);
-    const popup = await popupOpened;
-    await popup.waitForURL(/^blob:/);
-    record("viewerPopupUrlScheme", new URL(popup.url()).protocol);
-    await popup.close();
+    const opened = await popupBlobUrl;
+    record("viewerPopup", { scheme: new URL(opened.url).protocol, via: opened.via });
+    await opened.popup.close();
   });
 
   await test.step("6 · «Aprobar con límite» with a reason, confirmed in the alertdialog", async () => {
