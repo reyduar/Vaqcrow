@@ -1,3 +1,4 @@
+import { salesPeriodSchema } from "@vaqcrow/contracts";
 import { describe, expect, it } from "vitest";
 import type { SalesDataProviderResult } from "../../application/ports/sales-data-provider-port.js";
 import {
@@ -88,15 +89,18 @@ describe("createSimulatedSalesDataProvider", () => {
     expect(periods[periods.length - 1]?.period).toBe("2026-08");
   });
 
-  it("answers not_found for an unknown business on both methods", async () => {
-    const provider = createSimulatedSalesDataProvider();
+  it.each(["", " ", "sme UNKNOWN", "x".repeat(129), "sme:\u0000"])(
+    "answers not_found for the malformed identifier %j on both methods",
+    async (identifier) => {
+      const provider = createSimulatedSalesDataProvider();
 
-    const periods = await provider.getPeriods("negocio-inexistente");
-    const recorded = await provider.recordNextPeriod("negocio-inexistente");
+      const periods = await provider.getPeriods(identifier);
+      const recorded = await provider.recordNextPeriod(identifier);
 
-    expect(periods).toEqual({ ok: false, error: { code: "not_found" } });
-    expect(recorded).toEqual({ ok: false, error: { code: "not_found" } });
-  });
+      expect(periods).toEqual({ ok: false, error: { code: "not_found" } });
+      expect(recorded).toEqual({ ok: false, error: { code: "not_found" } });
+    }
+  );
 
   it("records the next period exactly once and replays idempotently", async () => {
     const provider = createSimulatedSalesDataProvider();
@@ -169,17 +173,95 @@ describe("synthetic SME reference mapping (one place, inside the simulated feed)
     expect(unwrap(await provider.getPeriods(SME_REFERENCE))).toHaveLength(9);
   });
 
-  it("keeps an unknown reference not_found on both methods", async () => {
+  it("does not resolve inherited object keys to the demo business", async () => {
+    const provider = createSimulatedSalesDataProvider();
+    const demo = unwrap(await provider.getPeriods(DEMO_BUSINESS_ID));
+
+    for (const key of ["constructor", "__proto__", "toString"]) {
+      const periods = unwrap(await provider.getPeriods(key));
+      expect(periods).not.toEqual(demo);
+      expect(periods.every((period) => period.status === "reported")).toBe(true);
+    }
+  });
+});
+
+/**
+ * U11 (owner decision 2026-10-08, option a): a wizard application carries the
+ * CUIT digits as `smeReference`, so the simulated feed answers a deterministic
+ * synthetic series for ANY well-formed reference instead of `not_found`. The
+ * frozen `sme:SYN-PH-0001` dataset stays byte-for-byte unchanged.
+ */
+describe("synthetic series for any well-formed reference (U11)", () => {
+  const CUIT_REFERENCE = "30712345678";
+  const OTHER_CUIT_REFERENCE = "20304050607";
+  const PERIODS = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"];
+
+  it("serves eight reported, simulated periods 2026-01..2026-08 for a CUIT reference", async () => {
     const provider = createSimulatedSalesDataProvider();
 
-    expect(await provider.getPeriods("sme:UNKNOWN")).toEqual({ ok: false, error: { code: "not_found" } });
-    expect(await provider.recordNextPeriod("sme:UNKNOWN")).toEqual({ ok: false, error: { code: "not_found" } });
+    const periods = unwrap(await provider.getPeriods(CUIT_REFERENCE));
+
+    expect(periods.map((period) => period.period)).toEqual(PERIODS);
+    for (const period of periods) {
+      expect(salesPeriodSchema.parse(period)).toEqual(period);
+      expect(period.status).toBe("reported");
+      expect(period.simuladoLabel).toBe("SIMULADO");
+      expect(period.provenance).toBe("Declaración mensual sintética");
+      expect(period.evidenceRef).toBe(`sales:${period.period}`);
+      expect(Number.isSafeInteger(period.amountArs)).toBe(true);
+      expect(period.amountArs).toBeGreaterThan(0);
+    }
   });
 
-  it("does not resolve inherited object keys as references", async () => {
+  it("never implies an anomaly: consecutive months stay well under the 1.5x rule", async () => {
     const provider = createSimulatedSalesDataProvider();
 
-    expect(await provider.getPeriods("constructor")).toEqual({ ok: false, error: { code: "not_found" } });
-    expect(await provider.getPeriods("__proto__")).toEqual({ ok: false, error: { code: "not_found" } });
+    for (const reference of [CUIT_REFERENCE, OTHER_CUIT_REFERENCE, "sme:UNKNOWN", "a"]) {
+      const amounts = unwrap(await provider.getPeriods(reference)).map((period) => period.amountArs ?? 0);
+      for (let index = 1; index < amounts.length; index += 1) {
+        const ratio = (amounts[index] ?? 0) / (amounts[index - 1] ?? 1);
+        expect(ratio).toBeGreaterThan(1 / 1.2);
+        expect(ratio).toBeLessThan(1.2);
+      }
+    }
+  });
+
+  it("is deterministic: the same reference yields the same series across instances", async () => {
+    const first = unwrap(await createSimulatedSalesDataProvider().getPeriods(CUIT_REFERENCE));
+    const second = unwrap(await createSimulatedSalesDataProvider().getPeriods(CUIT_REFERENCE));
+
+    expect(second).toEqual(first);
+  });
+
+  it("gives different references different series", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    const one = unwrap(await provider.getPeriods(CUIT_REFERENCE));
+    const other = unwrap(await provider.getPeriods(OTHER_CUIT_REFERENCE));
+
+    expect(other.map((period) => period.amountArs)).not.toEqual(one.map((period) => period.amountArs));
+  });
+
+  it("keeps the sme:SYN-PH-0001 dataset exactly as frozen", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    expect(unwrap(await provider.getPeriods("sme:SYN-PH-0001"))).toEqual(HISTORICAL_SALES_PERIODS);
+  });
+
+  it("records a deterministic next period 2026-09 per reference, once, without touching others", async () => {
+    const provider = createSimulatedSalesDataProvider();
+
+    const first = unwrap(await provider.recordNextPeriod(CUIT_REFERENCE));
+    const replay = unwrap(await provider.recordNextPeriod(CUIT_REFERENCE));
+
+    expect(first.applied).toBe(true);
+    expect(first.period).toMatchObject({ period: "2026-09", status: "reported", simuladoLabel: "SIMULADO" });
+    expect(replay).toEqual({ period: first.period, applied: false });
+    expect(unwrap(await provider.getPeriods(CUIT_REFERENCE))).toHaveLength(9);
+    expect(unwrap(await provider.getPeriods(OTHER_CUIT_REFERENCE))).toHaveLength(8);
+    expect(unwrap(await provider.getPeriods(DEMO_BUSINESS_ID))).toHaveLength(8);
+    expect(unwrap(await createSimulatedSalesDataProvider().recordNextPeriod(CUIT_REFERENCE)).period).toEqual(
+      first.period
+    );
   });
 });

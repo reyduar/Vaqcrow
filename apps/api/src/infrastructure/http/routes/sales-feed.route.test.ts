@@ -82,10 +82,10 @@ describe("GET /businesses/:businessId/sales-periods", () => {
     });
   });
 
-  it("answers 404 for an unknown business", async () => {
+  it("answers 404 when the feed has no series for a malformed identifier", async () => {
     const response = await appWith().inject({
       method: "GET",
-      url: "/businesses/negocio-inexistente/sales-periods"
+      url: "/businesses/negocio%20inexistente/sales-periods"
     });
 
     expect(response.statusCode).toBe(404);
@@ -206,10 +206,10 @@ describe("POST /businesses/:businessId/sales-periods", () => {
     expect(response.json()).toEqual({ code: "invalid_request" });
   });
 
-  it("answers 404 for an unknown business", async () => {
+  it("answers 404 when the feed has no series for a malformed identifier", async () => {
     const response = await appWith().inject({
       method: "POST",
-      url: "/businesses/negocio-inexistente/sales-periods",
+      url: "/businesses/negocio%20inexistente/sales-periods",
       payload: {}
     });
 

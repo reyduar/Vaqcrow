@@ -295,8 +295,25 @@ describe("GET /sme-requests/:applicationId with the simulated sales feed", () =>
     expect(body.salesPeriods[0]).toMatchObject({ period: "2026-01", simuladoLabel: "SIMULADO" });
   });
 
-  it("still declares an empty series for an unknown SME reference", async () => {
-    const unknown = { ...request, smeReference: "sme:UNKNOWN" };
+  it("serves a synthetic simulated series for a wizard (CUIT) reference (U11)", async () => {
+    const wizard = { ...request, smeReference: "30712345678" };
+    const findByApplicationId = vi
+      .fn()
+      .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: wizard, ownerUserId: OWNER } });
+
+    const response = await build({ findByApplicationId }, createSimulatedSalesDataProvider()).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    const periods = response.json().salesPeriods;
+    expect(periods).toHaveLength(8);
+    expect(periods[0]).toMatchObject({ period: "2026-01", status: "reported", simuladoLabel: "SIMULADO" });
+  });
+
+  it("still declares an empty series for a malformed SME reference", async () => {
+    const unknown = { ...request, smeReference: "sme UNKNOWN" };
     const findByApplicationId = vi
       .fn()
       .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request: unknown, ownerUserId: OWNER } });
