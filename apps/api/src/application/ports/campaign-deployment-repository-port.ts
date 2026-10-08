@@ -57,22 +57,32 @@ export interface CampaignDeploymentRepositoryPort {
 
   /**
    * Moves `pending`/`failed` to `deploying` and increments `attempts`, clearing
-   * `last_error`. Any other current state is a `state_conflict`; the conditional
-   * update means a concurrent attempt cannot double-apply.
+   * `last_error`. A `deploying` row whose `updatedAt` is strictly before
+   * `staleBefore` (an ISO instant the use case computes) is reclaimed the same
+   * way (U8). Any other current state, including a fresh `deploying` row, is a
+   * `state_conflict`; the conditional update (on the state, the attempts read
+   * and, for a reclaim, `updated_at`) means a concurrent attempt cannot
+   * double-apply.
    */
   beginAttempt(input: {
     readonly applicationId: ApplicationId;
     readonly correlationId: CorrelationId;
+    readonly staleBefore: string;
   }): Promise<CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>>;
 
-  /** Records the mirrored campaign id and the `confirmed` state. */
+  /**
+   * Records the mirrored campaign id and the `confirmed` state. Like
+   * `markFailed`, it only applies while the row is `deploying` under this
+   * `correlationId` (U8); an attempt superseded by a stale reclaim gets
+   * `state_conflict` and changes nothing.
+   */
   markConfirmed(input: {
     readonly applicationId: ApplicationId;
     readonly campaignId: string;
     readonly correlationId: CorrelationId;
   }): Promise<CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>>;
 
-  /** Records the `failed` state and the sanitized code of the last attempt. */
+  /** Records the `failed` state and the sanitized code; `state_conflict` when the attempt was superseded. */
   markFailed(input: {
     readonly applicationId: ApplicationId;
     readonly errorCode: string;

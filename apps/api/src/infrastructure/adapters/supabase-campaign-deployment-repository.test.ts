@@ -7,6 +7,9 @@ const APPLICATION_ID = "22222222-2222-4222-8222-222222222222";
 const CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
 const CONFIRMED_CORRELATION_ID = "123e4567-e89b-42d3-a456-4266141740aa";
 const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
+const STALE_BEFORE = "2026-10-06T12:00:00.000Z";
+const STALE_UPDATED_AT = "2026-10-06T11:40:00.000Z";
+const FRESH_UPDATED_AT = "2026-10-06T12:05:00.000Z";
 
 const ROW = {
   application_id: APPLICATION_ID,
@@ -46,6 +49,7 @@ function fakeClient(steps: readonly FakeStep[]) {
     update: [] as unknown[],
     eq: [] as Array<readonly [string, unknown]>,
     in: [] as Array<readonly [string, readonly unknown[]]>,
+    lt: [] as Array<readonly [string, unknown]>,
     single: 0,
     maybeSingle: 0
   };
@@ -67,6 +71,10 @@ function fakeClient(steps: readonly FakeStep[]) {
     },
     in: (column: string, values: readonly unknown[]) => {
       calls.in.push([column, values]);
+      return builder;
+    },
+    lt: (column: string, value: unknown) => {
+      calls.lt.push([column, value]);
       return builder;
     },
     single: () => {
@@ -236,7 +244,8 @@ describe("SupabaseCampaignDeploymentRepository.beginAttempt", () => {
 
     const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
       applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
-      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
     });
 
     expect(calls.update).toEqual([
@@ -248,10 +257,90 @@ describe("SupabaseCampaignDeploymentRepository.beginAttempt", () => {
       }
     ]);
     expect(calls.in).toEqual([["state", ["pending", "failed"]]]);
+    // The write is conditional on the attempts it read, so a concurrent retry
+    // that already incremented matches zero rows.
+    expect(calls.eq).toEqual([
+      ["application_id", APPLICATION_ID],
+      ["application_id", APPLICATION_ID],
+      ["attempts", 2]
+    ]);
+    expect(calls.lt).toHaveLength(0);
     expect(result).toEqual({
       ok: true,
       value: { ...EXPECTED, state: "deploying", attempts: 3 }
     });
+  });
+
+  it("reclaims a stale deploying row with a conditional update on state, attempts and updated_at", async () => {
+    const { client, calls } = fakeClient([
+      { data: { ...ROW, state: "deploying", attempts: 1, updated_at: STALE_UPDATED_AT } },
+      { data: { ...ROW, state: "deploying", attempts: 2 } }
+    ]);
+
+    const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
+      applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
+    });
+
+    expect(calls.update).toEqual([
+      { state: "deploying", attempts: 2, last_error: null, last_correlation_id: CORRELATION_ID }
+    ]);
+    expect(calls.eq).toEqual([
+      ["application_id", APPLICATION_ID],
+      ["application_id", APPLICATION_ID],
+      ["state", "deploying"],
+      ["attempts", 1]
+    ]);
+    expect(calls.lt).toEqual([["updated_at", STALE_BEFORE]]);
+    expect(calls.in).toHaveLength(0);
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, state: "deploying", attempts: 2 } });
+  });
+
+  it("refuses a fresh deploying row as a state conflict without writing", async () => {
+    const { client, calls } = fakeClient([
+      { data: { ...ROW, state: "deploying", attempts: 1, updated_at: FRESH_UPDATED_AT } }
+    ]);
+
+    const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
+      applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
+    expect(calls.update).toHaveLength(0);
+  });
+
+  it("reports a state conflict when a concurrent reclaim already won the stale row", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient([
+      { data: { ...ROW, state: "deploying", attempts: 1, updated_at: STALE_UPDATED_AT } },
+      { error: pgError("PGRST116") }
+    ]);
+
+    const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
+      applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
+  });
+
+  it("treats an unparseable updated_at on a deploying row as not stale", async () => {
+    const { client, calls } = fakeClient([
+      { data: { ...ROW, state: "deploying", attempts: 1, updated_at: "not-a-date" } }
+    ]);
+
+    const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
+      applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
+    expect(calls.update).toHaveLength(0);
   });
 
   it("refuses to start from a confirmed row without writing", async () => {
@@ -261,7 +350,8 @@ describe("SupabaseCampaignDeploymentRepository.beginAttempt", () => {
 
     const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
       applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
-      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
     });
 
     expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
@@ -274,7 +364,8 @@ describe("SupabaseCampaignDeploymentRepository.beginAttempt", () => {
 
     const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
       applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
-      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
     });
 
     expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
@@ -285,7 +376,8 @@ describe("SupabaseCampaignDeploymentRepository.beginAttempt", () => {
 
     const result = await new SupabaseCampaignDeploymentRepository(client).beginAttempt({
       applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
-      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"],
+      staleBefore: STALE_BEFORE
     });
 
     expect(result).toEqual({ ok: false, error: { code: "not_found" } });
@@ -313,13 +405,20 @@ describe("SupabaseCampaignDeploymentRepository.markConfirmed", () => {
         last_correlation_id: CORRELATION_ID
       }
     ]);
+    // Only the attempt that still owns the deploying row may confirm it (U8).
+    expect(calls.eq).toEqual([
+      ["application_id", APPLICATION_ID],
+      ["state", "deploying"],
+      ["last_correlation_id", CORRELATION_ID]
+    ]);
     expect(result).toEqual({
       ok: true,
       value: { ...EXPECTED, state: "confirmed", attempts: 1, campaignId: CAMPAIGN_ID }
     });
   });
 
-  it("is not_found when the row no longer exists", async () => {
+  it("reports state_conflict, without throwing, when a reclaiming attempt superseded this one", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient([{ error: pgError("PGRST116") }]);
 
     const result = await new SupabaseCampaignDeploymentRepository(client).markConfirmed({
@@ -328,7 +427,7 @@ describe("SupabaseCampaignDeploymentRepository.markConfirmed", () => {
       correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
     });
 
-    expect(result).toEqual({ ok: false, error: { code: "not_found" } });
+    expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
   });
 });
 
@@ -352,10 +451,32 @@ describe("SupabaseCampaignDeploymentRepository.markFailed", () => {
       }
     ]);
     expect(JSON.stringify(calls.update)).not.toContain("message");
+    expect(calls.eq).toEqual([
+      ["application_id", APPLICATION_ID],
+      ["state", "deploying"],
+      ["last_correlation_id", CORRELATION_ID]
+    ]);
     expect(result).toEqual({
       ok: true,
       value: { ...EXPECTED, state: "failed", attempts: 1, lastError: "rate_unavailable" }
     });
+  });
+
+  it("never overwrites a row a reclaiming attempt already confirmed (U8)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // The confirmed row no longer matches state = 'deploying' for this
+    // correlation id, so the guarded update matches zero rows.
+    const { client, calls } = fakeClient([{ data: null }]);
+
+    const result = await new SupabaseCampaignDeploymentRepository(client).markFailed({
+      applicationId: APPLICATION_ID as CampaignDeploymentRecord["applicationId"],
+      errorCode: "unavailable",
+      correlationId: CORRELATION_ID as CampaignDeploymentRecord["lastCorrelationId"]
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "state_conflict" } });
+    expect(calls.eq).toContainEqual(["state", "deploying"]);
+    expect(calls.eq).toContainEqual(["last_correlation_id", CORRELATION_ID]);
   });
 
   it("is unavailable on a Postgres error or a rejected call", async () => {

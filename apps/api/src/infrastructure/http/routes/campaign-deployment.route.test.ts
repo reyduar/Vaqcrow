@@ -11,6 +11,8 @@ const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const CALLER_CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
 const STORED_CORRELATION_ID = "123e4567-e89b-42d3-a456-4266141740bb";
 const AT = "2026-10-06T12:00:00.000Z";
+/** The injected clock: 30 minutes after `AT`, so a deploying row at `AT` is stale. */
+const NOW = new Date("2026-10-06T12:30:00.000Z");
 
 function record(overrides: Partial<CampaignDeploymentRecord> = {}): CampaignDeploymentRecord {
   return {
@@ -55,7 +57,7 @@ function route(
   const deploy = vi
     .fn<CampaignDeploymentRouteDependencies["deploy"]>()
     .mockResolvedValue(deployResult);
-  return { dependencies: { deployments, deploy }, deploy };
+  return { dependencies: { deployments, deploy, now: () => NOW }, deploy };
 }
 
 describe("POST /application-reviews/:applicationId/deployment", () => {
@@ -83,6 +85,7 @@ describe("POST /application-reviews/:applicationId/deployment", () => {
         state: "confirmed",
         attempts: 1,
         campaignId: CAMPAIGN_ID,
+        retryable: false,
         createdAt: AT,
         updatedAt: AT
       }
@@ -109,6 +112,7 @@ describe("POST /application-reviews/:applicationId/deployment", () => {
   it.each([
     ["application_not_found", 404],
     ["application_not_approved", 409],
+    ["deployment_in_progress", 409],
     ["owner_unresolved", 422],
     ["terms_unavailable", 422],
     ["wallet_required", 422],
@@ -183,12 +187,35 @@ describe("GET /application-reviews/:applicationId/deployment", () => {
         state: "failed",
         attempts: 2,
         lastError: "rate_unavailable",
+        retryable: true,
         createdAt: AT,
         updatedAt: AT
       }
     });
     // The internal correlation id never crosses the wire.
     expect(response.body).not.toContain(STORED_CORRELATION_ID);
+  });
+
+  it.each([
+    ["pending", AT, false],
+    ["confirmed", AT, false],
+    ["failed", AT, true],
+    // Updated 30 minutes before the injected clock: past the 10-minute threshold.
+    ["deploying", AT, true],
+    // Updated 5 minutes before the injected clock: still in progress.
+    ["deploying", "2026-10-06T12:25:00.000Z", false]
+  ] as const)("reports %s updated at %s as retryable=%s", async (state, updatedAt, retryable) => {
+    const stored = record({ state, attempts: 1, updatedAt });
+    const { dependencies } = route({ ok: true, value: { deployment: stored } }, deploymentsReading({ ok: true, value: stored }));
+    app = buildAppAs("ADMIN", { campaignDeployment: dependencies });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/application-reviews/${APPLICATION_ID}/deployment`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().deployment).toEqual(expect.objectContaining({ state, retryable }));
   });
 
   it("reports not_found truthfully when no deployment exists yet", async () => {

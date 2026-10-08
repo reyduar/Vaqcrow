@@ -11,6 +11,7 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
 import type { StellarAccountPort } from "../ports/stellar-account-port.js";
 import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
 import { RATE_SCALE, validateCampaignGuardrails } from "./campaign-guardrails.js";
+import { deploymentStaleCutoff, isDeploymentStale } from "./deployment-staleness.js";
 import { openCampaign } from "./open-campaign.js";
 import type { OpenCampaignErrorCode } from "./open-campaign.js";
 
@@ -35,6 +36,7 @@ export type DeployApprovedCampaignErrorCode =
   | "wallet_required"
   | "rate_unavailable"
   | "goal_limit_exceeded"
+  | "deployment_in_progress"
   | "unavailable";
 
 export type DeployApprovedCampaignResult =
@@ -57,6 +59,8 @@ export interface DeployApprovedCampaignDependencies {
   readonly tokenContractId: string;
   /** Best-effort approval notification; a failure never fails the deploy. */
   readonly notifications?: Pick<NotificationPublisherPort, "publish">;
+  /** The clock that decides whether a `deploying` attempt is abandoned (U8). */
+  readonly now: () => Date;
 }
 
 export interface DeployApprovedCampaignInput {
@@ -114,15 +118,31 @@ export async function deployApprovedCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
+  // A recent attempt still owns the row: say so honestly instead of a 503. An
+  // abandoned one (U8) falls through and is reclaimed by `beginAttempt`; that
+  // is safe because `openCampaign` adopts a vault it may already have deployed.
+  const now = dependencies.now();
+  if (existing.ok && existing.value.state === "deploying" && !isDeploymentStale(existing.value, now)) {
+    return { ok: false, error: { code: "deployment_in_progress" } };
+  }
+
   // Record the durable pending row before any external work, so a failure to
   // resolve terms or reach Testnet is observable as a failed attempt.
   const pending = await dependencies.deployments.markPending({ applicationId, correlationId });
   if (!pending.ok) return { ok: false, error: { code: "unavailable" } };
 
-  const begun = await dependencies.deployments.beginAttempt({ applicationId, correlationId });
+  const begun = await dependencies.deployments.beginAttempt({
+    applicationId,
+    correlationId,
+    staleBefore: deploymentStaleCutoff(now).toISOString()
+  });
   if (!begun.ok) {
-    // A concurrent or stuck attempt owns the row; do not mark it failed.
-    return { ok: false, error: { code: "unavailable" } };
+    // A concurrent attempt won the conditional update (or the row is no longer
+    // retryable); never mark it failed. Only a persistence failure is a 503.
+    return {
+      ok: false,
+      error: { code: begun.error.code === "state_conflict" ? "deployment_in_progress" : "unavailable" }
+    };
   }
 
   const owner = await resolveOwner(dependencies.smeRequests, applicationId);
@@ -199,7 +219,13 @@ export async function deployApprovedCampaign(
     campaignId: opened.value.campaign.campaignId,
     correlationId
   });
-  if (!confirmed.ok) return { ok: false, error: { code: "unavailable" } };
+  if (!confirmed.ok) {
+    if (confirmed.error.code !== "state_conflict") return { ok: false, error: { code: "unavailable" } };
+    // A stale reclaim superseded this attempt (U8): the reclaiming attempt owns
+    // the outcome and its notification. Report what the row says now: its
+    // confirmed record if the owner already finished, otherwise in progress.
+    return supersededOutcome(dependencies.deployments, applicationId);
+  }
 
   await publishApproved(dependencies.notifications, ownerUserId, applicationId);
 
@@ -242,7 +268,28 @@ function mapOpenCampaignError(code: OpenCampaignErrorCode): DeployApprovedCampai
 }
 
 /**
- * Records the failed attempt and returns the same sanitized refusal. Recording
+ * The honest answer for an attempt whose confirmation was superseded: the
+ * owning attempt's confirmed row (read, not re-written, and never re-notified
+ * from here), or `deployment_in_progress` while that attempt is still open.
+ */
+async function supersededOutcome(
+  deployments: CampaignDeploymentRepositoryPort,
+  applicationId: ApplicationId
+): Promise<DeployApprovedCampaignResult> {
+  const current = await deployments.findByApplicationId(applicationId);
+  if (current.ok && current.value.state === "confirmed") {
+    return { ok: true, value: { deployment: current.value } };
+  }
+  if (!current.ok && current.error.code === "unavailable") {
+    return { ok: false, error: { code: "unavailable" } };
+  }
+  return { ok: false, error: { code: "deployment_in_progress" } };
+}
+
+/**
+ * Records the failed attempt and returns the same sanitized refusal. A
+ * superseded attempt's write is refused by the repository (`state_conflict`,
+ * U8) and the refusal returned is unchanged. Recording
  * is best-effort: a failing write must not change the outcome the caller sees.
  */
 async function fail(

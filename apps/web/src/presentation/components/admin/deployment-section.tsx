@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { IconType } from "react-icons";
 import {
   IoAlertCircleOutline,
@@ -11,6 +11,7 @@ import {
 } from "react-icons/io5";
 import {
   DEPLOYMENT_COPY,
+  deploymentCanDeploy,
   deploymentDetails,
   deploymentPanelVisible,
   deploymentStatusFor
@@ -49,7 +50,8 @@ export interface DeploymentSectionProps {
  * narrow column (U2's slot). Hidden unless the review is approved or a
  * deployment record exists. The server deploys after an approval; this panel
  * only reads the persisted lifecycle, polls while it is open, and offers
- * Reintentar after a failure. `Bóveda confirmada / PyME publicada` is the only
+ * Reintentar when the server reports it retryable (a failure, or an attempt
+ * abandoned past its threshold, U8) and Desplegar when nothing is recorded. `Bóveda confirmada / PyME publicada` is the only
  * success-toned state, and every state shows text plus icon.
  */
 export function DeploymentSection({ context, reload, port, pollIntervalMs }: DeploymentSectionProps) {
@@ -86,7 +88,17 @@ export function DeploymentSection({ context, reload, port, pollIntervalMs }: Dep
           onRetry={() => void deployment.retry()}
         />
       ) : deployment.read?.kind === "missing" ? (
-        <Unresolved text={DEPLOYMENT_COPY.missing} onRefresh={deployment.refresh} />
+        <Unresolved text={DEPLOYMENT_COPY.missing} onRefresh={deployment.refresh}>
+          {deploymentCanDeploy(context.state, deployment.read) ? (
+            <Button
+              onPress={() => void deployment.retry()}
+              isLoading={deployment.retrying}
+              loadingLabel={DEPLOYMENT_COPY.deploying}
+            >
+              {DEPLOYMENT_COPY.deploy}
+            </Button>
+          ) : null}
+        </Unresolved>
       ) : deployment.errorCode !== null ? (
         <Unresolved text={DEPLOYMENT_COPY.readError} onRefresh={deployment.refresh} alert />
       ) : (
@@ -154,15 +166,28 @@ function DeploymentRecord({
   );
 }
 
-function Unresolved({ text, onRefresh, alert = false }: { text: string; onRefresh: () => void; alert?: boolean }) {
+function Unresolved({
+  text,
+  onRefresh,
+  alert = false,
+  children
+}: {
+  text: string;
+  onRefresh: () => void;
+  alert?: boolean;
+  children?: ReactNode;
+}) {
   return (
     <div className="flex flex-col items-start gap-2.5">
       <p role={alert ? "alert" : "status"} className="m-0 text-sm leading-normal">
         {text}
       </p>
-      <Button variant="secondary" onPress={onRefresh}>
-        {DEPLOYMENT_COPY.refresh}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2.5">
+        {children}
+        <Button variant="secondary" onPress={onRefresh}>
+          {DEPLOYMENT_COPY.refresh}
+        </Button>
+      </div>
     </div>
   );
 }

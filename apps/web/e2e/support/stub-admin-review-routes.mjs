@@ -14,7 +14,8 @@
  *   exactly `{ decisionId, outcome, reason, approvedLimitArs }` — an `actor` key is
  *   a 400 like the real route; `201`/`200` on replay; `409 state_conflict`.
  * - `GET`/`POST /application-reviews/:id/deployment` (`campaign-deployment.route.ts`):
- *   `{ deployment }`; a 404 before any deployment exists.
+ *   `{ deployment }` with the server-decided `retryable` (U8); a 404 before any
+ *   deployment exists; `409 deployment_in_progress` for a fresh attempt.
  * - `GET /storage/uploads?path=` (`storage.route.ts`): the private document's bytes.
  *
  * It is a test double, not a backend: the bearer token is required but never
@@ -181,6 +182,8 @@ function failedDeployment() {
     state: "failed",
     attempts: 1,
     lastError: "rate_unavailable",
+    // The real API decides `retryable` server-side (U8): a failed attempt is.
+    retryable: true,
     createdAt: DEPLOYMENT_CREATED_AT,
     updatedAt: DEPLOYMENT_UPDATED_AT
   };
@@ -229,7 +232,9 @@ export async function tryHandleAdminReviewRequest(request, response, method, pat
     resetAdminReviewFixtures();
     if (typeof body.state === "string" && REVIEW_STATES.has(body.state)) state = body.state;
     if (DECIDED_STATES.has(state)) latestDecision = seededDecision(state);
-    if (state === "approved") deployment = failedDeployment();
+    // `deployment: "none"` seeds an approval whose background deploy never
+    // recorded a row (U8), so the panel offers Desplegar.
+    if (state === "approved" && body.deployment !== "none") deployment = failedDeployment();
     response.writeHead(204, corsHeaders);
     response.end();
     return true;
@@ -411,12 +416,18 @@ export async function tryHandleAdminReviewRequest(request, response, method, pat
       sendJson(response, 409, { code: "application_not_approved" });
       return true;
     }
-    if (deployment === null || deployment.state === "failed") {
+    // A fresh `deploying` attempt still owns the row (U8): the real API answers 409.
+    if (deployment !== null && deployment.state === "deploying" && !deployment.retryable) {
+      sendJson(response, 409, { code: "deployment_in_progress" });
+      return true;
+    }
+    if (deployment === null || deployment.retryable) {
       deployment = {
         applicationId,
         state: "confirmed",
         attempts: (deployment?.attempts ?? 0) + 1,
         campaignId: CAMPAIGN_ID,
+        retryable: false,
         createdAt: deployment?.createdAt ?? DEPLOYMENT_CREATED_AT,
         updatedAt: DEPLOYMENT_CONFIRMED_AT
       };

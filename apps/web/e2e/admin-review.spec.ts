@@ -178,3 +178,15 @@ test("an already-approved application opens read-only with its deployment state"
   }
   await expect(page.getByText("Despliegue fallido", { exact: true })).toBeVisible();
 });
+
+test("an approval with no recorded deployment offers Desplegar, which confirms the vault (U8)", async ({ page, request }) => {
+  await request.post(`${STUB_API_BASE_URL}/__admin-review/seed`, { data: { state: "approved", deployment: "none" } });
+  await signInAsAdmin(page);
+  await page.goto(REVIEW_PATH);
+
+  await expect(page.getByRole("heading", { level: 2, name: "Despliegue de la bóveda" })).toBeVisible();
+  await expect(page.getByText(/^Todavía no hay un despliegue registrado/)).toBeVisible();
+  await page.getByRole("button", { name: "Desplegar" }).click();
+  await expect(page.getByText("Bóveda confirmada / PyME publicada", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desplegar" })).toHaveCount(0);
+});

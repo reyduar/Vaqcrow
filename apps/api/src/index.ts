@@ -210,13 +210,16 @@ const deployApproved =
             chain: campaign.chain,
             network: campaign.network,
             tokenContractId: campaign.tokenContractId,
-            notifications: notificationPublisher
+            notifications: notificationPublisher,
+            now: () => new Date()
           },
           input
         );
 
 const campaignDeployment =
-  deployApproved === undefined ? undefined : { deployments: deploymentRepository, deploy: deployApproved };
+  deployApproved === undefined
+    ? undefined
+    : { deployments: deploymentRepository, deploy: deployApproved, now: () => new Date() };
 
 const humanDecisionDeployment = deployApproved === undefined ? undefined : { onApproved: deployApproved };
 
