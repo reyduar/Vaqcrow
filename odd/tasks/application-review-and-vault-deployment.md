@@ -304,7 +304,7 @@ Ruta por tarea: cada work unit toca 2+ archivos no triviales → **delegado** (u
 - [x] **U5 — Sección 3 · Decisión humana.** Radiogroup, razón ≥ 10 con error inline, límite de solo lectura (D7), alertdialog «Cancelar / Confirmar», línea «Registrada por…», modo solo lectura si ya hay decisión, `409 state_conflict` honesto.
 - [x] **U6 — Panel de despliegue (D3).** Estados `Pendiente de confirmación` → `Desplegando bóveda` → `Bóveda confirmada / PyME publicada` / `Despliegue fallido`, **Reintentar**, **Ver detalle** y polling; códigos 422/503 con copy honesto.
 - [x] **U7 — Verificación y evidencia.** Stub e2e (contexto, veredictos, despliegue, storage), `pnpm run verify`, evidencia AC1/AC2 actualizada.
-- [ ] **U8 — Recuperar un despliegue trabado y desplegar explícitamente (API + web).** Un intento en `deploying` sin actualizarse durante más de un umbral (10 min por defecto, en el servidor) se puede reclamar con un UPDATE condicional (`state = 'deploying' AND updated_at < corte`); un intento fresco responde `409 deployment_in_progress` en lugar de `503`; `GET …/deployment` expone `retryable`; la UI ofrece **Reintentar** cuando `retryable` y **Desplegar** cuando la solicitud está aprobada sin registro. Sin migración. Decidido por el owner el 2026-10-08 («resolvé el despliegue»); umbral por defecto elegido por el parent.
+- [x] **U8 — Recuperar un despliegue trabado y desplegar explícitamente (API + web).** Un intento en `deploying` sin actualizarse durante más de un umbral (10 min por defecto, en el servidor) se puede reclamar con un UPDATE condicional (`state = 'deploying' AND updated_at < corte`); un intento fresco responde `409 deployment_in_progress` en lugar de `503`; `GET …/deployment` expone `retryable`; la UI ofrece **Reintentar** cuando `retryable` y **Desplegar** cuando la solicitud está aprobada sin registro. Sin migración. Decidido por el owner el 2026-10-08 («resolvé el despliegue»); umbral por defecto elegido por el parent.
 
 Forecast: ~2.000–2.600 líneas autoradas en total (por encima de ~400).
 
@@ -321,6 +321,7 @@ Estrategia elegida por el owner (2026-10-07): **`feature-branch-chain`**. El tra
 | U5 | `…vault-06-decision-section` | `91999f3` + registro | #458 | `-05` | ver PR |
 | U6 | `…vault-07-deployment-panel` | `398627c` + registro | #459 | `-06` | ver PR |
 | U7 | `…vault-08-verification-evidence` | `3dac970` + registro | #460 | `-07` | ver PR |
+| U8 | `…vault-09-stale-deployment-recovery` | `b4b831b`, `d67e351` + registro | #461 | tracker | ver PR |
 
 `size:exception` de U1/U2: una sola pasada de slicing no encontró un corte cohesivo bajo 400 líneas (U1: la API sola son ~968; U2: la capa de datos sola supera 400; los tests son el 57 % / 43 % de cada slice).
 
@@ -562,7 +563,7 @@ Ruta: **delegado** (un writer; puerto + adaptador + caso de uso + ruta + wiring 
   - **Verificación observada (2026-10-07).** Foco: 2 archivos → **45 passed**. `pnpm --filter @vaqcrow/api test` → **96 archivos, 2178 passed**. `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **181 archivos, 1815 passed**. `pnpm --filter @vaqcrow/web exec playwright test admin-review.spec.ts` → **4 passed**. `pnpm run verify` → **exit 0** en la primera corrida (1 warning preexistente `_request`; boundaries sin violaciones, 927 módulos / 3000 dependencias).
 - **Límite explícito.** Sólo dobles: ni Supabase local/remoto (los filtros `updated_at < corte`, `state = 'deploying'` y `last_correlation_id` se probaron contra el fake del cliente, no contra Postgres), ni Testnet, ni la API desplegada. Sin migración.
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `d67e351 fix(api): recover stale vault deployments and add explicit deploy`.
 
 ## Guardrails adoptados
 
