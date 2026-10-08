@@ -127,6 +127,9 @@ La bóveda de campaña se habilita con **cinco variables**, y dos de ellas son u
 
 La fábrica de Testnet tiene como `owner` la identidad `vaqcrow-testnet`, con clave pública `GBCOTYYE3KGV745LQ4MELTP4IK2Z2RX2OESRNWP2LY6XLEI73X3PX2ZG` (leída de la red). La correspondencia entre `STELLAR_PLATFORM_SECRET_KEY` y ese `owner` **quedó probada** el 2026-09-25, cuando la API abrió una campaña contra el despliegue hosteado (`POST /campaigns` → `201`, bóveda `CBANYZNPLW…`): un `factory.deploy()` exitoso sólo es posible si la clave de plataforma es el `owner` almacenado, que es inmutable. La evidencia y las tres capas de verificación están en [[docs/planning/cloud-environment-configuration-evidence|Evidencia de la configuración del entorno en la nube]].
 
+> [!info] Fábrica con tope por inversor lista, no activa (2026-10-08)
+> Existe una segunda fábrica en Testnet, `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J`, con el mismo `owner` y el wasm de bóveda con el tope `goal/10` (#410/T3b). La API hosteada sigue usando `CDVSSQ55…5GXJ` a propósito: `main` aún no respeta el tope. Se activa re-apuntando `STELLAR_CAMPAIGN_FACTORY_ID` cuando la pila llegue a `main` (#438). Registro: [[docs/planning/application-review-and-vault-deployment-evidence|Evidencia de #410]] §10.7.
+
 ## 6. Red local vs Testnet: dos mundos que no se mezclan
 
 | | Red local (Stellar Quickstart) | Stellar Testnet |
