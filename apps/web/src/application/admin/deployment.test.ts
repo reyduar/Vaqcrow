@@ -3,6 +3,7 @@ import type { AdminDeployment, DeployFailureCode } from "@/application/ports/adm
 import {
   DEPLOYMENT_COPY,
   deployFailureMessage,
+  deploymentCanDeploy,
   deploymentDetails,
   deploymentErrorText,
   deploymentPanelVisible,
@@ -17,6 +18,7 @@ const BASE: AdminDeployment = {
   attempts: 0,
   campaignId: null,
   lastError: null,
+  retryable: false,
   createdAt: "2026-10-07T15:30:00.000Z",
   updatedAt: "2026-10-07T15:31:00.000Z"
 };
@@ -64,11 +66,22 @@ describe("deploymentStatusFor", () => {
     expect(new Set(icons).size).toBe(4);
   });
 
-  it("offers Reintentar only for a failed deployment", () => {
-    expect(deploymentStatusFor({ ...BASE, state: "failed" }).canRetry).toBe(true);
+  it("offers Reintentar exactly when the server reports the deployment retryable", () => {
+    expect(deploymentStatusFor({ ...BASE, state: "failed", retryable: true }).canRetry).toBe(true);
+    expect(deploymentStatusFor({ ...BASE, state: "deploying", retryable: true }).canRetry).toBe(true);
     for (const state of ["pending", "deploying", "confirmed"] as const) {
       expect(deploymentStatusFor({ ...BASE, state }).canRetry).toBe(false);
     }
+  });
+
+  it("describes a stale deploying attempt honestly, without claiming a failure on-chain or moved funds (U8)", () => {
+    const view = deploymentStatusFor({ ...BASE, state: "deploying", retryable: true });
+    expect(view.label).toBe(DEPLOYMENT_COPY.staleLabel);
+    expect(view.label).not.toBe("Desplegando bóveda");
+    expect(view.tone).not.toBe("success");
+    expect(view.message).toMatch(/no terminó/);
+    expect(view.message).toMatch(/Reintentar/);
+    expect(view.message).not.toMatch(/falló en|fondos|se transfiri|confirmada en/i);
   });
 
   it("never claims confirmation before the confirmed state", () => {
@@ -136,6 +149,12 @@ describe("deployFailureMessage", () => {
     for (const code of codes) expect(deployFailureMessage(code)).toMatch(/no se (completó|reintentó)|No pudimos confirmar/);
   });
 
+  it("says a deployment is already in progress without claiming its outcome (U8)", () => {
+    const message = deployFailureMessage("deployment_in_progress");
+    expect(message).toMatch(/en curso/);
+    expect(message).not.toMatch(/confirmada|falló|fondos/i);
+  });
+
   it("reuses the honest reason for a 422 refusal", () => {
     expect(deployFailureMessage("terms_unavailable")).toContain(deploymentErrorText("terms_unavailable"));
   });
@@ -168,9 +187,28 @@ describe("deploymentShouldPoll", () => {
   it("polls only while the deployment is pending or deploying", () => {
     expect(deploymentShouldPoll(record({ state: "pending" }))).toBe(true);
     expect(deploymentShouldPoll(record({ state: "deploying" }))).toBe(true);
+    // A stale attempt waits for the admin's Reintentar instead of polling forever (U8).
+    expect(deploymentShouldPoll(record({ state: "deploying", retryable: true }))).toBe(false);
     expect(deploymentShouldPoll(record({ state: "confirmed" }))).toBe(false);
     expect(deploymentShouldPoll(record({ state: "failed" }))).toBe(false);
     expect(deploymentShouldPoll({ kind: "missing" })).toBe(false);
     expect(deploymentShouldPoll(undefined)).toBe(false);
+  });
+});
+
+describe("deploymentCanDeploy (U8)", () => {
+  it("offers Desplegar only for an approved review with no deployment recorded", () => {
+    expect(deploymentCanDeploy("approved", { kind: "missing" })).toBe(true);
+    expect(deploymentCanDeploy("approved", undefined)).toBe(false);
+    expect(deploymentCanDeploy("approved", record({}))).toBe(false);
+    for (const state of ["draft", "awaiting_assessment", "human_review", "changes_requested", "rejected"] as const) {
+      expect(deploymentCanDeploy(state, { kind: "missing" })).toBe(false);
+    }
+  });
+
+  it("keeps the missing copy honest about what Desplegar does", () => {
+    expect(DEPLOYMENT_COPY.deploy).toBe("Desplegar");
+    expect(DEPLOYMENT_COPY.deploying).toBe("Desplegando…");
+    expect(DEPLOYMENT_COPY.missing).not.toMatch(/confirmada|fondos/i);
   });
 });

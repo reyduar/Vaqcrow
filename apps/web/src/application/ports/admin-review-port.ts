@@ -128,7 +128,8 @@ export type CampaignDeploymentState = "pending" | "deploying" | "confirmed" | "f
  * Read-only projection of `GET /application-reviews/:applicationId/deployment`.
  * `lastError` is the API's sanitized code (never provider text) and
  * `campaignId` only exists once the deployment is confirmed; both are `null`
- * when the API omits them.
+ * when the API omits them. `retryable` (U8) is decided by the server: the last
+ * attempt failed, or a `deploying` attempt was abandoned past its threshold.
  */
 export interface AdminDeployment {
   readonly applicationId: string;
@@ -136,6 +137,7 @@ export interface AdminDeployment {
   readonly attempts: number;
   readonly campaignId: string | null;
   readonly lastError: string | null;
+  readonly retryable: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -147,13 +149,15 @@ export type GetDeploymentResult =
 
 /**
  * Refusals of `POST /application-reviews/:applicationId/deployment` (deploy or
- * retry): 404 `application_not_found`, 409 `application_not_approved`, the
+ * retry): 404 `application_not_found`, 409 `application_not_approved`, 409
+ * `deployment_in_progress` (a recent attempt still owns the row, U8), the
  * 422 preconditions, the 503 `rate_unavailable`/`unavailable`, and the
  * transport's `network`.
  */
 export type DeployFailureCode =
   | "application_not_found"
   | "application_not_approved"
+  | "deployment_in_progress"
   | "owner_unresolved"
   | "terms_unavailable"
   | "wallet_required"

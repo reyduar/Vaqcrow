@@ -50,6 +50,7 @@ const DEPLOYMENT: AdminDeployment = {
   attempts: 0,
   campaignId: null,
   lastError: null,
+  retryable: false,
   createdAt: "2026-10-07T15:30:00.000Z",
   updatedAt: "2026-10-07T15:31:00.000Z"
 };
@@ -109,7 +110,8 @@ async function deploymentSection() {
 
 function withState(state: AdminDeployment["state"], patch: Partial<AdminDeployment> = {}) {
   const port = new FakePort();
-  port.read = () => ({ ok: true, deployment: { ...DEPLOYMENT, state, ...patch } });
+  // The API reports a failed attempt as retryable; a patch may override it.
+  port.read = () => ({ ok: true, deployment: { ...DEPLOYMENT, state, retryable: state === "failed", ...patch } });
   return port;
 }
 
@@ -200,7 +202,7 @@ describe("admin review · deployment panel (D3)", () => {
     expect(within(section).queryByText("Bóveda confirmada / PyME publicada")).not.toBeInTheDocument();
   });
 
-  it("says honestly that no deployment is recorded yet, without deploying", async () => {
+  it("says honestly that no deployment is recorded yet and offers Desplegar without deploying on its own", async () => {
     const port = new FakePort();
     port.read = () => ({ ok: false, code: "not_found" });
     renderReview(port);
@@ -209,8 +211,59 @@ describe("admin review · deployment panel (D3)", () => {
     expect(await within(section).findByText(/Todavía no hay un despliegue registrado/)).toBeInTheDocument();
     expect(within(section).queryByText("Pendiente de confirmación")).not.toBeInTheDocument();
     expect(within(section).queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "Desplegar" })).toBeEnabled();
     expect(within(section).getByRole("button", { name: "Actualizar" })).toBeInTheDocument();
     expect(port.deployCalls).toBe(0);
+  });
+
+  it("Desplegar posts once, is disabled in flight and shows the resulting state (U8)", async () => {
+    const port = new FakePort();
+    port.read = () => ({ ok: false, code: "not_found" });
+    let resolveDeploy: (value: DeployResult) => void = () => undefined;
+    port.deployResult = () => new Promise<DeployResult>((resolve) => (resolveDeploy = resolve));
+    renderReview(port);
+    const section = await deploymentSection();
+
+    fireEvent.click(await within(section).findByRole("button", { name: "Desplegar" }));
+    const busy = await within(section).findByRole("button", { name: "Desplegando…" });
+    expect(busy).toBeDisabled();
+    fireEvent.click(busy);
+    expect(port.deployCalls).toBe(1);
+
+    const confirmed = { ...DEPLOYMENT, state: "confirmed" as const, attempts: 1, campaignId: CAMPAIGN_ID };
+    port.read = () => ({ ok: true, deployment: confirmed });
+    resolveDeploy({ ok: true, deployment: confirmed });
+
+    expect(await within(section).findByText("Bóveda confirmada / PyME publicada")).toBeInTheDocument();
+  });
+
+  it("offers Reintentar for a stale deploying attempt with honest copy (U8)", async () => {
+    renderReview(withState("deploying", { attempts: 1, retryable: true }));
+    const section = await deploymentSection();
+
+    expect(await within(section).findByText("Despliegue sin finalizar")).toBeInTheDocument();
+    expect(within(section).queryByText("Desplegando bóveda")).not.toBeInTheDocument();
+    expect(within(section).getByText(/no terminó/)).toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "Reintentar" })).toBeEnabled();
+  });
+
+  it("does not offer Reintentar for a fresh deploying attempt", async () => {
+    renderReview(withState("deploying", { attempts: 1 }));
+    const section = await deploymentSection();
+
+    expect(await within(section).findByText("Desplegando bóveda")).toBeInTheDocument();
+    expect(within(section).queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+  });
+
+  it("explains a deployment already in progress after Reintentar (U8)", async () => {
+    const port = withState("deploying", { attempts: 1, retryable: true });
+    port.deployResult = () => ({ ok: false, code: "deployment_in_progress" });
+    renderReview(port);
+    const section = await deploymentSection();
+
+    fireEvent.click(await within(section).findByRole("button", { name: "Reintentar" }));
+    expect(await within(section).findByRole("alert")).toHaveTextContent(/en curso/);
+    expect(within(section).queryByText("Bóveda confirmada / PyME publicada")).not.toBeInTheDocument();
   });
 
   it("shows a read failure without claiming any state, and re-reads on Actualizar", async () => {

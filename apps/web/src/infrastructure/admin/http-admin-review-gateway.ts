@@ -217,12 +217,17 @@ function parseDeployment(data: unknown, applicationId: string): AdminDeployment 
   const campaignId = optionalString(record["campaignId"]);
   if (lastError === undefined || campaignId === undefined) return undefined;
   if (campaignId !== null && !campaignIdSchema.safeParse(campaignId).success) return undefined;
+  // `retryable` is the server's call (U8); an API that predates it only ever
+  // allowed a retry after a failure, so its absence falls back to that.
+  const retryable = record["retryable"] === undefined ? state === "failed" : record["retryable"];
+  if (typeof retryable !== "boolean") return undefined;
   return {
     applicationId,
     state: state as CampaignDeploymentState,
     attempts,
     campaignId,
     lastError,
+    retryable,
     createdAt,
     updatedAt
   };
@@ -231,7 +236,7 @@ function parseDeployment(data: unknown, applicationId: string): AdminDeployment 
 function deployFailure(status: number, data: unknown): DeployFailureCode {
   const code = asRecord(data)?.["code"];
   if (status === 404) return "application_not_found";
-  if (status === 409) return "application_not_approved";
+  if (status === 409) return code === "deployment_in_progress" ? "deployment_in_progress" : "application_not_approved";
   if (status === 422 && typeof code === "string" && DEPLOY_PRECONDITIONS.has(code)) return code as DeployFailureCode;
   if (status === 503 && code === "rate_unavailable") return "rate_unavailable";
   return "unavailable";

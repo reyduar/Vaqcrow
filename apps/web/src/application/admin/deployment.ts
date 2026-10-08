@@ -18,6 +18,11 @@ import { formatAssessmentTimestamp } from "./assessment";
  * pending is never confirmed); every state carries its own icon and text, so
  * colour is never the only signal. The API's `lastError` is a sanitized code:
  * it maps to fixed Spanish copy and an unknown value is never echoed.
+ *
+ * U8: Reintentar follows the server's `retryable` (a failure, or a `deploying`
+ * attempt abandoned past the server-side threshold, shown as
+ * `Despliegue sin finalizar` without claiming any on-chain outcome), and an
+ * approved review with no recorded deployment offers Desplegar.
  */
 
 export const DEPLOYMENT_COPY = Object.freeze({
@@ -25,12 +30,15 @@ export const DEPLOYMENT_COPY = Object.freeze({
   testnet: "TESTNET",
   loading: "Consultando el estado del despliegue…",
   missing:
-    "Todavía no hay un despliegue registrado para esta aprobación. Puede tardar unos segundos en aparecer; actualizá para volver a consultar.",
+    "Todavía no hay un despliegue registrado para esta aprobación. Puede tardar unos segundos en aparecer: actualizá para volver a consultar o desplegá la bóveda ahora.",
   readError:
     "No pudimos leer el estado del despliegue. No sabemos si la bóveda está confirmada; actualizá para volver a consultar.",
   refresh: "Actualizar",
   retry: "Reintentar",
   retrying: "Reintentando…",
+  deploy: "Desplegar",
+  deploying: "Desplegando…",
+  staleLabel: "Despliegue sin finalizar",
   showDetails: "Ver detalle",
   hideDetails: "Ocultar detalle",
   unknownError: "No quedó registrado el motivo del fallo.",
@@ -72,21 +80,34 @@ const ERROR_TEXT: Readonly<Record<string, string>> = Object.freeze({
   application_not_approved: "La solicitud no figuraba como aprobada."
 });
 
-const STATUS: Readonly<Record<CampaignDeploymentState, Omit<DeploymentStatusView, "message" | "icon">>> = Object.freeze({
-  pending: { label: "Pendiente de confirmación", tone: "neutral", canRetry: false },
-  deploying: { label: "Desplegando bóveda", tone: "info", canRetry: false },
-  confirmed: { label: "Bóveda confirmada / PyME publicada", tone: "success", canRetry: false },
-  failed: { label: "Despliegue fallido", tone: "critical", canRetry: true }
+const STATUS: Readonly<Record<CampaignDeploymentState, Pick<DeploymentStatusView, "label" | "tone">>> = Object.freeze({
+  pending: { label: "Pendiente de confirmación", tone: "neutral" },
+  deploying: { label: "Desplegando bóveda", tone: "info" },
+  confirmed: { label: "Bóveda confirmada / PyME publicada", tone: "success" },
+  failed: { label: "Despliegue fallido", tone: "critical" }
 });
+
+/** A stale attempt: it is not known to have failed on-chain, only that it did not finish. */
+const STALE_MESSAGE =
+  "El último intento de despliegue no terminó y la bóveda no figura confirmada. Podés usar Reintentar: si la bóveda ya se había desplegado en Stellar Testnet, se reutiliza sin desplegar otra.";
 
 /** Shown while the review is approved, or whenever a deployment record exists. */
 export function deploymentPanelVisible(state: ApplicationReviewState, read: DeploymentRead | undefined): boolean {
   return state === "approved" || read?.kind === "record";
 }
 
-/** Polling only makes sense while the outcome is still open. */
+/** Desplegar: the review is approved and the server has no deployment recorded for it (a 404). */
+export function deploymentCanDeploy(state: ApplicationReviewState, read: DeploymentRead | undefined): boolean {
+  return state === "approved" && read?.kind === "missing";
+}
+
+/**
+ * Polling only makes sense while the outcome is still open; an abandoned
+ * attempt (retryable) waits for the admin's Reintentar instead.
+ */
 export function deploymentShouldPoll(read: DeploymentRead | undefined): boolean {
-  return read?.kind === "record" && (read.deployment.state === "pending" || read.deployment.state === "deploying");
+  if (read?.kind !== "record" || read.deployment.retryable) return false;
+  return read.deployment.state === "pending" || read.deployment.state === "deploying";
 }
 
 /** Honest Spanish text for a sanitized failure code; an unknown or absent code is never echoed. */
@@ -96,7 +117,16 @@ export function deploymentErrorText(code: string | null): string {
 
 export function deploymentStatusFor(deployment: AdminDeployment): DeploymentStatusView {
   const base = STATUS[deployment.state];
-  return { ...base, icon: deployment.state, message: statusMessage(deployment) };
+  if (deployment.state === "deploying" && deployment.retryable) {
+    return {
+      label: DEPLOYMENT_COPY.staleLabel,
+      tone: "neutral",
+      icon: deployment.state,
+      canRetry: true,
+      message: STALE_MESSAGE
+    };
+  }
+  return { ...base, canRetry: deployment.retryable, icon: deployment.state, message: statusMessage(deployment) };
 }
 
 function statusMessage(deployment: AdminDeployment): string {
@@ -119,6 +149,8 @@ export function deployFailureMessage(code: DeployFailureCode): string {
       return "No encontramos la solicitud, así que no se reintentó el despliegue.";
     case "application_not_approved":
       return "La solicitud ya no figura como aprobada, así que no se reintentó el despliegue.";
+    case "deployment_in_progress":
+      return "Ya hay un intento de despliegue en curso, así que no se inició otro. Actualizamos el estado; esperá a que termine.";
     case "unavailable":
     case "network":
       return "No pudimos confirmar el resultado del reintento. Revisá el estado actualizado antes de volver a intentar.";

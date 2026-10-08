@@ -19,6 +19,7 @@ const BASE: AdminDeployment = {
   attempts: 0,
   campaignId: null,
   lastError: null,
+  retryable: false,
   createdAt: "2026-10-07T15:30:00.000Z",
   updatedAt: "2026-10-07T15:30:00.000Z"
 };
@@ -173,6 +174,60 @@ describe("useAdminDeployment", () => {
     await act(() => result.current.retry());
     expect(result.current.message).toMatch(/no se completó/);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops polling a stale deploying attempt the server reports as retryable (U8)", async () => {
+    const { port, calls } = portOf(() => ({ ok: true, deployment: { ...BASE, state: "deploying", retryable: true } }));
+    const { result } = renderHook(
+      () => useAdminDeployment(port, APPLICATION_ID, "approved", { reload: vi.fn(), pollIntervalMs: POLL_MS }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.read?.kind).toBe("record"));
+    const reads = calls.get;
+    await act(() => pause(POLL_MS * 5));
+    expect(calls.get).toBe(reads);
+  });
+
+  it("deploys from a missing read with the same single POST, then re-reads (U8)", async () => {
+    let read: GetDeploymentResult = { ok: false, code: "not_found" };
+    const confirmed: AdminDeployment = { ...BASE, state: "confirmed", attempts: 1, campaignId: "camp-1" };
+    const { port, calls } = portOf(
+      () => read,
+      () => {
+        read = { ok: true, deployment: confirmed };
+        return { ok: true, deployment: confirmed };
+      }
+    );
+    const reload = vi.fn();
+    const { result } = renderHook(
+      () => useAdminDeployment(port, APPLICATION_ID, "approved", { reload, pollIntervalMs: POLL_MS }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.read).toEqual({ kind: "missing" }));
+
+    await act(() => result.current.retry());
+
+    expect(calls.post).toBe(1);
+    await waitFor(() => expect(result.current.read).toEqual({ kind: "record", deployment: confirmed }));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains deployment_in_progress honestly and re-reads the panel (U8)", async () => {
+    const { port, calls } = portOf(
+      () => ({ ok: true, deployment: { ...BASE, state: "failed", retryable: true } }),
+      () => ({ ok: false, code: "deployment_in_progress" })
+    );
+    const { result } = renderHook(
+      () => useAdminDeployment(port, APPLICATION_ID, "approved", { reload: vi.fn(), pollIntervalMs: POLL_MS }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.read?.kind).toBe("record"));
+    const reads = calls.get;
+
+    await act(() => result.current.retry());
+
+    expect(result.current.message).toMatch(/en curso/);
+    expect(calls.get).toBeGreaterThan(reads);
   });
 
   it("fetches nothing without a port", () => {

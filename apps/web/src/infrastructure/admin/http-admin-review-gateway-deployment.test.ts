@@ -11,6 +11,7 @@ const WIRE_CONFIRMED = {
   state: "confirmed",
   attempts: 1,
   campaignId: CAMPAIGN_ID,
+  retryable: false,
   createdAt: "2026-10-07T15:30:00.000Z",
   updatedAt: "2026-10-07T15:31:00.000Z"
 };
@@ -20,6 +21,7 @@ const WIRE_FAILED = {
   state: "failed",
   attempts: 2,
   lastError: "wallet_required",
+  retryable: true,
   createdAt: "2026-10-07T15:30:00.000Z",
   updatedAt: "2026-10-07T15:32:00.000Z"
 };
@@ -64,9 +66,35 @@ describe("HttpAdminReviewGateway.getDeployment", () => {
         attempts: 2,
         campaignId: null,
         lastError: "wallet_required",
+        retryable: true,
         createdAt: "2026-10-07T15:30:00.000Z",
         updatedAt: "2026-10-07T15:32:00.000Z"
       }
+    });
+  });
+
+  it("keeps the server's retryable for a stale deploying attempt (U8)", async () => {
+    const stale = { ...WIRE_CONFIRMED, state: "deploying", campaignId: undefined, retryable: true };
+    const { client } = fakeClient({ status: 200, data: { deployment: stale } });
+    const result = await new HttpAdminReviewGateway(client).getDeployment(APPLICATION_ID);
+    expect(result).toEqual({
+      ok: true,
+      deployment: expect.objectContaining({ state: "deploying", retryable: true })
+    });
+  });
+
+  it("derives retryable from a failed state when an older API omits it, and refuses a non-boolean", async () => {
+    const withoutRetryable: Record<string, unknown> = { ...WIRE_FAILED };
+    delete withoutRetryable["retryable"];
+    const older = fakeClient({ status: 200, data: { deployment: withoutRetryable } });
+    expect(await new HttpAdminReviewGateway(older.client).getDeployment(APPLICATION_ID)).toEqual({
+      ok: true,
+      deployment: expect.objectContaining({ state: "failed", retryable: true })
+    });
+    const malformed = fakeClient({ status: 200, data: { deployment: { ...WIRE_FAILED, retryable: "yes" } } });
+    expect(await new HttpAdminReviewGateway(malformed.client).getDeployment(APPLICATION_ID)).toEqual({
+      ok: false,
+      code: "unavailable"
     });
   });
 
@@ -147,6 +175,14 @@ describe("HttpAdminReviewGateway.deploy", () => {
     expect(await new HttpAdminReviewGateway(notApproved.client).deploy(APPLICATION_ID)).toEqual({
       ok: false,
       code: "application_not_approved"
+    });
+  });
+
+  it("maps the 409 deployment_in_progress to its own code (U8)", async () => {
+    const inProgress = fakeClient({ status: 409, data: { code: "deployment_in_progress" } });
+    expect(await new HttpAdminReviewGateway(inProgress.client).deploy(APPLICATION_ID)).toEqual({
+      ok: false,
+      code: "deployment_in_progress"
     });
   });
 

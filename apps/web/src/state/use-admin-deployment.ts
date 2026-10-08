@@ -15,10 +15,12 @@ import type { AdminReviewPort } from "@/application/ports/admin-review-port";
  * only while the deployment is `pending`/`deploying`; a confirmed, failed or
  * missing read, an unmounted panel or a hidden tab stop it.
  *
- * `retry` is the D3 Reintentar: one `POST …/deployment` at a time (a ref
- * guards double presses before React re-renders), then it revalidates the
- * panel and the review context. A refusal keeps an honest message; it never
- * claims a confirmed vault.
+ * `retry` is the D3 Reintentar and, with no deployment recorded, the U8
+ * Desplegar: the same `POST …/deployment`, one at a time (a ref guards double
+ * presses before React re-renders), then it revalidates the panel and the
+ * review context. A refusal keeps an honest message (including
+ * `deployment_in_progress`, after which the re-read shows the live attempt);
+ * it never claims a confirmed vault.
  */
 
 export const DEFAULT_DEPLOYMENT_POLL_MS = 4000;
