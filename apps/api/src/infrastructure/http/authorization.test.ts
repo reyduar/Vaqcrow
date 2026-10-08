@@ -10,8 +10,10 @@ type Allowed = readonly Role[] | "public" | "any";
 // Written independently of route-policy.ts on purpose: this is the spec table.
 const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
-  // Public marketplace listing (#414/WU1): reachable without a token.
+  // Public marketplace listing (#414/WU1) and campaign image (#414/WU3):
+  // reachable without a token.
   ["GET", "/marketplace/campaigns", "public"],
+  ["GET", "/marketplace/campaigns/:campaignId/image", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
@@ -98,9 +100,21 @@ function buildFullApp(auth?: AuthDependency): {
     notification: stub,
     completenessCheck: stub,
     rateTable: stub,
-    // The public marketplace route is actually invoked by the matrix (unlike
-    // the other stubs), so its repository must answer an empty list.
-    marketplace: { campaigns: { listPublished: async () => ({ ok: true as const, value: [] }) } },
+    // The public marketplace routes are actually invoked by the matrix (unlike
+    // the other stubs), so the repository answers an empty list and a real image
+    // descriptor, and the storage port returns one byte.
+    marketplace: {
+      campaigns: {
+        listPublished: async () => ({ ok: true as const, value: [] }),
+        findPublishedImage: async () => ({
+          ok: true as const,
+          value: { objectPath: "owner/photo/a.png", contentType: "image/png" }
+        })
+      },
+      storage: {
+        downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array([1]), contentType: "image/png" } })
+      }
+    },
     favorite: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})

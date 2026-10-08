@@ -1,6 +1,7 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { RiskBand } from "@vaqcrow/contracts";
 import type {
+  MarketplaceCampaignImageRecord,
   MarketplaceCampaignRateSnapshot,
   MarketplaceCampaignRecord,
   MarketplaceCampaignRepositoryPort,
@@ -9,6 +10,8 @@ import type {
 
 const MARKETPLACE_VIEW = "marketplace_campaign";
 const RISK_BANDS: readonly RiskBand[] = ["low", "medium", "high"];
+/** The only content types the view exposes as a card image (#414/WU3). */
+const IMAGE_CONTENT_TYPES: readonly string[] = ["image/jpeg", "image/png"];
 const NUMERIC_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
 
 /**
@@ -41,6 +44,28 @@ export class SupabaseMarketplaceCampaignRepository implements MarketplaceCampaig
     }
   }
 
+  async findPublishedImage(
+    campaignId: string
+  ): Promise<MarketplaceCampaignRepositoryResult<MarketplaceCampaignImageRecord | undefined>> {
+    try {
+      const { data, error } = await this.client
+        .from(MARKETPLACE_VIEW)
+        .select("image_object_path,image_content_type")
+        .eq("campaign_id", campaignId)
+        .maybeSingle();
+
+      if (error) return { ok: false, error: this.toError(error) };
+      // No row means the campaign is not published (or does not exist); a row
+      // with a null image path means the PyME has no image document. Both are
+      // `undefined`, which the use case maps to a 404.
+      if (data === null || data === undefined) return { ok: true, value: undefined };
+
+      return { ok: true, value: this.imageDescriptor(this.asRecord(data)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   private toRecord(row: unknown): MarketplaceCampaignRecord {
     const value = this.asRecord(row);
     const rateSnapshot = this.toRateSnapshot(value);
@@ -56,8 +81,31 @@ export class SupabaseMarketplaceCampaignRepository implements MarketplaceCampaig
       riskBand: this.riskBand(value["risk_band"]),
       riskConfidence: this.optionalNumber(value["risk_confidence"]),
       closeDate: this.text(value["deadline"]),
+      hasImage: this.imageDescriptor(value) !== undefined,
       ...(rateSnapshot === undefined ? {} : { rateSnapshot })
     };
+  }
+
+  /**
+   * Maps the view's image columns. The view emits the two columns all-or-none
+   * from one lateral row, so a partially-written pair (which the view cannot
+   * produce) throws rather than half-mapping; an unexpected content type also
+   * throws, because the view constrains it to `image/jpeg`/`image/png`.
+   */
+  private imageDescriptor(value: Record<string, unknown>): MarketplaceCampaignImageRecord | undefined {
+    const objectPath = value["image_object_path"];
+    const contentType = value["image_content_type"];
+    const pathAbsent = objectPath === null || objectPath === undefined;
+    const typeAbsent = contentType === null || contentType === undefined;
+
+    if (pathAbsent && typeAbsent) return undefined;
+    if (typeof objectPath !== "string" || objectPath.length === 0) {
+      throw new Error("Malformed image object path");
+    }
+    if (typeof contentType !== "string" || !IMAGE_CONTENT_TYPES.includes(contentType)) {
+      throw new Error("Malformed image content type");
+    }
+    return { objectPath, contentType };
   }
 
   /**

@@ -38,7 +38,24 @@ export interface MarketplaceCampaignRecord {
   readonly riskConfidence: number | null;
   /** The campaign's ISO deadline, from `campaign.deadline`. */
   readonly closeDate: string;
+  /**
+   * Whether the campaign's PyME has at least one image document. The listing
+   * turns this into the API-relative `imageUrl`; the object path itself is
+   * never part of the card.
+   */
+  readonly hasImage: boolean;
   readonly rateSnapshot?: MarketplaceCampaignRateSnapshot;
+}
+
+/**
+ * The first image document of a published campaign's PyME (#414/WU3): the
+ * server-owned storage object path and its stored content type. It is resolved
+ * only for the API to read the bytes; neither field is ever returned to a
+ * caller.
+ */
+export interface MarketplaceCampaignImageRecord {
+  readonly objectPath: string;
+  readonly contentType: string;
 }
 
 export type MarketplaceCampaignRepositoryError = { readonly code: "unavailable" };
@@ -50,4 +67,15 @@ export type MarketplaceCampaignRepositoryResult<T> =
 export interface MarketplaceCampaignRepositoryPort {
   /** Every published campaign, ordered by soonest deadline first. */
   listPublished(): Promise<MarketplaceCampaignRepositoryResult<readonly MarketplaceCampaignRecord[]>>;
+
+  /**
+   * The first image descriptor of a **published** campaign (confirmed vault on
+   * an `open` campaign), or `undefined` when the campaign is not published or
+   * carries no image. The published filter lives in the view, so an unpublished
+   * campaign resolves to `undefined` here exactly as it is absent from
+   * `listPublished`.
+   */
+  findPublishedImage(
+    campaignId: string
+  ): Promise<MarketplaceCampaignRepositoryResult<MarketplaceCampaignImageRecord | undefined>>;
 }

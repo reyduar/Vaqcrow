@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(47);
 
 -- Public marketplace campaign read model (Feature #414, WU1).
 --
@@ -34,6 +34,10 @@ select has_column('public', 'marketplace_campaign', 'risk_confidence', 'has a ri
 select has_column('public', 'marketplace_campaign', 'fx_rate_version', 'has an fx_rate_version column');
 select has_column('public', 'marketplace_campaign', 'usd_to_ars', 'has a usd_to_ars column');
 select has_column('public', 'marketplace_campaign', 'stroops_per_usd', 'has a stroops_per_usd column');
+select has_column('public', 'marketplace_campaign', 'image_object_path', 'has an image_object_path column (#414/WU3)');
+select has_column('public', 'marketplace_campaign', 'image_content_type', 'has an image_content_type column (#414/WU3)');
+select col_type_is('public', 'marketplace_campaign', 'image_object_path', 'text', 'image_object_path is text');
+select col_type_is('public', 'marketplace_campaign', 'image_content_type', 'text', 'image_content_type is text');
 
 -- Access control: nobody but service_role ------------------------------------
 
@@ -119,6 +123,66 @@ values (
   '{}'::jsonb,
   'f1111111-1111-4111-8111-111111111111'
 );
+
+-- Image fixtures (#414/WU3). Only a `photo` is ever eligible, never a required
+-- document, even when that document was uploaded with an image content type.
+--
+-- Panadería Sol (published, c1) uploaded: a sales-declarations PDF; a CUIT scan
+-- saved as JPEG (kind `cuit`, content type `image/jpeg`) that is OLDER than every
+-- photo; and three photos. The CUIT scan is the oldest *image* by `created_at`,
+-- so without the `kind = 'photo'` predicate it would be the row the lateral
+-- selects — the regression this fixture pins.
+--
+-- Two photos tie on `created_at = 2026-02-01`; `id asc` must break the tie. The
+-- row with the smallest id (`...101`) is inserted SECOND, so the tiebreak cannot
+-- pass merely by physical/insertion order: only an explicit `id asc` picks it.
+--
+-- Panadería Norte (published, c2) uploaded a PDF and an image-typed required
+-- document but no photo, so it must expose no image. Panadería Oeste (pending
+-- deployment, c3) uploaded a photo that must stay unreachable because its
+-- campaign is not published.
+insert into public.pyme_document (id, owner_user_id, kind, object_path, name, size_bytes, content_type, created_at)
+values
+  (
+    'a1111111-1111-4111-8111-1111111111f1', 'e1111111-1111-4111-8111-111111111111',
+    'sales-declarations', 'e1111111-1111-4111-8111-111111111111/sales-declarations/decl.pdf',
+    'declaraciones.pdf', 100, 'application/pdf', timestamptz '2026-01-01 00:00:00+00'
+  ),
+  (
+    'a1111111-1111-4111-8111-1111111111f2', 'e1111111-1111-4111-8111-111111111111',
+    'cuit', 'e1111111-1111-4111-8111-111111111111/cuit/cuit.jpg',
+    'cuit.jpg', 150, 'image/jpeg', timestamptz '2026-01-15 00:00:00+00'
+  ),
+  (
+    'a1111111-1111-4111-8111-111111111102', 'e1111111-1111-4111-8111-111111111111',
+    'photo', 'e1111111-1111-4111-8111-111111111111/photo/tie.png',
+    'local.png', 300, 'image/png', timestamptz '2026-02-01 00:00:00+00'
+  ),
+  (
+    'a1111111-1111-4111-8111-111111111101', 'e1111111-1111-4111-8111-111111111111',
+    'photo', 'e1111111-1111-4111-8111-111111111111/photo/oldest.jpg',
+    'frente.jpg', 200, 'image/jpeg', timestamptz '2026-02-01 00:00:00+00'
+  ),
+  (
+    'a1111111-1111-4111-8111-111111111103', 'e1111111-1111-4111-8111-111111111111',
+    'photo', 'e1111111-1111-4111-8111-111111111111/photo/newer.jpg',
+    'deposito.jpg', 400, 'image/jpeg', timestamptz '2026-03-01 00:00:00+00'
+  ),
+  (
+    'a2222222-2222-4222-8222-2222222222f1', 'e2222222-2222-4222-8222-222222222222',
+    'cuit', 'e2222222-2222-4222-8222-222222222222/cuit/cuit.pdf',
+    'cuit.pdf', 100, 'application/pdf', timestamptz '2026-01-01 00:00:00+00'
+  ),
+  (
+    'a2222222-2222-4222-8222-2222222222f2', 'e2222222-2222-4222-8222-222222222222',
+    'articles-of-incorporation', 'e2222222-2222-4222-8222-222222222222/articles/articles.png',
+    'estatuto.png', 120, 'image/png', timestamptz '2026-01-05 00:00:00+00'
+  ),
+  (
+    'a3333333-3333-4333-8333-3333333333f1', 'e3333333-3333-4333-8333-333333333333',
+    'photo', 'e3333333-3333-4333-8333-333333333333/photo/pending.jpg',
+    'pendiente.jpg', 100, 'image/jpeg', timestamptz '2026-01-01 00:00:00+00'
+  );
 
 -- Behavior --------------------------------------------------------------------
 -- Exercised as service_role, the role the API connects as.
@@ -217,6 +281,31 @@ select is(
   (select fx_rate_version from public.marketplace_campaign where campaign_id = 'c2222222-2222-4222-8222-222222222222'),
   null,
   'a campaign without a rate snapshot exposes nulls'
+);
+
+-- Image document (#414/WU3). Only a `photo` is eligible: the oldest by
+-- `created_at`, then the smallest `id` (insertion order is deliberately not the
+-- tiebreak). An older required document with an image content type is skipped.
+
+select is(
+  (select image_object_path from public.marketplace_campaign where campaign_id = 'c1111111-1111-4111-8111-111111111111'),
+  'e1111111-1111-4111-8111-111111111111/photo/oldest.jpg',
+  'the winning photo (oldest, then smallest id) is exposed'
+);
+select isnt(
+  (select image_object_path from public.marketplace_campaign where campaign_id = 'c1111111-1111-4111-8111-111111111111'),
+  'e1111111-1111-4111-8111-111111111111/cuit/cuit.jpg',
+  'an older image-typed required document (cuit) is never served as the image'
+);
+select is(
+  (select image_content_type from public.marketplace_campaign where campaign_id = 'c1111111-1111-4111-8111-111111111111'),
+  'image/jpeg',
+  'the image content type is exposed'
+);
+select is(
+  (select image_object_path from public.marketplace_campaign where campaign_id = 'c2222222-2222-4222-8222-222222222222'),
+  null,
+  'a campaign with no photo (only a PDF and an image-typed required document) exposes no image'
 );
 
 select is(

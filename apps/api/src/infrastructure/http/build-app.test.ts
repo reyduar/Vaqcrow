@@ -256,13 +256,47 @@ describe("buildApp", () => {
 
   describe("marketplace dependency", () => {
     it("registers the public marketplace listing when the dependency is present", async () => {
-      const campaigns = { listPublished: async () => ({ ok: true as const, value: [] }) };
-      app = buildApp({ marketplace: { campaigns } });
+      const campaigns = {
+        listPublished: async () => ({ ok: true as const, value: [] }),
+        findPublishedImage: async () => ({ ok: true as const, value: undefined })
+      };
+      app = buildApp({
+        marketplace: { campaigns, storage: { downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array(), contentType: "image/png" } }) } }
+      });
 
       const response = await app.inject({ method: "GET", url: "/marketplace/campaigns" });
 
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ items: [] });
+    });
+
+    it("registers the public campaign image endpoint when the dependency is present", async () => {
+      const campaigns = {
+        listPublished: async () => ({ ok: true as const, value: [] }),
+        findPublishedImage: async () => ({
+          ok: true as const,
+          value: { objectPath: "owner/photo/a.png", contentType: "image/png" }
+        })
+      };
+      app = buildApp({
+        marketplace: {
+          campaigns,
+          storage: {
+            downloadObject: async () => ({
+              ok: true as const,
+              value: { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }
+            })
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/marketplace/campaigns/123e4567-e89b-42d3-a456-426614174000/image"
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toMatch(/^image\/png/);
     });
   });
 

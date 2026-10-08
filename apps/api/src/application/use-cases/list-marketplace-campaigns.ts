@@ -81,7 +81,8 @@ function toMarketplaceCampaign(record: MarketplaceCampaignRecord): MarketplaceCa
     riskBand: record.riskBand,
     riskConfidence: record.riskConfidence,
     closeDate: record.closeDate,
-    // Reserved for WU3 (the real PyME photo served by the API).
-    imageUrl: null
+    // The API-relative path of the real PyME photo; the card never carries the
+    // private object path. `null` when the PyME has no image document.
+    imageUrl: record.hasImage ? `/marketplace/campaigns/${record.campaignId}/image` : null
   });
 }

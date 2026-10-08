@@ -23,9 +23,11 @@ describe("resolveRoutePolicy", () => {
     });
   });
 
-  it("lists the public marketplace listing as public (#414/WU1)", () => {
+  it("lists the public marketplace listing and campaign image as public (#414/WU1/WU3)", () => {
     expect(resolveRoutePolicy("GET", "/marketplace/campaigns")).toEqual({ kind: "public" });
     expect(resolveRoutePolicy("HEAD", "/marketplace/campaigns")).toEqual({ kind: "public" });
+    expect(resolveRoutePolicy("GET", "/marketplace/campaigns/:campaignId/image")).toEqual({ kind: "public" });
+    expect(resolveRoutePolicy("HEAD", "/marketplace/campaigns/:campaignId/image")).toEqual({ kind: "public" });
   });
 
   it("lists the notification routes as authenticated for every role", () => {

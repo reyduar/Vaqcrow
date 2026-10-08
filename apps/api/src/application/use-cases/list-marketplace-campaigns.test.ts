@@ -38,6 +38,7 @@ function record(
     riskBand: "medium",
     riskConfidence: 0.72,
     closeDate: "2026-12-01T00:00:00.000Z",
+    hasImage: false,
     ...(rateSnapshot === null ? {} : { rateSnapshot }),
     ...overrides
   };
@@ -130,5 +131,21 @@ describe("listMarketplaceCampaigns", () => {
     const result = await listMarketplaceCampaigns({ repository: fakeRepository({ ok: true, value: [] }) });
 
     expect(result).toEqual({ ok: true, value: { items: [] } });
+  });
+
+  it("points imageUrl at the API image path when the campaign has an image (#414/WU3)", async () => {
+    const result = await listMarketplaceCampaigns({
+      repository: fakeRepository({ ok: true, value: [record({ hasImage: true })] })
+    });
+
+    expect(result.ok && result.value.items[0]?.imageUrl).toBe(`/marketplace/campaigns/${CAMPAIGN_ID}/image`);
+  });
+
+  it("keeps imageUrl null when the campaign has no image", async () => {
+    const result = await listMarketplaceCampaigns({
+      repository: fakeRepository({ ok: true, value: [record({ hasImage: false })] })
+    });
+
+    expect(result.ok && result.value.items[0]?.imageUrl).toBeNull();
   });
 });

@@ -313,8 +313,10 @@ const app = buildApp({
   // warn, they never block the send.
   completenessCheck: { checker: completenessCheck },
   rateTable: { repository: rateTableRepository },
-  // The public marketplace listing (#414/WU1): published campaigns only.
-  marketplace: { campaigns: marketplaceCampaignRepository },
+  // The public marketplace listing (#414/WU1) and the real PyME photo it
+  // serves (#414/WU3): published campaigns only. The image route reads the
+  // bytes through the same storage adapter the upload/content checks use.
+  marketplace: { campaigns: marketplaceCampaignRepository, storage: storageAdapter },
   // Per-account favorites (#414/WU2): the signed-in caller's own rows only.
   favorite: { favorites: favoriteRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use

@@ -42,10 +42,17 @@ describe("marketplace campaign contracts", () => {
     expect(marketplaceCampaignSchema.safeParse(bare).success).toBe(true);
   });
 
-  it("reserves imageUrl as a nullable URL for WU3", () => {
+  it("accepts only the API-relative campaign image path, never an absolute URL (#414/WU3)", () => {
+    const imageUrl = `/marketplace/campaigns/${CAMPAIGN.campaignId}/image`;
+    expect(marketplaceCampaignSchema.safeParse({ ...CAMPAIGN, imageUrl }).success).toBe(true);
+    // The bytes are proxied by the API; the storage object path and any absolute
+    // URL (a signed storage link) must never be accepted on the wire.
     expect(
       marketplaceCampaignSchema.safeParse({ ...CAMPAIGN, imageUrl: "https://cdn.example.test/a.png" }).success
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      marketplaceCampaignSchema.safeParse({ ...CAMPAIGN, imageUrl: "/pyme-documents/owner/photo/a.jpg" }).success
+    ).toBe(false);
     expect(marketplaceCampaignSchema.safeParse({ ...CAMPAIGN, imageUrl: "not-a-url" }).success).toBe(false);
   });
 
