@@ -740,7 +740,7 @@ Ruta: **delegado** (un writer; migración + pgTAP, API, wizard web, doble e2e y 
   - **Corrida K** (`runId bfa51d62`, PyME `GC3S453QQ7PXVNS4KW37FGKKHPGEADMKIUK4NT4K5PRJVNNOLXMKOK6C`) → **1 passed (2,2 min)**. Solicitud **`2dfe732e-4607-4628-b277-67a643a96a0d`**; evaluación automática real (`medium`, 48,3 s). Aprobación a las `17:17:30.379Z`; `confirmed` en el intento 1, campaña **`15da4899-01ee-4fd6-a074-60ab1fd956fe`**, bóveda **`CAU2AX3ZDRNYFSSLJQGJQSCIYAW5NS5W5LNWI4XROWTJZSHL4RXPJD55`**; `deadline` on-chain **`1799255850`** = `2027-01-06T17:17:30Z` (aprobación + 90 días, diferencia **0 s**). Tope en API y contrato; 10 aportes → `settled`; PyME +150000000000 stroops.
 - **Límite explícito.** La migración **sólo se aplicó al Supabase local**: la aplicación al proyecto remoto queda **pendiente de la autorización del owner** (hasta entonces, una API de esta rama contra el remoto fallaría al crear una empresa con duración, porque el `insert` nombra una columna inexistente). La adopción con deadline on-chain se probó sólo con dobles (el camino feliz en vivo no adopta). El ensayo sigue usando los workarounds 1 (tasa por API) y 4 (aportes por API). La copy del campo queda pendiente del owner. Sin Testnet.
 
-- **Work-unit commit.** _pendiente_
+- **Work-unit commit.** `4d2dcd3 feat: let the PyME choose a 30, 60 or 90 day campaign duration`. Migración remota: _pendiente de autorización del owner_.
 
 ## Guardrails adoptados
 
