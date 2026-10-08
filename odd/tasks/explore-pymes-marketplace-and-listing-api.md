@@ -49,7 +49,7 @@ La pila ya permite que una PyME se registre, sea revisada y aprobada, y que la b
 - [x] **WU2 — Favoritos persistidos (backend).** Tabla `campaign_favorite` (por usuario, RLS user-only), repositorio y endpoints AUTHENTICATED (listar/activar/desactivar). El listado puede marcar `isFavorite` del solicitante.
 - [x] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
 - [x] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
-- [ ] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
+- [x] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md`.
 
 Forecast: ~1.500–2.200 líneas autoradas (por encima de ~400 → estrategia de entrega a decidir con el owner).
@@ -134,3 +134,15 @@ Ruta: **delegado** (un writer; extensión de `CampaignCard` + 3 componentes nuev
 - **Work-unit commit.** `623aed4 feat(web): add the /explore marketplace view (#414)`.
 
 - [ ] **WU4 (cerrado):** WU4a + WU4b entregadas y verificadas.
+
+#### WU5 — Favoritos en la UI (commit `d473edd`)
+
+Ruta: **delegado** (un writer; extensión de `filters` + la vista de explore + el retorno de `/login` + tests).
+
+- **Decisión del owner (2026-10-08).** El corazón es **visible para todos**. Con sesión, alterna el favorito server-side (WU2); **anónimo**, al clickear **pide login** y **vuelve a `/explore`** tras ingresar. Los favoritos son por cuenta; el anónimo no retiene.
+- **Diseño.** `MarketplaceQuery` sumó `onlyFavorites?` y `filterMarketplaceCards` un `favoriteIds?` opcional (con `onlyFavorites` activo y el set ausente **no conserva nada**, nunca todo). La vista muestra «Mis favoritos» + contador **sólo con sesión** (si el anónimo no retiene, el toggle no aplica), el chip «Solo favoritos», `clearAll` resetea `onlyFavorites`, y el estado vacío propio del template («Todavía no guardaste favoritos» / «Tocá el corazón de una campaña para seguirla desde acá»). El corazón se pasa **siempre**: con sesión llama a `toggle`, anónimo navega a `/login?returnTo=/explore`. Soporte de retorno acotado: `safeReturnTo` (puro) acepta sólo un path interno seguro y `/login` lo envía a `AuthScreen`, que tras el alta/ingreso hace `safeReturnTo(returnTo) ?? homeRouteFor(role)` (el default por rol de D2 queda intacto).
+- **RED/GREEN observado.** RED: 4 archivos fallidos, 19 tests de 192. GREEN: **10 archivos, 192 tests**; `typecheck` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (989 módulos, 3211 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes** (el corazón anónimo nunca toca el estado server-side; el toggle nunca se muestra al anónimo; el filtro de favoritos sin ids no cae a «todos»; sin open-redirect ni loop en los vectores especificados). Se endureció `safeReturnTo` para rechazar además caracteres de control/espacios (un browser puede recortar un tab inicial y volver `"/\t//evil"` en `"//evil"`) y se sumaron tests. Advisories restantes (no bloqueantes): la rama `returnTo` del alta no tiene test propio (comparte expresión con la del ingreso), el estado de favoritos puede mostrar «Todavía no guardaste favoritos» mientras `isLoading`, y tras cerrar sesión con el filtro activo el anónimo puede quedar en el estado vacío de favoritos hasta limpiar (recuperable con el chip o «Limpiar filtros»).
+- **Límite explícito.** El alta (`/signup`) no recibe `returnTo` (fuera de alcance; el enlace de cambio de modo lo descarta). Falta WU6 (evidencia).
+
+- **Work-unit commit.** `d473edd feat(web): add marketplace favorites and the anonymous sign-in return (#414)`.
