@@ -283,6 +283,45 @@ describe("openCampaign", () => {
     });
   });
 
+  describe("adoptDeployedDeadline (#410/U13)", () => {
+    const earlier = new Date("2026-11-01T00:00:00.000Z");
+
+    it("adopts an already-deployed vault with its own on-chain deadline when the flag is set", async () => {
+      const vault = fundingChainState({ deadline: earlier });
+      const campaignsPort = campaigns();
+
+      const result = await openCampaign(
+        deps({ campaigns: campaignsPort, chain: chain({ ok: true, value: vault }, { ok: true, value: vault }) }),
+        { command: { ...command(), adoptDeployedDeadline: true }, correlationId: CORRELATION_ID }
+      );
+
+      expect(result).toMatchObject({ ok: true, value: { applied: true } });
+      expect(campaignsPort.calls.create[0]).toMatchObject({
+        campaign: expect.objectContaining({ deadline: earlier.toISOString() })
+      });
+    });
+
+    it("still refuses an adopted vault with a different deadline when the flag is absent", async () => {
+      const vault = fundingChainState({ deadline: earlier });
+
+      const result = await openCampaign(deps({ chain: chain({ ok: true, value: vault }, { ok: true, value: vault }) }), {
+        command: command(),
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: false, error: { code: "vault_state_mismatch" } });
+    });
+
+    it("never relaxes the deadline check for a fresh deploy, even with the flag set", async () => {
+      const result = await openCampaign(
+        deps({ chain: chain({ ok: true, value: fundingChainState({ deadline: earlier }) }) }),
+        { command: { ...command(), adoptDeployedDeadline: true }, correlationId: CORRELATION_ID }
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "vault_state_mismatch" } });
+    });
+  });
+
   it("never deploys when the pre-deploy probe cannot tell whether a vault already exists", async () => {
     const factoryPort = factory();
 

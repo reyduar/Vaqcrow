@@ -67,6 +67,23 @@ describe("HttpBusinessGateway.createBusiness", () => {
     expect(call.config?.["headers"]).toEqual({ Authorization: "Bearer token-123" });
   });
 
+  it("sends the campaign duration and reads it back from the stored company (#410/U13)", async () => {
+    const withDuration = { ...DRAFT, campaignDurationDays: 60 as const };
+    const { client, calls } = fakeClient({ post: { status: 201, data: { business: { ...WIRE_BUSINESS, ...withDuration } } } });
+    const gateway = new HttpBusinessGateway(client, async () => "token-123");
+
+    const result = await gateway.createBusiness(withDuration);
+
+    expect(calls[0]!.data).toEqual(withDuration);
+    expect(result).toEqual({ ok: true, business: { ...WIRE_BUSINESS, campaignDurationDays: 60 } });
+  });
+
+  it("answers unavailable when the stored campaign duration is not 30, 60 or 90", async () => {
+    const { client } = fakeClient({ post: { status: 201, data: { business: { ...WIRE_BUSINESS, campaignDurationDays: 45 } } } });
+
+    expect(await new HttpBusinessGateway(client).createBusiness(DRAFT)).toEqual({ ok: false, code: "unavailable" });
+  });
+
   it("never puts an owner in the body", async () => {
     const { client, calls } = fakeClient({});
     const gateway = new HttpBusinessGateway(client, async () => "token");

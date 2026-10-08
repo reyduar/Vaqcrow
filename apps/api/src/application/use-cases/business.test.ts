@@ -110,6 +110,33 @@ describe("validateBusinessDraft", () => {
   });
 });
 
+describe("validateBusinessDraft campaignDurationDays (#410/U13)", () => {
+  it.each([30, 60, 90])("accepts a campaign duration of %i days and passes it through", (campaignDurationDays) => {
+    expect(validateBusinessDraft({ ...draft, campaignDurationDays })).toEqual({
+      ok: true,
+      value: { ...draft, campaignDurationDays }
+    });
+  });
+
+  it("leaves the duration absent when the body carries none or an explicit null", () => {
+    expect(validateBusinessDraft(draft)).toEqual({ ok: true, value: draft });
+    expect(validateBusinessDraft({ ...draft, campaignDurationDays: null })).toEqual({ ok: true, value: draft });
+  });
+
+  it.each([
+    ["another whole number of days", 45],
+    ["zero", 0],
+    ["a fractional value", 30.5],
+    ["a numeric string", "30"],
+    ["a wrong type", true]
+  ])("rejects %s with a sanitized invalid code", (_name, campaignDurationDays) => {
+    expect(validateBusinessDraft({ ...draft, campaignDurationDays })).toEqual({
+      ok: false,
+      fieldErrors: [{ field: "campaignDurationDays", code: "invalid" }]
+    });
+  });
+});
+
 describe("createBusiness", () => {
   it("creates the company for the authenticated owner, never for a body-supplied id", async () => {
     const repo = repository();

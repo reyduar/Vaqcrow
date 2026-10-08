@@ -1,10 +1,11 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import type {
-  BusinessDraft,
-  BusinessRecord,
-  BusinessRepositoryError,
-  BusinessRepositoryPort,
-  BusinessRepositoryResult
+import {
+  CAMPAIGN_DURATION_DAYS,
+  type BusinessDraft,
+  type BusinessRecord,
+  type BusinessRepositoryError,
+  type BusinessRepositoryPort,
+  type BusinessRepositoryResult
 } from "../../application/ports/business-repository-port.js";
 
 /**
@@ -32,6 +33,7 @@ interface BusinessColumns {
   readonly goal_ars?: unknown;
   readonly revenue_share?: unknown;
   readonly deadline?: unknown;
+  readonly campaign_duration_days?: unknown;
   readonly created_at?: unknown;
   readonly updated_at?: unknown;
 }
@@ -59,7 +61,10 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
           // leaves it NULL, exactly as an explicit `null` would.
           ...(input.draft.deadline === undefined || input.draft.deadline === null
             ? {}
-            : { deadline: input.draft.deadline })
+            : { deadline: input.draft.deadline }),
+          ...(input.draft.campaignDurationDays === undefined || input.draft.campaignDurationDays === null
+            ? {}
+            : { campaign_duration_days: input.draft.campaignDurationDays })
         })
         .select()
         .single();
@@ -159,6 +164,14 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       throw new Error("malformed business row");
     }
 
+    // Nullable (#410/U13): anything but NULL or one of the three durations the
+    // column's CHECK allows is a malformed row, never a guessed duration.
+    const duration = row.campaign_duration_days;
+    const campaignDurationDays = CAMPAIGN_DURATION_DAYS.find((days) => days === duration);
+    if (duration !== undefined && duration !== null && campaignDurationDays === undefined) {
+      throw new Error("malformed business row");
+    }
+
     return {
       businessId,
       ownerUserId,
@@ -170,6 +183,7 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       goalArs,
       revenueShare,
       ...(typeof deadline === "string" ? { deadline } : {}),
+      ...(campaignDurationDays === undefined ? {} : { campaignDurationDays }),
       createdAt,
       updatedAt
     };

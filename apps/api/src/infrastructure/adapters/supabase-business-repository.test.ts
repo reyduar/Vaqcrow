@@ -172,6 +172,30 @@ describe("SupabaseBusinessRepository.createForOwner", () => {
     expect(result).toEqual({ ok: true, value: EXPECTED });
   });
 
+  it("persists and reads the campaign duration when the draft carries one (#410/U13)", async () => {
+    const { client, calls } = fakeClient({ data: { ...ROW, campaign_duration_days: 60 } });
+
+    const result = await new SupabaseBusinessRepository(client).createForOwner({
+      ownerUserId: OWNER,
+      draft: { ...DRAFT, campaignDurationDays: 60 }
+    });
+
+    expect(calls.insert).toEqual([
+      {
+        owner_user_id: OWNER,
+        name: "Panadería Sol",
+        cuit: "20123456789",
+        sector: "Alimentos",
+        city: "CABA",
+        description: "Panadería artesanal de barrio",
+        goal_ars: 5_000_000,
+        revenue_share: 5,
+        campaign_duration_days: 60
+      }
+    ]);
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, campaignDurationDays: 60 } });
+  });
+
   it("maps a check violation to invalid_request without leaking Postgres text", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient({ error: pgError("23514") });
@@ -228,6 +252,30 @@ describe("SupabaseBusinessRepository.findByOwner", () => {
   it("is unavailable when the stored deadline is not a string", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient({ data: { ...ROW, deadline: 42 } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+  });
+
+  it("reads a stored campaign duration back into the record (#410/U13)", async () => {
+    const { client } = fakeClient({ data: { ...ROW, campaign_duration_days: 90 } });
+
+    const result = await new SupabaseBusinessRepository(client).findByOwner(OWNER);
+
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, campaignDurationDays: 90 } });
+  });
+
+  it("omits the campaign duration when the stored value is NULL", async () => {
+    const { client } = fakeClient({ data: { ...ROW, campaign_duration_days: null } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({ ok: true, value: EXPECTED });
+  });
+
+  it.each([45, "60", 30.5])("is unavailable when the stored campaign duration is %s", async (stored) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ data: { ...ROW, campaign_duration_days: stored } });
 
     expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
       ok: false,

@@ -16,7 +16,7 @@
  * `odd/tasks/pyme-onboarding-wizard-and-document-upload.md`).
  */
 
-export type RegistrationField = "name" | "cuit" | "sector" | "city" | "desc" | "sales" | "goal" | "rs";
+export type RegistrationField = "name" | "cuit" | "sector" | "city" | "desc" | "sales" | "goal" | "rs" | "duration";
 
 /** All scalar fields except the sales group. */
 export type RegistrationScalarField = Exclude<RegistrationField, "sales">;
@@ -30,6 +30,11 @@ export interface RegistrationValues {
   readonly sales: readonly string[];
   readonly goal: string;
   readonly rs: string;
+  /**
+   * The chosen campaign duration as the select's raw value: `""` (none yet),
+   * `"30"`, `"60"` or `"90"` (#410/U13).
+   */
+  readonly duration: string;
 }
 
 export interface RegistrationError {
@@ -58,6 +63,29 @@ export const SALES_MONTHS: readonly string[] = Object.freeze([
   "Julio",
   "Agosto"
 ]);
+
+/**
+ * The campaign durations the PyME may choose (#410/U13, owner decision
+ * 2026-10-08). The template does not design this control: the label, options,
+ * placeholder, hint and error copy are owner-pending, recorded in
+ * `odd/tasks/application-review-and-vault-deployment.md` (U13).
+ */
+export const DURATION_OPTIONS: readonly { readonly value: string; readonly label: string; readonly days: 30 | 60 | 90 }[] =
+  Object.freeze([
+    Object.freeze({ value: "30", label: "30 días", days: 30 as const }),
+    Object.freeze({ value: "60", label: "60 días", days: 60 as const }),
+    Object.freeze({ value: "90", label: "90 días", days: 90 as const })
+  ]);
+
+/** The whole number of days for a chosen option; `null` for none or an unknown value. */
+export function durationDays(raw: string): 30 | 60 | 90 | null {
+  return DURATION_OPTIONS.find((option) => option.value === raw)?.days ?? null;
+}
+
+/** The visible label for a chosen option (`"60 días"`); empty when none is chosen. */
+export function durationLabel(raw: string): string {
+  return DURATION_OPTIONS.find((option) => option.value === raw)?.label ?? "";
+}
 
 export const REGISTRATION_COPY = Object.freeze({
   heading: "Registrá tu PyME",
@@ -91,6 +119,12 @@ export const REGISTRATION_COPY = Object.freeze({
       label: "Revenue share propuesto (%)",
       placeholder: "4,5",
       hint: "Entre 1 % y 10 % de las ventas mensuales"
+    }),
+    // #410/U13: not designed by the template; copy pending owner review.
+    duration: Object.freeze({
+      label: "Plazo de la campaña",
+      placeholder: "Elegí un plazo",
+      hint: "Empieza a contar cuando la campaña se publica."
     })
   })
 });
@@ -104,7 +138,9 @@ export const REGISTRATION_ERRORS: Readonly<Record<RegistrationField, string>> = 
   desc: "Contanos un poco más: al menos 20 caracteres.",
   sales: "Cargá al menos 6 de los 8 meses.",
   goal: "La meta mínima es ARS 1.000.000.",
-  rs: "Debe estar entre 1 % y 10 %."
+  rs: "Debe estar entre 1 % y 10 %.",
+  // #410/U13: not in the template; copy pending owner review.
+  duration: "Elegí el plazo de la campaña."
 });
 
 const EMPTY_SALES: readonly string[] = Object.freeze(["", "", "", "", "", "", "", ""]);
@@ -117,10 +153,15 @@ export const EMPTY_REGISTRATION_VALUES: RegistrationValues = Object.freeze({
   desc: "",
   sales: EMPTY_SALES,
   goal: "",
-  rs: ""
+  rs: "",
+  duration: ""
 });
 
-/** Template line 350: the `fillDemo` values verbatim, month 4 left empty. */
+/**
+ * Template line 350: the `fillDemo` values verbatim, month 4 left empty. The
+ * 60-day duration is not in the template (#410/U13); the helper sets one so a
+ * demo run never stops on the new required control.
+ */
 export const DEMO_VALUES: RegistrationValues = Object.freeze({
   name: "Panadería Horizonte SRL",
   cuit: "30-71234567-8",
@@ -129,6 +170,7 @@ export const DEMO_VALUES: RegistrationValues = Object.freeze({
   desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
   goal: "15.000.000",
   rs: "4,5",
+  duration: "60",
   sales: Object.freeze(["3.150.000", "3.320.500", "3.410.750", "", "3.580.900", "6.240.000", "3.690.300", "3.745.800"])
 });
 
@@ -160,6 +202,9 @@ export function validateRegistration(values: RegistrationValues): RegistrationEr
   if (!(parseAmount(values.goal) >= 1000000)) errors.push({ field: "goal", message: REGISTRATION_ERRORS.goal });
   const revenueShare = parseAmount(values.rs);
   if (!(revenueShare >= 1 && revenueShare <= 10)) errors.push({ field: "rs", message: REGISTRATION_ERRORS.rs });
+  if (durationDays(values.duration) === null) {
+    errors.push({ field: "duration", message: REGISTRATION_ERRORS.duration });
+  }
   return errors;
 }
 

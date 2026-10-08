@@ -24,6 +24,12 @@ export interface BusinessDraft {
   readonly goalArs: number;
   /** The revenue-share percentage, inclusive of 1 and 10. */
   readonly revenueShare: number;
+  /**
+   * The campaign duration in days (#410/U13). The vault deadline is computed
+   * from it when the admin approval deploys the vault; `null` only for a
+   * company registered before the wizard captured it.
+   */
+  readonly campaignDurationDays?: 30 | 60 | 90 | null;
 }
 
 /** A stored company as `POST /businesses` and `GET /businesses/mine` return it. */

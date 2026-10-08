@@ -38,6 +38,14 @@ export interface OpenCampaignCommand {
   readonly smeAccountId: string;
   readonly goalStroops: bigint;
   readonly deadline: Date;
+  /**
+   * When true, adopting a vault an earlier attempt already deployed accepts
+   * that vault's on-chain deadline instead of requiring `deadline` exactly
+   * (#410/U13). The approval flow sets it when the deadline is derived from the
+   * attempt's moment, which necessarily differs between attempts; every other
+   * term (state, goal, SME, token) must still match.
+   */
+  readonly adoptDeployedDeadline?: boolean;
 }
 
 export type OpenCampaignErrorCode =
@@ -128,6 +136,7 @@ export async function openCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
+  const adopting = probe.ok;
   let contractAddress = predicted.value;
   let rateSnapshot: CampaignRateSnapshot | undefined;
 
@@ -182,7 +191,8 @@ export async function openCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
-  if (!matchesRequestedVault(chainState.value, command, deps.tokenContractId)) {
+  const acceptOnChainDeadline = adopting && command.adoptDeployedDeadline === true;
+  if (!matchesRequestedVault(chainState.value, command, deps.tokenContractId, acceptOnChainDeadline)) {
     return { ok: false, error: { code: "vault_state_mismatch" } };
   }
 
@@ -195,7 +205,7 @@ export async function openCampaign(
       network: deps.network,
       tokenContractAddress: deps.tokenContractId,
       goalStroops: chainState.value.goalStroops,
-      deadline: command.deadline.toISOString(),
+      deadline: (acceptOnChainDeadline ? chainState.value.deadline : command.deadline).toISOString(),
       state: mapVaultStateToCampaignState(chainState.value.state),
       totalStroops: chainState.value.totalStroops,
       reconciliationStatus: "in_sync",
@@ -258,13 +268,14 @@ async function ensureSmeAccount(accounts: StellarAccountPort, smeAccountId: stri
 function matchesRequestedVault(
   state: VaultChainState,
   command: OpenCampaignCommand,
-  tokenContractId: string
+  tokenContractId: string,
+  acceptOnChainDeadline: boolean
 ): boolean {
   return (
     state.state === "funding" &&
     state.goalStroops === command.goalStroops &&
     state.smeAccountId === command.smeAccountId &&
     state.tokenContractId === tokenContractId &&
-    state.deadline.getTime() === command.deadline.getTime()
+    (acceptOnChainDeadline || state.deadline.getTime() === command.deadline.getTime())
   );
 }
