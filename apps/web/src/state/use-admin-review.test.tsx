@@ -33,6 +33,15 @@ function portOf(respond: () => AdminReviewResult) {
     },
     async downloadDocument() {
       return { ok: false, code: "unavailable" };
+    },
+    async recordDecision() {
+      return { ok: false, code: "unavailable" };
+    },
+    async getDeployment() {
+      return { ok: false, code: "not_found" };
+    },
+    async deploy() {
+      return { ok: false, code: "unavailable" };
     }
   };
   return { port, calls };

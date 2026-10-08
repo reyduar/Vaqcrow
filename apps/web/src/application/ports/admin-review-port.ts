@@ -3,6 +3,7 @@ import type {
   ApplicationReviewState,
   DocumentVerdictRecord,
   DocumentVerdictValue,
+  HumanDecisionOutcome,
   HumanDecisionRecord,
   SmeRequest
 } from "@vaqcrow/contracts";
@@ -90,6 +91,81 @@ export type AdminDocumentFileResult =
   | { readonly ok: true; readonly file: Blob }
   | { readonly ok: false; readonly code: "unavailable" | "network" };
 
+/**
+ * Body of `POST /application-reviews/:applicationId/decisions` (U5), exactly
+ * these four keys: the actor is the verified admin, never sent (#370).
+ * `decisionId` is a client UUID v4 reused on a retry of the same submission so
+ * the API can answer an idempotent replay. `approvedLimitArs` is a positive
+ * integer for `approved` and `null` otherwise.
+ */
+export interface RecordDecisionRequest {
+  readonly decisionId: string;
+  readonly outcome: HumanDecisionOutcome;
+  readonly reason: string;
+  readonly approvedLimitArs: number | null;
+}
+
+/**
+ * Outcome of the decision write. `applied: false` is a replay (200) of a
+ * decision already recorded with the same id and payload. `state_conflict`
+ * carries the review's actual state; `idempotency_conflict` means the id was
+ * used with another payload; `invalid_request` is a 400.
+ */
+export type RecordDecisionResult =
+  | { readonly ok: true; readonly applied: boolean; readonly decision: HumanDecisionRecord }
+  | { readonly ok: false; readonly code: "state_conflict"; readonly actualState: ApplicationReviewState }
+  | {
+      readonly ok: false;
+      readonly code: "idempotency_conflict" | "invalid_request" | "not_found" | "unavailable" | "network";
+    };
+
+export type RecordDecisionFailure = Extract<RecordDecisionResult, { ok: false }>;
+
+/** The persisted vault-deployment lifecycle of an approved application (T5b / D3). */
+export type CampaignDeploymentState = "pending" | "deploying" | "confirmed" | "failed";
+
+/**
+ * Read-only projection of `GET /application-reviews/:applicationId/deployment`.
+ * `lastError` is the API's sanitized code (never provider text) and
+ * `campaignId` only exists once the deployment is confirmed; both are `null`
+ * when the API omits them.
+ */
+export interface AdminDeployment {
+  readonly applicationId: string;
+  readonly state: CampaignDeploymentState;
+  readonly attempts: number;
+  readonly campaignId: string | null;
+  readonly lastError: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** `not_found` is a 404: no deployment has been recorded for the application yet. */
+export type GetDeploymentResult =
+  | { readonly ok: true; readonly deployment: AdminDeployment }
+  | { readonly ok: false; readonly code: "not_found" | "unavailable" | "network" };
+
+/**
+ * Refusals of `POST /application-reviews/:applicationId/deployment` (deploy or
+ * retry): 404 `application_not_found`, 409 `application_not_approved`, the
+ * 422 preconditions, the 503 `rate_unavailable`/`unavailable`, and the
+ * transport's `network`.
+ */
+export type DeployFailureCode =
+  | "application_not_found"
+  | "application_not_approved"
+  | "owner_unresolved"
+  | "terms_unavailable"
+  | "wallet_required"
+  | "goal_limit_exceeded"
+  | "rate_unavailable"
+  | "unavailable"
+  | "network";
+
+export type DeployResult =
+  | { readonly ok: true; readonly deployment: AdminDeployment }
+  | { readonly ok: false; readonly code: DeployFailureCode };
+
 export interface AdminReviewPort {
   getContext(applicationId: string): Promise<AdminReviewResult>;
   setDocumentVerdict(
@@ -98,4 +174,7 @@ export interface AdminReviewPort {
     verdict: DocumentVerdictValue
   ): Promise<SetDocumentVerdictResult>;
   downloadDocument(objectPath: string): Promise<AdminDocumentFileResult>;
+  recordDecision(applicationId: string, request: RecordDecisionRequest): Promise<RecordDecisionResult>;
+  getDeployment(applicationId: string): Promise<GetDeploymentResult>;
+  deploy(applicationId: string): Promise<DeployResult>;
 }
