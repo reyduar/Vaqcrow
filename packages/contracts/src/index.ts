@@ -33,6 +33,22 @@ export type {
   HumanDecisionRecord
 } from "./application-review.js";
 
+export {
+  documentVerdictCommandSchema,
+  documentVerdictRecordSchema,
+  documentVerdictValueSchema,
+  parseDocumentVerdictCommand,
+  parseDocumentVerdictRecord,
+  parseDocumentVerdictValue,
+  parsePymeDocumentId,
+  pymeDocumentIdSchema
+} from "./document-verdict.js";
+export type {
+  DocumentVerdictCommand,
+  DocumentVerdictRecord,
+  DocumentVerdictValue
+} from "./document-verdict.js";
+
 export { fundingIntentIdSchema, parseFundingIntentId } from "./funding-intent-id.js";
 export type { FundingIntentId } from "./funding-intent-id.js";
 

@@ -3,6 +3,7 @@ import type { AdminReviewContextPort } from "../ports/admin-review-context-port.
 import type { ApplicationAssessmentRepositoryPort } from "../ports/application-assessment-repository-port.js";
 import type { ApplicationReviewRepositoryPort } from "../ports/application-review-repository-port.js";
 import type { BusinessRepositoryPort } from "../ports/business-repository-port.js";
+import type { DocumentVerdictRepositoryPort } from "../ports/document-verdict-repository-port.js";
 import type { PymeDocumentRepositoryPort } from "../ports/pyme-document-repository-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 
@@ -12,6 +13,7 @@ export interface GetAdminReviewContextDependencies {
   readonly businesses: Pick<BusinessRepositoryPort, "findByOwner">;
   readonly documents: Pick<PymeDocumentRepositoryPort, "listByOwner">;
   readonly assessments: Pick<ApplicationAssessmentRepositoryPort, "findByApplicationId">;
+  readonly verdicts: Pick<DocumentVerdictRepositoryPort, "listByApplication">;
 }
 
 export async function getAdminReviewContext(
@@ -38,11 +40,12 @@ export async function getAdminReviewContext(
     }
 
     const ownerUserId = smeRequest.value.ownerUserId;
-    const [company, documents, assessment, latestHumanDecision] = await Promise.all([
+    const [company, documents, assessment, latestHumanDecision, documentVerdicts] = await Promise.all([
       dependencies.businesses.findByOwner(ownerUserId),
       dependencies.documents.listByOwner(ownerUserId),
       dependencies.assessments.findByApplicationId(input.applicationId),
-      dependencies.applicationReviews.readLatestHumanDecision(input.applicationId)
+      dependencies.applicationReviews.readLatestHumanDecision(input.applicationId),
+      dependencies.verdicts.listByApplication(input.applicationId)
     ]);
 
     if (!company.ok && company.error.code !== "not_found") {
@@ -55,6 +58,11 @@ export async function getAdminReviewContext(
       return { ok: false, error: { code: "unavailable" } };
     }
     if (!latestHumanDecision.ok && latestHumanDecision.error.code !== "not_found") {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+    // Verdicts have no legitimate absence beyond an empty list, so any failure
+    // makes the whole context unavailable rather than silently dropping them.
+    if (!documentVerdicts.ok) {
       return { ok: false, error: { code: "unavailable" } };
     }
 
@@ -76,7 +84,8 @@ export async function getAdminReviewContext(
             }))
           : [],
         assessment: assessment.ok ? assessment.value : null,
-        latestHumanDecision: latestHumanDecision.ok ? latestHumanDecision.value : null
+        latestHumanDecision: latestHumanDecision.ok ? latestHumanDecision.value : null,
+        documentVerdicts: documentVerdicts.value
       }
     };
   } catch {

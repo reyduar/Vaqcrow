@@ -21,6 +21,8 @@ import { registerCampaignRoute } from "./routes/campaign.route.js";
 import type { CampaignRouteDependencies } from "./routes/campaign.route.js";
 import { registerCampaignDeploymentRoute } from "./routes/campaign-deployment.route.js";
 import type { CampaignDeploymentRouteDependencies } from "./routes/campaign-deployment.route.js";
+import { registerDocumentVerdictRoute } from "./routes/document-verdict.route.js";
+import type { DocumentVerdictRouteDependencies } from "./routes/document-verdict.route.js";
 import { registerCompletenessCheckRoute } from "./routes/completeness-check.route.js";
 import type { CompletenessCheckRouteDependencies } from "./routes/completeness-check.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
@@ -96,6 +98,8 @@ export function buildApp(dependencies: {
    */
   readonly humanDecisionDeployment?: DecisionDeploymentDependencies | undefined;
   readonly adminReviewContext?: AdminReviewContextRouteDependencies;
+  /** Per-document KYC/KYB verdicts in the admin review (#410/U1). */
+  readonly documentVerdict?: DocumentVerdictRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
   readonly revenueShareDistribution?: RevenueShareDistributionRouteDependencies | undefined;
   readonly assessment?: AssessmentRouteDependencies;
@@ -135,7 +139,7 @@ export function buildApp(dependencies: {
     const allowedOrigins = [...dependencies.cors.allowedOrigins];
     void app.register(cors, {
       origin: allowedOrigins,
-      methods: ["GET", "POST", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["authorization", "content-type", "x-correlation-id"],
       exposedHeaders: ["x-correlation-id"],
       credentials: false
@@ -158,6 +162,9 @@ export function buildApp(dependencies: {
   registerHealthRoute(app);
   if (dependencies.adminReviewContext) {
     registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
+  }
+  if (dependencies.documentVerdict) {
+    registerDocumentVerdictRoute(app, dependencies.documentVerdict);
   }
   if (dependencies.applicationReviewRepository) {
     registerHumanDecisionRoute(

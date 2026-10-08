@@ -14,10 +14,11 @@ import type {
  *
  * `markPending` is insert-if-absent: a unique violation returns the existing
  * row, so a confirmed deployment is never reset. `beginAttempt` reads the
- * current state/attempts and then writes a conditional update guarded by
- * `state in ('pending','failed')`; because the guard flips the state, a
- * concurrent retry matches zero rows and reports a conflict rather than
- * double-incrementing. `last_error` only ever carries a code the application
+ * current state/attempts/updated_at and then writes a conditional update
+ * guarded by `state in ('pending','failed')` and the attempts read, or, to
+ * reclaim an abandoned attempt (U8), by `state = 'deploying'`, the attempts
+ * read and `updated_at < staleBefore`; a concurrent retry matches zero rows
+ * and reports a conflict rather than double-incrementing. `last_error` only ever carries a code the application
  * chose; Postgres `message`/`details`/`hint` are logged server-side and never
  * cross this boundary.
  */
@@ -39,6 +40,14 @@ interface DeploymentColumns {
 }
 
 const DEPLOYMENT_STATES: readonly CampaignDeploymentState[] = ["pending", "deploying", "confirmed", "failed"];
+
+/** Whether a stored timestamp is strictly before the cutoff; anything unparseable is not. */
+function isBefore(value: unknown, cutoff: string): boolean {
+  if (typeof value !== "string") return false;
+  const at = Date.parse(value);
+  const limit = Date.parse(cutoff);
+  return !Number.isNaN(at) && !Number.isNaN(limit) && at < limit;
+}
 
 export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentRepositoryPort {
   constructor(private readonly client: SupabaseClient) {}
@@ -97,11 +106,12 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
   async beginAttempt(input: {
     readonly applicationId: ApplicationId;
     readonly correlationId: CorrelationId;
+    readonly staleBefore: string;
   }): Promise<CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>> {
     try {
       const current = await this.client
         .from(TABLE)
-        .select("state, attempts")
+        .select("state, attempts, updated_at")
         .eq("application_id", input.applicationId)
         .maybeSingle();
 
@@ -109,14 +119,16 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
       if (!current.data) return { ok: false, error: { code: "not_found" } };
 
       const row = current.data as DeploymentColumns;
-      if (row.state !== "pending" && row.state !== "failed") {
+      const retrying = row.state === "pending" || row.state === "failed";
+      const reclaiming = row.state === "deploying" && isBefore(row.updated_at, input.staleBefore);
+      if (!retrying && !reclaiming) {
         return { ok: false, error: { code: "state_conflict" } };
       }
       if (typeof row.attempts !== "number" || !Number.isSafeInteger(row.attempts) || row.attempts < 0) {
         return this.unavailable();
       }
 
-      const { data, error } = await this.client
+      const update = this.client
         .from(TABLE)
         .update({
           state: "deploying",
@@ -124,10 +136,17 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
           last_error: null,
           last_correlation_id: input.correlationId
         })
-        .eq("application_id", input.applicationId)
-        .in("state", ["pending", "failed"])
-        .select()
-        .single();
+        .eq("application_id", input.applicationId);
+
+      // Both guards also pin the attempts that were read, so of two concurrent
+      // retries only one increments. A reclaim additionally requires the row to
+      // still be stale: the trigger bumps `updated_at` on every write, so once
+      // one reclaim lands the other matches zero rows.
+      const guarded = reclaiming
+        ? update.eq("state", "deploying").eq("attempts", row.attempts).lt("updated_at", input.staleBefore)
+        : update.in("state", ["pending", "failed"]).eq("attempts", row.attempts);
+
+      const { data, error } = await guarded.select().single();
 
       if (error) {
         return error.code === POSTGREST_NO_ROWS
@@ -165,6 +184,13 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
     });
   }
 
+  /**
+   * A terminal write, owned by the attempt that began it (U8): the update only
+   * matches a row still in `deploying` under this attempt's correlation id. Once
+   * a stale reclaim took the row over (it rewrote `last_correlation_id`), a late
+   * write from the abandoned attempt matches zero rows and reports
+   * `state_conflict` instead of overwriting the new attempt's outcome.
+   */
   private async mark(
     applicationId: ApplicationId,
     correlationId: CorrelationId,
@@ -175,15 +201,17 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
         .from(TABLE)
         .update({ ...values, last_correlation_id: correlationId })
         .eq("application_id", applicationId)
+        .eq("state", "deploying")
+        .eq("last_correlation_id", correlationId)
         .select()
         .single();
 
       if (error) {
         return error.code === POSTGREST_NO_ROWS
-          ? { ok: false, error: { code: "not_found" } }
+          ? { ok: false, error: { code: "state_conflict" } }
           : this.failure(error);
       }
-      if (!data) return { ok: false, error: { code: "not_found" } };
+      if (!data) return { ok: false, error: { code: "state_conflict" } };
 
       return { ok: true, value: this.toRecord(data) };
     } catch {

@@ -11,6 +11,7 @@ type Allowed = readonly Role[] | "public" | "any";
 const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
   ["POST", "/sme-requests", ["PYME"]],
+  ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
   // Application completeness check (#402/T1a): declared-data check for the PyME.
   ["POST", "/completeness-check", ["PYME"]],
@@ -31,6 +32,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/application-reviews/:applicationId/manual-review", ["ADMIN"]],
   ["POST", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/decisions", ["ADMIN"]],
+  // Per-document KYC/KYB verdicts (#410/U1): only an admin records them.
+  ["PUT", "/application-reviews/:applicationId/documents/:documentId/verdict", ["ADMIN"]],
   // Vault deployment lifecycle (#410/T5b): the admin deploys or retries and
   // reads the read-only detail; both are ADMIN-only.
   ["POST", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
@@ -73,6 +76,7 @@ function buildFullApp(auth?: AuthDependency): {
   const app = buildApp({
     applicationReviewRepository: stub,
     adminReviewContext: stub,
+    documentVerdict: stub,
     campaignDeployment: stub,
     fundingIntent: stub,
     revenueShareDistribution: stub,

@@ -57,6 +57,7 @@ function repository(overrides: Partial<SmeRequestRepositoryPort> = {}): SmeReque
     findByApplicationId: vi
       .fn()
       .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
+    listAdminQueue: vi.fn(),
     findByOwner: vi.fn().mockResolvedValue({ ok: true, value: [] }),
     ...overrides
   };

@@ -45,6 +45,10 @@ const CAMPAIGN_ID = "33333333-3333-4333-8333-333333333333";
 const DEADLINE_ISO = "2027-01-01T00:00:00.000Z";
 const GOAL_ARS = 12_000_000;
 const AT = "2026-10-06T12:00:00.000Z";
+// The injected clock: ten minutes (the stale threshold) after `NOW` minus the
+// threshold is the cutoff the repository receives.
+const NOW = "2026-10-06T12:30:00.000Z";
+const STALE_BEFORE = "2026-10-06T12:20:00.000Z";
 
 /**
  * 1 USD = 1,200.00 ARS (stored scaled by RATE_SCALE) and 1 USD = 1 XLM
@@ -251,6 +255,10 @@ function deploymentRecord(overrides: Partial<CampaignDeploymentRecord> = {}): Ca
 function deployments(options: {
   readonly found?: CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>;
   readonly markFailed?: CampaignDeploymentRepositoryResult<CampaignDeploymentRecord> | Error;
+  readonly begin?: CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>;
+  readonly confirm?: CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>;
+  /** What a re-read after a superseded confirmation returns. */
+  readonly reread?: CampaignDeploymentRepositoryResult<CampaignDeploymentRecord>;
 } = {}): CampaignDeploymentRepositoryPort & {
   readonly calls: {
     markPending: unknown[];
@@ -270,20 +278,28 @@ function deployments(options: {
   const confirmed = deploymentRecord({ state: "confirmed", attempts: 1, campaignId: CAMPAIGN_ID });
 
   return {
-    findByApplicationId: vi
-      .fn<CampaignDeploymentRepositoryPort["findByApplicationId"]>()
-      .mockResolvedValue(options.found ?? { ok: false, error: { code: "not_found" } }),
+    findByApplicationId: (() => {
+      const read = vi
+        .fn<CampaignDeploymentRepositoryPort["findByApplicationId"]>()
+        .mockResolvedValue(options.found ?? { ok: false, error: { code: "not_found" } });
+      if (options.reread !== undefined) {
+        read
+          .mockResolvedValueOnce(options.found ?? { ok: false, error: { code: "not_found" } })
+          .mockResolvedValueOnce(options.reread);
+      }
+      return read;
+    })(),
     markPending: vi.fn<CampaignDeploymentRepositoryPort["markPending"]>(async (input) => {
       calls.markPending.push(input);
       return { ok: true, value: pending };
     }),
     beginAttempt: vi.fn<CampaignDeploymentRepositoryPort["beginAttempt"]>(async (input) => {
       calls.beginAttempt.push(input);
-      return { ok: true, value: deploying };
+      return options.begin ?? { ok: true, value: deploying };
     }),
     markConfirmed: vi.fn<CampaignDeploymentRepositoryPort["markConfirmed"]>(async (input) => {
       calls.markConfirmed.push(input);
-      return { ok: true, value: confirmed };
+      return options.confirm ?? { ok: true, value: confirmed };
     }),
     markFailed: vi.fn<CampaignDeploymentRepositoryPort["markFailed"]>(async (input) => {
       calls.markFailed.push(input);
@@ -311,6 +327,7 @@ interface Overrides {
   readonly chain?: ReturnType<typeof chain>;
   readonly deployments?: ReturnType<typeof deployments>;
   readonly notifications?: Pick<NotificationPublisherPort, "publish">;
+  readonly now?: () => Date;
 }
 
 function deps(overrides: Overrides = {}) {
@@ -327,6 +344,7 @@ function deps(overrides: Overrides = {}) {
     chain: overrides.chain ?? chain(),
     network: "testnet",
     tokenContractId: TOKEN_CONTRACT_ID,
+    now: overrides.now ?? (() => new Date(NOW)),
     ...(overrides.notifications === undefined ? {} : { notifications: overrides.notifications })
   };
 }
@@ -417,7 +435,7 @@ describe("deployApprovedCampaign", () => {
       { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
     ]);
     expect(deploymentsPort.calls.beginAttempt).toEqual([
-      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID, staleBefore: STALE_BEFORE }
     ]);
     expect(deploymentsPort.calls.markConfirmed).toEqual([
       { applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, correlationId: CORRELATION_ID }
@@ -598,5 +616,148 @@ describe("deployApprovedCampaign", () => {
     );
 
     expect(result).toMatchObject({ ok: true, value: { deployment: expect.objectContaining({ state: "confirmed" }) } });
+  });
+});
+
+describe("deployApprovedCampaign stale-attempt recovery (U8)", () => {
+  it("answers deployment_in_progress for a fresh deploying row without touching it", async () => {
+    // Updated five minutes before the injected clock: inside the threshold.
+    const fresh = deploymentRecord({ state: "deploying", attempts: 1, updatedAt: "2026-10-06T12:25:00.000Z" });
+    const deploymentsPort = deployments({ found: { ok: true, value: fresh } });
+    const factoryPort = factory();
+
+    const result = await deployApprovedCampaign(
+      deps({ deployments: deploymentsPort, factory: factoryPort }),
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "deployment_in_progress" } });
+    expect(deploymentsPort.calls.markPending).toHaveLength(0);
+    expect(deploymentsPort.calls.beginAttempt).toHaveLength(0);
+    expect(deploymentsPort.calls.markFailed).toHaveLength(0);
+    expect(factoryPort.calls.deploy).toHaveLength(0);
+  });
+
+  it("reclaims a stale deploying row with the injected clock's cutoff and deploys", async () => {
+    // Updated thirty minutes before the injected clock: past the threshold.
+    const stale = deploymentRecord({ state: "deploying", attempts: 1, updatedAt: AT });
+    const deploymentsPort = deployments({ found: { ok: true, value: stale } });
+    const factoryPort = factory();
+
+    const result = await deployApprovedCampaign(
+      deps({ deployments: deploymentsPort, factory: factoryPort }),
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      value: { deployment: expect.objectContaining({ state: "confirmed" }) }
+    });
+    expect(deploymentsPort.calls.beginAttempt).toEqual([
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID, staleBefore: STALE_BEFORE }
+    ]);
+    expect(factoryPort.calls.deploy).toHaveLength(1);
+  });
+
+  it("adopts the vault a crashed attempt already deployed instead of deploying twice", async () => {
+    // The reclaimed attempt may have reached Testnet before it stopped: the
+    // engine probes the deterministic address and adopts the vault there.
+    const stale = deploymentRecord({ state: "deploying", attempts: 1, updatedAt: AT });
+    const deploymentsPort = deployments({ found: { ok: true, value: stale } });
+    const factoryPort = factory();
+
+    const result = await deployApprovedCampaign(
+      deps({
+        deployments: deploymentsPort,
+        factory: factoryPort,
+        chain: chain({ ok: true, value: fundingChainState() }, { ok: true, value: fundingChainState() })
+      }),
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(factoryPort.calls.deploy).toHaveLength(0);
+  });
+
+  it("answers deployment_in_progress when a concurrent attempt wins the conditional update", async () => {
+    const deploymentsPort = deployments({ begin: { ok: false, error: { code: "state_conflict" } } });
+    const factoryPort = factory();
+
+    const result = await deployApprovedCampaign(
+      deps({ deployments: deploymentsPort, factory: factoryPort }),
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "deployment_in_progress" } });
+    expect(deploymentsPort.calls.markFailed).toHaveLength(0);
+    expect(factoryPort.calls.deploy).toHaveLength(0);
+  });
+
+  it("keeps unavailable for a genuine persistence failure when beginning the attempt", async () => {
+    const deploymentsPort = deployments({ begin: { ok: false, error: { code: "unavailable" } } });
+
+    const result = await deployApprovedCampaign(deps({ deployments: deploymentsPort }), {
+      applicationId: APPLICATION_ID,
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(deploymentsPort.calls.markFailed).toHaveLength(0);
+  });
+});
+
+describe("deployApprovedCampaign terminal writes owned by the attempt (U8)", () => {
+  it("does not overwrite or notify when a reclaiming attempt superseded this one, and returns the row the owner confirmed", async () => {
+    const ownerConfirmed = deploymentRecord({ state: "confirmed", attempts: 2, campaignId: CAMPAIGN_ID });
+    const deploymentsPort = deployments({
+      confirm: { ok: false, error: { code: "state_conflict" } },
+      reread: { ok: true, value: ownerConfirmed }
+    });
+    const { notifications, publish } = publishSpy();
+
+    const result = await deployApprovedCampaign(deps({ deployments: deploymentsPort, notifications }), {
+      applicationId: APPLICATION_ID,
+      correlationId: CORRELATION_ID
+    });
+
+    expect(deploymentsPort.calls.markConfirmed).toEqual([
+      { applicationId: APPLICATION_ID, campaignId: CAMPAIGN_ID, correlationId: CORRELATION_ID }
+    ]);
+    expect(result).toEqual({ ok: true, value: { deployment: ownerConfirmed } });
+    expect(publish).not.toHaveBeenCalled();
+    expect(deploymentsPort.calls.markFailed).toHaveLength(0);
+  });
+
+  it("answers deployment_in_progress when superseded and the owning attempt has not finished", async () => {
+    const deploymentsPort = deployments({
+      confirm: { ok: false, error: { code: "state_conflict" } },
+      reread: { ok: true, value: deploymentRecord({ state: "deploying", attempts: 2 }) }
+    });
+    const { notifications, publish } = publishSpy();
+
+    const result = await deployApprovedCampaign(deps({ deployments: deploymentsPort, notifications }), {
+      applicationId: APPLICATION_ID,
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "deployment_in_progress" } });
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("keeps the refusal unchanged when a late failure write is superseded", async () => {
+    const deploymentsPort = deployments({ markFailed: { ok: false, error: { code: "state_conflict" } } });
+
+    const result = await deployApprovedCampaign(
+      deps({
+        deployments: deploymentsPort,
+        wallets: wallets({ ok: true, value: null })
+      }),
+      { applicationId: APPLICATION_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "wallet_required" } });
+    expect(deploymentsPort.calls.markFailed).toEqual([
+      { applicationId: APPLICATION_ID, errorCode: "wallet_required", correlationId: CORRELATION_ID }
+    ]);
   });
 });
