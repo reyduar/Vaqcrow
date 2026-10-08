@@ -47,7 +47,7 @@ La pila ya permite que una PyME se registre, sea revisada y aprobada, y que la b
 
 - [x] **WU1 — Endpoint de listado (backend).** Contrato en `packages/contracts`, port, adaptador (join a `businesses`), caso de uso, ruta PUBLIC y política. Sólo campañas publicadas. Sin `apps/web`.
 - [x] **WU2 — Favoritos persistidos (backend).** Tabla `campaign_favorite` (por usuario, RLS user-only), repositorio y endpoints AUTHENTICATED (listar/activar/desactivar). El listado puede marcar `isFavorite` del solicitante.
-- [ ] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
+- [x] **WU3 — Imagen real de la PyME.** Servir una foto aprobada de la PyME al marketplace público (endpoint o URL firmada), sin exponer el bucket.
 - [ ] **WU4 — Vista `/explore` (web).** Búsqueda, filtros avanzados con borrador/aplicar/descartar, chips, orden, tarjetas con imagen y corazón, y los estados carga/error/vacío.
 - [ ] **WU5 — Favoritos en la UI.** «Mis favoritos» con contador, corazón por tarjeta y comportamiento para visitante anónimo (a definir).
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/explore-pymes-marketplace-and-listing-api-evidence.md`.
@@ -90,3 +90,14 @@ Ruta: **delegado** (un writer; contrato + port + adaptador + 2 casos de uso + ru
 - **Límite explícito.** Sin `apps/web` (el corazón y «Mis favoritos» son WU5). Sin imágenes (WU3).
 
 - **Work-unit commit.** `ba4660e feat(api): persist per-account campaign favorites (#414)`.
+
+### WU3 — Foto real de la PyME servida al marketplace (commit `c1c731f`)
+
+Ruta: **delegado** (un writer; migración de vista + port + adaptador + caso de uso + ruta + contrato + wiring, 2+ archivos no triviales). Sin `apps/web`.
+
+- **Diseño (D2).** Endpoint **PUBLIC** `GET /marketplace/campaigns/:campaignId/image` que sirve los bytes de la **primera foto** (más antigua por `created_at`, luego `id`; `kind='photo'` y content type de imagen) de la PyME de una campaña **publicada**. La vista `marketplace_campaign` se extendió con `image_object_path`/`image_content_type` (nullable) vía `create or replace view` (columnas nuevas al final, `security_invoker` y grants re-afirmados; `owner_user_id` usado sólo dentro del lateral, nunca en el select). El listado setea `imageUrl` a la ruta API-relativa `/marketplace/campaigns/<id>/image` (o `null`); el contrato valida esa forma (nunca URL absoluta ni path del bucket). Reutiliza el único `StoragePort`/`SupabaseStorageAdapter` (sin segundo cliente). Headers: `Content-Type` real, `Content-Disposition: inline`, `Cache-Control: public, max-age=300`, `nosniff`; `404` sin imagen/no publicada; `503` saneado.
+- **RED/GREEN observado.** RED: contrato 1 fallido; API módulos/ruta `404` (13 fallidos). GREEN: contracts **554**; api **2315** (105 archivos); typecheck 8/8; lint 5/5; boundaries sin violaciones (952 módulos, 3102 dependencias); test:boundaries 164.
+- **Hallazgo de la verificación independiente (bloqueante) y corrección.** El verifier read-only marcó un **bloqueante**: el lateral de la imagen filtraba sólo por content type, así que un documento obligatorio (CUIT/estatuto/declaraciones) subido como JPEG/PNG podía servirse **públicamente** como la foto de la campaña. Corrección acotada: `and pd.kind = 'photo'` en el lateral, más fixtures pgTAP (un documento obligatorio image-typed **más antiguo** que no debe servirse; tiebreak `created_at`/`id` desacoplado) con RED→GREEN observado (**47/47**). Tras la corrección, `test:db` quedó **18/18** (el `db reset` local limpió el residuo del bucket).
+- **Límite explícito.** Sin `apps/web` (la tarjeta es WU4). Migración **local**; aplicación al remoto pendiente de autorización del owner.
+
+- **Work-unit commit.** `c1c731f feat(api): serve the PyME's real photo to the marketplace (#414)`.
