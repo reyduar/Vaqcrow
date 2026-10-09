@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { campaignIdSchema } from "./campaign.js";
 import { marketplaceCampaignImageUrlSchema, riskBandSchema } from "./marketplace.js";
+import { periodSchema, salesPeriodStatusSchema } from "./sme-evidence.js";
 
 /**
  * The account-gated campaign detail (`GET /marketplace/campaigns/:campaignId`,
@@ -63,6 +64,38 @@ export const campaignDetailDecisionSchema = z.strictObject({
 
 export type CampaignDetailDecision = z.infer<typeof campaignDetailDecisionSchema>;
 
+/**
+ * One persisted monthly sales period, shaped for the "Evidencia de ventas"
+ * section. The vocabulary is the sales feed's own (`periodSchema`,
+ * `salesPeriodStatusSchema`): a **missing** month carries `salesArs: null`,
+ * never a fabricated `0`. `source` is the datum's provenance
+ * (`business_sales_period.source`, the provider's own string).
+ */
+export const campaignDetailSalesMonthSchema = z.strictObject({
+  period: periodSchema,
+  salesArs: z.number().int().nonnegative().nullable(),
+  status: salesPeriodStatusSchema,
+  source: z.string().trim().min(1)
+});
+
+export type CampaignDetailSalesMonth = z.infer<typeof campaignDetailSalesMonthSchema>;
+
+/**
+ * The PyME's persisted sales evidence for the detail. `averageMonthlyArs` is
+ * the mean of the **declared** months (a missing month is excluded, never
+ * counted as zero); it is `null` when no month was declared. `totalMonths` is
+ * the size of the persisted window (8 in the demo). The whole block is `null`
+ * when the business has no persisted periods — the honest "sin dato".
+ */
+export const campaignDetailSalesEvidenceSchema = z.strictObject({
+  averageMonthlyArs: z.number().int().nonnegative().nullable(),
+  declaredMonths: z.number().int().nonnegative(),
+  totalMonths: z.number().int().nonnegative(),
+  months: z.array(campaignDetailSalesMonthSchema)
+});
+
+export type CampaignDetailSalesEvidence = z.infer<typeof campaignDetailSalesEvidenceSchema>;
+
 export const campaignDetailSchema = z.strictObject({
   campaignId: campaignIdSchema,
   name: z.string().trim().min(1),
@@ -91,7 +124,13 @@ export const campaignDetailSchema = z.strictObject({
    */
   vaultAddress: z.string().trim().min(1).nullable(),
   assessment: campaignDetailAssessmentSchema.nullable(),
-  decision: campaignDetailDecisionSchema.nullable()
+  decision: campaignDetailDecisionSchema.nullable(),
+  /**
+   * The PyME's persisted sales evidence (`business_sales_period`), or `null`
+   * when the business has none persisted yet — the honest "sin dato", never an
+   * invented series.
+   */
+  salesEvidence: campaignDetailSalesEvidenceSchema.nullable()
 });
 
 export type CampaignDetail = z.infer<typeof campaignDetailSchema>;

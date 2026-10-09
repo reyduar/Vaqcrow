@@ -193,6 +193,8 @@ export type { FavoriteCampaignList, FavoriteCampaignResult } from "./favorite.js
 export {
   campaignDetailAssessmentSchema,
   campaignDetailDecisionSchema,
+  campaignDetailSalesEvidenceSchema,
+  campaignDetailSalesMonthSchema,
   campaignDetailSchema,
   campaignDetailStatusSchema,
   parseCampaignDetail
@@ -201,6 +203,8 @@ export type {
   CampaignDetail,
   CampaignDetailAssessment,
   CampaignDetailDecision,
+  CampaignDetailSalesEvidence,
+  CampaignDetailSalesMonth,
   CampaignDetailStatus
 } from "./campaign-detail.js";
 

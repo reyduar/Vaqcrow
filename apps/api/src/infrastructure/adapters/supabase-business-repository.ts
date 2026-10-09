@@ -7,6 +7,9 @@ import {
   type BusinessRepositoryPort,
   type BusinessRepositoryResult
 } from "../../application/ports/business-repository-port.js";
+import type { SalesDataProviderPort } from "../../application/ports/sales-data-provider-port.js";
+import type { SalesPeriodRepositoryPort } from "../../application/ports/sales-period-repository-port.js";
+import { toSalesPeriodRecords } from "./supabase-sales-period-repository.js";
 
 /**
  * The Supabase adapter for the PyME company model (Feature #398, Task #399 /
@@ -38,8 +41,23 @@ interface BusinessColumns {
   readonly updated_at?: unknown;
 }
 
+/**
+ * The optional sales-series seed (#422/WU2b). When both are wired, creating a
+ * business persists the deterministic series its `SalesDataProviderPort`
+ * already serves, so the campaign detail's "Evidencia de ventas" and the PyME's
+ * sales feed agree by construction. Both are absent in unit tests, so the
+ * adapter stays a plain row mapper there.
+ */
+export interface SupabaseBusinessRepositoryOptions {
+  readonly salesData?: SalesDataProviderPort;
+  readonly salesPeriods?: SalesPeriodRepositoryPort;
+}
+
 export class SupabaseBusinessRepository implements BusinessRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(
+    private readonly client: SupabaseClient,
+    private readonly options: SupabaseBusinessRepositoryOptions = {}
+  ) {}
 
   async createForOwner(input: {
     readonly ownerUserId: string;
@@ -76,9 +94,44 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
         return { ok: false, error: { code: "unavailable" } };
       }
 
-      return { ok: true, value: this.toRecord(data as BusinessColumns) };
+      const value = this.toRecord(data as BusinessColumns);
+      // Best-effort: a simulated sales seed never blocks registering the
+      // company. The manual backfill (`seed:sales-periods:docker|cloud`) covers
+      // any gap, and the detail then renders its honest "sin dato" until it runs.
+      await this.persistSalesSeries(value.businessId);
+      return { ok: true, value };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * Persists the deterministic series the sales-data provider serves for this
+   * business, mirroring the PyME's sales feed exactly. No-op unless both the
+   * provider and the sales-period repository were wired; failures are logged and
+   * swallowed so registration succeeds regardless.
+   */
+  private async persistSalesSeries(businessId: string): Promise<void> {
+    const { salesData, salesPeriods } = this.options;
+    if (salesData === undefined || salesPeriods === undefined) return;
+
+    try {
+      const periods = await salesData.getPeriods(businessId);
+      if (!periods.ok) return;
+      const saved = await salesPeriods.saveForBusiness({
+        businessId,
+        periods: toSalesPeriodRecords(periods.value)
+      });
+      if (!saved.ok) {
+        // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
+        console.error("[SupabaseBusinessRepository] sales-series seed unavailable", { businessId });
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
+      console.error("[SupabaseBusinessRepository] sales-series seed failed", {
+        businessId,
+        name: error instanceof Error ? error.name : "unknown"
+      });
     }
   }
 

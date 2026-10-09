@@ -15,6 +15,8 @@
     "dev:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/index.js",
     "seed:superadmin:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/seed-superadmin-cli.js",
     "seed:superadmin:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-superadmin-cli.js",
+    "seed:sales-periods:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/seed-sales-periods-cli.js",
+    "seed:sales-periods:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-sales-periods-cli.js",
     "start": "node dist/index.js"
   },
   "dependencies": {

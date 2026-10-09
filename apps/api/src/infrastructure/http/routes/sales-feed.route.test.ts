@@ -175,6 +175,59 @@ describe("POST /businesses/:businessId/sales-periods", () => {
     expect(replay.json().period).toEqual(first.json().period);
   });
 
+  it("re-persists the provider's series after a record so the campaign detail never diverges (#422)", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+    const app = buildAppAs("PYME", {
+      salesFeed: {
+        provider: createSimulatedSalesDataProvider(),
+        businesses: businesses(),
+        salesPeriods: { saveForBusiness }
+      }
+    });
+
+    const response = await app.inject({ method: "POST", url: SERIES_URL, payload: {} });
+
+    expect(response.statusCode).toBe(201);
+    expect(saveForBusiness).toHaveBeenCalledTimes(1);
+    const saved = saveForBusiness.mock.calls.at(0)?.at(0);
+    expect(saved.businessId).toBe(BUSINESS);
+    // The persisted series advances with the feed: nine months after the record.
+    expect(saved.periods).toHaveLength(9);
+    expect(saved.periods[8]).toMatchObject({ period: "2026-09", status: "reported" });
+  });
+
+  it("does not re-persist on an idempotent replay", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+    const app = buildAppAs("PYME", {
+      salesFeed: {
+        provider: createSimulatedSalesDataProvider(),
+        businesses: businesses(),
+        salesPeriods: { saveForBusiness }
+      }
+    });
+
+    await app.inject({ method: "POST", url: SERIES_URL, payload: {} });
+    await app.inject({ method: "POST", url: SERIES_URL, payload: {} });
+
+    expect(saveForBusiness).toHaveBeenCalledTimes(1);
+  });
+
+  it("still answers 201 when the persistence write fails (best-effort)", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
+    const app = buildAppAs("PYME", {
+      salesFeed: {
+        provider: createSimulatedSalesDataProvider(),
+        businesses: businesses(),
+        salesPeriods: { saveForBusiness }
+      }
+    });
+
+    const response = await app.inject({ method: "POST", url: SERIES_URL, payload: {} });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().applied).toBe(true);
+  });
+
   it("refuses a body with any key — the next period is the provider's decision, not the caller's", async () => {
     let called = false;
     const stub: SalesDataProviderPort = {

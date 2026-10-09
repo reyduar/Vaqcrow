@@ -109,6 +109,9 @@ select lives_ok(
 -- A later migration (#422) adds a view over campaign and campaign_contribution,
 -- so it is reversed before the mirrors it depends on.
 drop view if exists public.marketplace_campaign_detail;
+-- The #422/WU2b sales-period table backs that detail view (and references
+-- businesses); reverse it here too, after the view that depends on it.
+drop table if exists public.business_sales_period;
 drop table public.campaign_refund_contact;
 drop table public.campaign_contribution;
 -- Later migrations that reference campaign must be reversed first

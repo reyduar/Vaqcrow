@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  campaignDetailSalesEvidenceSchema,
   campaignDetailSchema,
   campaignDetailStatusSchema,
   parseCampaignDetail
@@ -44,6 +45,16 @@ const DETAIL = {
     reason: "Aprobada tras revisar la evidencia.",
     approvedLimitArs: 5_000_000,
     recordedAt: "2026-10-01T09:00:00.000Z"
+  },
+  salesEvidence: {
+    averageMonthlyArs: 3_700_000,
+    declaredMonths: 2,
+    totalMonths: 3,
+    months: [
+      { period: "2026-01", salesArs: 3_150_000, status: "reported", source: "Declaración mensual sintética" },
+      { period: "2026-02", salesArs: 4_250_000, status: "anomalous", source: "Declaración mensual sintética" },
+      { period: "2026-03", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+    ]
   }
 };
 
@@ -111,5 +122,75 @@ describe("campaign detail contract", () => {
     expect(campaignDetailSchema.safeParse({ ...DETAIL, goalArs: 1.5 }).success).toBe(false);
     expect(campaignDetailSchema.safeParse({ ...DETAIL, fundedPercentBps: 10_001 }).success).toBe(false);
     expect(campaignDetailSchema.safeParse({ ...DETAIL, campaignId: "not-a-uuid" }).success).toBe(false);
+  });
+});
+
+describe("campaign detail sales evidence", () => {
+  it("accepts a persisted sales-evidence block and an explicit null (the honest sin dato)", () => {
+    expect(campaignDetailSchema.safeParse(DETAIL).success).toBe(true);
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, salesEvidence: null }).success).toBe(true);
+  });
+
+  it("keeps a missing month's sales as null, never a fabricated zero", () => {
+    const months = [
+      { period: "2026-01", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+    ];
+    expect(
+      campaignDetailSalesEvidenceSchema.safeParse({
+        averageMonthlyArs: null,
+        declaredMonths: 0,
+        totalMonths: 1,
+        months
+      }).success
+    ).toBe(true);
+  });
+
+  it("accepts exactly the three month statuses and rejects any other", () => {
+    for (const status of ["reported", "missing", "anomalous"]) {
+      expect(
+        campaignDetailSalesEvidenceSchema.safeParse({
+          averageMonthlyArs: 100,
+          declaredMonths: 1,
+          totalMonths: 1,
+          months: [{ period: "2026-01", salesArs: 100, status, source: "s" }]
+        }).success
+      ).toBe(true);
+    }
+    expect(
+      campaignDetailSalesEvidenceSchema.safeParse({
+        averageMonthlyArs: 100,
+        declaredMonths: 1,
+        totalMonths: 1,
+        months: [{ period: "2026-01", salesArs: 100, status: "estimated", source: "s" }]
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects a malformed period, a negative amount and an unknown key in a month", () => {
+    const base = { averageMonthlyArs: 100, declaredMonths: 1, totalMonths: 1, source: "s" };
+    expect(
+      campaignDetailSalesEvidenceSchema.safeParse({
+        ...base,
+        months: [{ period: "2026-13", salesArs: 100, status: "reported", source: "s" }]
+      }).success
+    ).toBe(false);
+    expect(
+      campaignDetailSalesEvidenceSchema.safeParse({
+        ...base,
+        months: [{ period: "2026-01", salesArs: -1, status: "reported", source: "s" }]
+      }).success
+    ).toBe(false);
+    expect(
+      campaignDetailSalesEvidenceSchema.safeParse({
+        ...base,
+        months: [{ period: "2026-01", salesArs: 100, status: "reported", source: "s", note: "leak" }]
+      }).success
+    ).toBe(false);
+  });
+
+  it("is strict: an unknown key on the evidence block is rejected", () => {
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, salesEvidence: { ...DETAIL.salesEvidence, total: 3 } }).success).toBe(
+      false
+    );
   });
 });

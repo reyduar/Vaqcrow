@@ -21,6 +21,7 @@ import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
 import { SupabaseBusinessRepository } from "./infrastructure/adapters/supabase-business-repository.js";
+import { SupabaseSalesPeriodRepository } from "./infrastructure/adapters/supabase-sales-period-repository.js";
 import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
 import { SupabaseDocumentVerdictRepository } from "./infrastructure/adapters/supabase-document-verdict-repository.js";
 import { SupabaseFavoriteRepository } from "./infrastructure/adapters/supabase-favorite-repository.js";
@@ -64,10 +65,19 @@ const salesDataProvider = createSimulatedSalesDataProvider();
 
 const smeRequestRepository = new SupabaseSmeRequestRepository(supabase);
 
+// The persisted monthly sales series (#422/WU2b): the campaign detail reads it
+// through the `marketplace_campaign_detail` view, and it is written from the
+// deterministic sales feed so both surfaces agree by construction.
+const salesPeriodRepository = new SupabaseSalesPeriodRepository(supabase);
+
 // The PyME company (T3b): created and read by owner, and the ownership source
 // the sales-feed route scopes a PyME's series to. It also resolves the company
-// name the submission notification carries.
-const businessRepository = new SupabaseBusinessRepository(supabase);
+// name the submission notification carries, and persists the business's
+// deterministic sales series when it is registered (#422/WU2b).
+const businessRepository = new SupabaseBusinessRepository(supabase, {
+  salesData: salesDataProvider,
+  salesPeriods: salesPeriodRepository
+});
 
 // The PyME Freighter wallet (#406/#407): one binding shared by the connect route
 // and the submission precondition (#402/T1b), so the presence check reads the
@@ -298,7 +308,7 @@ const app = buildApp({
   applicationAssessment: applicationAssessmentDependencies,
   campaign,
   campaignDeployment,
-  salesFeed: { provider: salesDataProvider, businesses: businessRepository },
+  salesFeed: { provider: salesDataProvider, businesses: businessRepository, salesPeriods: salesPeriodRepository },
   smeRequest: {
     repository: smeRequestRepository,
     salesData: salesDataProvider,

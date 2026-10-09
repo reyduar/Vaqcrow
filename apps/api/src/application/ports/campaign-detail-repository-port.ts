@@ -47,6 +47,30 @@ export interface CampaignDetailDecisionRecord {
   readonly recordedAt: string;
 }
 
+/**
+ * One persisted monthly sales period (#422/WU2b), read from
+ * `business_sales_period`. `salesArs` is `null` for a `missing` month — never a
+ * `0`; `source` is the datum's provenance. The array arrives in `YYYY-MM`
+ * order from the view.
+ */
+export interface CampaignDetailSalesMonthRecord {
+  readonly period: string;
+  readonly salesArs: bigint | null;
+  readonly status: "reported" | "missing" | "anomalous";
+  readonly source: string;
+}
+
+/**
+ * The business's persisted sales evidence. The application layer derives the
+ * average and the declared count from `months`, so the repository stays a pure
+ * row mapper. Optional on the record only so a hand-built test fixture can omit
+ * it; a present-but-empty array means the same as absent — no persisted
+ * periods.
+ */
+export interface CampaignDetailSalesEvidenceRecord {
+  readonly months: readonly CampaignDetailSalesMonthRecord[];
+}
+
 export interface CampaignDetailRecord {
   readonly campaignId: string;
   readonly name: string;
@@ -74,6 +98,12 @@ export interface CampaignDetailRecord {
   readonly rateSnapshot?: CampaignDetailRateSnapshot;
   readonly assessment: CampaignDetailAssessmentRecord | null;
   readonly decision: CampaignDetailDecisionRecord | null;
+  /**
+   * The business's persisted sales periods, or `undefined`/empty when it has
+   * none. Optional so an existing hand-built fixture that predates the sales
+   * evidence stays valid; the use case treats absence as the honest `null`.
+   */
+  readonly salesEvidence?: CampaignDetailSalesEvidenceRecord;
 }
 
 export type CampaignDetailRepositoryError = { readonly code: "unavailable" };

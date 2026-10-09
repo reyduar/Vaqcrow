@@ -1,6 +1,6 @@
 begin;
 
-select plan(74);
+select plan(94);
 
 -- Account-gated campaign detail read model (Feature #422, WU1).
 --
@@ -50,6 +50,52 @@ select has_column('public', 'marketplace_campaign_detail', 'image_content_type',
 select has_column('public', 'marketplace_campaign_detail', 'fx_rate_version', 'has an fx_rate_version column');
 select has_column('public', 'marketplace_campaign_detail', 'usd_to_ars', 'has a usd_to_ars column');
 select has_column('public', 'marketplace_campaign_detail', 'stroops_per_usd', 'has a stroops_per_usd column');
+select has_column('public', 'marketplace_campaign_detail', 'sales_months', 'has a sales_months column appended at the end');
+
+-- The persisted monthly sales series the detail reads (#422/WU2b) -------------
+
+select has_table('public', 'business_sales_period', 'business_sales_period table exists');
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.business_sales_period'::regclass),
+  true,
+  'business_sales_period has row-level security enabled'
+);
+select has_column('public', 'business_sales_period', 'business_id', 'has a business_id column');
+select has_column('public', 'business_sales_period', 'period', 'has a period column');
+select has_column('public', 'business_sales_period', 'sales_ars', 'has a sales_ars column');
+select has_column('public', 'business_sales_period', 'status', 'has a status column');
+select has_column('public', 'business_sales_period', 'source', 'has a source column');
+
+select is(
+  has_table_privilege('anon', 'public.business_sales_period', 'select'),
+  false,
+  'anon cannot read the persisted sales series'
+);
+select is(
+  has_table_privilege('authenticated', 'public.business_sales_period', 'select'),
+  false,
+  'authenticated cannot read the persisted sales series'
+);
+select is(
+  has_table_privilege('anon', 'public.business_sales_period', 'insert'),
+  false,
+  'anon cannot write the persisted sales series'
+);
+select is(
+  has_table_privilege('service_role', 'public.business_sales_period', 'select'),
+  true,
+  'service role can read the persisted sales series'
+);
+select is(
+  has_table_privilege('service_role', 'public.business_sales_period', 'insert'),
+  true,
+  'service role can write the persisted sales series'
+);
+select is(
+  has_table_privilege('service_role', 'public.business_sales_period', 'update'),
+  true,
+  'service role can idempotently update the persisted sales series'
+);
 
 -- Access control: nobody but service_role ------------------------------------
 
@@ -189,6 +235,24 @@ values
     'photo', '71111111-1111-4111-8111-111111111111/photo/frente.jpg',
     'frente.jpg', 200, 'image/jpeg', timestamptz '2026-02-01 00:00:00+00'
   );
+
+-- The persisted monthly sales series for campaign A's company: eight months,
+-- April missing (a JSON null, never 0) and June anomalous. Campaign B's company
+-- has none, so its detail exposes a NULL `sales_months` (the honest "sin dato").
+insert into public.business_sales_period (business_id, period, sales_ars, status, source)
+select b.id, v.period, v.sales_ars, v.status, 'Declaración mensual sintética'
+  from public.businesses as b
+  cross join (values
+    ('2026-01', 3150000::bigint, 'reported'),
+    ('2026-02', 3320500::bigint, 'reported'),
+    ('2026-03', 3410750::bigint, 'reported'),
+    ('2026-04', null::bigint,    'missing'),
+    ('2026-05', 3580900::bigint, 'reported'),
+    ('2026-06', 6240000::bigint, 'anomalous'),
+    ('2026-07', 3690300::bigint, 'reported'),
+    ('2026-08', 3745800::bigint, 'reported')
+  ) as v(period, sales_ars, status)
+ where b.owner_user_id = '71111111-1111-4111-8111-111111111111';
 
 -- Behavior --------------------------------------------------------------------
 -- Exercised as service_role, the role the API connects as.
@@ -355,6 +419,37 @@ select is(
   (select stroops_per_usd from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
   10000000::bigint,
   'the stroops_per_usd snapshot is exposed'
+);
+
+select is(
+  (select pg_catalog.jsonb_array_length(sales_months) from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  8,
+  'the persisted sales window exposes eight months'
+);
+select is(
+  (select sales_months -> 0 ->> 'period' from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  '2026-01',
+  'the sales months are ordered by period'
+);
+select is(
+  (select sales_months -> 3 -> 'sales_ars' from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  'null'::jsonb,
+  'a missing month is a JSON null, never 0'
+);
+select is(
+  (select sales_months -> 5 ->> 'status' from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  'anomalous',
+  'an anomalous month keeps its status'
+);
+select is(
+  (select sales_months -> 0 ->> 'source' from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  'Declaración mensual sintética',
+  'the per-datum source travels with the series'
+);
+select is(
+  (select sales_months from public.marketplace_campaign_detail where campaign_id = '72222222-2222-4222-8222-222222222222'),
+  null,
+  'a company with no persisted periods exposes a null sales series (sin dato)'
 );
 
 select is(

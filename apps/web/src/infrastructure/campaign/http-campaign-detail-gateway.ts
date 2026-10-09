@@ -81,7 +81,10 @@ function toDetail(wire: CampaignDetailWire, imageBaseUrl: string): CampaignDetai
     backers: wire.backers,
     vaultAddress: wire.vaultAddress,
     assessment: wire.assessment,
-    decision: wire.decision
+    decision: wire.decision,
+    // The persisted sales evidence passes straight through: the contract's own
+    // shape is what the section renders.
+    salesEvidence: wire.salesEvidence
   };
 }
 

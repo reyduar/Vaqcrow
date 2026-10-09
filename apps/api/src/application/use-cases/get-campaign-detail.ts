@@ -1,8 +1,9 @@
 import { campaignDetailSchema } from "@vaqcrow/contracts";
-import type { CampaignDetail, CampaignDetailStatus } from "@vaqcrow/contracts";
+import type { CampaignDetail, CampaignDetailSalesEvidence, CampaignDetailStatus } from "@vaqcrow/contracts";
 import type {
   CampaignDetailRecord,
-  CampaignDetailRepositoryPort
+  CampaignDetailRepositoryPort,
+  CampaignDetailSalesEvidenceRecord
 } from "../ports/campaign-detail-repository-port.js";
 import { toFundedPercentBps, toRaisedArs } from "./list-marketplace-campaigns.js";
 
@@ -56,6 +57,42 @@ export function deriveCampaignDetailStatus(
   return "funding";
 }
 
+/**
+ * Shapes the persisted sales periods into the contract's evidence block. The
+ * average is the mean of the **declared** months only: a `missing` month is
+ * excluded, never counted as zero, and an `anomalous` month is a declaration
+ * too. `declaredMonths` counts non-null amounts; `totalMonths` is the window
+ * size. Returns `null` when nothing was persisted — the honest "sin dato".
+ */
+export function toCampaignDetailSalesEvidence(
+  record: CampaignDetailSalesEvidenceRecord | undefined
+): CampaignDetailSalesEvidence | null {
+  if (record === undefined || record.months.length === 0) return null;
+
+  const months = record.months.map((month) => ({
+    period: month.period,
+    salesArs: month.salesArs === null ? null : Number(month.salesArs),
+    status: month.status,
+    source: month.source
+  }));
+
+  let declaredSum = 0;
+  let declaredMonths = 0;
+  for (const month of months) {
+    if (month.salesArs !== null) {
+      declaredSum += month.salesArs;
+      declaredMonths += 1;
+    }
+  }
+
+  return {
+    averageMonthlyArs: declaredMonths === 0 ? null : Math.round(declaredSum / declaredMonths),
+    declaredMonths,
+    totalMonths: months.length,
+    months
+  };
+}
+
 function toCampaignDetail(record: CampaignDetailRecord, now: Date): CampaignDetail {
   const assessment = record.assessment;
   return campaignDetailSchema.parse({
@@ -98,7 +135,8 @@ function toCampaignDetail(record: CampaignDetailRecord, now: Date): CampaignDeta
             approvedLimitArs:
               record.decision.approvedLimitArs === null ? null : Number(record.decision.approvedLimitArs),
             recordedAt: record.decision.recordedAt
-          }
+          },
+    salesEvidence: toCampaignDetailSalesEvidence(record.salesEvidence)
   });
 }
 

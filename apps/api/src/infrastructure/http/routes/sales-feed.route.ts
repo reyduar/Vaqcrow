@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type { BusinessRepositoryPort } from "../../../application/ports/business-repository-port.js";
 import type { SalesDataProviderPort } from "../../../application/ports/sales-data-provider-port.js";
+import type { SalesPeriodRepositoryPort } from "../../../application/ports/sales-period-repository-port.js";
+import { toSalesPeriodRecords } from "../../adapters/supabase-sales-period-repository.js";
 
 /**
  * The HTTP surface of the monthly sales feed (issue #83, Feature #26).
@@ -35,6 +37,13 @@ export interface SalesFeedRouteDependencies {
   readonly provider: SalesDataProviderPort;
   /** The ownership check the `PYME` path runs before serving any series. */
   readonly businesses: Pick<BusinessRepositoryPort, "findOwnedById">;
+  /**
+   * The persisted series the campaign detail reads (#422/WU2b). Optional so the
+   * route still works where no detail read model is wired; when present, a
+   * successful record re-persists the provider's series so the PyME's feed and
+   * the detail never diverge.
+   */
+  readonly salesPeriods?: Pick<SalesPeriodRepositoryPort, "saveForBusiness">;
 }
 
 function hasExactBodyKeys(
@@ -141,6 +150,20 @@ export function registerSalesFeedRoute(
       const result = await dependencies.provider.recordNextPeriod(request.params.businessId);
 
       if (result.ok) {
+        // A recorded month advances the in-memory provider, so the persisted
+        // series the campaign detail reads (#422/WU2b) must advance with it or
+        // the two surfaces diverge. Best-effort: the record already succeeded,
+        // so a persistence failure never fails the response.
+        if (result.value.applied && dependencies.salesPeriods) {
+          const series = await dependencies.provider.getPeriods(request.params.businessId);
+          if (series.ok) {
+            await dependencies.salesPeriods.saveForBusiness({
+              businessId: request.params.businessId,
+              periods: toSalesPeriodRecords(series.value)
+            });
+          }
+        }
+
         return reply
           .code(result.value.applied ? 201 : 200)
           .send({ applied: result.value.applied, period: result.value.period });

@@ -1,6 +1,7 @@
 import type {
   CampaignDetailAssessment,
   CampaignDetailDecision,
+  CampaignDetailSalesEvidence,
   CampaignDetailStatus,
   RiskBand
 } from "@vaqcrow/contracts";
@@ -52,6 +53,14 @@ export interface CampaignDetail {
   readonly vaultAddress: string | null;
   readonly assessment: CampaignDetailAssessment | null;
   readonly decision: CampaignDetailDecision | null;
+  /**
+   * The PyME's persisted sales evidence, or `null`/absent when the business has
+   * none persisted yet — the honest "sin dato", never an invented series. A
+   * missing month carries `salesArs: null`, never a fabricated `0`. Optional so
+   * a pre-existing fixture that predates this field stays valid; the HTTP
+   * gateway always sets it.
+   */
+  readonly salesEvidence?: CampaignDetailSalesEvidence | null;
 }
 
 /**

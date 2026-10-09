@@ -46,6 +46,16 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
       approvedLimitArs: 9_450_000,
       recordedAt: "2026-09-13T09:15:00.000Z"
     },
+    salesEvidence: {
+      averageMonthlyArs: 3_700_000,
+      declaredMonths: 2,
+      totalMonths: 3,
+      months: [
+        { period: "2026-01", salesArs: 3_150_000, status: "reported", source: "Declaración mensual sintética" },
+        { period: "2026-02", salesArs: null, status: "missing", source: "Declaración mensual sintética" },
+        { period: "2026-03", salesArs: 4_250_000, status: "anomalous", source: "Declaración mensual sintética" }
+      ]
+    },
     ...overrides
   };
 }
@@ -167,6 +177,39 @@ describe("CampaignDetail (detail sections)", () => {
       expect(screen.getByText(label)).toBeInTheDocument();
       unmount();
     }
+  });
+
+  it("renders the persisted sales evidence: KPIs, a missing 'Sin dato' bar and the source table", async () => {
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail() }) });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+
+    const section = screen.getByRole("region", { name: "Evidencia de ventas" });
+    expect(within(section).getByText("Promedio mensual")).toBeInTheDocument();
+    expect(within(section).getByText("ARS 3.700.000")).toBeInTheDocument();
+    expect(within(section).getByText("Períodos declarados")).toBeInTheDocument();
+    expect(within(section).getByText("2 de 3")).toBeInTheDocument();
+    // Average × revenue share (4,5 %): 3.700.000 × 0,045 = 166.500.
+    expect(within(section).getByText("Distribución estimada/mes")).toBeInTheDocument();
+    expect(within(section).getByText("ARS 166.500")).toBeInTheDocument();
+
+    // The missing month is never rendered as a zero.
+    expect(within(section).getAllByText("Sin dato").length).toBeGreaterThan(0);
+    expect(within(section).queryByText("ARS 0")).not.toBeInTheDocument();
+
+    // The source table travels with each period's provenance.
+    expect(within(section).getByText("Ver tabla con fuente y procedencia")).toBeInTheDocument();
+    expect(within(section).getAllByText(/Declaración mensual sintética/).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the honest 'Sin dato' section when there is no persisted sales evidence", async () => {
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail({ salesEvidence: null }) }) });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+
+    const section = screen.getByRole("region", { name: "Evidencia de ventas" });
+    expect(within(section).getByText(/Sin dato/)).toBeInTheDocument();
+    expect(within(section).queryByText("Promedio mensual")).not.toBeInTheDocument();
   });
 
   it("renders the honest 'Sin dato' fallbacks and never invents a percentage", async () => {

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type {
   CampaignDetailRateSnapshot,
   CampaignDetailRecord,
-  CampaignDetailRepositoryPort
+  CampaignDetailRepositoryPort,
+  CampaignDetailSalesEvidenceRecord
 } from "../ports/campaign-detail-repository-port.js";
 import { deriveCampaignDetailStatus, getCampaignDetail } from "./get-campaign-detail.js";
 
@@ -21,6 +22,17 @@ const SNAPSHOT: CampaignDetailRateSnapshot = {
   version: 5,
   usdToArs: 1_000_000_000n,
   stroopsPerUsd: 10_000_000n
+};
+
+// Two declared months (one of them anomalous) and one missing: the declared
+// count is 2 and the average is the mean of the declared months only
+// (3_150_000 + 6_240_000) / 2 = 4_695_000; the missing month is excluded.
+const SALES_EVIDENCE: CampaignDetailSalesEvidenceRecord = {
+  months: [
+    { period: "2026-01", salesArs: 3_150_000n, status: "reported", source: "Declaración mensual sintética" },
+    { period: "2026-02", salesArs: 6_240_000n, status: "anomalous", source: "Declaración mensual sintética" },
+    { period: "2026-03", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+  ]
 };
 
 function record(
@@ -56,6 +68,7 @@ function record(
       approvedLimitArs: 5_000_000n,
       recordedAt: "2026-10-01T09:00:00.000Z"
     },
+    salesEvidence: SALES_EVIDENCE,
     ...(rateSnapshot === null ? {} : { rateSnapshot }),
     ...overrides
   };
@@ -103,6 +116,16 @@ describe("getCampaignDetail", () => {
           reason: "Aprobada tras revisar la evidencia.",
           approvedLimitArs: 5_000_000,
           recordedAt: "2026-10-01T09:00:00.000Z"
+        },
+        salesEvidence: {
+          averageMonthlyArs: 4_695_000,
+          declaredMonths: 2,
+          totalMonths: 3,
+          months: [
+            { period: "2026-01", salesArs: 3_150_000, status: "reported", source: "Declaración mensual sintética" },
+            { period: "2026-02", salesArs: 6_240_000, status: "anomalous", source: "Declaración mensual sintética" },
+            { period: "2026-03", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+          ]
         }
       }
     });
@@ -127,6 +150,52 @@ describe("getCampaignDetail", () => {
     expect(result.ok && result.value.decision).toBeNull();
     expect(result.ok && result.value.vaultAddress).toBeNull();
     expect(result.ok && result.value.imageUrl).toBeNull();
+  });
+
+  it("reports null salesEvidence when the business has no persisted periods", async () => {
+    const recordWithoutSales = { ...record() };
+    delete recordWithoutSales.salesEvidence;
+    const result = await getCampaignDetail(
+      { repository: fakeRepository({ ok: true, value: recordWithoutSales }) },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(result.ok && result.value.salesEvidence).toBeNull();
+  });
+
+  it("reports null salesEvidence for an empty month array", async () => {
+    const result = await getCampaignDetail(
+      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: { months: [] } }) }) },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(result.ok && result.value.salesEvidence).toBeNull();
+  });
+
+  it("nulls the average (and keeps the periods) when every month is missing", async () => {
+    const allMissing: CampaignDetailSalesEvidenceRecord = {
+      months: [
+        { period: "2026-01", salesArs: null, status: "missing", source: "Declaración mensual sintética" },
+        { period: "2026-02", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+      ]
+    };
+    const result = await getCampaignDetail(
+      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: allMissing }) }) },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(result.ok && result.value.salesEvidence).toEqual({
+      averageMonthlyArs: null,
+      declaredMonths: 0,
+      totalMonths: 2,
+      months: [
+        { period: "2026-01", salesArs: null, status: "missing", source: "Declaración mensual sintética" },
+        { period: "2026-02", salesArs: null, status: "missing", source: "Declaración mensual sintética" }
+      ]
+    });
   });
 
   it("points imageUrl at the API image path when the campaign has a photo", async () => {

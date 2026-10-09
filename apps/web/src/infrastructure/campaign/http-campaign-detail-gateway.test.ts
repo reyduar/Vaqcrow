@@ -36,6 +36,16 @@ const WIRE_DETAIL = {
     reason: "Documentación completa",
     approvedLimitArs: 9_450_000,
     recordedAt: "2026-09-13T09:15:00.000Z"
+  },
+  salesEvidence: {
+    averageMonthlyArs: 3_700_000,
+    declaredMonths: 2,
+    totalMonths: 3,
+    months: [
+      { period: "2026-01", salesArs: 3_150_000, status: "reported", source: "Declaración mensual sintética" },
+      { period: "2026-02", salesArs: null, status: "missing", source: "Declaración mensual sintética" },
+      { period: "2026-03", salesArs: 4_250_000, status: "anomalous", source: "Declaración mensual sintética" }
+    ]
   }
 };
 
@@ -80,6 +90,34 @@ describe("HttpCampaignDetailGateway.get", () => {
     expect(result.detail.imageSrc).toBe(`${BASE}${IMAGE_URL}`);
     expect(result.detail.assessment?.model).toBe("evaluador-v1");
     expect(result.detail.decision?.actor).toBe("M. Pereyra");
+    expect(result.detail.salesEvidence).toEqual(WIRE_DETAIL.salesEvidence);
+  });
+
+  it("keeps a missing month's sales as null through the gateway", async () => {
+    const { client } = fakeClient({ status: 200, data: { ...WIRE_DETAIL, imageUrl: null } });
+    const gateway = new HttpCampaignDetailGateway(client, BASE);
+
+    const result = await gateway.get(CAMPAIGN_ID);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.detail.salesEvidence?.months[1]).toEqual({
+      period: "2026-02",
+      salesArs: null,
+      status: "missing",
+      source: "Declaración mensual sintética"
+    });
+  });
+
+  it("keeps a null sales evidence as null", async () => {
+    const { client } = fakeClient({ status: 200, data: { ...WIRE_DETAIL, salesEvidence: null } });
+    const gateway = new HttpCampaignDetailGateway(client, BASE);
+
+    const result = await gateway.get(CAMPAIGN_ID);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.detail.salesEvidence).toBeNull();
   });
 
   it("attaches the Bearer token from the access-token provider", async () => {

@@ -21,6 +21,7 @@ import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail } from "@/application/ports/campaign-detail-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { Badge, type BadgeTone } from "../badge";
+import { BarChart, type BarChartPoint } from "../bar-chart";
 import { ProgressBar } from "../progress-bar";
 import { CampaignContribution, type CampaignContributionInjection } from "./campaign-contribution";
 
@@ -166,7 +167,49 @@ function UsesSection() {
   );
 }
 
-function SalesEvidenceSection() {
+const MONTH_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"] as const;
+const MONTH_FULL = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre"
+] as const;
+
+const SALES_STATUS_LABEL: Readonly<Record<"reported" | "missing" | "anomalous", string>> = {
+  reported: "Declarado",
+  missing: "Faltante",
+  anomalous: "Requiere revisión"
+};
+
+/** `2026-01` -> `{ short: "ene", full: "Enero 2026" }`; a malformed period stays verbatim. */
+function periodLabel(period: string): { readonly short: string; readonly full: string } {
+  const [year, month] = period.split("-");
+  const index = Number(month) - 1;
+  return {
+    short: MONTH_SHORT[index] ?? period,
+    full: index >= 0 && index < MONTH_FULL.length ? `${MONTH_FULL[index]} ${year}` : period
+  };
+}
+
+function SalesKpi({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="rounded-control bg-page-surface p-3.5">
+      <dt className="text-xs text-text-secondary">{label}</dt>
+      <dd className="m-0 mt-1 text-xl font-bold tracking-[-0.01em]">{value}</dd>
+    </div>
+  );
+}
+
+/** The honest WU2 fallback: no persisted periods, never an invented series. */
+function SalesEvidenceFallback() {
   return (
     <section
       aria-labelledby="ev-t"
@@ -177,8 +220,109 @@ function SalesEvidenceSection() {
         <Badge variant="simulado" label="SIMULADO" lang="es" />
       </div>
       <p className="m-0 text-base leading-relaxed text-text-secondary">
-        {`${SIN_DATO}. La evidencia de ventas todavía no está disponible en este detalle.`}
+        {`${SIN_DATO}. Todavía no hay ventas persistidas para esta PyME.`}
       </p>
+    </section>
+  );
+}
+
+/**
+ * The template's "Evidencia de ventas" (#422/WU2b): the PyME's persisted monthly
+ * series. A missing month renders as the chart's dashed "Sin dato" bar (never a
+ * zero) and an anomaly keeps its distinct marker; the KPIs are the declared
+ * average, the declared count over the window, and the estimated monthly
+ * distribution (average × revenue share), all already computed by the API. A
+ * business with no persisted periods keeps the honest "Sin dato".
+ */
+function SalesEvidenceSection({ detail }: { readonly detail: CampaignDetail }) {
+  const evidence = detail.salesEvidence ?? null;
+  if (evidence === null) return <SalesEvidenceFallback />;
+
+  const months = evidence.months.map((month) => ({ ...month, ...periodLabel(month.period) }));
+  const points: BarChartPoint[] = months.map((month) => ({
+    label: month.short,
+    value: month.salesArs,
+    displayValue: month.salesArs === null ? SIN_DATO : formatArsAmount(month.salesArs),
+    status: month.status
+  }));
+
+  const averageLabel = evidence.averageMonthlyArs === null ? SIN_DATO : formatArsAmount(evidence.averageMonthlyArs);
+  // The template's own estimate; omitted when there is no declared average.
+  const distributionMonthly =
+    evidence.averageMonthlyArs === null ? null : Math.round((evidence.averageMonthlyArs * detail.revenueShare) / 100);
+
+  const notes = ["Serie sintética y reproducible"];
+  const missing = months.find((month) => month.status === "missing");
+  if (missing) notes.push(`${missing.full} está ausente`);
+  const anomalous = months.find((month) => month.status === "anomalous");
+  if (anomalous) notes.push(`${anomalous.full} contiene una anomalía intencional`);
+
+  const rangeCaption =
+    months.length > 0 ? `${months[0]!.full} – ${months[months.length - 1]!.full} · ARS` : "Ventas mensuales · ARS";
+
+  return (
+    <section
+      aria-labelledby="ev-t"
+      className="flex flex-col gap-[18px] rounded-control border border-border p-6"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionHeading id="ev-t">Evidencia de ventas</SectionHeading>
+        <Badge variant="simulado" label="SIMULADO" lang="es" />
+      </div>
+
+      <dl className="m-0 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+        <SalesKpi label="Promedio mensual" value={averageLabel} />
+        <SalesKpi label="Períodos declarados" value={`${evidence.declaredMonths} de ${evidence.totalMonths}`} />
+        {distributionMonthly === null ? null : (
+          <SalesKpi label="Distribución estimada/mes" value={formatArsAmount(distributionMonthly)} />
+        )}
+      </dl>
+
+      <BarChart
+        title="Ventas mensuales"
+        caption={rangeCaption}
+        series={points}
+        tableCaption={`Ventas mensuales sintéticas — ${detail.name}`}
+        valueColumnLabel="Ventas (ARS)"
+        headingLevel={3}
+        notice={`${notes.join("; ")}.`}
+      />
+
+      <details className="border-t border-border pt-3">
+        <summary className="cursor-pointer text-sm font-semibold">Ver tabla con fuente y procedencia</summary>
+        <div className="mt-2 overflow-x-auto">
+          <table lang="es" className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+                  Período
+                </th>
+                <th scope="col" className="border-b border-border py-2 text-right text-xs font-semibold text-text-secondary">
+                  Ventas (ARS)
+                </th>
+                <th scope="col" className="border-b border-border py-2 text-left text-xs font-semibold text-text-secondary">
+                  Estado y fuente
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {months.map((month) => (
+                <tr key={month.period}>
+                  <th scope="row" className="border-b border-border py-2.5 text-left font-medium">
+                    {month.full}
+                  </th>
+                  <td className="border-b border-border py-2.5 text-right font-semibold whitespace-nowrap">
+                    {month.salesArs === null ? SIN_DATO : formatArsAmount(month.salesArs)}
+                  </td>
+                  <td className="border-b border-border py-2.5 text-text-secondary">
+                    {`${SALES_STATUS_LABEL[month.status]} · ${month.source}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </section>
   );
 }
@@ -426,7 +570,7 @@ export function CampaignDetailView({
           <CampaignImage detail={detail} />
           <AboutSection detail={detail} />
           <UsesSection />
-          <SalesEvidenceSection />
+          <SalesEvidenceSection detail={detail} />
 
           <div className="grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
             <AiRecommendationSection detail={detail} />

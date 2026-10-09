@@ -7,6 +7,8 @@ import type {
   CampaignDetailRecord,
   CampaignDetailRepositoryPort,
   CampaignDetailRepositoryResult,
+  CampaignDetailSalesEvidenceRecord,
+  CampaignDetailSalesMonthRecord,
   CampaignDetailState
 } from "../../application/ports/campaign-detail-repository-port.js";
 
@@ -57,6 +59,7 @@ export class SupabaseCampaignDetailRepository implements CampaignDetailRepositor
     const rateSnapshot = this.toRateSnapshot(value);
     const assessment = this.toAssessment(value);
     const decision = this.toDecision(value);
+    const salesEvidence = this.toSalesEvidence(value["sales_months"]);
     return {
       campaignId: this.text(value["campaign_id"]),
       name: this.text(value["name"]),
@@ -75,7 +78,35 @@ export class SupabaseCampaignDetailRepository implements CampaignDetailRepositor
       backers: this.integer(value["backers"]),
       ...(rateSnapshot === undefined ? {} : { rateSnapshot }),
       assessment,
-      decision
+      decision,
+      ...(salesEvidence === undefined ? {} : { salesEvidence })
+    };
+  }
+
+  /**
+   * The view's `sales_months` is a JSONB array (ordered by `period`) or `null`
+   * when the business has no persisted periods. A malformed element throws so a
+   * corrupt read becomes `unavailable` rather than a half-rendered series; a
+   * `null` amount stays `null` (a missing month is never a zero).
+   */
+  private toSalesEvidence(value: unknown): CampaignDetailSalesEvidenceRecord | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (!Array.isArray(value)) throw new Error("Malformed sales months");
+    return { months: value.map((element) => this.toSalesMonth(element)) };
+  }
+
+  private toSalesMonth(element: unknown): CampaignDetailSalesMonthRecord {
+    const row = this.asRecord(element);
+    const status = row["status"];
+    if (status !== "reported" && status !== "missing" && status !== "anomalous") {
+      throw new Error("Malformed sales status");
+    }
+    const salesArs = row["sales_ars"];
+    return {
+      period: this.text(row["period"]),
+      salesArs: salesArs === null || salesArs === undefined ? null : this.bigint(salesArs),
+      status,
+      source: this.text(row["source"])
     };
   }
 
