@@ -25,6 +25,7 @@ import { SupabaseSalesPeriodRepository } from "./infrastructure/adapters/supabas
 import { SupabaseCampaignDeploymentRepository } from "./infrastructure/adapters/supabase-campaign-deployment-repository.js";
 import { SupabaseDocumentVerdictRepository } from "./infrastructure/adapters/supabase-document-verdict-repository.js";
 import { SupabaseFavoriteRepository } from "./infrastructure/adapters/supabase-favorite-repository.js";
+import { SupabaseInvestorKycRepository } from "./infrastructure/adapters/supabase-investor-kyc-repository.js";
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
@@ -212,6 +213,11 @@ const campaignDetailRepository = new SupabaseCampaignDetailRepository(supabase);
 // principal's user_id. Anonymous visitors retain nothing (owner decision D1).
 const favoriteRepository = new SupabaseFavoriteRepository(supabase);
 
+// The investor's simulated KYC (#422/WU4): reads and writes `investor_kyc` as
+// service_role, always scoped by the verified principal's user_id. The approval
+// is simulated and auto-granted at the first contribution (owner decision D2).
+const investorKycRepository = new SupabaseInvestorKycRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -334,6 +340,9 @@ const app = buildApp({
   marketplace: { campaigns: marketplaceCampaignRepository, storage: storageAdapter, detail: campaignDetailRepository },
   // Per-account favorites (#414/WU2): the signed-in caller's own rows only.
   favorite: { favorites: favoriteRepository },
+  // The investor's simulated KYC (#422/WU4): the signed-in caller's own state
+  // only, auto-approved at the first contribution.
+  investorKyc: { kyc: investorKycRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

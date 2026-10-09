@@ -208,6 +208,9 @@ export type {
   CampaignDetailStatus
 } from "./campaign-detail.js";
 
+export { investorKycSchema, parseInvestorKyc } from "./investor-kyc.js";
+export type { InvestorKyc } from "./investor-kyc.js";
+
 export {
   campaignSnapshotSchema,
   campaignStateSchema,

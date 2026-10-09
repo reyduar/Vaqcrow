@@ -316,6 +316,24 @@ describe("buildApp", () => {
     });
   });
 
+  describe("investor kyc dependency", () => {
+    it("registers the investor KYC surface when the dependency is present", async () => {
+      const kyc = {
+        find: async () => ({ ok: true as const, value: null }),
+        approve: async () => ({
+          ok: true as const,
+          value: { approvedAt: "2026-10-08T18:30:00.000Z", simulado: true, created: true }
+        })
+      };
+      app = buildApp({ auth: { port: fakeAuthPort() }, investorKyc: { kyc } });
+
+      const response = await app.inject({ method: "GET", url: "/investor-kyc", headers: bearer("INVERSOR") });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ approved: false, approvedAt: null, simulado: true });
+    });
+  });
+
   describe("CORS", () => {
     const ALLOWED_ORIGIN = "https://vaqcrow-web.example.com";
     const DISALLOWED_ORIGIN = "https://not-allowed.example.com";

@@ -12,16 +12,20 @@ import type { CampaignVaultError } from "@/application/campaign/campaign-vault-e
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail } from "@/application/ports/campaign-detail-port";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
+import type { InvestorKycPort } from "@/application/ports/investor-kyc-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { createCampaignGateway } from "@/infrastructure/campaign/default-gateway";
+import { createBrowserInvestorKycPort } from "@/infrastructure/kyc/create-investor-kyc-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { useCampaignVault } from "@/state/use-campaign-vault";
+import { useInvestorKyc } from "@/state/use-investor-kyc";
 import { useWalletConnected } from "@/state/use-wallet-connected";
 import { Button } from "../button";
 import { TextField } from "../text-field";
+import { InvestorKycInterstitial } from "./investor-kyc-interstitial";
 import {
   TransactionReviewModal,
   type TransactionReviewNetworkState,
@@ -62,6 +66,7 @@ export interface CampaignContributionInjection {
   readonly gateway?: CampaignGateway | null;
   readonly wallet?: WalletPort;
   readonly connection?: WalletConnectionPort | null;
+  readonly kyc?: InvestorKycPort | null;
   readonly onConnectWallet?: () => void;
 }
 
@@ -98,6 +103,7 @@ export function CampaignContribution({
   gateway,
   wallet,
   connection,
+  kyc,
   onConnectWallet,
   onContributionSubmitted
 }: CampaignContributionProps) {
@@ -110,11 +116,19 @@ export function CampaignContribution({
   const [resolvedConnection] = useState<WalletConnectionPort | null>(
     () => connection ?? createBrowserWalletConnectionPort()
   );
+  const [resolvedKycPort] = useState<InvestorKycPort>(() => kyc ?? createBrowserInvestorKycPort());
   const walletState = useWalletConnected(resolvedConnection);
+  // The simulated KYC is fetched only for a would-be contributor: a PYME never
+  // contributes to its own campaign, so it never calls this route.
+  const kycState = useInvestorKyc(resolvedKycPort, canContribute);
 
   const [sent, setSent] = useState(false);
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState<string | undefined>();
+  // The one-shot simulated-KYC interstitial (WU4), shown before the review modal.
+  const [kycOpen, setKycOpen] = useState(false);
+  const [kycApproving, setKycApproving] = useState(false);
+  const [kycFailed, setKycFailed] = useState(false);
   const [review, setReview] = useState<{
     readonly amount: string;
     readonly stroops: string;
@@ -159,6 +173,22 @@ export function CampaignContribution({
 
   const openPortfolio = onConnectWallet ?? (() => router.push(PORTFOLIO_HREF));
 
+  // The final step shared by an already-approved investor and the one-shot KYC
+  // confirm: validate the amount, ensure a signing account, then open the review.
+  const openReview = async () => {
+    const parsed = validateContributionAmount(amount);
+    if (!parsed.ok) {
+      setAmountError(contributionAmountMessage(parsed.error));
+      return;
+    }
+
+    setAmountError(undefined);
+    // Establish the signing account before opening the review, so "Firmar en
+    // Freighter" runs against a connected wallet (a fresh page has none).
+    if (!publicKey) await connect();
+    setReview({ amount, stroops: parsed.stroops, errorBaseline: error, attempted: false });
+  };
+
   const handleOpenReview = async () => {
     const reason = contributionPreSignError({
       amountInput: amount,
@@ -176,17 +206,29 @@ export function CampaignContribution({
       return;
     }
 
-    const parsed = validateContributionAmount(amount);
-    if (!parsed.ok) {
-      setAmountError(contributionAmountMessage(parsed.error));
+    // The simulated KYC interstitial appears once, before the review modal
+    // (owner decision D2); an already-approved investor skips it.
+    if (kycState.approved) {
+      await openReview();
       return;
     }
 
-    setAmountError(undefined);
-    // Establish the signing account before opening the review, so "Firmar en
-    // Freighter" runs against a connected wallet (a fresh page has none).
-    if (!publicKey) await connect();
-    setReview({ amount, stroops: parsed.stroops, errorBaseline: error, attempted: false });
+    setKycFailed(false);
+    setKycOpen(true);
+  };
+
+  const handleKycConfirm = async () => {
+    setKycApproving(true);
+    const approved = await kycState.approve();
+    setKycApproving(false);
+    if (!approved) {
+      // Keep the interstitial open with an honest retry, never opening the
+      // review on an unconfirmed approval.
+      setKycFailed(true);
+      return;
+    }
+    setKycOpen(false);
+    await openReview();
   };
 
   const handleSign = () => {
@@ -218,7 +260,7 @@ export function CampaignContribution({
       <Button
         type="button"
         fullWidth
-        isDisabled={isSubmitting || walletState.status === "loading"}
+        isDisabled={isSubmitting || walletState.status === "loading" || kycState.isLoading}
         onPress={handleOpenReview}
       >
         {sent ? "Aportar de nuevo" : "Aportar a la campaña"}
@@ -251,6 +293,17 @@ export function CampaignContribution({
         ]}
         {...networkProps}
         {...signingProps}
+      />
+
+      <InvestorKycInterstitial
+        isOpen={kycOpen}
+        isApproving={kycApproving}
+        failed={kycFailed}
+        onConfirm={handleKycConfirm}
+        onClose={() => {
+          setKycOpen(false);
+          setKycFailed(false);
+        }}
       />
     </div>
   );

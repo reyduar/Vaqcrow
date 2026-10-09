@@ -96,6 +96,12 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "PUT /favorites/:campaignId": AUTHENTICATED,
   "DELETE /favorites/:campaignId": AUTHENTICATED,
 
+  // Investor's simulated KYC (#422/WU4): every signed-in role reads and records
+  // only its own verification state. The owner is the verified principal, never
+  // the request.
+  "GET /investor-kyc": AUTHENTICATED,
+  "POST /investor-kyc": AUTHENTICATED,
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

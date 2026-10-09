@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail, CampaignDetailPort } from "@/application/ports/campaign-detail-port";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
+import type { InvestorKycPort } from "@/application/ports/investor-kyc-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import { FakeWallet, FakeWalletConnection } from "@/test/fake-wallet";
 import type { CampaignSnapshot } from "@vaqcrow/contracts";
@@ -96,7 +97,27 @@ interface RenderOptions {
   readonly connection?: FakeWalletConnection;
   readonly wallet?: WalletPort;
   readonly gateway?: CampaignGateway;
+  readonly kyc?: InvestorKycPort;
   readonly onConnectWallet?: () => void;
+}
+
+/**
+ * The KYC port the contribution flow fetches (WU4). Tests that predate WU4 pass
+ * an already-approved port, so the review opens straight away; the WU4 cases
+ * pass their own to control the initial status.
+ */
+function fakeKyc(overrides: Partial<InvestorKycPort> = {}): InvestorKycPort {
+  const approved = { approved: true, approvedAt: "2026-10-08T18:30:00.000Z", simulado: true } as const;
+  return {
+    get: vi.fn().mockResolvedValue({ ok: true, status: approved }),
+    approve: vi.fn().mockResolvedValue({ ok: true, status: approved }),
+    ...overrides
+  };
+}
+
+function pendingKyc(overrides: Partial<InvestorKycPort> = {}): InvestorKycPort {
+  const absent = { approved: false, approvedAt: null, simulado: true } as const;
+  return fakeKyc({ get: vi.fn().mockResolvedValue({ ok: true, status: absent }), ...overrides });
 }
 
 function renderFlow(options: RenderOptions = {}) {
@@ -113,6 +134,7 @@ function renderFlow(options: RenderOptions = {}) {
         gateway: options.gateway ?? createGateway(),
         wallet: options.wallet ?? new FakeWallet({ publicKey: INVESTOR }),
         connection: options.connection ?? new FakeWalletConnection({ publicKey: INVESTOR, frozen: false }),
+        kyc: options.kyc ?? fakeKyc(),
         ...(options.onConnectWallet ? { onConnectWallet: options.onConnectWallet } : {})
       }}
     />,
@@ -240,5 +262,70 @@ describe("CampaignContribution: after signing", () => {
     expect(await screen.findByRole("button", { name: "Aportar de nuevo" })).toBeInTheDocument();
     // Signing is never reported as confirmed by the UI.
     expect(screen.queryByText(/confirmada por la red|está confirmada\./i)).not.toBeInTheDocument();
+  });
+});
+
+describe("CampaignContribution: the simulated KYC interstitial", () => {
+  async function attemptContribution() {
+    await loadedHeading();
+    const cta = await enabledCta();
+    fireEvent.change(screen.getByLabelText(/Monto del aporte/), { target: { value: "15" } });
+    fireEvent.click(cta);
+  }
+
+  it("shows the one-shot interstitial before the review modal for an un-approved investor", async () => {
+    const kyc = pendingKyc();
+    renderFlow({ kyc });
+
+    await attemptContribution();
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Verificación de identidad")).toBeInTheDocument();
+    expect(within(dialog).getByText("SIMULADO")).toBeInTheDocument();
+    // The review modal is not open yet, and no approval was recorded.
+    expect(screen.queryByText("Aportar a Panadería Horizonte SRL")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Firmar en Freighter" })).not.toBeInTheDocument();
+    expect(kyc.approve).not.toHaveBeenCalled();
+  });
+
+  it("approves on confirm and then opens the review modal", async () => {
+    const kyc = pendingKyc();
+    renderFlow({ kyc });
+
+    await attemptContribution();
+    fireEvent.click(await screen.findByRole("button", { name: "Aprobar y continuar" }));
+
+    expect(await screen.findByText("Aportar a Panadería Horizonte SRL")).toBeInTheDocument();
+    expect(kyc.approve).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Verificación de identidad")).not.toBeInTheDocument();
+  });
+
+  it("never shows the interstitial again once approved", async () => {
+    const kyc = pendingKyc();
+    renderFlow({ kyc });
+
+    await attemptContribution();
+    fireEvent.click(await screen.findByRole("button", { name: "Aprobar y continuar" }));
+    await screen.findByText("Aportar a Panadería Horizonte SRL");
+    const review = screen.getByRole("dialog");
+    fireEvent.click(within(review).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByText("Aportar a Panadería Horizonte SRL")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Aportar a la campaña" }));
+
+    expect(await screen.findByText("Aportar a Panadería Horizonte SRL")).toBeInTheDocument();
+    expect(screen.queryByText("Verificación de identidad")).not.toBeInTheDocument();
+    expect(kyc.approve).toHaveBeenCalledTimes(1);
+  });
+
+  it("an approved investor goes straight to the review modal", async () => {
+    const kyc = fakeKyc();
+    renderFlow({ kyc });
+
+    await attemptContribution();
+
+    expect(await screen.findByText("Aportar a Panadería Horizonte SRL")).toBeInTheDocument();
+    expect(screen.queryByText("Verificación de identidad")).not.toBeInTheDocument();
+    expect(kyc.approve).not.toHaveBeenCalled();
   });
 });

@@ -27,6 +27,8 @@ import { registerCompletenessCheckRoute } from "./routes/completeness-check.rout
 import type { CompletenessCheckRouteDependencies } from "./routes/completeness-check.route.js";
 import { registerFavoriteRoute } from "./routes/favorite.route.js";
 import type { FavoriteRouteDependencies } from "./routes/favorite.route.js";
+import { registerInvestorKycRoute } from "./routes/investor-kyc.route.js";
+import type { InvestorKycRouteDependencies } from "./routes/investor-kyc.route.js";
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
@@ -126,6 +128,8 @@ export function buildApp(dependencies: {
   readonly marketplace?: MarketplaceRouteDependencies | undefined;
   /** Per-account favorites (#414/WU2). Omitted when unwired. */
   readonly favorite?: FavoriteRouteDependencies | undefined;
+  /** The investor's simulated KYC (#422/WU4). Omitted when unwired. */
+  readonly investorKyc?: InvestorKycRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -236,6 +240,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.favorite) {
     registerFavoriteRoute(app, dependencies.favorite);
+  }
+  if (dependencies.investorKyc) {
+    registerInvestorKycRoute(app, dependencies.investorKyc);
   }
   return app;
 }

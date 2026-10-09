@@ -68,7 +68,11 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // removes only its own rows; the owner is the verified principal.
   ["GET", "/favorites", "any"],
   ["PUT", "/favorites/:campaignId", "any"],
-  ["DELETE", "/favorites/:campaignId", "any"]
+  ["DELETE", "/favorites/:campaignId", "any"],
+  // Investor's simulated KYC (#422/WU4): any signed-in role reads and records
+  // only its own verification state; the owner is the verified principal.
+  ["GET", "/investor-kyc", "any"],
+  ["POST", "/investor-kyc", "any"]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -122,6 +126,7 @@ function buildFullApp(auth?: AuthDependency): {
       detail: { findPublished: async () => ({ ok: true as const, value: undefined }) }
     },
     favorite: stub,
+    investorKyc: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });
