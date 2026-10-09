@@ -40,7 +40,7 @@ El marketplace (#414) lista campañas y su CTA apunta a `/campaigns/<id>`, que h
 ## Tareas
 
 - [x] **WU1 — Modelo de lectura y endpoint de detalle.** Contract `campaignDetail` + port + adaptador (vista SQL `service_role`) + caso de uso + ruta AUTHENTICATED + política, con el **estado derivado** y los campos persistidos; «Sin dato» para los ausentes. Sin `apps/web`.
-- [ ] **WU2 — Vista `/campaigns/[id]` (web).** Compuerta de cuenta, secciones del template, estados (carga/error/404/no-sesión) y variantes por estado de campaña.
+- [x] **WU2 — Vista `/campaigns/[id]` (web).** Compuerta de cuenta, secciones del template, estados (carga/error/404/no-sesión) y variantes por estado de campaña.
 - [ ] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
 - [ ] **WU4 — KYC simulado del inversor.** Interstitial one-shot en el primer aporte, `SIMULADO`, auto-aprobado.
 - [ ] **WU5 — «Retirar».** Acción en el aside gateada por estado/aporte ≠ 0.
@@ -67,3 +67,16 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes**. Confirmó ruta AUTHENTICATED + `MATRIX` alineado, regla de publicación, sin PII en el wire, estado alineado y cableado real en `index.ts`. Advisories (cobertura): sin test unitario del adaptador (se ejercita por la ruta), el pgTAP no afirma explícitamente la ausencia de columnas PII, y `image_object_path` embebe el UUID del dueño en una vista sólo `service_role` (mismo patrón aceptado de #414; nunca viaja al wire).
 - **Migración.** `20261008220000_create_marketplace_campaign_detail_view.sql` aplicada **al stack local** (el writer corrió `supabase migration up --local`); la **aplicación al remoto queda pendiente de autorización del owner**, junto con las de #414.
 - **Límite explícito.** Sin `apps/web` (la vista `/campaigns/[id]` es WU2).
+
+### WU2 — Vista `/campaigns/[id]` (commit `4967b1f`)
+
+Ruta: **delegado** (un writer; port + gateway + factory + hook + controlador + vista + página + tests, 2+ archivos no triviales). Ningún archivo previo modificado.
+
+- **Diseño.** Ruta **pública** `/campaigns/[id]` (`AppShell`) que monta un contenedor cliente; **anónimo** renderiza la **compuerta** del template («Ingresá para ver esta campaña» + links a `/login` y `/signup`) **sin hacer ningún fetch**; con sesión, el controlador pide el detalle. Capa de datos calcada de #414: `campaign-detail-port` (contrato espejado con `imageSrc` **absoluto**, códigos `unavailable|network|unauthenticated|not_found`), gateway HTTP con Bearer (401/403→`unauthenticated`, 404→`not_found`), factory con sesión perezosa y hook SWR (clave sólo con `port && enabled`; nunca fabrica datos). Estados mutuamente excluyentes: compuerta → carga → `not_found` → error+reintentar → detalle.
+- **Fallbacks honestos.** «Destino de los fondos» y «Evidencia de ventas» **no** están expuestos por el endpoint todavía → renderizan un «Sin dato» explícito, sin inventar porcentajes ni KPIs (no se llama a la ruta privada de ventas de la PyME). «Empleados» queda como «Sin dato» (no persistido). `raisedArs`/`assessment`/`decision`/`riskBand` nulos → «Sin dato»/«Riesgo sin dato», nunca `ARS 0`.
+- **Fuera de WU2.** El CTA «Aportar a la campaña» se **omite** a propósito (no se deja un control inerte): el flujo de aporte es WU3.
+- **RED/GREEN observado.** RED: 4 módulos nuevos sin resolver. GREEN: enfocados **6 archivos / 45 tests**; web **196 archivos / 1989 tests**; `typecheck` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1012 módulos, 3285 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **PASS, sin bloqueantes**. Confirmó que el anónimo no dispara el fetch (la clave SWR queda `null`), los estados no se solapan, los «Sin dato» no son cero, el mapeo de errores y el `imageSrc` absoluto, la ausencia deliberada del CTA y los límites. Advisories: `vaultAddress` viaja en el port pero todavía no se renderiza (se usará en el modal de WU3); la docstring del port decía «no PII» y viaja el `actor` (nombre de display del admin que el template diseña) → **corregida** en el mismo work unit.
+- **Límite explícito.** Sin flujo de aporte (WU3), sin KYC del inversor (WU4), sin «Retirar» (WU5).
+
+- **Work-unit commit.** `4967b1f feat(web): add the campaign detail view with the account gate (#422)`.
