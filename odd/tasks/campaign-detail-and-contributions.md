@@ -39,7 +39,7 @@ El marketplace (#414) lista campañas y su CTA apunta a `/campaigns/<id>`, que h
 
 ## Tareas
 
-- [ ] **WU1 — Modelo de lectura y endpoint de detalle.** Contract `campaignDetail` + port + adaptador (vista SQL `service_role`) + caso de uso + ruta AUTHENTICATED + política, con el **estado derivado** y los campos persistidos; «Sin dato» para los ausentes. Sin `apps/web`.
+- [x] **WU1 — Modelo de lectura y endpoint de detalle.** Contract `campaignDetail` + port + adaptador (vista SQL `service_role`) + caso de uso + ruta AUTHENTICATED + política, con el **estado derivado** y los campos persistidos; «Sin dato» para los ausentes. Sin `apps/web`.
 - [ ] **WU2 — Vista `/campaigns/[id]` (web).** Compuerta de cuenta, secciones del template, estados (carga/error/404/no-sesión) y variantes por estado de campaña.
 - [ ] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
 - [ ] **WU4 — KYC simulado del inversor.** Interstitial one-shot en el primer aporte, `SIMULADO`, auto-aprobado.
@@ -57,4 +57,13 @@ Forecast: Feature grande (varios work units). Entrega **feature-branch-chain**: 
 
 ## Progreso
 
-*(Se registra a medida que se completa cada work unit.)*
+### WU1 — Modelo de lectura y endpoint de detalle (commit `9c3a5b9`)
+
+Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta + política + vista SQL + pgTAP, 2+ archivos no triviales). Sin `apps/web`. El writer devolvió **partial**: faltaba cablear el adaptador en el composition root (`apps/api/src/index.ts`, fuera de su superficie); el orquestador lo completó inline (una importación + una instancia + un campo de dependencia).
+
+- **Diseño.** Contract `campaignDetailSchema` (estricto, portable, sin PII; reusa `campaignIdSchema`, `riskBandSchema` y la regla de `imageUrl` API-relativa del marketplace). Vista `public.marketplace_campaign_detail` (`security_invoker=true`, `revoke all` + `select` sólo `service_role`) con la **misma** regla de publicación de #414 (`campaign_deployment.state='confirmed'` **y** `campaign.state='open'`), y el lateral de la imagen **idéntico** al de `20261008202537` (`kind='photo'`). Endpoint `GET /marketplace/campaigns/:campaignId` **AUTHENTICATED** (compuerta de cuenta); `400` id no-UUID, `404` no publicada/desconocida, `503` saneado. Estado **derivado** `funding | settled | refunding`, alineado al vocabulario que ya renderiza la web (`evidence-timeline`) y gatea `campaign-workspace`; `raisedArs` nulo sin snapshot (nunca 0) y `fundedPercentBps` clampado con `BigInt`.
+- **Hallazgo.** La dirección de la bóveda **sí** está persistida: `campaign.contract_address`. Los campos no persistidos por el template (tagline, empleados, usos-de-fondos con %) viajan como `null` → «Sin dato» en la web.
+- **RED/GREEN observado.** El writer no capturó un RED separado (superficie nueva; lo declaró de forma honesta). GREEN: contracts **562** (19 archivos), api **2336** (106), `test:db` **19 archivos / 608 tests PASS** (incluye `marketplace_campaign_detail.sql`, 74 aserciones; `campaign_persistence.sql` ok tras agregar `drop view` a su reversión). `typecheck` limpio; `boundaries` sin violaciones (995 módulos, 3232 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes**. Confirmó ruta AUTHENTICATED + `MATRIX` alineado, regla de publicación, sin PII en el wire, estado alineado y cableado real en `index.ts`. Advisories (cobertura): sin test unitario del adaptador (se ejercita por la ruta), el pgTAP no afirma explícitamente la ausencia de columnas PII, y `image_object_path` embebe el UUID del dueño en una vista sólo `service_role` (mismo patrón aceptado de #414; nunca viaja al wire).
+- **Migración.** `20261008220000_create_marketplace_campaign_detail_view.sql` aplicada **al stack local** (el writer corrió `supabase migration up --local`); la **aplicación al remoto queda pendiente de autorización del owner**, junto con las de #414.
+- **Límite explícito.** Sin `apps/web` (la vista `/campaigns/[id]` es WU2).
