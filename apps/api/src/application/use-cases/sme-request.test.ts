@@ -58,6 +58,7 @@ function repository(overrides: Partial<SmeRequestRepositoryPort> = {}): SmeReque
     findByApplicationId: vi
       .fn()
       .mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
+    findReviewStateByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: "awaiting_assessment" }),
     listAdminQueue: vi.fn(),
     findByOwner: vi.fn().mockResolvedValue({ ok: true, value: [] }),
     ...overrides
@@ -456,7 +457,10 @@ describe("getSmeRequest", () => {
     const result = await getSmeRequest({ repository: repository(), salesData }, { applicationId: APPLICATION_ID, ownerUserId: OWNER });
 
     expect(salesData.getPeriods).toHaveBeenCalledWith("sme:SYN-PH-0001");
-    expect(result).toEqual({ ok: true, value: { request, salesPeriods: [period] } });
+    expect(result).toEqual({
+      ok: true,
+      value: { request, salesPeriods: [period], state: "awaiting_assessment" }
+    });
   });
 
   it("declares an empty series when the provider has no feed for the reference", async () => {
@@ -465,7 +469,36 @@ describe("getSmeRequest", () => {
       { applicationId: APPLICATION_ID, ownerUserId: OWNER }
     );
 
-    expect(result).toEqual({ ok: true, value: { request, salesPeriods: [] } });
+    expect(result).toEqual({ ok: true, value: { request, salesPeriods: [], state: "awaiting_assessment" } });
+  });
+
+  it("returns the application's own review state, whatever it is", async () => {
+    for (const state of ["draft", "awaiting_assessment", "human_review", "approved", "changes_requested", "rejected"] as const) {
+      const repo = repository({
+        findReviewStateByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: state })
+      });
+
+      const result = await getSmeRequest(
+        { repository: repo, salesData: sales({ ok: true, value: [period] }) },
+        { applicationId: APPLICATION_ID, ownerUserId: OWNER }
+      );
+
+      expect(result).toEqual({ ok: true, value: { request, salesPeriods: [period], state } });
+      expect(repo.findReviewStateByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
+    }
+  });
+
+  it("is unavailable when the review-state read fails, never inventing a state", async () => {
+    const repo = repository({
+      findReviewStateByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+
+    const result = await getSmeRequest(
+      { repository: repo, salesData: sales({ ok: true, value: [period] }) },
+      { applicationId: APPLICATION_ID, ownerUserId: OWNER }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
   });
 
   it("is not_found when the application has no request", async () => {
@@ -476,6 +509,7 @@ describe("getSmeRequest", () => {
 
     expect(result).toEqual({ ok: false, error: { code: "not_found" } });
     expect(salesData.getPeriods).not.toHaveBeenCalled();
+    expect(repo.findReviewStateByApplicationId).not.toHaveBeenCalled();
   });
 
   it("is unavailable when the repository or the provider is unavailable", async () => {

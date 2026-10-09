@@ -206,6 +206,38 @@ describe("SupabaseSmeRequestRepository.findByApplicationId", () => {
   });
 });
 
+describe("SupabaseSmeRequestRepository.findReviewStateByApplicationId", () => {
+  it("reads the application_review state by application id", async () => {
+    const { client, eq, from } = fakeClient({ data: { state: "human_review" } });
+
+    const result = await new SupabaseSmeRequestRepository(client).findReviewStateByApplicationId(APPLICATION_ID);
+
+    expect(from).toEqual(["application_review"]);
+    expect(eq).toEqual([["application_id", APPLICATION_ID]]);
+    expect(result).toEqual({ ok: true, value: "human_review" });
+  });
+
+  it("is not_found when no review row exists", async () => {
+    const { client } = fakeClient({ data: null });
+
+    expect(await new SupabaseSmeRequestRepository(client).findReviewStateByApplicationId(APPLICATION_ID)).toEqual({
+      ok: false,
+      error: { code: "not_found" }
+    });
+  });
+
+  it("is unavailable on a Postgres error or a state outside the contract", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const step of [{ error: pgError("XX000") }, { data: { state: "not_a_state" } }]) {
+      const { client } = fakeClient(step);
+      expect(await new SupabaseSmeRequestRepository(client).findReviewStateByApplicationId(APPLICATION_ID)).toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+    }
+  });
+});
+
 describe("SupabaseSmeRequestRepository.findByOwner", () => {
   it("reads the owner's requests newest first and maps them", async () => {
     const { client, eq, order, from } = fakeClient({ data: [ROW] });

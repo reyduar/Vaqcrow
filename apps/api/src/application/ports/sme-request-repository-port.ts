@@ -122,6 +122,16 @@ export interface SmeRequestRepositoryPort {
   findByApplicationId(applicationId: ApplicationId): Promise<SmeRequestRepositoryResult<SmeRequestRecord>>;
 
   /**
+   * The application's own `application_review` state (Feature #434, WU5),
+   * read by `application_id`. `not_found` means no review row exists for that
+   * application; the caller never invents a state. The `sme_request` table
+   * carries no state, so this is the only honest source of it.
+   */
+  findReviewStateByApplicationId(
+    applicationId: ApplicationId
+  ): Promise<SmeRequestRepositoryResult<ApplicationReviewState>>;
+
+  /**
    * The owner's own submitted requests, newest first; an empty array when the
    * owner has none. The submit use case reads this as a fast path for the common
    * sequential retry; the authoritative idempotency guard lives inside the

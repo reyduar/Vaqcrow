@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { applicationIdSchema } from "./application-id.js";
+import { applicationReviewStateSchema } from "./application-review.js";
 
 /** Period in `YYYY-MM` form, month 01-12. */
 export const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -86,10 +87,16 @@ export const smeRequestSubmissionSchema = z.strictObject({
 
 export type SmeRequestSubmission = z.infer<typeof smeRequestSubmissionSchema>;
 
-/** `GET /sme-requests/:applicationId` response: the request and its sales series. */
+/** `GET /sme-requests/:applicationId` response: the request, its sales series and the application's review state. */
 export const smeRequestReadSchema = z.strictObject({
   request: smeRequestSchema,
-  salesPeriods: z.array(salesPeriodSchema)
+  salesPeriods: z.array(salesPeriodSchema),
+  /**
+   * The owner's `application_review` state (Feature #434, WU5): the PyME reads
+   * where its own application stands. Required — the API always resolves it for
+   * the verified owner, so a read without it is malformed, never "unknown".
+   */
+  state: applicationReviewStateSchema
 });
 
 export type SmeRequestRead = z.infer<typeof smeRequestReadSchema>;

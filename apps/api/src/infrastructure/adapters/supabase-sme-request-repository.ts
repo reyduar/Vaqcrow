@@ -1,5 +1,5 @@
 import { applicationReviewStateSchema, parseApplicationId, parseSmeRequest } from "@vaqcrow/contracts";
-import type { ApplicationId, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
+import type { ApplicationId, ApplicationReviewState, CorrelationId, SmeRequest } from "@vaqcrow/contracts";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import {
   ADMIN_QUEUE_RAW_STATES_BY_DISPLAY,
@@ -20,6 +20,7 @@ import type {
 } from "../../application/ports/sme-request-repository-port.js";
 
 const TABLE = "sme_request";
+const APPLICATION_REVIEW_TABLE = "application_review";
 const SUBMIT_SME_REQUEST_FUNCTION = "submit_sme_request";
 const POSTGRES_CHECK_VIOLATION = "23514";
 
@@ -131,6 +132,37 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
       }
 
       return { ok: true, value: data.map((row) => this.toRecord(row as SmeRequestColumns)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * Reads the application's `application_review.state` by id (Feature #434,
+   * WU5). The review table is service_role-only, so this uses the API's own
+   * service-role client. An absent row is `not_found`; a malformed or unknown
+   * state is `unavailable`, never a silently widened value.
+   */
+  async findReviewStateByApplicationId(
+    applicationId: ApplicationId
+  ): Promise<SmeRequestRepositoryResult<ApplicationReviewState>> {
+    try {
+      const { data, error } = await this.client
+        .from(APPLICATION_REVIEW_TABLE)
+        .select("state")
+        .eq("application_id", applicationId)
+        .maybeSingle();
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error, undefined, applicationId) };
+      }
+
+      if (!data) {
+        return { ok: false, error: { code: "not_found" } };
+      }
+
+      const state = applicationReviewStateSchema.parse((data as { state?: unknown }).state);
+      return { ok: true, value: state };
     } catch {
       return { ok: false, error: { code: "unavailable" } };
     }

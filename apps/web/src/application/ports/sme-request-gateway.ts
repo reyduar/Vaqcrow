@@ -3,7 +3,7 @@ import type { SmeRequest, SmeRequestRead, SmeRequestSubmission } from "@vaqcrow/
 /** `POST /sme-requests` outcome: the created application and the stored request. */
 export type SmeRequestSubmitted = SmeRequestSubmission;
 
-/** `GET /sme-requests/:applicationId` outcome: the request and its sales series. */
+/** `GET /sme-requests/:applicationId` outcome: the request, its sales series and the application's review state. */
 export type SmeRequestCurrent = SmeRequestRead;
 
 /**

@@ -1,11 +1,23 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { SWRConfig } from "swr";
+import { describe, expect, it, vi } from "vitest";
+import type { ApplicationReviewState, SmeRequest } from "@vaqcrow/contracts";
 import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
+import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
-import { CompanyWorkspace } from "./company-workspace";
+import { CompanyWorkspace, captureApplicationIdOnSubmit } from "./company-workspace";
 
 const PUBLIC_KEY = "GBXK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ2345677Q2M";
+const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
+
+const SME_REQUEST: SmeRequest = {
+  smeReference: "sme:T",
+  declaredTotalArs: 100,
+  periodStart: "2026-01",
+  periodEnd: "2026-02",
+  simuladoLabel: "SIMULADO"
+};
 
 function myCampaigns(): MyCampaigns {
   return {
@@ -34,13 +46,18 @@ function okMyCampaigns(value: MyCampaigns = myCampaigns()): MyCampaignsPort {
   return { get: async () => ({ ok: true, myCampaigns: value }) };
 }
 
-function renderWorkspace(connection = new FakeWalletConnection(), myCampaignPort = okMyCampaigns()) {
+function renderWorkspace(
+  connection = new FakeWalletConnection(),
+  myCampaignPort = okMyCampaigns(),
+  applicationState?: ApplicationReviewState | null
+) {
   render(
     <CompanyWorkspace
       kyc={new FakeKyc()}
       connection={connection}
       balance={new FakeWalletBalance()}
       myCampaigns={myCampaignPort}
+      {...(applicationState === undefined ? {} : { applicationState })}
     />
   );
   return connection;
@@ -115,5 +132,86 @@ describe("CompanyWorkspace", () => {
       "href",
       `https://stellar.expert/explorer/testnet/account/${PUBLIC_KEY}`
     );
+  });
+
+  it("shows the Testnet funds guide with the generic Friendbot link while no wallet is linked", () => {
+    renderWorkspace();
+
+    expect(screen.getByRole("heading", { name: "Fondear tu wallet con XLM de prueba" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
+      "href",
+      "https://friendbot.stellar.org"
+    );
+    expect(screen.getByText(/Vaqcrow no custodia fondos ni mueve dinero/i)).toBeInTheDocument();
+  });
+
+  it("prefills the connected public key in the Friendbot link", async () => {
+    const connection = new FakeWalletConnection();
+    connection.seedConnection(PUBLIC_KEY);
+    renderWorkspace(connection);
+
+    await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
+    expect(screen.getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
+      "href",
+      `https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`
+    );
+  });
+
+  it("renders the application state banner when the state is supplied", () => {
+    renderWorkspace(new FakeWalletConnection(), okMyCampaigns(), "human_review");
+
+    expect(screen.getByRole("region", { name: "Estado de tu solicitud" })).toHaveTextContent("En revisión");
+  });
+
+  it("omits the application state banner when the state was not read", () => {
+    renderWorkspace();
+
+    expect(screen.queryByRole("region", { name: "Estado de tu solicitud" })).not.toBeInTheDocument();
+  });
+
+  it("renders the application state banner from the sme-request read", async () => {
+    const gateway: SmeRequestGateway = {
+      submit: vi.fn(),
+      load: vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "human_review" })
+    };
+    render(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <CompanyWorkspace
+          kyc={new FakeKyc()}
+          connection={new FakeWalletConnection()}
+          balance={new FakeWalletBalance()}
+          myCampaigns={okMyCampaigns()}
+          applicationId={APPLICATION_ID}
+          smeRequestGateway={gateway}
+        />
+      </SWRConfig>
+    );
+
+    expect(await screen.findByRole("region", { name: "Estado de tu solicitud" })).toHaveTextContent("En revisión");
+    expect(gateway.load).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+});
+
+describe("captureApplicationIdOnSubmit", () => {
+  it("records the application id the submit returned, then forwards the result", async () => {
+    const onCaptured = vi.fn();
+    const gateway: SmeRequestGateway = {
+      submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SME_REQUEST }),
+      load: vi.fn()
+    };
+    const wrapped = captureApplicationIdOnSubmit(gateway, onCaptured);
+
+    await expect(wrapped?.submit(SME_REQUEST)).resolves.toEqual({ applicationId: APPLICATION_ID, request: SME_REQUEST });
+    expect(onCaptured).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+
+  it("stays null for a null gateway and forwards load unchanged", async () => {
+    expect(captureApplicationIdOnSubmit(null, vi.fn())).toBeNull();
+
+    const load = vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "approved" });
+    const wrapped = captureApplicationIdOnSubmit({ submit: vi.fn(), load }, vi.fn());
+
+    await wrapped?.load(APPLICATION_ID);
+    expect(load).toHaveBeenCalledWith(APPLICATION_ID);
   });
 });

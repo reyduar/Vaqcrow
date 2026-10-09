@@ -73,6 +73,7 @@ function build(
       repository: {
         submit: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, applied: true, ownerUserId: OWNER } }),
         findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: { applicationId: APPLICATION_ID, request, ownerUserId: OWNER } }),
+        findReviewStateByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: "human_review" }),
         findByOwner: vi.fn().mockResolvedValue({ ok: true, value: [] }),
         listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
         ...repository
@@ -271,7 +272,7 @@ describe("POST /sme-requests", () => {
 });
 
 describe("GET /sme-requests/:applicationId", () => {
-  it("returns { request, salesPeriods } with the series keyed by smeReference", async () => {
+  it("returns { request, salesPeriods, state } with the series keyed by smeReference", async () => {
     const getPeriods = vi.fn().mockResolvedValue({ ok: true, value: [period] });
 
     const response = await build({}, { getPeriods }).inject({
@@ -280,8 +281,49 @@ describe("GET /sme-requests/:applicationId", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ request, salesPeriods: [period] });
+    expect(response.json()).toEqual({ request, salesPeriods: [period], state: "human_review" });
     expect(getPeriods).toHaveBeenCalledWith("sme:SYN-PH-0001");
+  });
+
+  it("serves the owner's own state and only reads it after the ownership check", async () => {
+    const findReviewStateByApplicationId = vi.fn().mockResolvedValue({ ok: true, value: "changes_requested" });
+
+    const response = await build({ findReviewStateByApplicationId }).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().state).toBe("changes_requested");
+    expect(findReviewStateByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
+  });
+
+  it("never reads the state for a request owned by someone else", async () => {
+    const findByApplicationId = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { applicationId: APPLICATION_ID, request, ownerUserId: OTHER_OWNER }
+    });
+    const findReviewStateByApplicationId = vi.fn();
+
+    const response = await build({ findByApplicationId, findReviewStateByApplicationId }).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(findReviewStateByApplicationId).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when the review-state read fails instead of inventing a state", async () => {
+    const findReviewStateByApplicationId = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
+
+    const response = await build({ findReviewStateByApplicationId }).inject({
+      method: "GET",
+      url: `/sme-requests/${APPLICATION_ID}`
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 
   it("answers 400 for a malformed application id before any read", async () => {
@@ -400,6 +442,7 @@ describe("GET /sme-requests", () => {
         repository: {
           submit: vi.fn(),
           findByApplicationId: vi.fn(),
+          findReviewStateByApplicationId: vi.fn(),
           findByOwner: vi.fn(),
           listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0, counts: zeroCounts } }),
           ...repository

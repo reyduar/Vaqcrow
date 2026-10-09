@@ -80,6 +80,7 @@ describe("listAdminSmeRequests", () => {
     return {
       submit: vi.fn(),
       findByApplicationId: vi.fn(),
+      findReviewStateByApplicationId: vi.fn(),
       findByOwner: vi.fn(),
       listAdminQueue: vi.fn().mockResolvedValue({ ok: true, value: { items: [item], total: 1, counts } }),
       ...overrides

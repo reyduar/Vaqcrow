@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import useSWR from "swr";
+import type { ApplicationReviewState } from "@vaqcrow/contracts";
 import type { SmeRequestFormValues, SmeRequestSubmitError } from "@/application/evidence/review-view-model";
 import { submitSmeRequest } from "@/application/evidence/submit-sme-request";
 import type { SmeRequestCurrent, SmeRequestGateway } from "@/application/ports/sme-request-gateway";
@@ -69,4 +70,25 @@ export function useSmeRequest(gateway: SmeRequestGateway | null, smeReference: s
     submitError,
     submitted
   };
+}
+
+/**
+ * Loads one application's own review state by id, without the journey store
+ * (Feature #434, WU5): the `/company` dashboard has no journey provider, so it
+ * cannot use `useSmeRequest`. `undefined` while there is no id or the read is in
+ * flight, so a caller can tell "unknown" apart from a resolved state; a failed
+ * read stays `undefined` and never invents a state. Shares the `useSmeRequest`
+ * SWR cache key, so a state read and a full read of the same application
+ * de-duplicate.
+ */
+export function useSmeRequestState(
+  gateway: SmeRequestGateway | null,
+  applicationId: string | null
+): ApplicationReviewState | undefined {
+  const { data } = useSWR<SmeRequestCurrent>(
+    gateway && applicationId ? (["sme-request", applicationId] as const) : null,
+    ([, id]: readonly ["sme-request", string]) => (gateway as SmeRequestGateway).load(id),
+    { shouldRetryOnError: false, revalidateOnFocus: false }
+  );
+  return data?.state;
 }
