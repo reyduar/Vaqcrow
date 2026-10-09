@@ -49,7 +49,7 @@ Entregar la vista **«Informes»** (template `Vaqcrow Informes.dc.html`): select
 - [x] **WU1 — Modelo de lectura del informe (backend).** `GET /reports` (KPIs + serie mensual + últimas distribuciones del período) y `GET /reports/sales-by-pyme` (ventas declaradas de las PyMEs con aporte del inversor, para el bloque con error propio). Contrato + port/adaptador/vistas + casos de uso + rutas + política (`AUTHENTICATED`) + pgTAP. Sin `apps/web`.
 - [x] **WU2 — Vista `/reports` (web).** Selector de período (3 presets generados desde los datos + rango personalizado), KPI cards con badge de fuente, gráfico mensual + tabla accesible, bloque «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga.
 - [x] **WU3 — Export.** Descarga CSV + imprimir-a-PDF (estilos de impresión, sin deps nuevas).
-- [ ] **WU4 — Acceso.** Gate de ruta para todos los autenticados + política; revisar el menú.
+- [x] **WU4 — Acceso.** Gate de ruta para todos los autenticados + política; revisar el menú.
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, `docs/planning/investor-reports-evidence.md`.
 
 Forecast: Feature grande (mayor que #426 por el alcance ampliado). Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
@@ -100,3 +100,14 @@ Ruta: **delegado** (un writer; builder CSV puro + helper browser + control + wir
 - **Criterio superseded aplicado.** El criterio del issue *"export remains disabled with the quoted message"* queda **superseded** por D2: la exportación es funcional.
 
 - **Work-unit commit.** `d954395 feat(web): add the report export (#430)`.
+
+### WU4 — Acceso para todos los autenticados (commit `c2e4d45`)
+
+Ruta: **delegado** (un writer; cambio del gate + matcher del proxy + tests). Sin componentes.
+
+- **Diseño.** Nuevo grupo `AUTHENTICATED_PATHS = ["/reports"]` en `route-gate.ts` (cualquier rol firmado); un anónimo va al `/login` neutro (sin rol preseleccionado, porque `authHref` exige rol). Se incluye en `GATED_PATHS` y se agrega `/reports/:path*` al `matcher` del proxy (server ↔ cliente en acuerdo). `PROTECTED` queda intacto (`/portfolio` INVERSOR, `/company` PYME). El menú **no** cambia (D1 es sobre el acceso; la entrada para otros roles queda owner-pending, el template no la diseña).
+- **RED/GREEN observado.** RED: 4 fallos (anónimo `/reports` → `/login` en ambos archivos, `/reports/ventas`, y `GATED_PATHS` sin `/reports`). GREEN: route-gate **42/42**; `proxy.test.ts` **13/13** (matcher ↔ `GATED_PATHS`); `tsc` limpio; `lint` sin errores; `boundaries` verde (1169 módulos).
+- **Verificación.** Spot-check del padre (lectura del gate + re-run enfocado 55/55); la verificación independiente completa se integra en WU5.
+- **Owner-pending.** Entrada de menú para PYME/ADMIN (hoy `/reports` es alcanzable por URL pero sólo el menú INVERSOR lo enlaza).
+
+- **Work-unit commit.** `c2e4d45 feat(web): allow every authenticated role to open the reports (#430)`.
