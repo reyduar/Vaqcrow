@@ -6,7 +6,6 @@ import { sortMyCampaigns, type MyCampaignSortMode } from "@/application/company/
 import type { BusinessPort } from "@/application/ports/business-port";
 import type {
   MyCampaign,
-  MyCampaignDistribution,
   MyCampaignsPort
 } from "@/application/ports/my-campaigns-port";
 import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
@@ -43,9 +42,10 @@ import { CompanyVaultList } from "./company-vault-list";
  * WU3 wires the `Declarar ventas` slot: when a declaration port and a business
  * port are present the action opens `CompanyDeclareSales`, whose successful
  * submit reloads this dashboard. WU4 wires the `Revisar y firmar` slot: when an
- * application resolver is present the row action opens `CompanySignDistribution`
- * for that distribution, reusing the shipped prepare → review → Freighter →
- * submit flow, and reloads the dashboard on success.
+ * application resolver is present the campaign-level action opens
+ * `CompanySignDistribution` for that `settled` campaign, reusing the shipped
+ * prepare → review → Freighter → submit flow, and reloads the dashboard on
+ * success. The action is never offered on a persisted distribution row.
  */
 export interface CompanyDashboardProps {
   readonly port: MyCampaignsPort | null;
@@ -56,7 +56,7 @@ export interface CompanyDashboardProps {
   /** WU3 override; when provided it replaces the internal declare panel. */
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
   /** WU4 override; when provided it replaces the internal signing action. */
-  readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
+  readonly onReviewAndSign?: (campaign: MyCampaign) => void;
   /**
    * WU4: resolves a campaign's application identity (the my-campaigns read
    * model does not carry it). When present the signing action is wired; when
@@ -84,15 +84,15 @@ export function CompanyDashboard({
 }: CompanyDashboardProps) {
   const [sort, setSort] = useState<MyCampaignSortMode>("recent");
   const [declaring, setDeclaring] = useState<MyCampaign | null>(null);
-  const [signing, setSigning] = useState<{ campaign: MyCampaign; distribution: MyCampaignDistribution } | null>(null);
+  const [signing, setSigning] = useState<MyCampaign | null>(null);
   const [signingApplicationId, setSigningApplicationId] = useState<string | null>(null);
   const [signingResolveFailed, setSigningResolveFailed] = useState(false);
   const state = useMyCampaigns(port, true);
 
   const openSigning = useCallback(
-    (campaign: MyCampaign, distribution: MyCampaignDistribution) => {
+    (campaign: MyCampaign) => {
       if (!resolveApplicationId) return;
-      setSigning({ campaign, distribution });
+      setSigning(campaign);
       setSigningApplicationId(null);
       setSigningResolveFailed(false);
       void resolveApplicationId(campaign.campaignId).then(
@@ -161,9 +161,8 @@ export function CompanyDashboard({
 
       {signing !== null && signingApplicationId !== null ? (
         <CompanySignDistribution
-          key={signing.distribution.distributionId}
-          campaign={signing.campaign}
-          distribution={signing.distribution}
+          key={signing.campaignId}
+          campaign={signing}
           applicationId={signingApplicationId}
           onSigned={state.reload}
           onCancel={() => {
@@ -205,7 +204,7 @@ export interface CompanyDashboardContainerProps {
   /** Injectable for tests; production builds the browser business port. */
   readonly business?: BusinessPort | null;
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
-  readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
+  readonly onReviewAndSign?: (campaign: MyCampaign) => void;
   /** Injectable for tests; production resolves the campaign's application via the campaign gateway. */
   readonly resolveApplicationId?: (campaignId: string) => Promise<string | null>;
   /** Injectable for tests; production uses the component's browser default. */

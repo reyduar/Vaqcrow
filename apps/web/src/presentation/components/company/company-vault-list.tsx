@@ -2,7 +2,7 @@
 
 import { MY_CAMPAIGN_STATE_TONE, vaultStatusTitle, type CampaignStateTone } from "@/application/company/campaign-state";
 import { MY_CAMPAIGNS_COPY } from "@/application/company/copy";
-import { needsSignature, toDistributionRow } from "@/application/company/distributions";
+import { canReviewAndSign, toDistributionRow } from "@/application/company/distributions";
 import { formatArsAmount, formatShortAddress } from "@/application/company/format";
 import type { MyCampaignSortMode } from "@/application/company/sort";
 import type { MyCampaign, MyCampaignDistribution } from "@/application/ports/my-campaigns-port";
@@ -18,10 +18,13 @@ import { ProgressBar } from "../progress-bar";
  * One row per campaign: name, abbreviated vault address, state joined with the
  * contributor count, the funding progress and the contract's immutability note.
  * Its distributions are nested (period, ARS principal plus the approximate XLM,
- * state) and a `Revisar y firmar` slot is offered only for a `submitted`
- * distribution. The `Declarar ventas` (WU3) and `Revisar y firmar` (WU4) slots
- * are present but unwired here: without a handler they render disabled with an
- * honest reason, so the affordance is visible without pretending it acts.
+ * state) as read-only rows. The `Revisar y firmar` action lives at the campaign
+ * level — offered only for a `settled` campaign, whose latest reported period
+ * the engine derives on demand — never on a persisted `submitted`/`confirmed`/
+ * `failed` distribution row. The `Declarar ventas` (WU3) and `Revisar y firmar`
+ * (WU4) slots are present but unwired here: without a handler they render
+ * disabled with an honest reason, so the affordance is visible without
+ * pretending it acts.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -43,19 +46,11 @@ export interface CompanyVaultListProps {
   readonly onSortChange: (mode: MyCampaignSortMode) => void;
   /** WU3 slot; while omitted the action renders disabled. */
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
-  /** WU4 slot; while omitted the action renders disabled. */
-  readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
+  /** WU4 slot; offered only for a `settled` campaign. While omitted the action renders disabled. */
+  readonly onReviewAndSign?: (campaign: MyCampaign) => void;
 }
 
-function DistributionRow({
-  campaign,
-  distribution,
-  onReviewAndSign
-}: {
-  readonly campaign: MyCampaign;
-  readonly distribution: MyCampaignDistribution;
-  readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
-}) {
+function DistributionRow({ distribution }: { readonly distribution: MyCampaignDistribution }) {
   const row = toDistributionRow(distribution);
 
   return (
@@ -67,17 +62,6 @@ function DistributionRow({
         </div>
       </div>
       <span className="text-xs font-[650]">{row.stateLabel}</span>
-      {needsSignature(distribution.state) ? (
-        onReviewAndSign ? (
-          <Button variant="secondary" onPress={() => onReviewAndSign(campaign, distribution)}>
-            {MY_CAMPAIGNS_COPY.reviewAndSign}
-          </Button>
-        ) : (
-          <Button variant="secondary" isDisabled disabledReason={MY_CAMPAIGNS_COPY.unavailable}>
-            {MY_CAMPAIGNS_COPY.reviewAndSign}
-          </Button>
-        )
-      ) : null}
     </li>
   );
 }
@@ -89,7 +73,7 @@ function VaultRow({
 }: {
   readonly campaign: MyCampaign;
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
-  readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
+  readonly onReviewAndSign?: (campaign: MyCampaign) => void;
 }) {
   return (
     <li className="flex flex-col gap-4 rounded-card border border-border p-5">
@@ -136,12 +120,7 @@ function VaultRow({
       {campaign.distributions.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {campaign.distributions.map((distribution) => (
-            <DistributionRow
-              key={distribution.distributionId}
-              campaign={campaign}
-              distribution={distribution}
-              {...(onReviewAndSign ? { onReviewAndSign } : {})}
-            />
+            <DistributionRow key={distribution.distributionId} distribution={distribution} />
           ))}
         </ul>
       ) : null}
@@ -156,6 +135,17 @@ function VaultRow({
             {MY_CAMPAIGNS_COPY.declareSales}
           </Button>
         )}
+        {canReviewAndSign(campaign.state) ? (
+          onReviewAndSign ? (
+            <Button variant="secondary" onPress={() => onReviewAndSign(campaign)}>
+              {MY_CAMPAIGNS_COPY.reviewAndSign}
+            </Button>
+          ) : (
+            <Button variant="secondary" isDisabled disabledReason={MY_CAMPAIGNS_COPY.unavailable}>
+              {MY_CAMPAIGNS_COPY.reviewAndSign}
+            </Button>
+          )
+        ) : null}
       </div>
     </li>
   );

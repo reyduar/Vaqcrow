@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { MyCampaign, MyCampaignDistribution } from "@/application/ports/my-campaigns-port";
+import type { MyCampaign } from "@/application/ports/my-campaigns-port";
 import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
@@ -32,17 +32,6 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
     contributorsCount: 38,
     distributions: [],
     sales: [],
-    ...overrides
-  };
-}
-
-function distribution(overrides: Partial<MyCampaignDistribution> = {}): MyCampaignDistribution {
-  return {
-    distributionId: DISTRIBUTION_ID,
-    period: "2026-08",
-    amountArs: 168_561,
-    amountXlm: "1.2500000",
-    state: "submitted",
     ...overrides
   };
 }
@@ -118,7 +107,6 @@ function renderAction(overrides: Partial<Parameters<typeof CompanySignDistributi
   const ui = render(
     <CompanySignDistribution
       campaign={overrides.campaign ?? campaign()}
-      distribution={overrides.distribution ?? distribution()}
       applicationId={overrides.applicationId ?? APPLICATION_ID}
       gateway={gateway}
       wallet={wallet}

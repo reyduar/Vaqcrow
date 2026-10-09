@@ -7,7 +7,7 @@ import {
 } from "@/application/company/distribution-signing";
 import { formatStroopsAsXlm } from "@/application/format/stroops";
 import { failureReasonCopy } from "@/application/funding/failure-reason-copy";
-import type { MyCampaign, MyCampaignDistribution } from "@/application/ports/my-campaigns-port";
+import type { MyCampaign } from "@/application/ports/my-campaigns-port";
 import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
@@ -29,10 +29,13 @@ import {
 /**
  * The PyME dashboard's «Revisar y firmar» action (Feature #434, WU4): it reuses
  * the shipped distribution engine (`prepare` → review → Freighter → `submit`)
- * for one distribution of the campaign, instead of forking it. The button opens
- * the review; the service derives the recipients and amounts; the person signs
- * in Freighter; the service verifies and submits. The status walks signed →
- * sent → confirmed, and `submitted` never renders as confirmed.
+ * for a `settled` campaign, instead of forking it. The action is offered at the
+ * campaign level because the obligation is *derivable*, not persisted: the
+ * engine's `prepare` resolves the latest reported period (and surfaces its own
+ * handled error when that period is already distributed). The button opens the
+ * review; the service derives the recipients and amounts; the person signs in
+ * Freighter; the service verifies and submits. The status walks signed → sent →
+ * confirmed, and `submitted` never renders as confirmed.
  *
  * All three ports are injectable for tests. In production the dashboard wires
  * the browser defaults; a test supplies deterministic doubles. The application
@@ -81,8 +84,6 @@ function statusItems(snapshot: RevenueShareDistributionSnapshot): TransactionSta
 
 export interface CompanySignDistributionProps {
   readonly campaign: MyCampaign;
-  /** The row this action belongs to; kept for context and future per-row state. */
-  readonly distribution: MyCampaignDistribution;
   /** The campaign's application identity, resolved by the dashboard. */
   readonly applicationId: string;
   /** Injectable for tests; `undefined` uses the env-configured gateway, `null` forces "no backend". */
@@ -104,7 +105,6 @@ export interface CompanySignDistributionProps {
 
 export function CompanySignDistribution({
   campaign,
-  distribution,
   applicationId,
   gateway = defaultGateway,
   wallet = defaultWallet,
@@ -152,9 +152,7 @@ export function CompanySignDistribution({
       className="flex flex-col gap-4 rounded-card border border-border p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="m-0 text-[17px] font-bold">
-          {distribution.period === null ? "Revisar y firmar" : `Revisar y firmar · ${distribution.period}`}
-        </h3>
+        <h3 className="m-0 text-[17px] font-bold">Revisar y firmar</h3>
         {onCancel ? (
           <Button variant="ghost" onPress={onCancel}>
             Cerrar

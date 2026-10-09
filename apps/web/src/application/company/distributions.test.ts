@@ -5,7 +5,7 @@ import {
   MY_CAMPAIGN_DISTRIBUTION_STATE_TONE,
   toAggregateDistributionRows,
   toDistributionRows,
-  needsSignature
+  canReviewAndSign
 } from "./distributions";
 
 function distribution(overrides: Partial<MyCampaignDistribution> = {}): MyCampaignDistribution {
@@ -42,10 +42,17 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
 describe("distribution state vocabulary", () => {
   it("uses the PyME-facing template copy", () => {
     expect(MY_CAMPAIGN_DISTRIBUTION_STATE_COPY).toEqual({
-      submitted: "Calculada · pendiente de tu firma",
+      submitted: "Enviada · pendiente de confirmación",
       confirmed: "Confirmada",
       failed: "Fallida"
     });
+  });
+
+  it("never describes a persisted submitted distribution as pending the PyME's signature", () => {
+    // A persisted `submitted` row already carries `signed_xdr` + `transaction_hash`:
+    // it was signed and sent, so it can never read as an outstanding signature.
+    expect(MY_CAMPAIGN_DISTRIBUTION_STATE_COPY.submitted).toMatch(/^Enviada/);
+    expect(MY_CAMPAIGN_DISTRIBUTION_STATE_COPY.submitted).not.toMatch(/pendiente de tu firma/i);
   });
 
   it("maps each state to a tone", () => {
@@ -56,10 +63,10 @@ describe("distribution state vocabulary", () => {
     });
   });
 
-  it("requires a signature only for a submitted distribution", () => {
-    expect(needsSignature("submitted")).toBe(true);
-    expect(needsSignature("confirmed")).toBe(false);
-    expect(needsSignature("failed")).toBe(false);
+  it("opens the signing action only for a settled campaign", () => {
+    expect(canReviewAndSign("settled")).toBe(true);
+    expect(canReviewAndSign("funding")).toBe(false);
+    expect(canReviewAndSign("refunding")).toBe(false);
   });
 });
 
@@ -71,7 +78,7 @@ describe("toDistributionRows", () => {
       periodLabel: "Agosto 2026",
       amountArs: "ARS 168.561",
       amountXlm: "≈ 1,2500000 XLM",
-      stateLabel: "Calculada · pendiente de tu firma",
+      stateLabel: "Enviada · pendiente de confirmación",
       tone: "caution"
     });
   });

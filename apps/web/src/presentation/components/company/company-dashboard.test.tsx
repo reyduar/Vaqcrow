@@ -190,7 +190,7 @@ describe("CompanyDashboard", () => {
     expect(await screen.findByText("ARS 168.561 ·")).toBeInTheDocument();
     expect(screen.getByText("≈ 1,2500000 XLM")).toBeInTheDocument();
     expect(screen.getByText("Agosto 2026")).toBeInTheDocument();
-    expect(screen.getAllByText("Calculada · pendiente de tu firma").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Enviada · pendiente de confirmación").length).toBeGreaterThan(0);
   });
 
   it("reuses the bar-chart status markers for missing and anomalous months", async () => {
@@ -224,7 +224,7 @@ describe("CompanyDashboard", () => {
   });
 
   it("renders the declare and sign slots disabled with an honest reason while they are unwired", async () => {
-    renderDashboard({ port: okPort() });
+    renderDashboard({ port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })) });
 
     const declare = await screen.findByRole("button", { name: "Declarar ventas" });
     expect(declare).toBeDisabled();
@@ -236,13 +236,46 @@ describe("CompanyDashboard", () => {
   it("calls the injected slots when a handler is provided", async () => {
     const onDeclareSales = vi.fn();
     const onReviewAndSign = vi.fn();
-    renderDashboard({ port: okPort(), onDeclareSales, onReviewAndSign });
+    renderDashboard({
+      port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })),
+      onDeclareSales,
+      onReviewAndSign
+    });
 
     fireEvent.click(await screen.findByRole("button", { name: "Declarar ventas" }));
     fireEvent.click(screen.getByRole("button", { name: "Revisar y firmar" }));
 
     expect(onDeclareSales).toHaveBeenCalledTimes(1);
     expect(onReviewAndSign).toHaveBeenCalledTimes(1);
+    expect(onReviewAndSign).toHaveBeenCalledWith(expect.objectContaining({ campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10" }));
+  });
+
+  it("offers Revisar y firmar on a settled campaign", async () => {
+    renderDashboard({ port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })) });
+
+    expect(await screen.findByRole("button", { name: "Revisar y firmar" })).toBeInTheDocument();
+  });
+
+  it("does not offer Revisar y firmar on a funding or refunding campaign, even with a submitted distribution", async () => {
+    const { unmount } = renderDashboard({
+      port: okPort(myCampaigns({ campaigns: [campaign({ state: "funding" })] }))
+    });
+    await screen.findAllByText("Enviada · pendiente de confirmación");
+    expect(screen.queryByRole("button", { name: "Revisar y firmar" })).not.toBeInTheDocument();
+    unmount();
+
+    renderDashboard({
+      port: okPort(myCampaigns({ campaigns: [campaign({ state: "refunding" })] }))
+    });
+    await screen.findAllByText("Enviada · pendiente de confirmación");
+    expect(screen.queryByRole("button", { name: "Revisar y firmar" })).not.toBeInTheDocument();
+  });
+
+  it("keeps offering the campaign-level action when a submitted distribution already exists", async () => {
+    renderDashboard({ port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })) });
+
+    expect(await screen.findByRole("button", { name: "Revisar y firmar" })).toBeInTheDocument();
+    expect(screen.getAllByText("Enviada · pendiente de confirmación").length).toBeGreaterThan(0);
   });
 
   it("shows a loading status while the first read is in flight", () => {
@@ -297,11 +330,11 @@ describe("CompanyDashboard", () => {
     await waitFor(() => expect(campaigns.get).toHaveBeenCalledTimes(2));
   });
 
-  it("opens the signing action for a submitted distribution and prepares with the resolved application identity", async () => {
+  it("opens the signing action for a settled campaign and prepares with the resolved application identity", async () => {
     const gateway = distributionGateway();
     const wallet = signingWallet();
     renderDashboard({
-      port: okPort(),
+      port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })),
       resolveApplicationId: vi.fn().mockResolvedValue(APPLICATION_ID),
       distributionGateway: gateway,
       wallet,
@@ -326,7 +359,7 @@ describe("CompanyDashboard", () => {
     });
     const wallet = signingWallet();
     renderDashboard({
-      port: okPort(),
+      port: okPort(myCampaigns({ campaigns: [campaign({ state: "settled" })] })),
       resolveApplicationId: vi.fn().mockResolvedValue(APPLICATION_ID),
       distributionGateway: gateway,
       wallet,

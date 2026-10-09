@@ -1,4 +1,4 @@
-import type { MyCampaignDistributionState } from "@vaqcrow/contracts";
+import type { MyCampaignDistributionState, MyCampaignState } from "@vaqcrow/contracts";
 import type { MyCampaign, MyCampaignDistribution } from "@/application/ports/my-campaigns-port";
 import { formatApproxXlmAmount, formatArsAmount, formatMonthYear } from "./format";
 
@@ -7,17 +7,21 @@ import { formatApproxXlmAmount, formatArsAmount, formatMonthYear } from "./forma
  * nested under each campaign and aggregated in the standalone «Distribuciones»
  * section. Pure and React-free.
  *
- * The vocabulary is PyME-facing and taken from the template's PyME mode
- * (`Vaqcrow Portafolio.dc.html`): `submitted` -> "Calculada · pendiente de tu
- * firma", `confirmed` -> "Confirmada"; `failed` reuses the evidence corpus'
- * "Fallida". Money is the endpoint's own: the ARS principal plus the
- * approximate XLM, and `null` is the honest "Sin dato", never a zero.
+ * A persisted `submitted` distribution was already signed and sent by the PyME
+ * (`signed_xdr` + `transaction_hash`), so it reads as "Enviada · pendiente de
+ * confirmación" and never as an outstanding signature. The template's
+ * "Calculada · pendiente de tu firma" state has no persisted source: it is a
+ * *derivable* obligation — a `settled` campaign whose latest reported period has
+ * no distribution — produced on demand by `POST /revenue-share-distributions`.
+ * `confirmed` -> "Confirmada"; `failed` reuses the evidence corpus' "Fallida".
+ * Money is the endpoint's own: the ARS principal plus the approximate XLM, and
+ * `null` is the honest "Sin dato", never a zero.
  */
 
 export type DistributionTone = "neutral" | "success" | "caution" | "critical";
 
 export const MY_CAMPAIGN_DISTRIBUTION_STATE_COPY: Readonly<Record<MyCampaignDistributionState, string>> = {
-  submitted: "Calculada · pendiente de tu firma",
+  submitted: "Enviada · pendiente de confirmación",
   confirmed: "Confirmada",
   failed: "Fallida"
 };
@@ -30,9 +34,15 @@ export const MY_CAMPAIGN_DISTRIBUTION_STATE_TONE: Readonly<Record<MyCampaignDist
 
 const SIN_DATO = "Sin dato";
 
-/** Only a `submitted` distribution still needs the PyME's signature. */
-export function needsSignature(state: MyCampaignDistributionState): boolean {
-  return state === "submitted";
+/**
+ * The distribution obligation only exists once the goal is reached: a `settled`
+ * campaign is where `prepare` derives the latest reported period (and surfaces
+ * its own handled error when that period is already distributed). A persisted
+ * distribution row is never the entry point — `submitted`/`confirmed`/`failed`
+ * rows have already been signed or resolved.
+ */
+export function canReviewAndSign(campaignState: MyCampaignState): boolean {
+  return campaignState === "settled";
 }
 
 export interface DistributionRow {
