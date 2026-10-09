@@ -109,6 +109,11 @@ select lives_ok(
 -- A later migration (#422) adds a view over campaign and campaign_contribution,
 -- so it is reversed before the mirrors it depends on.
 drop view if exists public.marketplace_campaign_detail;
+-- Feature #426/WU1 adds portfolio views over campaign, campaign_contribution,
+-- revenue_share_distribution and its recipient rows, so they are reversed
+-- before the mirrors they depend on.
+drop view if exists public.investor_portfolio_position;
+drop view if exists public.investor_portfolio_distribution;
 -- The #422/WU2b sales-period table backs that detail view (and references
 -- businesses); reverse it here too, after the view that depends on it.
 drop table if exists public.business_sales_period;

@@ -72,7 +72,10 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // Investor's simulated KYC (#422/WU4): any signed-in role reads and records
   // only its own verification state; the owner is the verified principal.
   ["GET", "/investor-kyc", "any"],
-  ["POST", "/investor-kyc", "any"]
+  ["POST", "/investor-kyc", "any"],
+  // The investor's portfolio (#426/WU1): only an investor reads its own
+  // positions and distributions.
+  ["GET", "/portfolio", ["INVERSOR"]]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -127,6 +130,7 @@ function buildFullApp(auth?: AuthDependency): {
     },
     favorite: stub,
     investorKyc: stub,
+    portfolio: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

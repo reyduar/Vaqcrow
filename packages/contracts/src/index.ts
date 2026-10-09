@@ -212,6 +212,24 @@ export { investorKycSchema, parseInvestorKyc } from "./investor-kyc.js";
 export type { InvestorKyc } from "./investor-kyc.js";
 
 export {
+  parsePortfolioSummary,
+  portfolioDistributionSchema,
+  portfolioPositionSchema,
+  portfolioPositionStatusSchema,
+  portfolioSummarySchema,
+  portfolioTotalsSchema,
+  xlmAmountSchema
+} from "./portfolio.js";
+export type {
+  PortfolioDistribution,
+  PortfolioPosition,
+  PortfolioPositionStatus,
+  PortfolioSummary,
+  PortfolioTotals,
+  XlmAmount
+} from "./portfolio.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,

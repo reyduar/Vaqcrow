@@ -102,6 +102,11 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /investor-kyc": AUTHENTICATED,
   "POST /investor-kyc": AUTHENTICATED,
 
+  // The investor's portfolio (#426/WU1): only an investor reads its own
+  // positions and distributions. The account is the verified principal's own
+  // profile key, resolved server-side, never a request parameter.
+  "GET /portfolio": only("INVERSOR"),
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

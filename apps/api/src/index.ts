@@ -30,6 +30,7 @@ import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supaba
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
 import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
+import { SupabasePortfolioRepository } from "./infrastructure/adapters/supabase-portfolio-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
 import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
@@ -218,6 +219,11 @@ const favoriteRepository = new SupabaseFavoriteRepository(supabase);
 // is simulated and auto-granted at the first contribution (owner decision D2).
 const investorKycRepository = new SupabaseInvestorKycRepository(supabase);
 
+// The investor's portfolio read model (#426/WU1): reads the two
+// service_role-only views scoped by the investor's own profile key. The account
+// is resolved server-side from the verified principal, never the request.
+const portfolioRepository = new SupabasePortfolioRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -343,6 +349,9 @@ const app = buildApp({
   // The investor's simulated KYC (#422/WU4): the signed-in caller's own state
   // only, auto-approved at the first contribution.
   investorKyc: { kyc: investorKycRepository },
+  // The investor's portfolio (#426/WU1): the verified principal's Stellar key
+  // resolves the account server-side, and only that account's own rows are read.
+  portfolio: { wallets: walletRepository, portfolio: portfolioRepository, now: () => new Date() },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

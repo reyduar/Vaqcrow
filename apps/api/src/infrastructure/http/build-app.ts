@@ -37,6 +37,8 @@ import { registerMarketplaceRoute } from "./routes/marketplace.route.js";
 import type { MarketplaceRouteDependencies } from "./routes/marketplace.route.js";
 import { registerNotificationRoute } from "./routes/notification.route.js";
 import type { NotificationRouteDependencies } from "./routes/notification.route.js";
+import { registerPortfolioRoute } from "./routes/portfolio.route.js";
+import type { PortfolioRouteDependencies } from "./routes/portfolio.route.js";
 import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
 import type { RevenueShareDistributionRouteDependencies } from "./routes/revenue-share-distribution.route.js";
 import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
@@ -130,6 +132,8 @@ export function buildApp(dependencies: {
   readonly favorite?: FavoriteRouteDependencies | undefined;
   /** The investor's simulated KYC (#422/WU4). Omitted when unwired. */
   readonly investorKyc?: InvestorKycRouteDependencies | undefined;
+  /** The investor's portfolio read model (#426/WU1). Omitted when unwired. */
+  readonly portfolio?: PortfolioRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -243,6 +247,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.investorKyc) {
     registerInvestorKycRoute(app, dependencies.investorKyc);
+  }
+  if (dependencies.portfolio) {
+    registerPortfolioRoute(app, dependencies.portfolio);
   }
   return app;
 }
