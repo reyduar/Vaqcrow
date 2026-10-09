@@ -47,7 +47,7 @@ Entregar la vista **«Informes»** (template `Vaqcrow Informes.dc.html`): select
 ## Tareas
 
 - [x] **WU1 — Modelo de lectura del informe (backend).** `GET /reports` (KPIs + serie mensual + últimas distribuciones del período) y `GET /reports/sales-by-pyme` (ventas declaradas de las PyMEs con aporte del inversor, para el bloque con error propio). Contrato + port/adaptador/vistas + casos de uso + rutas + política (`AUTHENTICATED`) + pgTAP. Sin `apps/web`.
-- [ ] **WU2 — Vista `/reports` (web).** Selector de período (3 presets generados desde los datos + rango personalizado), KPI cards con badge de fuente, gráfico mensual + tabla accesible, bloque «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga.
+- [x] **WU2 — Vista `/reports` (web).** Selector de período (3 presets generados desde los datos + rango personalizado), KPI cards con badge de fuente, gráfico mensual + tabla accesible, bloque «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga.
 - [ ] **WU3 — Export.** Descarga CSV + imprimir-a-PDF (estilos de impresión, sin deps nuevas).
 - [ ] **WU4 — Acceso.** Gate de ruta para todos los autenticados + política; revisar el menú.
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, `docs/planning/investor-reports-evidence.md`.
@@ -76,3 +76,15 @@ Ruta: **delegado** (un writer; contrato + port + 2 casos de uso + adaptador + 2 
 - **Advisories (no bloqueantes).** `Number(bigint)` para ARS (seguro bajo 2^53, sin test de borde); `shareXlm` nunca `null` en la práctica (camino nullable sin test e2e); rama no alcanzable de `parseRangeQuery`.
 
 - **Work-unit commit.** `bc165df feat(api): add the investor report read model (#430)`.
+
+### WU2 — Vista `/reports` (web) (commit `1d25a3a`)
+
+Ruta: **delegado** (un writer; port + gateway(s) + factory + null object + 2 hooks SWR + helpers puros + componentes + página, 2+ archivos no triviales). Sin export (WU3) ni gate (WU4).
+
+- **Diseño.** Capa de datos calcada del cuarteto del portafolio (`application/ports/report-port.ts` + `infrastructure/reports/**`): bearer, errores saneados (`unavailable`/`network`/`unauthenticated`), `imageSrc` absoluta, `from`/`to` (`null/null` = default del API). Dos lecturas SWR independientes (`["report",from,to]` y `["report-sales",from,to]`) → el bloque de ventas puede fallar sin tumbar el resto. Helpers puros (`application/reports/`): presets desde `availableRange` (últimos 6 / 3 / 1 mes), etiquetas `es-AR` (abril – septiembre 2026), KPIs con badge `TESTNET`/`SIMULADO`, serie mensual (`confirmed`/`pending`/`none`, alturas), distribuciones/ventas. Componentes: selector de período (presets + rango personalizado desde/hasta, validado contra `availableRange`), grilla de KPIs, gráfico mensual (sólido/rayado/punteado **nunca sólo color** + «Ver tabla accesible» Mes/XLM/Estado), bloque de ventas con **error propio** (`No pudimos cargar este bloque` / `El resto del informe está actualizado.` / `Reintentar`), «Últimas distribuciones», estado vacío (`Sin datos para <período>` + CTA), skeleton y el control `Exportar` **presentacional** (el mecanismo es WU3).
+- **RED/GREEN observado.** RED: módulos puros/infra/estado/presentación ausentes. GREEN: contracts build OK; web enfocado **74/74** (12 archivos); `tsc --noEmit` limpio; `lint` 1 warning preexistente ajeno; `boundaries` sin violaciones (1163 módulos / 3796 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **7/7 PASS**, sin bloqueantes. Confirmó patrón/ports, presets desde `availableRange`, encodings + tabla accesible, badges, honestidad `null`≠`0`, error propio de ventas con lecturas independientes, ausencia de WU3/WU4 y boundaries.
+- **Límite explícito.** Sin export (WU3) ni gate de ruta (WU4); el `Exportar` es presentacional.
+- **Advisories (no bloqueantes, a endurecer en WU5).** Sin test del selector de rango personalizado (validación fuera-de-rango/invertido); los encodings del gráfico no se asertan (sólo la leyenda); el CTA del estado vacío no se clickea; `report-latest-distributions`/`report-kpi-grid` sin test dedicado; estados loading/vacío del bloque de ventas sin test.
+
+- **Work-unit commit.** `1d25a3a feat(web): add the investor reports view (#430)`.
