@@ -1,14 +1,47 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
 import { CompanyWorkspace } from "./company-workspace";
 
 const PUBLIC_KEY = "GBXK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ2345677Q2M";
 
-function renderWorkspace(connection = new FakeWalletConnection()) {
+function myCampaigns(): MyCampaigns {
+  return {
+    campaigns: [
+      {
+        campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10",
+        name: "Campaña 2026 · Panadería Horizonte",
+        sector: "Alimentos",
+        city: "Córdoba",
+        imageSrc: null,
+        vaultAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2",
+        state: "funding",
+        goalArs: 15_000_000,
+        raisedArs: 9_450_000,
+        fundedPercentBps: 6_300,
+        deadline: "2026-11-30T12:00:00.000Z",
+        contributorsCount: 38,
+        distributions: [],
+        sales: []
+      }
+    ]
+  };
+}
+
+function okMyCampaigns(value: MyCampaigns = myCampaigns()): MyCampaignsPort {
+  return { get: async () => ({ ok: true, myCampaigns: value }) };
+}
+
+function renderWorkspace(connection = new FakeWalletConnection(), myCampaignPort = okMyCampaigns()) {
   render(
-    <CompanyWorkspace kyc={new FakeKyc()} connection={connection} balance={new FakeWalletBalance()} />
+    <CompanyWorkspace
+      kyc={new FakeKyc()}
+      connection={connection}
+      balance={new FakeWalletBalance()}
+      myCampaigns={myCampaignPort}
+    />
   );
   return connection;
 }
@@ -28,6 +61,15 @@ describe("CompanyWorkspace", () => {
     expect(register).toBeEnabled();
     expect(register).not.toHaveAttribute("aria-disabled");
     expect(screen.queryByRole("link", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+  });
+
+  it("renders the Mi campaña dashboard alongside the register action", async () => {
+    renderWorkspace();
+
+    expect(await screen.findByRole("heading", { name: "Bóveda y distribuciones" })).toBeInTheDocument();
+    expect(screen.getByText("Fondeado")).toBeInTheDocument();
+    expect(screen.getByText("ARS 9.450.000")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar mi PyME" })).toBeInTheDocument();
   });
 
   it("opens the wizard in place and returns to the dashboard with Volver", () => {
@@ -54,7 +96,14 @@ describe("CompanyWorkspace", () => {
     connection.seedConnection(PUBLIC_KEY);
     const balance = new FakeWalletBalance();
     balance.seedBalance("12.5000000");
-    render(<CompanyWorkspace kyc={new FakeKyc()} connection={connection} balance={balance} />);
+    render(
+      <CompanyWorkspace
+        kyc={new FakeKyc()}
+        connection={connection}
+        balance={balance}
+        myCampaigns={okMyCampaigns()}
+      />
+    );
 
     const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
     expect(within(card).getByText("STELLAR TESTNET")).toBeInTheDocument();

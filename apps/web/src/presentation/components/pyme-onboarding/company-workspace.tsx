@@ -5,6 +5,7 @@ import { IoStorefrontOutline } from "react-icons/io5";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
 import { walletAccountExplorerUrl } from "@/application/pyme-onboarding/wallet-connection";
 import type { KycPort } from "@/application/ports/kyc-port";
+import type { MyCampaignsPort } from "@/application/ports/my-campaigns-port";
 import type { UploadPort } from "@/application/ports/upload-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
@@ -13,6 +14,7 @@ import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-p
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
 import { FOCUS_RING } from "../auth-field";
+import { CompanyDashboardContainer } from "../company/company-dashboard";
 import { PageHeading } from "../page-heading";
 import { WalletCard } from "../wallet-card";
 import { PymeOnboardingWizard } from "./pyme-onboarding-wizard";
@@ -35,6 +37,8 @@ export interface CompanyWorkspaceProps {
   readonly connection?: WalletConnectionPort;
   /** Injectable for tests; production uses the deterministic demo balance. */
   readonly balance?: WalletBalancePort;
+  /** Injectable for tests; production builds the browser dashboard port lazily. */
+  readonly myCampaigns?: MyCampaignsPort;
 }
 
 /**
@@ -53,7 +57,7 @@ export interface CompanyWorkspaceProps {
  * is intentionally not implemented here. Opening the wizard never changes the
  * URL — the wizard lives inside `/company` and «Volver» restores this view.
  */
-export function CompanyWorkspace({ kyc = defaultKyc, upload, connection, balance }: CompanyWorkspaceProps) {
+export function CompanyWorkspace({ kyc = defaultKyc, upload, connection, balance, myCampaigns }: CompanyWorkspaceProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
@@ -110,6 +114,7 @@ export function CompanyWorkspace({ kyc = defaultKyc, upload, connection, balance
           onDisconnect={() => setWallet(null)}
         />
       ) : null}
+      <CompanyDashboardContainer {...(myCampaigns ? { port: myCampaigns } : {})} />
     </div>
   );
 }
