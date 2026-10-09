@@ -77,6 +77,7 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **Verificación independiente (RDD off).** Un verifier read-only: **7/7 PASS**, sin bloqueantes. Confirmó `only("PYME")`+MATRIX, scoping por dueño sin fuga, honestidad (XLM 7-dec, `null`≠`0`, snapshot FX), vistas `service_role`-only, rutas/errores saneados y wiring.
 - **Gotcha aplicado.** La reversión de `campaign_persistence.sql` dropea las 3 vistas nuevas antes de sus tablas base.
 - **Advisories (no bloqueantes).** Orden de campañas por `created_at desc` del adaptador (no re-sorteado en el caso de uso); `Number(bigint)` para ARS sin guarda >2^53; sin test de "body ignorado" (GET sin body); forma 200 validada en casos de uso/contrato, no en la ruta.
-- **Límite explícito.** Sin `apps/web` (el dashboard es WU2). La migración está aplicada **sólo en local** hasta autorización del owner.
+- **Migración remota.** `20261009140000_create_my_campaigns_views.sql` probada en local y luego, con **autorización explícita del owner**, **aplicada al proyecto remoto** (2026-10-09) vía MCP, con el `version` del historial **alineado al repositorio** (`20261009140000`). Verificado en el remoto: 3 vistas con `security_invoker=true` (**18 / 6 / 5** columnas), `SELECT` sólo `service_role` y cero grants a `anon`/`authenticated`; advisors sin clase nueva.
+- **Límite explícito.** Sin `apps/web` (el dashboard es WU2).
 
 - **Work-unit commit.** `ab9e8ea feat(api): add the PyME my-campaigns read model (#434)`.
