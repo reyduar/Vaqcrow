@@ -1,7 +1,10 @@
-import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
-import { PageHeading } from "@/presentation/components/page-heading";
+import { PortfolioContainer } from "@/presentation/components/portfolio/portfolio";
 
-/** «Mi portafolio» skeleton: the template's title and subtitle; the content is #426. */
+/**
+ * `/portfolio`: the investor portfolio (Feature #426, WU2). The route is already
+ * `INVERSOR`-gated by `(app)/layout.tsx` + `RouteGate`; the container owns the
+ * title, the wallet card and the sections.
+ */
 export default function PortfolioPage() {
-  return <PageHeading title={ROLE_HOME_COPY.INVERSOR.title} subtitle={ROLE_HOME_COPY.INVERSOR.subtitle} />;
+  return <PortfolioContainer />;
 }
