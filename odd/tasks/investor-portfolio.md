@@ -39,7 +39,7 @@ Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafol
 - [x] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
 - [x] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
 - [x] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
-- [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
+- [x] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
 
 Forecast: Feature grande. Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
 
@@ -102,3 +102,11 @@ Ruta: **delegado** (un writer; API + web) **más dos correcciones acotadas**.
 - **Advisories / owner-pending.** (a) copy del estado vacío y de la tarjeta de conexión/guía de fondos: redacción owner-pending (voseo neutro, sin promesa de retorno); (b) `Desconectar` local (oculta la tarjeta → modo conectar), el desconectado persistido necesita ruta nueva; (c) el modal, ante un error inconcluso post-envío (WU3), puede mostrar copy contradictorio — preexistente y sistémico en `campaign-withdraw`.
 
 - **Work-unit commit.** `84fd356 feat: enable the investor wallet and add the portfolio states (#426)`.
+
+### WU5 — Verificación y evidencia
+
+- **Cierre de la Feature.** `pnpm run verify` → **exit 0** tras el **único retry documentado** (el flake conocido de timeout de 5 s de la suite web bajo la carga de turbo, archivo ajeno al cambio). `pnpm run boundaries` sin violaciones; `pnpm run test:boundaries` **164/164**; `lint` sin errores (1 warning preexistente ajeno).
+- **Fix de tipos.** El test de la ruta de wallet introducido en WU4 no compilaba bajo `tsc` (sí bajo vitest): `payload?: unknown` en el arreglo de requests → se tipó a `typeof connectBody`. Commit `f477d77`.
+- **Evidencia.** `docs/planning/investor-portfolio-evidence.md` (español, estructura de hermano `campaign-detail-and-contributions-evidence.md`): mapea los **7 criterios de aceptación de #426 citados textualmente** a su evidencia, con commits, comandos y verificación independiente; registra límites, advisories y copy owner-pending; deja explícito que **nada está en `main`** (Opción A con #438) y que la migración remota quedó aplicada con autorización del owner.
+
+- **Work-unit commit.** `docs(evidence): close Feature #426 with the investor portfolio evidence (#429)`.
