@@ -65,6 +65,7 @@ describe("RouteGate", () => {
   it.each([
     [null, "/portfolio", "/login?role=investor"],
     [null, "/company", "/login?role=pyme"],
+    [null, "/reports", "/login"],
     ["PYME", "/portfolio", "/company"],
     ["INVERSOR", "/company", "/portfolio"],
     ["ADMIN", "/company", "/"]
@@ -76,7 +77,10 @@ describe("RouteGate", () => {
 
   it.each([
     ["INVERSOR", "/portfolio"],
-    ["PYME", "/company"]
+    ["PYME", "/company"],
+    ["INVERSOR", "/reports"],
+    ["PYME", "/reports"],
+    ["ADMIN", "/reports"]
   ] as const)("%s sees %s", async (role, path) => {
     renderGate(await portFor(role), path);
     expect(await screen.findByText("Contenido protegido")).toBeInTheDocument();

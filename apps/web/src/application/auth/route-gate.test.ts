@@ -8,9 +8,16 @@ describe("gateRoute", () => {
   it.each([
     ["/portfolio", "/login?role=investor"],
     ["/company", "/login?role=pyme"],
-    ["/portfolio/anything", "/login?role=investor"]
+    ["/portfolio/anything", "/login?role=investor"],
+    ["/reports", "/login"],
+    ["/reports/ventas", "/login"]
   ] as const)("anonymous on %s → %s", (pathname, target) => {
     expect(gateRoute(pathname, null)).toBe(target);
+  });
+
+  it.each(["INVERSOR", "PYME", "ADMIN"] as const)("%s on /reports is let through", (role) => {
+    expect(gateRoute("/reports", as(role))).toBeNull();
+    expect(gateRoute("/reports/ventas", as(role))).toBeNull();
   });
 
   it.each([
@@ -42,6 +49,6 @@ describe("gateRoute", () => {
   });
 
   it("lists the gated paths the proxy must match", () => {
-    expect([...GATED_PATHS].sort()).toEqual(["/company", "/login", "/portfolio", "/signup"]);
+    expect([...GATED_PATHS].sort()).toEqual(["/company", "/login", "/portfolio", "/reports", "/signup"]);
   });
 });

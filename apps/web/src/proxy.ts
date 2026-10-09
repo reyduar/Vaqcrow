@@ -21,5 +21,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 // Must stay a literal (Next.js reads it statically); `proxy.test.ts` keeps it
 // equal to `GATED_PATHS`.
 export const config = {
-  matcher: ["/portfolio/:path*", "/company/:path*", "/login/:path*", "/signup/:path*"]
+  matcher: ["/portfolio/:path*", "/company/:path*", "/reports/:path*", "/login/:path*", "/signup/:path*"]
 };
