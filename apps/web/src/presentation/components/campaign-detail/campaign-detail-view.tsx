@@ -24,6 +24,7 @@ import { Badge, type BadgeTone } from "../badge";
 import { BarChart, type BarChartPoint } from "../bar-chart";
 import { ProgressBar } from "../progress-bar";
 import { CampaignContribution, type CampaignContributionInjection } from "./campaign-contribution";
+import { CampaignWithdraw } from "./campaign-withdraw";
 
 /**
  * The account-gated campaign detail body (Feature #422, WU2): the template's
@@ -36,8 +37,9 @@ import { CampaignContribution, type CampaignContributionInjection } from "./camp
  * `description`, the employee count, the percentage "usos de fondos", the sales
  * series — the account-private sales route is deliberately never fetched here).
  * Each of those renders the honest "Sin dato", never an invented value and
- * never a fabricated zero. A contribution action is deliberately absent (WU3
- * owns the flow); the aside shows the terms and the warnings only.
+ * never a fabricated zero. The aside carries the contribution flow (WU3/WU4) and
+ * the "Retirar" action (WU5), both gated on a `funding` campaign and an investor
+ * viewer; the withdraw action additionally needs a non-zero contribution.
  */
 
 const SIN_DATO = "Sin dato";
@@ -417,10 +419,12 @@ function HumanDecisionSection({ detail }: { readonly detail: CampaignDetail }) {
 
 function FundingAside({
   detail,
-  contribution
+  contribution,
+  withdraw
 }: {
   readonly detail: CampaignDetail;
   readonly contribution: ReactNode;
+  readonly withdraw: ReactNode;
 }) {
   const raisedLabel = detail.raisedArs === null ? SIN_DATO : formatArsAmount(detail.raisedArs);
   const percent = fundedPercent(detail.fundedPercentBps);
@@ -473,6 +477,8 @@ function FundingAside({
 
         {contribution}
 
+        {withdraw}
+
         <p className="m-0 text-center text-xs leading-relaxed text-text-secondary">
           Podés retirar tu aporte mientras el fondeo siga abierto. Freighter firma; Vaqcrow nunca recibe tu seed.
         </p>
@@ -518,6 +524,21 @@ export function CampaignDetailView({
       viewerRole={role}
       {...contribution}
       {...(onContributionSubmitted ? { onContributionSubmitted } : {})}
+    />
+  ) : null;
+
+  // The "Retirar" action (WU5) shares the contribution gate; the component
+  // itself narrows it further to a non-zero contribution, so it renders
+  // nothing until the chain-observed read confirms one.
+  const withdrawNode = canContribute ? (
+    <CampaignWithdraw
+      campaignId={detail.campaignId}
+      campaignName={detail.name}
+      vaultAddress={detail.vaultAddress}
+      status={detail.status}
+      viewerRole={role}
+      {...contribution}
+      {...(onContributionSubmitted ? { onWithdrawalSubmitted: onContributionSubmitted } : {})}
     />
   ) : null;
 
@@ -578,7 +599,7 @@ export function CampaignDetailView({
           </div>
         </div>
 
-        <FundingAside detail={detail} contribution={contributionNode} />
+        <FundingAside detail={detail} contribution={contributionNode} withdraw={withdrawNode} />
       </div>
     </div>
   );

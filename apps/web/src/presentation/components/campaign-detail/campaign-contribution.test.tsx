@@ -329,3 +329,19 @@ describe("CampaignContribution: the simulated KYC interstitial", () => {
     expect(kyc.approve).not.toHaveBeenCalled();
   });
 });
+
+describe("CampaignWithdraw: wired into the detail aside", () => {
+  it("renders the withdraw control beside the contribution block for an investor with a contribution", async () => {
+    renderFlow({
+      gateway: createGateway({
+        getCampaign: vi.fn().mockResolvedValue(snapshot({ investorContributionStroops: 25_000_000n }))
+      })
+    });
+    await loadedHeading();
+
+    const aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+    expect(await within(aside).findByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
+    expect(within(aside).getByRole("button", { name: "Aportar a la campaña" })).toBeInTheDocument();
+  });
+});
+
