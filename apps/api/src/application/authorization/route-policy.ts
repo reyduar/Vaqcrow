@@ -111,6 +111,13 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // profile key, resolved server-side, never a request parameter.
   "GET /portfolio": only("INVERSOR"),
 
+  // The investor report (#430/WU1, owner decision D1): every signed-in role —
+  // not just INVERSOR — reads the report and the sales block, always scoped to
+  // the verified principal's own profile key, resolved server-side. The query
+  // carries only a month range, never an account.
+  "GET /reports": AUTHENTICATED,
+  "GET /reports/sales-by-pyme": AUTHENTICATED,
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

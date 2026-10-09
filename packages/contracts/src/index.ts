@@ -230,6 +230,35 @@ export type {
 } from "./portfolio.js";
 
 export {
+  availableRangeSchema,
+  investorReportSchema,
+  parseInvestorReport,
+  parseReportSalesByPyme,
+  reportKpisSchema,
+  reportLatestDistributionSchema,
+  reportLatestDistributionStateSchema,
+  reportMonthlyPointSchema,
+  reportMonthlyPointStateSchema,
+  reportRangeSchema,
+  reportSalesByPymeEntrySchema,
+  reportSalesByPymeSchema,
+  reportSalesByPymeStatusSchema
+} from "./investor-report.js";
+export type {
+  AvailableRange,
+  InvestorReport,
+  ReportKpis,
+  ReportLatestDistribution,
+  ReportLatestDistributionState,
+  ReportMonthlyPoint,
+  ReportMonthlyPointState,
+  ReportRange,
+  ReportSalesByPyme,
+  ReportSalesByPymeEntry,
+  ReportSalesByPymeStatus
+} from "./investor-report.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,

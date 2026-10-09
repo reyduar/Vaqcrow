@@ -78,7 +78,12 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/investor-kyc", "any"],
   // The investor's portfolio (#426/WU1): only an investor reads its own
   // positions and distributions.
-  ["GET", "/portfolio", ["INVERSOR"]]
+  ["GET", "/portfolio", ["INVERSOR"]],
+  // The investor report (#430/WU1, owner decision D1): every signed-in role
+  // reads the report and the independently fetched sales block, always scoped
+  // to the verified principal.
+  ["GET", "/reports", "any"],
+  ["GET", "/reports/sales-by-pyme", "any"]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -134,6 +139,7 @@ function buildFullApp(auth?: AuthDependency): {
     favorite: stub,
     investorKyc: stub,
     portfolio: stub,
+    reports: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

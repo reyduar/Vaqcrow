@@ -31,6 +31,7 @@ import { SupabaseNotificationRepository } from "./infrastructure/adapters/supaba
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
 import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
 import { SupabasePortfolioRepository } from "./infrastructure/adapters/supabase-portfolio-repository.js";
+import { SupabaseReportsRepository } from "./infrastructure/adapters/supabase-reports-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
 import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
@@ -224,6 +225,12 @@ const investorKycRepository = new SupabaseInvestorKycRepository(supabase);
 // is resolved server-side from the verified principal, never the request.
 const portfolioRepository = new SupabasePortfolioRepository(supabase);
 
+// The investor report read model (#430/WU1): reads the three
+// service_role-only report views scoped by the verified principal's own profile
+// key, resolved server-side, never the request. The sales block shares the same
+// account resolution so both endpoints agree.
+const reportsRepository = new SupabaseReportsRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -352,6 +359,10 @@ const app = buildApp({
   // The investor's portfolio (#426/WU1): the verified principal's Stellar key
   // resolves the account server-side, and only that account's own rows are read.
   portfolio: { wallets: walletRepository, portfolio: portfolioRepository, now: () => new Date() },
+  // The investor report (#430/WU1): every authenticated role reads the report
+  // and its independently fetched sales block, always scoped to the verified
+  // principal's own stored Stellar key.
+  reports: { wallets: walletRepository, reports: reportsRepository, now: () => new Date() },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

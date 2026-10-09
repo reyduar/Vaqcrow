@@ -114,6 +114,12 @@ drop view if exists public.marketplace_campaign_detail;
 -- before the mirrors they depend on.
 drop view if exists public.investor_portfolio_position;
 drop view if exists public.investor_portfolio_distribution;
+-- Feature #430/WU1 adds report views over campaign, campaign_contribution,
+-- revenue_share_distribution and business_sales_period, so they are reversed
+-- before the mirrors they depend on.
+drop view if exists public.investor_report_contribution;
+drop view if exists public.investor_report_distribution;
+drop view if exists public.investor_report_sales_by_pyme;
 -- The #422/WU2b sales-period table backs that detail view (and references
 -- businesses); reverse it here too, after the view that depends on it.
 drop table if exists public.business_sales_period;

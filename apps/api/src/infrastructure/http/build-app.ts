@@ -39,6 +39,8 @@ import { registerNotificationRoute } from "./routes/notification.route.js";
 import type { NotificationRouteDependencies } from "./routes/notification.route.js";
 import { registerPortfolioRoute } from "./routes/portfolio.route.js";
 import type { PortfolioRouteDependencies } from "./routes/portfolio.route.js";
+import { registerReportsRoute } from "./routes/reports.route.js";
+import type { ReportsRouteDependencies } from "./routes/reports.route.js";
 import { registerRevenueShareDistributionRoute } from "./routes/revenue-share-distribution.route.js";
 import type { RevenueShareDistributionRouteDependencies } from "./routes/revenue-share-distribution.route.js";
 import { registerSmeRequestRoute } from "./routes/sme-request.route.js";
@@ -134,6 +136,8 @@ export function buildApp(dependencies: {
   readonly investorKyc?: InvestorKycRouteDependencies | undefined;
   /** The investor's portfolio read model (#426/WU1). Omitted when unwired. */
   readonly portfolio?: PortfolioRouteDependencies | undefined;
+  /** The investor report read model (#430/WU1). Omitted when unwired. */
+  readonly reports?: ReportsRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -250,6 +254,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.portfolio) {
     registerPortfolioRoute(app, dependencies.portfolio);
+  }
+  if (dependencies.reports) {
+    registerReportsRoute(app, dependencies.reports);
   }
   return app;
 }
