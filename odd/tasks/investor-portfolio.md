@@ -36,7 +36,7 @@ Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafol
 ## Tareas
 
 - [x] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
-- [ ] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
+- [x] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
 - [ ] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
 - [ ] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
@@ -64,3 +64,15 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **Límite explícito.** Sin `apps/web` (la vista `/portfolio` es WU2).
 
 - **Work-unit commit.** `83b7fc6 feat(api): add the investor portfolio read model (#426)`.
+
+### WU2 — Vista `/portfolio` (web) (commit `d02a8f5`)
+
+Ruta: **delegado** (un writer; port + gateway + factory + null object + hook SWR + helpers puros + componentes presentacionales + vista + container + página, 2+ archivos no triviales). Sin backend.
+
+- **Diseño.** Vista **read-only**. `PortfolioPort.get()` → `GET /portfolio` con `Authorization: Bearer`; errores saneados (`unauthenticated` en 401/403, `unavailable` en otro no-200 o cuerpo inválido, `network` en fallo de transporte); `imageUrl` (relativa al API) → `imageSrc` absoluta (relativa nula queda nula, irresoluble → nula). Hook SWR `["portfolio"]` (`shouldRetryOnError:false`, `revalidateOnFocus:false`). Helpers puros: `status` (etiquetas que espejan `campaign-detail-view.tsx:69-71`: `funding`/`settled`/`refunding` → «Fondeo abierto»/«Meta alcanzada»/«Reembolso disponible»; sólo el cuerpo de `funding` con la `closeDate` real en `dd/mm/aaaa`), `sort` (`recent` = orden del API; `state` = rank estable `funding→settled→refunding`, empates conservan el orden del API), `sectors` (**BigInt** sobre XLM canónico, porcentaje entero, descendente, total cero → `[]`), `format` (es-AR, 7 decimales), `distribution-state`. Componentes: totales (`totalDistributionsXlm` nulo → «Sin dato», nunca `0`), tarjeta de posición (imagen, nombre, meta, `SIMULADO`, «Mi aporte», «% de la meta» + barra, bloque de estado, «Ver campaña»), barras de sector, lista de distribuciones. La wallet card se monta **sólo con clave** (la tarjeta lee `WalletConnectionPort` + `WalletBalancePort`, espejando `company-workspace`); la ruta ya está gateada `INVERSOR` por `(app)/layout.tsx` + `RouteGate`.
+- **RED/GREEN observado.** RED: módulos puros e infra ausentes antes de implementar. GREEN: contracts build OK; web enfocado **56/56** (12 archivos: puros 16, infra 13, estado 5, presentación 22); `tsc --noEmit` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1098 módulos / 3582 deps); `test:boundaries` 164/164. Excepción honesta: la capa presentacional se escribió contra el markup del template y sus tests son GREEN, sin RED capturado.
+- **Verificación independiente (RDD off).** Un verifier read-only: **8/8 PASS**, sin bloqueantes; re-corrió las suites anteriores.
+- **Advisories / owner-pending.** (a) los cuerpos de `settled`/`refunding` del template dependen de un número de ledger que **no existe** en los datos → se renderiza sólo la etiqueta (nada fabricado), copy owner-pending; (b) «Recientes» = orden del API porque el read model no trae fecha de aporte (un `contributedAt` real es candidato para #430); (c) el copy de distribución `failed` reusa «Fallida» de la evidencia, owner-pending; (d) el `Desconectar` de la wallet card en WU2 es un despido local — el desconectado real (persistido) y los estados vacío/sin-wallet/errores Freighter/fondos Testnet son WU4.
+- **Límite explícito.** Sin retiro/reembolso (WU3) ni estados de vacío/sin-wallet/errores/carga de fondos (WU4).
+
+- **Work-unit commit.** `d02a8f5 feat(web): add the investor portfolio view (#426)`.
