@@ -2,11 +2,16 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
+import type { BusinessPort, BusinessRecord } from "@/application/ports/business-port";
 import type {
   MyCampaign,
   MyCampaigns,
   MyCampaignsPort
 } from "@/application/ports/my-campaigns-port";
+import type {
+  SalesDeclarationPort,
+  SalesDeclarationResult
+} from "@/application/ports/sales-declaration-port";
 import { CompanyDashboard } from "./company-dashboard";
 
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
@@ -51,6 +56,36 @@ function myCampaigns(overrides: Partial<MyCampaigns> = {}): MyCampaigns {
 
 function okPort(value: MyCampaigns = myCampaigns()): MyCampaignsPort {
   return { get: vi.fn().mockResolvedValue({ ok: true, myCampaigns: value }) };
+}
+
+const BUSINESS_ID = "b1e6c2a4-9f3d-4a7b-8c1e-5d2f6a9b0c31";
+
+function businessRecord(): BusinessRecord {
+  return {
+    businessId: BUSINESS_ID,
+    ownerUserId: "owner-1",
+    name: "Panadería Horizonte",
+    cuit: "20123456789",
+    sector: "Alimentos",
+    city: "Córdoba",
+    description: "Panadería de barrio",
+    goalArs: 15_000_000,
+    revenueShare: 5,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  };
+}
+
+function businessPort(): BusinessPort {
+  return {
+    getMyBusiness: vi.fn().mockResolvedValue({ ok: true, business: businessRecord() }),
+    createBusiness: vi.fn()
+  } as unknown as BusinessPort;
+}
+
+function declarePort(result: SalesDeclarationResult = { ok: true }) {
+  const declare = vi.fn().mockResolvedValue(result);
+  return { port: { declare } as SalesDeclarationPort, declare };
 }
 
 function renderDashboard(props: Parameters<typeof CompanyDashboard>[0]) {
@@ -160,5 +195,35 @@ describe("CompanyDashboard", () => {
 
     expect(await screen.findByText("Todavía no tenés una campaña")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Bóveda y distribuciones" })).not.toBeInTheDocument();
+  });
+
+  it("opens the declaration panel and declares through the wired ports", async () => {
+    const { port, declare } = declarePort();
+    renderDashboard({ port: okPort(), declarePort: port, business: businessPort() });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Declarar ventas" }));
+    expect(screen.getByRole("heading", { name: "Declarar ventas mensuales" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enviar declaración" }));
+
+    await waitFor(() =>
+      expect(declare).toHaveBeenCalledWith(
+        BUSINESS_ID,
+        expect.arrayContaining([{ period: "2026-08", salesArs: 2_330_000 }])
+      )
+    );
+  });
+
+  it("reloads the dashboard after a successful declaration", async () => {
+    const campaigns = okPort();
+    const { port } = declarePort();
+    renderDashboard({ port: campaigns, declarePort: port, business: businessPort() });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Declarar ventas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Completar con datos de ejemplo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enviar declaración" }));
+
+    await waitFor(() => expect(campaigns.get).toHaveBeenCalledTimes(2));
   });
 });

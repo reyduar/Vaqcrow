@@ -3,16 +3,21 @@
 import { useState } from "react";
 import { MY_CAMPAIGNS_COPY } from "@/application/company/copy";
 import { sortMyCampaigns, type MyCampaignSortMode } from "@/application/company/sort";
+import type { BusinessPort } from "@/application/ports/business-port";
 import type {
   MyCampaign,
   MyCampaignDistribution,
   MyCampaignsPort
 } from "@/application/ports/my-campaigns-port";
+import type { SalesDeclarationPort } from "@/application/ports/sales-declaration-port";
+import { createBrowserBusinessPort } from "@/infrastructure/business/create-business-port";
 import { createBrowserMyCampaignsPort } from "@/infrastructure/company/create-my-campaigns-port";
+import { createBrowserSalesDeclarationPort } from "@/infrastructure/company/create-sales-declaration-port";
 import { useMyCampaigns } from "@/state/use-my-campaigns";
 import { EmptyState } from "../empty-state";
 import { ErrorState } from "../error-state";
 import { Skeleton } from "../skeleton";
+import { CompanyDeclareSales } from "./company-declare-sales";
 import { CompanyDistributions } from "./company-distributions";
 import { CompanySalesChart } from "./company-sales-chart";
 import { CompanyStats } from "./company-stats";
@@ -30,20 +35,31 @@ import { CompanyVaultList } from "./company-vault-list";
  * is deployed). A `null` port (no configured backend) fails closed to the error
  * state rather than inventing an empty dashboard.
  *
- * Scope is read-only: the `Declarar ventas` (WU3) and `Revisar y firmar` (WU4)
- * slots are rendered but unwired here — the handlers are the injectable seam
- * those units will use; without them the actions render disabled.
+ * WU3 wires the `Declarar ventas` slot: when a declaration port and a business
+ * port are present the action opens `CompanyDeclareSales`, whose successful
+ * submit reloads this dashboard. `Revisar y firmar` (WU4) stays an unwired slot.
  */
 export interface CompanyDashboardProps {
   readonly port: MyCampaignsPort | null;
-  /** WU3 slot; while omitted the declare action renders disabled. */
+  /** WU3 declaration gateway; when present the declare action opens the panel. */
+  readonly declarePort?: SalesDeclarationPort | null;
+  /** WU3 business resolver; required alongside `declarePort` to open the panel. */
+  readonly business?: BusinessPort | null;
+  /** WU3 override; when provided it replaces the internal declare panel. */
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
   /** WU4 slot; while omitted the signing action renders disabled. */
   readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
 }
 
-export function CompanyDashboard({ port, onDeclareSales, onReviewAndSign }: CompanyDashboardProps) {
+export function CompanyDashboard({
+  port,
+  declarePort,
+  business,
+  onDeclareSales,
+  onReviewAndSign
+}: CompanyDashboardProps) {
   const [sort, setSort] = useState<MyCampaignSortMode>("recent");
+  const [declaring, setDeclaring] = useState<MyCampaign | null>(null);
   const state = useMyCampaigns(port, true);
 
   if (state.isLoading) {
@@ -67,6 +83,9 @@ export function CompanyDashboard({ port, onDeclareSales, onReviewAndSign }: Comp
     return <EmptyState title={MY_CAMPAIGNS_COPY.emptyTitle} body={MY_CAMPAIGNS_COPY.emptyBody} />;
   }
 
+  const canWireDeclare = declarePort !== undefined && declarePort !== null && business !== undefined && business !== null;
+  const declareHandler = onDeclareSales ?? (canWireDeclare ? (campaign: MyCampaign) => setDeclaring(campaign) : undefined);
+
   const sorted = sortMyCampaigns(campaigns, sort);
   const campaignsWithSales = campaigns.filter((campaign) => campaign.sales.length > 0);
 
@@ -78,9 +97,20 @@ export function CompanyDashboard({ port, onDeclareSales, onReviewAndSign }: Comp
         campaigns={sorted}
         sort={sort}
         onSortChange={setSort}
-        {...(onDeclareSales ? { onDeclareSales } : {})}
+        {...(declareHandler ? { onDeclareSales: declareHandler } : {})}
         {...(onReviewAndSign ? { onReviewAndSign } : {})}
       />
+
+      {declaring !== null && declarePort !== undefined && declarePort !== null && business !== undefined && business !== null ? (
+        <CompanyDeclareSales
+          key={declaring.campaignId}
+          campaign={declaring}
+          port={declarePort}
+          business={business}
+          onSubmitted={state.reload}
+          onCancel={() => setDeclaring(null)}
+        />
+      ) : null}
 
       {campaignsWithSales.length > 0 ? (
         <div className="flex flex-col gap-6">
@@ -98,19 +128,37 @@ export function CompanyDashboard({ port, onDeclareSales, onReviewAndSign }: Comp
 export interface CompanyDashboardContainerProps {
   /** Injectable for tests; production builds the browser port once. */
   readonly port?: MyCampaignsPort | null;
+  /** Injectable for tests; production builds the browser declaration port. */
+  readonly declarePort?: SalesDeclarationPort | null;
+  /** Injectable for tests; production builds the browser business port. */
+  readonly business?: BusinessPort | null;
   readonly onDeclareSales?: (campaign: MyCampaign) => void;
   readonly onReviewAndSign?: (campaign: MyCampaign, distribution: MyCampaignDistribution) => void;
 }
 
 /** The browser-wired entry point: `company-workspace.tsx` mounts this. */
-export function CompanyDashboardContainer({ port, onDeclareSales, onReviewAndSign }: CompanyDashboardContainerProps) {
+export function CompanyDashboardContainer({
+  port,
+  declarePort,
+  business,
+  onDeclareSales,
+  onReviewAndSign
+}: CompanyDashboardContainerProps) {
   const [resolved] = useState<MyCampaignsPort | null>(() =>
     port === undefined ? createBrowserMyCampaignsPort() : port
+  );
+  const [resolvedDeclare] = useState<SalesDeclarationPort | null>(() =>
+    declarePort === undefined ? createBrowserSalesDeclarationPort() : declarePort
+  );
+  const [resolvedBusiness] = useState<BusinessPort | null>(() =>
+    business === undefined ? createBrowserBusinessPort() : business
   );
 
   return (
     <CompanyDashboard
       port={resolved}
+      declarePort={resolvedDeclare}
+      business={resolvedBusiness}
       {...(onDeclareSales ? { onDeclareSales } : {})}
       {...(onReviewAndSign ? { onReviewAndSign } : {})}
     />
