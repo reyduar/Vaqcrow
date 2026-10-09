@@ -48,7 +48,7 @@ Entregar la vista **«Informes»** (template `Vaqcrow Informes.dc.html`): select
 
 - [x] **WU1 — Modelo de lectura del informe (backend).** `GET /reports` (KPIs + serie mensual + últimas distribuciones del período) y `GET /reports/sales-by-pyme` (ventas declaradas de las PyMEs con aporte del inversor, para el bloque con error propio). Contrato + port/adaptador/vistas + casos de uso + rutas + política (`AUTHENTICATED`) + pgTAP. Sin `apps/web`.
 - [x] **WU2 — Vista `/reports` (web).** Selector de período (3 presets generados desde los datos + rango personalizado), KPI cards con badge de fuente, gráfico mensual + tabla accesible, bloque «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga.
-- [ ] **WU3 — Export.** Descarga CSV + imprimir-a-PDF (estilos de impresión, sin deps nuevas).
+- [x] **WU3 — Export.** Descarga CSV + imprimir-a-PDF (estilos de impresión, sin deps nuevas).
 - [ ] **WU4 — Acceso.** Gate de ruta para todos los autenticados + política; revisar el menú.
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, `docs/planning/investor-reports-evidence.md`.
 
@@ -88,3 +88,15 @@ Ruta: **delegado** (un writer; port + gateway(s) + factory + null object + 2 hoo
 - **Advisories (no bloqueantes, a endurecer en WU5).** Sin test del selector de rango personalizado (validación fuera-de-rango/invertido); los encodings del gráfico no se asertan (sólo la leyenda); el CTA del estado vacío no se clickea; `report-latest-distributions`/`report-kpi-grid` sin test dedicado; estados loading/vacío del bloque de ventas sin test.
 
 - **Work-unit commit.** `1d25a3a feat(web): add the investor reports view (#430)`.
+
+### WU3 — Export (commit `d954395`)
+
+Ruta: **delegado** (un writer; builder CSV puro + helper browser + control + wiring + print CSS). Sin deps nuevas.
+
+- **Diseño.** `buildReportCsv(report, sales?)` puro (React-free): XLM canónico tal cual, `null` → celda vacía (nunca `0`), escaping RFC-4180, CRLF, BOM UTF-8, orden determinístico; la sección de ventas sólo si hay datos. `downloadCsv` (Blob + `createObjectURL` + anchor temporal + `revokeObjectURL`, SSR-guarded) y `printReport` (`window.print`). El control `Exportar` ofrece **Descargar CSV** y **Imprimir / PDF** (deshabilitado mientras carga). Estilos `@media print` (sólo bloque de impresión en `globals.css`: oculta chrome/acciones, formato de tablas) — **sin cambios en pantalla**.
+- **RED/GREEN observado.** RED: módulos `export.ts`/`csv-download.ts` ausentes + el control viejo renderizaba el mensaje de deshabilitado. GREEN: web enfocado **81/81** (12 archivos); `tsc` limpio; `lint` 1 warning preexistente ajeno; `boundaries` sin violaciones (1169 módulos / 3809 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **6/6 PASS**, sin bloqueantes.
+- **Advisories / owner-pending.** Copy del control (`Descargar CSV`/`Imprimir / PDF`/`Preparando…`) owner-pending (el template sólo diseña un `Exportar` deshabilitado); `header, footer { display:none }` en print es selector global (seguro hoy, sin contenido de informe con esos elementos).
+- **Criterio superseded aplicado.** El criterio del issue *"export remains disabled with the quoted message"* queda **superseded** por D2: la exportación es funcional.
+
+- **Work-unit commit.** `d954395 feat(web): add the report export (#430)`.
