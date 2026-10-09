@@ -273,7 +273,7 @@ describe("wallet authorization", () => {
   });
 
   it("denies ADMIN with 403 for every wallet route", async () => {
-    const requests: ReadonlyArray<{ method: "POST" | "GET"; url: string; payload?: unknown }> = [
+    const requests: ReadonlyArray<{ method: "POST" | "GET"; url: string; payload?: typeof connectBody }> = [
       { method: "POST", url: "/profile/wallet/challenge" },
       { method: "POST", url: "/profile/wallet", payload: connectBody },
       { method: "GET", url: "/profile/wallet" }
