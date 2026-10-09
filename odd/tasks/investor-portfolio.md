@@ -37,7 +37,7 @@ Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafol
 
 - [x] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
 - [x] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
-- [ ] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
+- [x] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
 - [ ] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
 
@@ -76,3 +76,16 @@ Ruta: **delegado** (un writer; port + gateway + factory + null object + hook SWR
 - **Límite explícito.** Sin retiro/reembolso (WU3) ni estados de vacío/sin-wallet/errores/carga de fondos (WU4).
 
 - **Work-unit commit.** `d02a8f5 feat(web): add the investor portfolio view (#426)`.
+
+### WU3 — Retiro y reembolso (commit `b90a96c`)
+
+Ruta: **delegado** (un writer; acción + helpers puros + composición en la vista/container + tests) **más una corrección acotada**.
+
+- **Diseño.** Un único componente `PortfolioPositionAction`, parametrizado por la operación derivada del **`status` del portafolio** (`positionActionFor`: `funding`→retirar, `refunding`→reembolsar, `settled`→ninguna). Reusa el motor `useCampaignVault` (`withdraw`/`refund`, sin monto), `TransactionReviewModal` y `TransactionStatusList` (D4: último estado de la tx por tarjeta; el historial completo queda para #430). La regla de reembolso (D1) es `status === "refunding"` — el API ya pliega «funding vencido bajo la meta» ahí (`get-investor-portfolio.ts:102-108`). **No** se bifurcó `campaign-withdraw.tsx`.
+- **RED/GREEN observado.** RED: `actions.ts` y `portfolio-position-action.tsx` inexistentes. GREEN: contracts build OK; web enfocado **65/65** (11 archivos); `tsc --noEmit` limpio; `lint` 1 warning preexistente ajeno; `boundaries` sin violaciones (1103 módulos / 3613 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **8/8 PASS**, sin bloqueantes; re-corrió las suites. Dos advisories reales accionados en la corrección.
+- **Corrección acotada (post-verificación).** (1) **Honestidad**: un resultado post-firma **inconcluso** (timeout del polling → `unavailable`, `network`, `unknown`) ya **no** se rotula «Fallida»; sólo un fallo definido (`refused`/`not_funding`) es «Fallida`, el resto queda «Enviada · pendiente de confirmación». Test de agotamiento del poll agregado. (2) **Layering**: se eliminó el único import `application/ → presentation/` del repo (era type-only) moviendo `positionActionDescriptionRows`/`positionActionStatusItems` a presentation; `actions.ts` sólo importa `@vaqcrow/contracts`. Re-corrido: **65/65**, `tsc` limpio, `boundaries` verde.
+- **Advisories / owner-pending.** (a) tras un envío (incluído un timeout) la tarjeta **oculta** la acción — el modelo shipped muestra «Retirar de nuevo»; se mantiene oculto (el template no diseña acción en la tarjeta enviada) y se revisita en WU4/#430; (b) el modal, ante un error inconcluso post-envío, puede mostrar un copy de error contradictorio — es **preexistente y sistémico** en `campaign-withdraw` (no de WU3), se registra como follow-up.
+- **Límite explícito.** Sin estados vacío/sin-wallet/errores Freighter/fondos Testnet (WU4).
+
+- **Work-unit commit.** `b90a96c feat(web): add the portfolio withdraw and refund actions (#426)`.
