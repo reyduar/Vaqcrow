@@ -139,6 +139,10 @@ export async function openCampaign(
   const adopting = probe.ok;
   let contractAddress = predicted.value;
   let rateSnapshot: CampaignRateSnapshot | undefined;
+  // Known only when this attempt deployed the vault itself: an adopted vault
+  // was deployed by an earlier attempt whose hash was never persisted, so the
+  // campaign carries none rather than an invented one (#438/WU1).
+  let deployTransactionHash: string | undefined;
 
   if (!probe.ok) {
     // The hard campaign cap (D4/D6) is enforced at creation, in integer
@@ -184,6 +188,7 @@ export async function openCampaign(
     }
 
     contractAddress = deployed.value.contractAddress;
+    deployTransactionHash = deployed.value.hash;
   }
 
   const chainState = await deps.chain.readCampaign(contractAddress);
@@ -210,7 +215,8 @@ export async function openCampaign(
       totalStroops: chainState.value.totalStroops,
       reconciliationStatus: "in_sync",
       lastReconciledAt: chainState.value.observedAt.toISOString(),
-      ...(rateSnapshot === undefined ? {} : { rateSnapshot })
+      ...(rateSnapshot === undefined ? {} : { rateSnapshot }),
+      ...(deployTransactionHash === undefined ? {} : { deployTransactionHash })
     },
     correlationId
   });

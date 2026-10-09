@@ -3,6 +3,7 @@ import { parseApplicationId } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import type {
   CampaignContributionRecord,
+  CampaignContributionTransactionPort,
   CampaignRateSnapshot,
   CampaignRecord,
   CampaignReconciliationOutcome,
@@ -18,6 +19,7 @@ import type {
 const CAMPAIGN_TABLE = "campaign";
 const CONTRIBUTION_TABLE = "campaign_contribution";
 const REFUND_CONTACT_TABLE = "campaign_refund_contact";
+const CONTRIBUTION_TRANSACTION_TABLE = "campaign_contribution_transaction";
 const UNIQUE_VIOLATION = "23505";
 const CAMPAIGN_STATES: readonly CampaignState[] = ["open", "settled", "refundable"];
 const RECONCILIATION_STATUSES: readonly ReconciliationStatus[] = ["in_sync", "diverged"];
@@ -26,7 +28,7 @@ const RECONCILIATION_STATUSES: readonly ReconciliationStatus[] = ["in_sync", "di
  * Supabase mirror for contract custody. The adapter only accepts snapshots that
  * a caller has already read from Stellar; it never creates a financial fact.
  */
-export class SupabaseCampaignRepository implements CampaignRepositoryPort {
+export class SupabaseCampaignRepository implements CampaignRepositoryPort, CampaignContributionTransactionPort {
   constructor(private readonly client: SupabaseClient) {}
 
   async create(input: {
@@ -170,6 +172,56 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     }
   }
 
+  async recordContributionSubmission(input: {
+    transactionHash: string;
+    campaignId: string;
+    investorAccountId: string;
+    amountStroops: bigint;
+    correlationId: CorrelationId;
+  }): Promise<CampaignRepositoryResult<void>> {
+    try {
+      // INSERT … ON CONFLICT (transaction_hash) DO NOTHING: the hash is the
+      // signed envelope's identity, so a resubmission carries the very same
+      // facts and must neither fail nor rewrite the first record.
+      const { error } = await this.client.from(CONTRIBUTION_TRANSACTION_TABLE).upsert(
+        {
+          transaction_hash: input.transactionHash,
+          campaign_id: input.campaignId,
+          investor_account_id: input.investorAccountId,
+          amount_stroops: input.amountStroops.toString(),
+          last_correlation_id: input.correlationId
+        },
+        { onConflict: "transaction_hash", ignoreDuplicates: true }
+      );
+
+      return error ? { ok: false, error: this.toError(error, input.correlationId) } : { ok: true, value: undefined };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async confirmContributionTransaction(input: {
+    transactionHash: string;
+    campaignId: string;
+    observedAt: string;
+    correlationId: CorrelationId;
+  }): Promise<CampaignRepositoryResult<void>> {
+    try {
+      // Conditional on `observed_at is null`: the first confirmation wins and a
+      // replayed poll matches no row instead of moving the observation.
+      const { error } = await this.client
+        .from(CONTRIBUTION_TRANSACTION_TABLE)
+        .update({ observed_at: input.observedAt, last_correlation_id: input.correlationId })
+        .eq("transaction_hash", input.transactionHash)
+        .eq("campaign_id", input.campaignId)
+        .is("observed_at", null);
+
+      return error ? { ok: false, error: this.toError(error, input.correlationId) } : { ok: true, value: undefined };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   private async resolveUnappliedReconciliation(
     campaignId: string
   ): Promise<CampaignRepositoryResult<CampaignReconciliationOutcome>> {
@@ -234,7 +286,11 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
             fx_rate_version: campaign.rateSnapshot.version,
             usd_to_ars: campaign.rateSnapshot.usdToArs.toString(),
             stroops_per_usd: campaign.rateSnapshot.stroopsPerUsd.toString()
-          })
+          }),
+      // Absent when this attempt did not deploy the vault itself (#438/WU1).
+      ...(campaign.deployTransactionHash === undefined
+        ? {}
+        : { deploy_transaction_hash: campaign.deployTransactionHash })
     };
   }
 
@@ -268,6 +324,7 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
     const value = this.asRecord(row);
     const lastDivergedAt = value["last_diverged_at"];
     const rateSnapshot = this.toRateSnapshot(value);
+    const deployTransactionHash = value["deploy_transaction_hash"];
     return {
       campaignId: this.text(value["campaign_id"]),
       applicationId: parseApplicationId(value["application_id"]),
@@ -285,6 +342,9 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort {
         ? {}
         : { lastDivergedAt: this.text(lastDivergedAt) }),
       ...(rateSnapshot === undefined ? {} : { rateSnapshot }),
+      ...(deployTransactionHash === null || deployTransactionHash === undefined
+        ? {}
+        : { deployTransactionHash: this.text(deployTransactionHash) }),
       createdAt: this.text(value["created_at"]),
       updatedAt: this.text(value["updated_at"])
     };

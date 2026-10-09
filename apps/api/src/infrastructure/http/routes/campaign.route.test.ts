@@ -12,7 +12,11 @@ import type {
   CampaignVaultInvocationVerification,
   VerifyCampaignVaultInvocationInput
 } from "../../../application/ports/campaign-vault-invocation-port.js";
-import type { CampaignRecord, CampaignRepositoryPort } from "../../../application/ports/campaign-repository-port.js";
+import type {
+  CampaignContributionTransactionPort,
+  CampaignRecord,
+  CampaignRepositoryPort
+} from "../../../application/ports/campaign-repository-port.js";
 import type { RateSnapshot, RateTableRepositoryPort } from "../../../application/ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
 import { buildAppAs } from "../test-support/auth.js";
@@ -131,6 +135,16 @@ function campaignsDouble(
   };
 }
 
+function contributionTransactionsDouble(
+  overrides: Partial<{ [K in keyof CampaignContributionTransactionPort]: CampaignContributionTransactionPort[K] }> = {}
+): CampaignContributionTransactionPort {
+  return {
+    recordContributionSubmission: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    confirmContributionTransaction: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    ...overrides
+  };
+}
+
 function chainDouble(
   overrides: Partial<{ [K in keyof CampaignVaultChainPort]: CampaignVaultChainPort[K] }> = {}
 ): CampaignVaultChainPort {
@@ -172,6 +186,7 @@ function deps(
   return {
     applicationReviews: applicationReviewsDouble(),
     campaigns: campaignsDouble(),
+    contributionTransactions: contributionTransactionsDouble(),
     accounts: accountsDouble(),
     factory: factoryDouble(),
     chain: chainDouble(),
@@ -804,6 +819,72 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     expect(response.statusCode).toBe(503);
   });
 
+  describe("recording the contribution transaction (#438/WU1)", () => {
+    it("records the verified contribute (hash, investor, amount) before submitting it", async () => {
+      const invocations = invocationsDouble();
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+        payload: contributeSubmission
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(contributionTransactions.recordContributionSubmission).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionHash: TRANSACTION_HASH,
+          campaignId: CAMPAIGN_ID,
+          investorAccountId: INVESTOR_ACCOUNT_ID,
+          amountStroops: 5_000_000n
+        })
+      );
+      const recordedAt = vi.mocked(contributionTransactions.recordContributionSubmission).mock.invocationCallOrder[0];
+      const submittedAt = vi.mocked(invocations.submit).mock.invocationCallOrder[0];
+      expect(recordedAt).toBeLessThan(submittedAt as number);
+    });
+
+    it("never submits a contribute whose record could not be written (503, safe to retry)", async () => {
+      const invocations = invocationsDouble();
+      const contributionTransactions = contributionTransactionsDouble({
+        recordContributionSubmission: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+        payload: contributeSubmission
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ code: "unavailable" });
+      expect(invocations.submit).not.toHaveBeenCalled();
+    });
+
+    it("records nothing for withdraw or refund (their amount is the contract's, not the envelope's)", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ contributionTransactions }) });
+
+      for (const operation of ["withdraw", "refund"] as const) {
+        await app.inject({
+          method: "POST",
+          url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+          payload: {
+            operation,
+            investorAccountId: INVESTOR_ACCOUNT_ID,
+            sourceAccountId: INVESTOR_ACCOUNT_ID,
+            amountStroops: null,
+            signedXdr: SIGNED_XDR
+          }
+        });
+      }
+
+      expect(contributionTransactions.recordContributionSubmission).not.toHaveBeenCalled();
+    });
+  });
+
   it("rejects an unknown field with 400 invalid_request", async () => {
     app = buildAppAs("ADMIN", { campaign: deps() });
 
@@ -923,6 +1004,72 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
       expect(response.statusCode).toBe(503);
       expect(campaigns.reconcile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("confirming the contribution transaction (#438/WU1)", () => {
+    const success = () =>
+      invocationsDouble({ findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } }) });
+
+    it("confirms the recorded contribution with the chain observation on success", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=${INVESTOR_ACCOUNT_ID}`
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(contributionTransactions.confirmContributionTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionHash: TRANSACTION_HASH,
+          campaignId: CAMPAIGN_ID,
+          observedAt: fundingChainState.observedAt.toISOString()
+        })
+      );
+    });
+
+    it("answers a replayed poll identically, delegating idempotency to the conditional confirm", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+      const url = `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}`;
+
+      const first = await app.inject({ method: "GET", url });
+      const replay = await app.inject({ method: "GET", url });
+
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json()).toEqual(first.json());
+      expect(contributionTransactions.recordContributionSubmission).not.toHaveBeenCalled();
+    });
+
+    it("never confirms a pending or failed transaction", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      const invocations = invocationsDouble({
+        findResult: vi
+          .fn()
+          .mockResolvedValueOnce({ ok: true, value: { status: "pending" } })
+          .mockResolvedValueOnce({ ok: true, value: { status: "failed" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+      const url = `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}`;
+
+      await app.inject({ method: "GET", url });
+      await app.inject({ method: "GET", url });
+
+      expect(contributionTransactions.confirmContributionTransaction).not.toHaveBeenCalled();
+    });
+
+    it("returns 503 when the confirmation cannot be written, so the poll is retried", async () => {
+      const contributionTransactions = contributionTransactionsDouble({
+        confirmContributionTransaction: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+
+      const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ code: "unavailable" });
     });
   });
 

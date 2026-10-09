@@ -56,6 +56,8 @@ interface RecordedCalls {
   readonly tables: string[];
   readonly insert: unknown[];
   readonly update: unknown[];
+  readonly upsert: Array<readonly [payload: unknown, options: unknown]>;
+  readonly is: Array<readonly [column: string, value: unknown]>;
   readonly eq: Array<readonly [column: string, value: unknown]>;
   readonly lte: Array<readonly [column: string, value: unknown]>;
   readonly order: Array<readonly [column: string, options: unknown]>;
@@ -72,7 +74,7 @@ function fakeError(code: string): FakePostgrestError {
 
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { tables: [], insert: [], update: [], eq: [], lte: [], order: [] };
+  const calls: RecordedCalls = { tables: [], insert: [], update: [], upsert: [], is: [], eq: [], lte: [], order: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -89,6 +91,14 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
       },
       update: (payload: unknown) => {
         calls.update.push(payload);
+        return self;
+      },
+      upsert: (payload: unknown, options: unknown) => {
+        calls.upsert.push([payload, options]);
+        return self;
+      },
+      is: (column: string, value: unknown) => {
+        calls.is.push([column, value]);
         return self;
       },
       select: () => self,
@@ -213,6 +223,126 @@ describe("SupabaseCampaignRepository", () => {
     expect(result).toEqual({
       ok: true,
       value: { ...CAMPAIGN, rateSnapshot: { version: 7, usdToArs: 1_000_000_000n, stroopsPerUsd: 10_000_000n } }
+    });
+  });
+
+  describe("deploy transaction hash (#438/WU1)", () => {
+    const DEPLOY_HASH = "b".repeat(64);
+
+    it("writes the deploy hash with the campaign and reads it back", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        { data: persistedCampaign({ deploy_transaction_hash: DEPLOY_HASH }), error: null }
+      ]);
+
+      const result = await new SupabaseCampaignRepository(client).create({
+        campaign: { ...CAMPAIGN, deployTransactionHash: DEPLOY_HASH },
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: true, value: { ...CAMPAIGN, deployTransactionHash: DEPLOY_HASH } });
+      expect(calls.insert).toEqual([expect.objectContaining({ deploy_transaction_hash: DEPLOY_HASH })]);
+    });
+
+    it("omits the deploy hash when none is known, and maps a NULL column to an absent field", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        { data: persistedCampaign({ deploy_transaction_hash: null }), error: null }
+      ]);
+
+      const result = await new SupabaseCampaignRepository(client).create({
+        campaign: CAMPAIGN,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: true, value: CAMPAIGN });
+      expect(calls.insert[0]).not.toHaveProperty("deploy_transaction_hash");
+    });
+  });
+
+  describe("contribution transactions (#438/WU1)", () => {
+    const TX_HASH = "c".repeat(64);
+    const INVESTOR = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF";
+
+    it("records a submitted contribution with insert … on conflict do nothing on the hash", async () => {
+      const { client, calls } = createFakeSupabaseClient([{ data: null, error: null }]);
+
+      const result = await new SupabaseCampaignRepository(client).recordContributionSubmission({
+        transactionHash: TX_HASH,
+        campaignId: CAMPAIGN_ID,
+        investorAccountId: INVESTOR,
+        amountStroops: 5_000n,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect(calls.tables).toEqual(["campaign_contribution_transaction"]);
+      expect(calls.upsert).toEqual([
+        [
+          {
+            transaction_hash: TX_HASH,
+            campaign_id: CAMPAIGN_ID,
+            investor_account_id: INVESTOR,
+            amount_stroops: "5000",
+            last_correlation_id: CORRELATION_ID
+          },
+          { onConflict: "transaction_hash", ignoreDuplicates: true }
+        ]
+      ]);
+    });
+
+    it("confirms a contribution only while it is still unobserved, scoped to its campaign", async () => {
+      const { client, calls } = createFakeSupabaseClient([{ data: null, error: null }]);
+
+      const result = await new SupabaseCampaignRepository(client).confirmContributionTransaction({
+        transactionHash: TX_HASH,
+        campaignId: CAMPAIGN_ID,
+        observedAt: OBSERVED_AT,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(result).toEqual({ ok: true, value: undefined });
+      expect(calls.tables).toEqual(["campaign_contribution_transaction"]);
+      expect(calls.update).toEqual([{ observed_at: OBSERVED_AT, last_correlation_id: CORRELATION_ID }]);
+      expect(calls.eq).toEqual([
+        ["transaction_hash", TX_HASH],
+        ["campaign_id", CAMPAIGN_ID]
+      ]);
+      expect(calls.is).toEqual([["observed_at", null]]);
+    });
+
+    it("sanitizes a failed contribution write without leaking PostgREST text", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { client } = createFakeSupabaseClient([
+        { data: null, error: fakeError("42501") },
+        { data: null, error: fakeError("42501") },
+        { reject: new Error("network down") }
+      ]);
+      const repository = new SupabaseCampaignRepository(client);
+
+      const recorded = await repository.recordContributionSubmission({
+        transactionHash: TX_HASH,
+        campaignId: CAMPAIGN_ID,
+        investorAccountId: INVESTOR,
+        amountStroops: 5_000n,
+        correlationId: CORRELATION_ID
+      });
+      const confirmed = await repository.confirmContributionTransaction({
+        transactionHash: TX_HASH,
+        campaignId: CAMPAIGN_ID,
+        observedAt: OBSERVED_AT,
+        correlationId: CORRELATION_ID
+      });
+      const thrown = await repository.confirmContributionTransaction({
+        transactionHash: TX_HASH,
+        campaignId: CAMPAIGN_ID,
+        observedAt: OBSERVED_AT,
+        correlationId: CORRELATION_ID
+      });
+
+      expect(recorded).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(confirmed).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(thrown).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(/sensitive/);
+      consoleError.mockRestore();
     });
   });
 

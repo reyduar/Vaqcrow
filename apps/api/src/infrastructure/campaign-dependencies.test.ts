@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ApiConfig } from "../application/config/api-config.js";
 import { Secret } from "../application/config/secret.js";
 import type { ApplicationReviewRepositoryPort } from "../application/ports/application-review-repository-port.js";
+import { SupabaseCampaignRepository } from "./adapters/supabase-campaign-repository.js";
 import { buildCampaignDependencies } from "./campaign-dependencies.js";
 
 /**
@@ -104,6 +105,16 @@ describe("buildCampaignDependencies", () => {
 
     expect(local?.explorerBaseUrl).toBeUndefined();
     expect(testnet?.explorerBaseUrl).toBe("https://stellar.expert/explorer/testnet");
+  });
+
+  it("wires the contribution transaction record to the same Supabase campaign repository (#438/WU1)", () => {
+    const dependencies = buildCampaignDependencies(baseConfig({ enabled: true }), {
+      supabase,
+      applicationReviews: applicationReviewsDouble()
+    });
+
+    expect(dependencies?.contributionTransactions).toBeInstanceOf(SupabaseCampaignRepository);
+    expect(dependencies?.contributionTransactions).toBe(dependencies?.campaigns);
   });
 
   it("generates a fresh invocation id on every call", () => {

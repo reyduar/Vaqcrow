@@ -35,6 +35,13 @@ export interface CampaignRecord {
   readonly lastDivergedAt?: string;
   /** Present only when the campaign's terms were validated against a rate snapshot (#410/T3a). */
   readonly rateSnapshot?: CampaignRateSnapshot;
+  /**
+   * The Testnet transaction `factory.deploy` reported for this vault (#438/WU1).
+   * Absent for a campaign mirrored before the column existed and for a vault
+   * adopted from an earlier attempt, whose deploy hash this process never saw:
+   * a reader renders that as "no data", never as a made-up value.
+   */
+  readonly deployTransactionHash?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -113,4 +120,41 @@ export interface CampaignRepositoryPort {
     readonly contact: CampaignRefundContact;
     readonly correlationId: CorrelationId;
   }): Promise<CampaignRepositoryResult<CampaignRefundContact>>;
+}
+
+/**
+ * One contribute transaction an investor signed against a campaign vault
+ * (#438/WU1), kept so each contribution's own hash stays verifiable on-chain;
+ * `campaign_contribution` only holds the per-investor aggregate.
+ *
+ * Two steps, both idempotent: the submission route records the verified
+ * envelope's facts (hash, investor, amount) *before* it submits, so the amount
+ * comes from the signed envelope rather than from a guess; the transaction poll
+ * confirms the row once the chain reports success. Only confirmed rows are
+ * evidence of a contribution — an unconfirmed row is a submission that never
+ * (or not yet) landed. `withdraw`/`refund` are not recorded: their amount is
+ * decided by the contract, not carried in the envelope.
+ */
+export interface CampaignContributionTransactionPort {
+  /** Insert-or-ignore on the hash: a resubmitted envelope (same hash) is a no-op. */
+  recordContributionSubmission(input: {
+    readonly transactionHash: string;
+    readonly campaignId: string;
+    readonly investorAccountId: string;
+    readonly amountStroops: bigint;
+    readonly correlationId: CorrelationId;
+  }): Promise<CampaignRepositoryResult<void>>;
+
+  /**
+   * Stamps the chain observation on a recorded, still-unconfirmed contribution
+   * of this campaign. A hash that was never recorded (a withdraw, a refund, a
+   * transaction from elsewhere) or one already confirmed changes nothing, which
+   * is what makes a replayed poll idempotent.
+   */
+  confirmContributionTransaction(input: {
+    readonly transactionHash: string;
+    readonly campaignId: string;
+    readonly observedAt: string;
+    readonly correlationId: CorrelationId;
+  }): Promise<CampaignRepositoryResult<void>>;
 }

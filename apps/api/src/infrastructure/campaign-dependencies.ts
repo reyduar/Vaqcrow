@@ -43,9 +43,14 @@ export function buildCampaignDependencies(
   // value someone else derived the same way.
   const tokenContractId = config.campaignVault.tokenContractId ?? Asset.native().contractId(config.stellar.networkPassphrase);
 
+  // One adapter backs both the campaign mirror and its per-transaction
+  // contribution record (#438/WU1): same client, same sanitized error shape.
+  const campaigns = new SupabaseCampaignRepository(clients.supabase);
+
   return {
     applicationReviews: clients.applicationReviews,
-    campaigns: new SupabaseCampaignRepository(clients.supabase),
+    campaigns,
+    contributionTransactions: campaigns,
     // A fresh deployment resolves the current rate against this table and
     // snapshots it with the campaign's terms (#410/T3a). The same `fx_rate`
     // table backs the admin rate routes; both adapters only read/write it.

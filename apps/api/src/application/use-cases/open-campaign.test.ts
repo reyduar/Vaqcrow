@@ -521,4 +521,39 @@ describe("openCampaign", () => {
       campaign: expect.objectContaining({ rateSnapshot: expect.anything() })
     });
   });
+
+  describe("deploy transaction hash (#438/WU1)", () => {
+    const DEPLOY_HASH = "a".repeat(64);
+
+    it("persists the hash factory.deploy reported together with the campaign it opened", async () => {
+      const campaignsPort = campaigns();
+
+      await openCampaign(
+        deps({
+          campaigns: campaignsPort,
+          factory: factory({ ok: true, value: { contractAddress: CONTRACT_ADDRESS, hash: DEPLOY_HASH } })
+        }),
+        { command: command(), correlationId: CORRELATION_ID }
+      );
+
+      expect(campaignsPort.calls.create[0]).toMatchObject({
+        campaign: expect.objectContaining({ deployTransactionHash: DEPLOY_HASH })
+      });
+    });
+
+    it("records no deploy hash when it adopts a vault an earlier attempt deployed", async () => {
+      const campaignsPort = campaigns();
+
+      await openCampaign(
+        deps({
+          campaigns: campaignsPort,
+          chain: chain({ ok: true, value: fundingChainState() }, { ok: true, value: fundingChainState() })
+        }),
+        { command: command(), correlationId: CORRELATION_ID }
+      );
+
+      const created = campaignsPort.calls.create[0] as { campaign: Record<string, unknown> };
+      expect(created.campaign).not.toHaveProperty("deployTransactionHash");
+    });
+  });
 });
