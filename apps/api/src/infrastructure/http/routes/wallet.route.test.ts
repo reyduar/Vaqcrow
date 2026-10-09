@@ -240,9 +240,46 @@ describe("GET /profile/wallet", () => {
 });
 
 describe("wallet authorization", () => {
-  it("denies a non-PYME role with 403 for every wallet route", async () => {
-    for (const url of ["/profile/wallet/challenge", "/profile/wallet"] as const) {
-      const other = buildAppAs("INVERSOR", {
+  // #426/WU4: the wallet routes are role-agnostic, so an INVERSOR persists its
+  // own Stellar key exactly like a PYME. ADMIN remains denied.
+  it("allows an INVERSOR to issue a challenge, store a key, and read its wallet state", async () => {
+    // #426/WU4: the wallet routes are role-agnostic, so an INVERSOR persists its
+    // own Stellar key exactly like a PYME. ADMIN remains denied. The read reports
+    // no persisted key (`{ publicKey: null, frozen: false }`) — the honest state
+    // that makes the portfolio hold back its absence claim (the web honesty gate).
+    const other = buildAppAs("INVERSOR", {
+      wallet: {
+        repository: repository({ readPublicKey: vi.fn().mockResolvedValue({ ok: true, value: null }) }),
+        signatures: signatures(),
+        generateChallengeId: () => CHALLENGE_ID,
+        generateNonce: () => NONCE,
+        ttlSeconds: 300
+      }
+    });
+    try {
+      const challenge = await other.inject({ method: "POST", url: "/profile/wallet/challenge" });
+      expect(challenge.statusCode).toBe(201);
+
+      const stored = await other.inject({ method: "POST", url: "/profile/wallet", payload: connectBody });
+      expect(stored.statusCode).toBe(200);
+      expect(stored.json()).toEqual({ publicKey: PUBLIC_KEY, frozen: false });
+
+      const read = await other.inject({ method: "GET", url: "/profile/wallet" });
+      expect(read.statusCode).toBe(200);
+      expect(read.json()).toEqual({ publicKey: null, frozen: false });
+    } finally {
+      await other.close();
+    }
+  });
+
+  it("denies ADMIN with 403 for every wallet route", async () => {
+    const requests: ReadonlyArray<{ method: "POST" | "GET"; url: string; payload?: unknown }> = [
+      { method: "POST", url: "/profile/wallet/challenge" },
+      { method: "POST", url: "/profile/wallet", payload: connectBody },
+      { method: "GET", url: "/profile/wallet" }
+    ];
+    for (const request of requests) {
+      const other = buildAppAs("ADMIN", {
         wallet: {
           repository: repository(),
           signatures: signatures(),
@@ -252,7 +289,7 @@ describe("wallet authorization", () => {
         }
       });
       try {
-        const response = await other.inject({ method: "POST", url });
+        const response = await other.inject(request);
         expect(response.statusCode).toBe(403);
         expect(response.json()).toEqual({ code: "forbidden" });
       } finally {

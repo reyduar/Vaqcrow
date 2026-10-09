@@ -1,19 +1,24 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortfolioPort, PortfolioSummary } from "@/application/ports/portfolio-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
+import { FakeWallet, FakeWalletConnection } from "@/test/fake-wallet";
 import { Portfolio } from "./portfolio";
 
-// The container composes `PortfolioPositionAction`, which reads `useRouter` for
-// its production default navigation; stub it so no app router is required.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+// The container composes `PortfolioPositionAction` and the empty-state CTA,
+// which read `useRouter`; stub it and expose the push spy for navigation asserts.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
+beforeEach(() => push.mockClear());
 
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
 
 const CAMPAIGN_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
+const CONNECTED_KEY = "GBX4RK7PQ2M6VZ5HJTN3WLCE8YDA9SFU4GQOB2XK7IRMNHT6PLQ7LM";
 
 function position(overrides: Partial<PortfolioSummary["contributions"][number]> = {}) {
   return {
@@ -67,7 +72,7 @@ function positionHeadings(): (string | null)[] {
 
 describe("Portfolio container", () => {
   it("shows the title, the stat cards and the sections when the read succeeds", async () => {
-    renderPortfolio({ port: okPort(), connection: connection(null), balance: BALANCE });
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: BALANCE });
 
     expect(await screen.findByText("Total aportado")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Mi portafolio" })).toBeInTheDocument();
@@ -76,17 +81,80 @@ describe("Portfolio container", () => {
     expect(screen.getByRole("heading", { name: "Distribuciones" })).toBeInTheDocument();
   });
 
-  it("renders no wallet card when there is no connected key", async () => {
+  it("renders the connect-mode card when there is no connected key", async () => {
     renderPortfolio({ port: okPort(), connection: connection(null), balance: BALANCE });
 
-    await screen.findByText("Total aportado");
+    expect(await screen.findByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
     expect(screen.queryByText("Freighter conectada de forma no custodial")).not.toBeInTheDocument();
+  });
+
+  it("connects from the portfolio, stores the key and renders the connected card", async () => {
+    const fakeWallet = new FakeWallet();
+    fakeWallet.seedAccount(CONNECTED_KEY);
+    const connectionPort = new FakeWalletConnection();
+    renderPortfolio({ port: okPort(), connection: connectionPort, balance: BALANCE, wallet: fakeWallet });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Conectar Freighter" }));
+
+    expect(await screen.findByText("Freighter conectada de forma no custodial")).toBeInTheDocument();
+    expect(connectionPort.submitted).toHaveLength(1);
+  });
+
+  it("renders only the connect-mode card when no wallet is connected", async () => {
+    // WU4 honesty gate: `GET /portfolio` answers 200 with an empty list when the
+    // principal has no persisted key, so neither the totals nor an empty read is
+    // evidence of anything. Only the connect-mode card renders, so the page never
+    // asserts an unsupported numeric or absence claim.
+    renderPortfolio({
+      port: okPort(summary({ contributions: [] })),
+      connection: connection(null),
+      balance: BALANCE
+    });
+
+    expect(await screen.findByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
+    expect(screen.queryByText("Total aportado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Distribuciones recibidas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Mis aportes en PyMEs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Aportes por sector" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Distribuciones" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Todavía no aportaste a ninguna PyME")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Explorar PyMEs" })).not.toBeInTheDocument();
+  });
+
+  it("shows the empty state with Explorar PyMEs once a wallet is connected", async () => {
+    renderPortfolio({
+      port: okPort(summary({ contributions: [] })),
+      connection: connection(CONNECTED_KEY),
+      balance: BALANCE
+    });
+
+    expect(await screen.findByText("Freighter conectada de forma no custodial")).toBeInTheDocument();
+    expect(screen.getByText("Total aportado")).toBeInTheDocument();
+    const cta = await screen.findByRole("button", { name: "Explorar PyMEs" });
+    expect(screen.getByText("Todavía no aportaste a ninguna PyME")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mis aportes en PyMEs" })).toBeInTheDocument();
+
+    fireEvent.click(cta);
+    expect(push).toHaveBeenCalledWith("/explore");
+  });
+
+  it("returns to the connect-mode card after Desconectar", async () => {
+    renderPortfolio({
+      port: okPort(),
+      connection: connection(CONNECTED_KEY),
+      balance: BALANCE
+    });
+
+    expect(await screen.findByText("Freighter conectada de forma no custodial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Desconectar" }));
+
+    expect(await screen.findByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
   });
 
   it("renders the wallet card when a public key exists", async () => {
     renderPortfolio({
       port: okPort(),
-      connection: connection("GBX4RK7PQ2M6VZ5HJTN3WLCE8YDA9SFU4GQOB2XK7IRMNHT6PLQ7LM"),
+      connection: connection(CONNECTED_KEY),
       balance: BALANCE
     });
 
@@ -108,7 +176,7 @@ describe("Portfolio container", () => {
     const funding = position({ campaignId: "a", name: "Fondeo", status: "funding" });
     renderPortfolio({
       port: okPort(summary({ contributions: [settled, funding] })),
-      connection: connection(null),
+      connection: connection(CONNECTED_KEY),
       balance: BALANCE
     });
 
@@ -127,7 +195,7 @@ describe("Portfolio container", () => {
   });
 
   it("composes the withdraw action into a funding position", async () => {
-    renderPortfolio({ port: okPort(), connection: connection(null), balance: BALANCE });
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: BALANCE });
 
     expect(await screen.findByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
   });

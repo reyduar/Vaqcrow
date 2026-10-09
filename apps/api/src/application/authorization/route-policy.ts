@@ -42,11 +42,15 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // own wizard declares before sending the application to human review.
   "POST /completeness-check": only("PYME"),
 
-  // Freighter wallet connection (#407/T1b): issue and consume a single-use
-  // challenge, then read the stored key and its frozen state.
-  "POST /profile/wallet/challenge": only("PYME"),
-  "POST /profile/wallet": only("PYME"),
-  "GET /profile/wallet": only("PYME"),
+  // Freighter wallet connection (#407/T1b, extended by #426/WU4): issue and
+  // consume a single-use challenge, then read the stored key and its frozen
+  // state. The routes and use cases are role-agnostic and resolve the owner from
+  // the verified principal, so an INVERSOR persists its own Stellar key exactly
+  // like a PYME; `isFrozen` is `false` without an SME request. ADMIN is not
+  // allowed.
+  "POST /profile/wallet/challenge": only("PYME", "INVERSOR"),
+  "POST /profile/wallet": only("PYME", "INVERSOR"),
+  "GET /profile/wallet": only("PYME", "INVERSOR"),
 
   "POST /storage/uploads": only("PYME"),
   "DELETE /storage/uploads": only("PYME"),

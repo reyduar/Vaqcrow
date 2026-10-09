@@ -24,9 +24,12 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/completeness-check", ["PYME"]],
   ["POST", "/businesses", ["PYME"]],
   ["GET", "/businesses/mine", ["PYME"]],
-  ["POST", "/profile/wallet/challenge", ["PYME"]],
-  ["POST", "/profile/wallet", ["PYME"]],
-  ["GET", "/profile/wallet", ["PYME"]],
+  // Wallet connection (#407/T1b, extended by #426/WU4): the route handlers and
+  // use cases are role-agnostic, so an INVERSOR persists its own Stellar key
+  // exactly like a PYME. ADMIN is still not allowed.
+  ["POST", "/profile/wallet/challenge", ["PYME", "INVERSOR"]],
+  ["POST", "/profile/wallet", ["PYME", "INVERSOR"]],
+  ["GET", "/profile/wallet", ["PYME", "INVERSOR"]],
   ["POST", "/storage/uploads", ["PYME"]],
   ["DELETE", "/storage/uploads", ["PYME"]],
   ["GET", "/storage/uploads", ["ADMIN"]],
