@@ -44,7 +44,7 @@ El marketplace (#414) lista campañas y su CTA apunta a `/campaigns/<id>`, que h
 - [x] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
 - [x] **WU4 — KYC simulado del inversor.** Interstitial one-shot en el primer aporte, `SIMULADO`, auto-aprobado.
 - [x] **WU5 — «Retirar».** Acción en el aside gateada por estado/aporte ≠ 0.
-- [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/campaign-detail-and-contributions-evidence.md`.
+- [x] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/campaign-detail-and-contributions-evidence.md`.
 
 Forecast: Feature grande (varios work units). Entrega **feature-branch-chain**: cada work unit commitea en esta rama; la estrategia de PR se decide antes del primer PR.
 
@@ -112,7 +112,7 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **Diseño.** Tabla `public.investor_kyc` (`user_id` PK → `profile` cascade, `approved_at`/`created_at` default `now()`, `simulado` default `true`), RLS on **0 policies**, grants sólo `service_role` (`select`/`insert`; `revoke all` previo). `GET /investor-kyc` y `POST /investor-kyc` **AUTHENTICATED** (cualquier rol), dueño siempre `request.principal.userId` (body/query ignorado). `GET` de un registro ausente es `{ approved:false, approvedAt:null, simulado:true }`, nunca error; `POST` idempotente: `201` al crear, `200` en replay, sin duplicar; el campo `created` es sólo del status, no del body (contrato estricto). Contract `investorKycSchema` (estricto, portable). Web calcado de favoritos: port → gateway HTTP con Bearer (200/201 éxito, 401/403→`unauthenticated`) → factory con sesión perezosa (null object sin base URL) → hook SWR `useInvestorKyc` (clave sólo con `port && canContribute`; expone `approved`, `isLoading`, `approve()`). En `campaign-contribution.tsx`, tras las verificaciones pre-firma y la wallet, si `approved` es falso se abre el `InvestorKycInterstitial`; al confirmar se llama `approve()` y recién entonces `openReview()`. El botón de aporte queda deshabilitado mientras `isLoading` (estado de KYC desconocido) y mientras la wallet carga.
 - **Copy (owner-pending).** El template no diseña KYC de inversor, así que el copy es un placeholder mínimo y honesto: eyebrow «Antes de aportar», título «Verificación de identidad», badge **`SIMULADO`**, nota «No es una verificación real», cuerpo «Es tu primer aporte. En esta demo la verificación de identidad del inversor es simulada: no se revisa ningún documento real ni se valida tu identidad.» + «Al continuar, la simulación queda aprobada en tu cuenta y no vuelve a pedirse.», error «No pudimos registrar la verificación simulada. Reintentá.», botones «Aprobar y continuar» / «Cancelar». **Pendiente de aprobación/reemplazo por el owner.**
 - **RED/GREEN observado.** RED: contracts (schema ausente) 5 fallidos; casos de uso (módulos ausentes) sin resolver. GREEN: contracts **572** (20 archivos), api **2381** (110), web **2043** (203), `test:db` **20 archivos / 668 tests PASS** (incluye `investor_kyc.sql`, 40 aserciones). Enfocados web **52** (campaign-detail + hook + infra kyc). `typecheck` 8/8; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1048 módulos, 3414 dependencias); `test:boundaries` 164.
-- **Migración local.** `20261008240000_create_investor_kyc.sql` probada con `supabase migration up --local` y `pnpm run test:db` (verde). **No** se aplicó al proyecto remoto en este work unit (requiere autorización explícita del owner, como en WU1/WU2b).
+- **Migración remota.** `20261008240000_create_investor_kyc.sql` se probó en local y luego, con **autorización explícita del owner**, se **aplicó al proyecto remoto** (2026-10-09) vía MCP, con el `version` **alineado al repositorio** (`20261008240000`). Verificado en el remoto: `investor_kyc` con RLS on, **0 policies**, PK `user_id` y grants sólo `service_role` (`select`/`insert`); advisors sin clase nueva.
 - **Límite/seam.** No rompe WU3 (min 10, sin wallet → `/portfolio`, sent ≠ confirmed); el KYC nunca se pide a una PyME (el hook queda inactivo cuando `canContribute` es falso). El interstitial sólo se dispara desde el flujo de aporte.
 
 ### WU5 — «Retirar» (commit `562ad6f`)
@@ -126,3 +126,12 @@ Ruta: **delegado** (un writer; helper puro + componente + wiring en el aside + t
 - **Límite.** Sin migraciones (web-only). Falta WU6 (evidencia).
 
 - **Work-unit commit.** `562ad6f feat(web): add the withdraw action to the campaign detail (#422)`.
+
+### WU6 — Verificación y evidencia
+
+Ruta: **directa** (documento de evidencia + re-ejecución de suites; no hay código nuevo).
+
+- **Documento.** `docs/planning/campaign-detail-and-contributions-evidence.md` (español, estructura de la serie de evidencia de Feature): contexto, qué se implementó (WU1–WU5 + rutas/migraciones), qué se probó (re-ejecutado + verificación independiente por WU + cobertura), límites, decisiones del owner y **mapeo de los 8 criterios de aceptación del issue #422 citados textualmente**.
+- **Re-ejecutado 2026-10-09 (rama de #422).** `pnpm run verify` **exit 0**: lint sin errores (1 warning preexistente ajeno); typecheck 8/8; test — domain 120 · contracts **572** (20 archivos) · ai 143 · api **2381** (110) · web **2066** (205); build 5/5; boundaries sin violaciones (**1053 módulos, 3448 dependencias**); test:boundaries 164. `pnpm run test:db` → **20 archivos / 668 tests, PASS**.
+- **No re-ejecutado.** Testnet/Horizon/RPC (el aporte/retiro reales son verificación operativa manual), `test:integration` contra el remoto.
+- **Resultado.** Los 8 criterios quedan **CUMPLIDOS**; las migraciones de #422 quedaron aplicadas al remoto con autorización del owner. Brechas declaradas: copy del KYC/retiro **owner-pending** y datos no persistidos (tagline/empleados/usos) que se renderizan «Sin dato».
