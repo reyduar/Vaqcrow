@@ -52,7 +52,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 - [x] **WU1a — Modelo de lectura «mis campañas» (backend).** Contrato + port/adaptador (vistas `service_role`) + caso de uso + ruta `only("PYME")` que devuelve las campañas del PyME (vigente + históricas) con estado, fondeo/aportantes, distribuciones (ARS+XLM) y ventas declaradas. Sin `apps/web`.
 - [x] **WU1b — Declaración de ventas (backend).** `POST /businesses/:id/sales-periods` acepta montos declarados (además del demo `{}`); sin eventos (diferidos a otro WU por sus puntos de disparo).
 - [x] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones». Slots (sin cablear) para declaración (WU3) y «Revisar y firmar» (WU4); estados de la solicitud y guía friendbot → WU5.
-- [ ] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
+- [x] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
 - [ ] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), por distribución.
 - [ ] **WU5 — Estados y guía.** Vistas de estado + vacío previo + guía friendbot de Testnet.
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, `docs/planning/pyme-mi-campana-dashboard-evidence.md`.
@@ -104,3 +104,14 @@ Ruta: **delegado** (un writer; port + gateway + factory + null object + hook SWR
 - **Advisories / owner-pending.** `Aportantes` suma conteos por campaña (puede sobrecontar cuentas en varias campañas); un gráfico de ventas por campaña con datos (el template diseña una sola); copy de los slots «Declarar ventas»/«Revisar y firmar»/«Disponible próximamente», vacío previo y «Sin distribuciones» owner-pending; el estado de la solicitud (En revisión/Requiere cambios/Rechazada) no se obtuvo limpiamente → diferido a WU5 (no inventado).
 
 - **Work-unit commit.** `a4b17a3 feat(web): add the PyME Mi campaña dashboard (#434)`.
+
+### WU3 — Declaración mensual (commit `291e64d`)
+
+Ruta: **delegado** (un writer; port + gateway + factory + null + hook + helpers puros + panel + wire, 2+ archivos no triviales).
+
+- **Diseño (D1).** Panel «Declarar ventas» cableado en el slot de WU2: un **form de montos reales** por mes (vacío = `Sin dato` → `null`, nunca `0`) + botón **«Completar con datos de ejemplo»**; al enviar llama al `POST /businesses/:id/sales-periods` extendido (cuerpo exactamente `{ periods }`, sólo el declarado; 200 = éxito) y **recarga** el dashboard. `businessId` desde el read existente `GET /businesses/mine` (`BusinessPort.getMyBusiness`), porque `GET /my-campaigns` no expone el businessId.
+- **RED/GREEN observado.** RED: módulos puros/gateway/hook/panel ausentes. GREEN: web enfocado **96/96** (13 archivos); contracts build OK; `tsc` limpio; `lint` sin errores; `boundaries` sin violaciones (1233 módulos / 4001 deps). Regresión del workspace 5/5.
+- **Verificación.** Spot-check del padre (gateway: sólo `{ periods }`, 200 = éxito); la verificación independiente se integra en WU6.
+- **Advisories / owner-pending.** (a) `GET /businesses/mine` devuelve el business más nuevo → con varias campañas/negocios la declaración puede apuntar a otro negocio que la tarjeta clickeada (follow-up recomendado: exponer `businessId` en `my-campaigns`); (b) ventana demo de 8 meses derivada del `deadline` de la campaña (sin reloj de pared) — design choice; (c) vaciar un mes prellenado envía `null` → `missing` (sobrescribe), a confirmar; (d) copy del panel owner-pending.
+
+- **Work-unit commit.** `291e64d feat(web): let the PyME declare monthly sales (#434)`.
