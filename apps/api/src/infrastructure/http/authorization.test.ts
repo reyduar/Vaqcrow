@@ -83,7 +83,9 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // reads the report and the independently fetched sales block, always scoped
   // to the verified principal.
   ["GET", "/reports", "any"],
-  ["GET", "/reports/sales-by-pyme", "any"]
+  ["GET", "/reports/sales-by-pyme", "any"],
+  // The PyME dashboard (#434/WU1): only a PyME reads its own campaigns.
+  ["GET", "/my-campaigns", ["PYME"]]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -140,6 +142,7 @@ function buildFullApp(auth?: AuthDependency): {
     investorKyc: stub,
     portfolio: stub,
     reports: stub,
+    myCampaigns: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

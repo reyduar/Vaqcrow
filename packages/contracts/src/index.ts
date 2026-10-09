@@ -230,6 +230,26 @@ export type {
 } from "./portfolio.js";
 
 export {
+  myCampaignDistributionSchema,
+  myCampaignDistributionStateSchema,
+  myCampaignSalesMonthSchema,
+  myCampaignSalesStatusSchema,
+  myCampaignSchema,
+  myCampaignsSchema,
+  myCampaignStateSchema,
+  parseMyCampaigns
+} from "./my-campaigns.js";
+export type {
+  MyCampaign,
+  MyCampaignDistribution,
+  MyCampaignDistributionState,
+  MyCampaignSalesMonth,
+  MyCampaignSalesStatus,
+  MyCampaigns,
+  MyCampaignState
+} from "./my-campaigns.js";
+
+export {
   availableRangeSchema,
   investorReportSchema,
   parseInvestorReport,

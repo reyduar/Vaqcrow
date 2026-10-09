@@ -37,6 +37,8 @@ import { registerMarketplaceRoute } from "./routes/marketplace.route.js";
 import type { MarketplaceRouteDependencies } from "./routes/marketplace.route.js";
 import { registerNotificationRoute } from "./routes/notification.route.js";
 import type { NotificationRouteDependencies } from "./routes/notification.route.js";
+import { registerMyCampaignsRoute } from "./routes/my-campaigns.route.js";
+import type { MyCampaignsRouteDependencies } from "./routes/my-campaigns.route.js";
 import { registerPortfolioRoute } from "./routes/portfolio.route.js";
 import type { PortfolioRouteDependencies } from "./routes/portfolio.route.js";
 import { registerReportsRoute } from "./routes/reports.route.js";
@@ -138,6 +140,8 @@ export function buildApp(dependencies: {
   readonly portfolio?: PortfolioRouteDependencies | undefined;
   /** The investor report read model (#430/WU1). Omitted when unwired. */
   readonly reports?: ReportsRouteDependencies | undefined;
+  /** The PyME dashboard read model (#434/WU1). Omitted when unwired. */
+  readonly myCampaigns?: MyCampaignsRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
@@ -257,6 +261,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.reports) {
     registerReportsRoute(app, dependencies.reports);
+  }
+  if (dependencies.myCampaigns) {
+    registerMyCampaignsRoute(app, dependencies.myCampaigns);
   }
   return app;
 }

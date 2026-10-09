@@ -118,6 +118,11 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /reports": AUTHENTICATED,
   "GET /reports/sales-by-pyme": AUTHENTICATED,
 
+  // The PyME dashboard (#434/WU1): only a PyME reads its own campaigns — current
+  // and historic. The owner is the verified principal, resolved server-side,
+  // never a request parameter.
+  "GET /my-campaigns": only("PYME"),
+
   // Legacy surface, not wired in index.ts today.
   "POST /funding-intents": only("ADMIN"),
   "POST /funding-intents/:intentId/submission": only("ADMIN"),

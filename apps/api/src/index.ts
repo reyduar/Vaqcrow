@@ -32,6 +32,7 @@ import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters
 import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
 import { SupabasePortfolioRepository } from "./infrastructure/adapters/supabase-portfolio-repository.js";
 import { SupabaseReportsRepository } from "./infrastructure/adapters/supabase-reports-repository.js";
+import { SupabaseMyCampaignsRepository } from "./infrastructure/adapters/supabase-my-campaigns-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
 import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
@@ -231,6 +232,12 @@ const portfolioRepository = new SupabasePortfolioRepository(supabase);
 // account resolution so both endpoints agree.
 const reportsRepository = new SupabaseReportsRepository(supabase);
 
+// The PyME dashboard read model (#434/WU1): reads the three service_role-only
+// views scoped by the verified principal's own user id (the owner), resolved
+// server-side, never the request. Returns the PyME's campaigns, current and
+// historic.
+const myCampaignsRepository = new SupabaseMyCampaignsRepository(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -363,6 +370,9 @@ const app = buildApp({
   // and its independently fetched sales block, always scoped to the verified
   // principal's own stored Stellar key.
   reports: { wallets: walletRepository, reports: reportsRepository, now: () => new Date() },
+  // The PyME dashboard (#434/WU1): the verified principal's own user id is the
+  // owner, and only that owner's campaigns are read.
+  myCampaigns: { myCampaigns: myCampaignsRepository, now: () => new Date() },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).
