@@ -84,6 +84,7 @@ export function Portfolio({ port, connection, balance }: PortfolioProps) {
           sort={sort}
           onSortChange={setSort}
           onDisconnect={() => setWallet(null)}
+          onActionSubmitted={state.reload}
         />
       )}
     </div>

@@ -4,6 +4,7 @@ import { walletAccountExplorerUrl } from "@/application/pyme-onboarding/wallet-c
 import type { PortfolioSummary } from "@/application/ports/portfolio-port";
 import { WalletCard } from "../wallet-card";
 import { PortfolioDistributions } from "./portfolio-distributions";
+import { PortfolioPositionAction } from "./portfolio-position-action";
 import { PortfolioPositionCard } from "./portfolio-position-card";
 import { PortfolioSectorBars } from "./portfolio-sector-bars";
 import { PortfolioTotals } from "./portfolio-totals";
@@ -27,6 +28,8 @@ export interface PortfolioViewProps {
   readonly sort: PortfolioSortMode;
   readonly onSortChange: (mode: PortfolioSortMode) => void;
   readonly onDisconnect: () => void;
+  /** Refreshes the read once a position's withdraw/refund attempt settled. */
+  readonly onActionSubmitted?: () => void;
 }
 
 const SORT_OPTIONS: readonly { readonly id: PortfolioSortMode; readonly label: string }[] = [
@@ -36,7 +39,7 @@ const SORT_OPTIONS: readonly { readonly id: PortfolioSortMode; readonly label: s
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
 
-export function PortfolioView({ summary, wallet, sort, onSortChange, onDisconnect }: PortfolioViewProps) {
+export function PortfolioView({ summary, wallet, sort, onSortChange, onDisconnect, onActionSubmitted }: PortfolioViewProps) {
   const positions = sortPortfolioPositions(summary.contributions, sort);
   const sectors = sectorBreakdown(summary.contributions);
 
@@ -86,7 +89,16 @@ export function PortfolioView({ summary, wallet, sort, onSortChange, onDisconnec
         </div>
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {positions.map((position) => (
-            <PortfolioPositionCard key={position.campaignId} position={position} />
+            <PortfolioPositionCard
+              key={position.campaignId}
+              position={position}
+              action={
+                <PortfolioPositionAction
+                  position={position}
+                  {...(onActionSubmitted ? { onActionSubmitted } : {})}
+                />
+              }
+            />
           ))}
         </ul>
       </section>

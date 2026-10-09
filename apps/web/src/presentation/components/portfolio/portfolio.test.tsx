@@ -7,6 +7,10 @@ import type { WalletBalancePort } from "@/application/ports/wallet-balance-port"
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import { Portfolio } from "./portfolio";
 
+// The container composes `PortfolioPositionAction`, which reads `useRouter` for
+// its production default navigation; stub it so no app router is required.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
 
 const CAMPAIGN_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
@@ -120,5 +124,11 @@ describe("Portfolio container", () => {
     renderPortfolio({ port: { get }, connection: connection(null), balance: BALANCE });
 
     expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("composes the withdraw action into a funding position", async () => {
+    renderPortfolio({ port: okPort(), connection: connection(null), balance: BALANCE });
+
+    expect(await screen.findByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
   });
 });

@@ -67,4 +67,22 @@ describe("PortfolioPositionCard", () => {
     expect(screen.getByText("Reembolso disponible")).toBeInTheDocument();
     expect(screen.queryByText(/Podés retirar tu aporte/)).not.toBeInTheDocument();
   });
+
+  it("renders the composed action slot when one is provided", () => {
+    render(
+      <ul>
+        <PortfolioPositionCard
+          position={position()}
+          action={<button type="button">Retirar mi aporte</button>}
+        />
+      </ul>
+    );
+
+    expect(screen.getByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
+  });
+
+  it("renders no action slot by default", () => {
+    renderCard(position());
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
 });

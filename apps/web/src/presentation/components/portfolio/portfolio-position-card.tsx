@@ -1,4 +1,5 @@
 import { Link } from "@heroui/react";
+import type { ReactNode } from "react";
 import { formatXlmAmount } from "@/application/portfolio/format";
 import { PORTFOLIO_STATUS_COPY, positionStatusBody } from "@/application/portfolio/status";
 import type { PortfolioPosition } from "@/application/ports/portfolio-port";
@@ -22,9 +23,15 @@ const STATUS_BLOCK_CLASS: Readonly<Record<PortfolioPosition["status"], string>> 
 
 export interface PortfolioPositionCardProps {
   readonly position: PortfolioPosition;
+  /**
+   * Optional action slot for the card's trailing column (Feature #426, WU3):
+   * the container composes `PortfolioPositionAction` here. The card stays
+   * presentational — it renders whatever node it is handed.
+   */
+  readonly action?: ReactNode;
 }
 
-export function PortfolioPositionCard({ position }: PortfolioPositionCardProps) {
+export function PortfolioPositionCard({ position, action }: PortfolioPositionCardProps) {
   const body = positionStatusBody(position.status, position.closeDate);
 
   return (
@@ -68,6 +75,7 @@ export function PortfolioPositionCard({ position }: PortfolioPositionCardProps) 
           <strong className="font-[650]">{PORTFOLIO_STATUS_COPY[position.status]}</strong>
           {body ? <span className="leading-[1.4]">{body}</span> : null}
         </div>
+        {action ? <div className="w-full">{action}</div> : null}
         <Link
           href={`/campaigns/${position.campaignId}`}
           aria-label={`Ver campaña ${position.name}`}
