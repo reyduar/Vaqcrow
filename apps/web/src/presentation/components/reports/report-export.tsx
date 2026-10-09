@@ -1,44 +1,46 @@
 "use client";
 
-import { IoDownloadOutline } from "react-icons/io5";
+import { IoDownloadOutline, IoPrintOutline } from "react-icons/io5";
 import { Button } from "../button";
 
 /**
- * The "Exportar" control of `Vaqcrow Informes.dc.html` (Feature #430, WU2).
- * Presentational only: WU3 wires the CSV + print-to-PDF mechanism through
- * `onExport`; until then the container passes nothing and the control renders
- * disabled with a visible reason (never a tooltip-only affordance).
+ * The "Exportar" control of `Vaqcrow Informes.dc.html` (Feature #430, WU3).
+ * Owner decision D2 makes the export functional — a CSV download and the
+ * browser's print-to-PDF — with no new dependency, superseding the template's
+ * disabled "no disponible en esta demo" treatment.
  *
- * Owner-pending copy: the disabled reason ("La exportación todavía no está
- * disponible.") — the template's own helper text ("...no está disponible en
- * esta demo") is superseded by owner decision D2, which makes export
- * functional, so this is a transitional string to be replaced by the WU3 copy.
+ * Presentational: the two mechanisms arrive as props, so tests never touch the
+ * DOM download/print APIs and the container owns the current report. Both
+ * actions are real buttons inside a named group, and both disable while the
+ * report is still loading (never a silent no-op).
+ *
+ * Owner-pending copy: the button labels ("Descargar CSV", "Imprimir / PDF")
+ * and the group label ("Exportar"). The template only designs a single
+ * disabled "Exportar" button, so D2's two concrete actions are new copy.
  */
-export type ReportExportStatus = "idle" | "loading" | "ready" | "unavailable";
-
 export interface ReportExportProps {
-  /** WU3 mechanism; when omitted the control stays disabled. */
-  readonly onExport?: () => void;
-  readonly status?: ReportExportStatus;
+  readonly onDownloadCsv: () => void;
+  readonly onPrint: () => void;
+  /** Disables both actions while the report is still loading. */
+  readonly isLoading?: boolean;
 }
 
-const DISABLED_REASON = "La exportación todavía no está disponible.";
-
-export function ReportExport({ onExport, status }: ReportExportProps) {
-  const resolved: ReportExportStatus = status ?? (onExport ? "ready" : "unavailable");
-  const isUnavailable = resolved === "unavailable";
-
+export function ReportExport({ onDownloadCsv, onPrint, isLoading = false }: ReportExportProps) {
   return (
-    <Button
-      variant="secondary"
-      isDisabled={isUnavailable}
-      isLoading={resolved === "loading"}
-      loadingLabel="Exportando…"
-      {...(isUnavailable ? { disabledReason: DISABLED_REASON } : {})}
-      {...(onExport && !isUnavailable ? { onPress: onExport } : {})}
-    >
-      <IoDownloadOutline aria-hidden="true" focusable="false" className="mr-1.5 inline h-[17px] w-[17px]" />
-      Exportar
-    </Button>
+    <div role="group" aria-label="Exportar" className="no-print flex flex-wrap items-end gap-2">
+      <Button
+        variant="secondary"
+        onPress={onDownloadCsv}
+        isLoading={isLoading}
+        loadingLabel="Preparando…"
+      >
+        <IoDownloadOutline aria-hidden="true" focusable="false" className="mr-1.5 inline h-[17px] w-[17px]" />
+        Descargar CSV
+      </Button>
+      <Button variant="secondary" onPress={onPrint} isDisabled={isLoading}>
+        <IoPrintOutline aria-hidden="true" focusable="false" className="mr-1.5 inline h-[17px] w-[17px]" />
+        Imprimir / PDF
+      </Button>
+    </div>
   );
 }

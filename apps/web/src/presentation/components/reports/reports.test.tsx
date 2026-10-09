@@ -1,14 +1,20 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 import type {
   InvestorReport,
   ReportPort,
   ReportSalesByPyme,
   ReportSalesPort
 } from "@/application/ports/report-port";
+import { downloadCsv, printReport } from "@/infrastructure/reports/csv-download";
 import { Reports } from "./reports";
+
+vi.mock("@/infrastructure/reports/csv-download", () => ({
+  downloadCsv: vi.fn(),
+  printReport: vi.fn()
+}));
 
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
 
@@ -166,5 +172,36 @@ describe("Reports container", () => {
     });
 
     expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("disables the export actions while the report is loading", () => {
+    renderReports({
+      reportPort: { get: vi.fn().mockReturnValue(new Promise(() => {})) },
+      salesPort: { get: vi.fn().mockReturnValue(new Promise(() => {})) }
+    });
+
+    expect(screen.getByRole("button", { name: /Preparando…/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Imprimir \/ PDF/ })).toBeDisabled();
+  });
+
+  it("downloads the current report as CSV with the sales block when available", async () => {
+    renderReports({ reportPort: okReport(), salesPort: okSales() });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Descargar CSV/ }));
+
+    expect(downloadCsv).toHaveBeenCalledTimes(1);
+    const [filename, content] = (downloadCsv as unknown as Mock).mock.calls[0] as [string, string];
+    expect(filename).toBe("informe-2026-04_2026-09.csv");
+    expect(content).toContain("Aportado en el período,850.0000000,,TESTNET");
+    expect(content).toContain("Ventas declaradas por PyME");
+    expect(content).toContain("Café Tostadero del Paraná");
+  });
+
+  it("prints the report on demand", async () => {
+    renderReports({ reportPort: okReport(), salesPort: okSales() });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Imprimir \/ PDF/ }));
+
+    expect(printReport).toHaveBeenCalledTimes(1);
   });
 });

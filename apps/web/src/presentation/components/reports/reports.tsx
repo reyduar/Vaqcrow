@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import type { AvailableRange, ReportPort, ReportSalesPort } from "@/application/ports/report-port";
 import { REPORTS_COPY } from "@/application/reports/copy";
+import { buildReportCsv } from "@/application/reports/export";
 import { buildPeriodPresets, formatPeriodRange, type PeriodPreset } from "@/application/reports/periods";
+import { downloadCsv, printReport } from "@/infrastructure/reports/csv-download";
 import {
   createBrowserReportPort,
   createBrowserReportSalesPort
@@ -93,13 +95,25 @@ export function Reports({ reportPort, salesPort }: ReportsProps) {
     setRange({ from: null, to: null });
   }, []);
 
+  // WU3: export the report that is on screen right now, plus the sales block
+  // when it loaded. `null` report stays a guarded no-op; the control is also
+  // disabled while loading, so the two signals agree.
+  const onDownloadCsv = useCallback(() => {
+    if (!report) return;
+    downloadCsv(`informe-${report.range.from}_${report.range.to}.csv`, buildReportCsv(report, salesState.data));
+  }, [report, salesState.data]);
+
+  const onPrint = useCallback(() => {
+    printReport();
+  }, []);
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="report-print flex flex-col gap-8">
       <PageHeading
         title={REPORTS_COPY.title}
         subtitle={REPORTS_COPY.subtitle}
         action={
-          <div className="flex flex-wrap items-end justify-end gap-2">
+          <div className="no-print flex flex-wrap items-end justify-end gap-2">
             {presets.length > 0 ? (
               <ReportPeriodSelector
                 presets={presets}
@@ -109,7 +123,11 @@ export function Reports({ reportPort, salesPort }: ReportsProps) {
                 onCustomRange={onCustomRange}
               />
             ) : null}
-            <ReportExport />
+            <ReportExport
+              onDownloadCsv={onDownloadCsv}
+              onPrint={onPrint}
+              isLoading={reportState.isLoading}
+            />
           </div>
         }
       />
