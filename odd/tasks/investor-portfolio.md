@@ -35,10 +35,10 @@ Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafol
 
 ## Tareas
 
-- [ ] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
+- [x] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
 - [ ] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
 - [ ] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
-- [ ] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3).
+- [ ] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
 
 Forecast: Feature grande. Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
@@ -52,4 +52,15 @@ Forecast: Feature grande. Entrega **feature-branch-chain**: cada work unit commi
 
 ## Progreso
 
-*(Se registra a medida que se completa cada work unit.)*
+### WU1 — Modelo de lectura del portafolio (commit `83b7fc6`)
+
+Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta + política + 2 vistas SQL + pgTAP, 2+ archivos no triviales). Sin `apps/web`.
+
+- **Diseño.** Endpoint `GET /portfolio` (**AUTHENTICATED → only("INVERSOR")**) que devuelve los aportes del inversor entre campañas, sus distribuciones y los totales. Contrato estricto y portable (`portfolio.ts`; XLM como string de 7 decimales; `xlmAmountSchema`). Dos vistas nuevas `security_invoker` sólo `service_role`: `investor_portfolio_position` (incluye campañas **liquidadas/reembolsables**: **no** filtra `state='open'`) e `investor_portfolio_distribution`. La **identidad se resuelve server-side** desde el principal verificado (clave Stellar del perfil); un `?investor=` de query se ignora (hay test). `totalDistributionsXlm` suma **sólo** distribuciones `confirmed` y es `null` (nunca `0.0000000`) si no hay ninguna; `raisedArs` nulo sin snapshot. Fallos saneados (`503`). Migración `20261009120000`.
+- **RED/GREEN observado.** RED: contrato ausente; caso de uso ausente. GREEN: contracts **584** (21 archivos), api **2408** (113), `test:db` **21 archivos / 716 tests PASS** (`portfolio.sql` 48 aserciones); `typecheck` 8/8; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1062 módulos, 3481 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes**. Confirmó identidad sólo del principal (`?investor=` ignorado), scoping por cuenta, vistas sólo `service_role`, incluir posiciones liquidadas, total confirmado-only con `null`, errores saneados y límites.
+- **Hallazgo material (gestionado en WU4).** El único escritor de `public.profile.stellar_public_key` es `POST /profile/wallet`, hoy `only("PYME")`. Por eso un `INVERSOR` real obtiene un portafolio **vacío** hasta que exista un camino de conexión de wallet del inversor → se agrega a WU4.
+- **Migración remota.** `20261009120000_create_investor_portfolio_views.sql` aplicada al **stack local**; la aplicación al **remoto queda pendiente de autorización del owner**.
+- **Límite explícito.** Sin `apps/web` (la vista `/portfolio` es WU2).
+
+- **Work-unit commit.** `83b7fc6 feat(api): add the investor portfolio read model (#426)`.
