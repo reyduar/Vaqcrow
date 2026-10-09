@@ -37,7 +37,7 @@ function prepared(overrides: Partial<PreparedRevenueShareDistribution> = {}): Pr
   return {
     distributionId: "123e4567-e89b-42d3-a456-4266141740ab",
     network: "testnet",
-    networkPassphrase: "Test SDF Network ; September 2015",
+    networkPassphrase: "test-network-id",
     sourceAccountId: "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37",
     sourceSequence: "1234567891",
     recipients: [
