@@ -50,7 +50,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 ## Tareas
 
 - [x] **WU1a — Modelo de lectura «mis campañas» (backend).** Contrato + port/adaptador (vistas `service_role`) + caso de uso + ruta `only("PYME")` que devuelve las campañas del PyME (vigente + históricas) con estado, fondeo/aportantes, distribuciones (ARS+XLM) y ventas declaradas. Sin `apps/web`.
-- [ ] **WU1b — Declaración de ventas + eventos (backend).** Extender `POST /businesses/:id/sales-periods` para aceptar montos declarados (+ anomalía) y publicar los 3 eventos (`pyme.goal_reached`/`pyme.distribution_ready`/`pyme.declare_sales`).
+- [x] **WU1b — Declaración de ventas (backend).** `POST /businesses/:id/sales-periods` acepta montos declarados (además del demo `{}`); sin eventos (diferidos a otro WU por sus puntos de disparo).
 - [ ] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones», estados (En revisión / Requiere cambios / Rechazada / vacío).
 - [ ] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
 - [ ] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), por distribución.
@@ -81,3 +81,15 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **Límite explícito.** Sin `apps/web` (el dashboard es WU2).
 
 - **Work-unit commit.** `ab9e8ea feat(api): add the PyME my-campaigns read model (#434)`.
+
+### WU1b — Declaración de ventas (commit `140d1e7`)
+
+Ruta: **delegado** (un writer; contrato + caso de uso + ruta dual-path + tests). Eventos **diferidos**.
+
+- **Diseño (D1).** `POST /businesses/:id/sales-periods` con **dos caminos**: cuerpo `{}` = refresh simulado del proveedor (demo, sin cambios); cuerpo `{ periods: [{ period: YYYY-MM, salesArs: int≥0 | null }] }` = **montos declarados** (validado estricto, ownership como hoy, persistido con `source: "declared"`). `null` = mes faltante (`status: "missing"`), nunca `0`. **Regla de anomalía determinística** (documentada): un mes es `anomalous` si su monto es **≥ 2×** o **≤ ½** del promedio de los meses reportados previos de la misma declaración; el primer mes queda `reported`. Respuesta `200 { businessId, periods }`; `400` payload inválido; `401/404/503` saneados.
+- **RED/GREEN observado.** RED: contrato (15 casos), caso de uso (módulo ausente), ruta (6 casos). GREEN: contracts **633**, api **2516**, `test:db` **828**, `tsc` limpio, `boundaries` sin violaciones (1181 módulos / 3852 deps).
+- **Verificación.** Spot-check del padre (lectura de la ruta dual-path + re-run enfocado 44/44); la verificación independiente se integra en WU6.
+- **Eventos diferidos (puntos de disparo reportados).** `pyme.declare_sales` → tras persistir la declaración en `sales-feed.route.ts`; `pyme.goal_reached` → reconciliación/detección de meta (`reconcile-campaign.ts`); `pyme.distribution_ready` → derivación/preparación de distribución. Ninguno se publica hoy.
+- **Advisories.** El response declarado no tiene contrato compartido (la superficie aprobada del barrel se limitó al request); `Number(bigint)` para ARS (patrón preexistente); el adapter de ventas quedó como *characterization* (sin cambio de comportamiento).
+
+- **Work-unit commit.** `140d1e7 feat(api): allow the PyME to declare monthly sales (#434)`.
