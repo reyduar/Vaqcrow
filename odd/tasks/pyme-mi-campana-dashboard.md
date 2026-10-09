@@ -49,7 +49,8 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 
 ## Tareas
 
-- [ ] **WU1 — Modelo de lectura «mis campañas» + declaración de ventas (backend).** Contrato + port/adaptador (vistas `service_role`) + caso de uso + ruta `only("PYME")` que devuelve las campañas del PyME (vigente + históricas) con estado, fondeo/aportantes, distribuciones y ventas declaradas. Extender `POST /businesses/:id/sales-periods` para aceptar montos declarados (+ anomalía). Publicar los 3 eventos. Sin `apps/web`.
+- [x] **WU1a — Modelo de lectura «mis campañas» (backend).** Contrato + port/adaptador (vistas `service_role`) + caso de uso + ruta `only("PYME")` que devuelve las campañas del PyME (vigente + históricas) con estado, fondeo/aportantes, distribuciones (ARS+XLM) y ventas declaradas. Sin `apps/web`.
+- [ ] **WU1b — Declaración de ventas + eventos (backend).** Extender `POST /businesses/:id/sales-periods` para aceptar montos declarados (+ anomalía) y publicar los 3 eventos (`pyme.goal_reached`/`pyme.distribution_ready`/`pyme.declare_sales`).
 - [ ] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones», estados (En revisión / Requiere cambios / Rechazada / vacío).
 - [ ] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
 - [ ] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), por distribución.
@@ -67,4 +68,15 @@ Forecast: Feature grande. Entrega **feature-branch-chain**.
 
 ## Progreso
 
-_(pendiente)_
+### WU1a — Modelo de lectura «mis campañas» (commit `ab9e8ea`)
+
+Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta + política + 3 vistas SQL + pgTAP + wiring, 2+ archivos no triviales). Sin `apps/web`.
+
+- **Diseño.** Endpoint `GET /my-campaigns` (**`only("PYME")**). Devuelve **todas** las campañas del PyME (vigente + históricas, D3), cada una con: nombre/sector/ciudad/imagen, `vaultAddress`, estado (`funding`/`settled`/`refunding`), `goalArs`, `raisedArs` (nulo sin snapshot), `fundedPercentBps`, `deadline`, `contributorsCount`, distribuciones (`amountArs` **y** `amountXlm`, D4) y la serie de ventas declaradas. **Dato dueño**: `campaign.application_id → sme_request.application_id → sme_request.owner_user_id`; la empresa es la `businesses` más nueva de ese dueño. Identidad desde `request.principal.userId`. Conversión ARS↔XLM con el snapshot de FX persistido (misma fórmula que el portafolio `raisedArs`); `null`, nunca `0`. 3 vistas `security_invoker` sólo `service_role`. Errores saneados (`401`/`403`/`503`).
+- **RED/GREEN observado.** RED: contrato/uso de caso/adaptador/ruta ausentes. GREEN: contracts **617** (23 archivos), api **2485** (119), `test:db` **23 archivos / 828 tests PASS** (`my_campaigns.sql` 60 aserciones), `tsc` limpio, `boundaries` sin violaciones (1178 módulos / 3840 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **7/7 PASS**, sin bloqueantes. Confirmó `only("PYME")`+MATRIX, scoping por dueño sin fuga, honestidad (XLM 7-dec, `null`≠`0`, snapshot FX), vistas `service_role`-only, rutas/errores saneados y wiring.
+- **Gotcha aplicado.** La reversión de `campaign_persistence.sql` dropea las 3 vistas nuevas antes de sus tablas base.
+- **Advisories (no bloqueantes).** Orden de campañas por `created_at desc` del adaptador (no re-sorteado en el caso de uso); `Number(bigint)` para ARS sin guarda >2^53; sin test de "body ignorado" (GET sin body); forma 200 validada en casos de uso/contrato, no en la ruta.
+- **Límite explícito.** Sin `apps/web` (el dashboard es WU2). La migración está aplicada **sólo en local** hasta autorización del owner.
+
+- **Work-unit commit.** `ab9e8ea feat(api): add the PyME my-campaigns read model (#434)`.
