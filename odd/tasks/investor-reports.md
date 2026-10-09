@@ -71,7 +71,8 @@ Ruta: **delegado** (un writer; contrato + port + 2 casos de uso + adaptador + 2 
 - **RED/GREEN observado.** RED: contrato ausente; 7 fallos del caso de uso (schema pre-build); 1 fallo de la serie vacía. GREEN: contracts **604** (22 archivos), api **2455** (116), `test:db` **22 archivos / 768 tests PASS** (`investor_report.sql` 52 aserciones), `tsc` limpio, `boundaries` sin violaciones (1117 módulos / 3668 deps).
 - **Verificación independiente (RDD off).** Un verifier read-only: **7/7 PASS**, sin bloqueantes. Confirmó audiencia `AUTHENTICATED` + MATRIX, identidad server-side, agregación honesta, vistas `service_role`-only, rutas/errores saneados, wiring de producción en `index.ts`, y ausencia de cambios web.
 - **Gotcha aplicado.** La reversión de `supabase/tests/campaign_persistence.sql` dropea las 3 vistas nuevas antes de sus tablas base (mismo patrón que #426).
-- **Límite explícito.** Sin `apps/web` (la vista `/reports` es WU2). La migración está aplicada **sólo en local**; la remota queda pendiente de autorización del owner.
+- **Migración remota.** `20261009130000_create_investor_report_views.sql` probada en local y luego, con **autorización explícita del owner**, **aplicada al proyecto remoto** (2026-10-09) vía MCP, con el `version` del historial **alineado al repositorio** (`20261009130000`). Verificado en el remoto: 3 vistas con `security_invoker=true` (**4 / 10 / 7** columnas), `SELECT` sólo `service_role` y cero grants a `anon`/`authenticated`; advisors sin clase nueva.
+- **Límite explícito.** Sin `apps/web` (la vista `/reports` es WU2).
 - **Advisories (no bloqueantes).** `Number(bigint)` para ARS (seguro bajo 2^53, sin test de borde); `shareXlm` nunca `null` en la práctica (camino nullable sin test e2e); rama no alcanzable de `parseRangeQuery`.
 
 - **Work-unit commit.** `bc165df feat(api): add the investor report read model (#430)`.
