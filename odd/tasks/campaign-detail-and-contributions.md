@@ -43,7 +43,7 @@ El marketplace (#414) lista campañas y su CTA apunta a `/campaigns/<id>`, que h
 - [x] **WU2 — Vista `/campaigns/[id]` (web).** Compuerta de cuenta, secciones del template, estados (carga/error/404/no-sesión) y variantes por estado de campaña.
 - [x] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
 - [x] **WU4 — KYC simulado del inversor.** Interstitial one-shot en el primer aporte, `SIMULADO`, auto-aprobado.
-- [ ] **WU5 — «Retirar».** Acción en el aside gateada por estado/aporte ≠ 0.
+- [x] **WU5 — «Retirar».** Acción en el aside gateada por estado/aporte ≠ 0.
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/campaign-detail-and-contributions-evidence.md`.
 
 Forecast: Feature grande (varios work units). Entrega **feature-branch-chain**: cada work unit commitea en esta rama; la estrategia de PR se decide antes del primer PR.
@@ -114,3 +114,15 @@ Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta 
 - **RED/GREEN observado.** RED: contracts (schema ausente) 5 fallidos; casos de uso (módulos ausentes) sin resolver. GREEN: contracts **572** (20 archivos), api **2381** (110), web **2043** (203), `test:db` **20 archivos / 668 tests PASS** (incluye `investor_kyc.sql`, 40 aserciones). Enfocados web **52** (campaign-detail + hook + infra kyc). `typecheck` 8/8; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1048 módulos, 3414 dependencias); `test:boundaries` 164.
 - **Migración local.** `20261008240000_create_investor_kyc.sql` probada con `supabase migration up --local` y `pnpm run test:db` (verde). **No** se aplicó al proyecto remoto en este work unit (requiere autorización explícita del owner, como en WU1/WU2b).
 - **Límite/seam.** No rompe WU3 (min 10, sin wallet → `/portfolio`, sent ≠ confirmed); el KYC nunca se pide a una PyME (el hook queda inactivo cuando `canContribute` es falso). El interstitial sólo se dispara desde el flujo de aporte.
+
+### WU5 — «Retirar» (commit `562ad6f`)
+
+Ruta: **delegado** (un writer; helper puro + componente + wiring en el aside + tests). Sin tocar `/funding`, la API ni los contratos.
+
+- **Decisión aplicada (D4).** «Retirar» reusa el motor de bóveda (`useCampaignVault.withdraw`), el `TransactionReviewModal` compartido (Función `withdraw`) y `campaign-vault-errors`. El control aparece **sólo** con `status==="funding"` + rol **INVERSOR** + **aporte ≠ 0** (un aporte desconocido/nulo **nunca** se toma como cero: el control queda oculto). Sin wallet → `/portfolio` (igual que el aporte). La contribución propia se lee del read encadenado de la campaña con la clave pública del inversor persistida (el writer envuelve el `connect` del motor para no abrir Freighter); `sent ≠ confirmed` se conserva (la confirmación sale sólo del poll del ledger) y los fallos se sanean.
+- **Copy (owner-pending).** El template no diseña el control de retiro: placeholder mínimo y honesto («Retirar mi aporte» / «Retirando…» / «Retirar de nuevo»; modal «Retirar tu aporte de {campaña}»; aviso «Enviada · pendiente de confirmación» reusado). **Pendiente de aprobación/reemplazo por el owner.**
+- **RED/GREEN observado.** RED: módulos ausentes (import sin resolver). GREEN: enfocados **4 archivos / 40 tests** (gate 9, componente 13, detalle 10, aporte 13); web **205 archivos / 2066 tests**; `typecheck` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1053 módulos, 3448 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **PASS, sin bloqueantes**. Confirmó el gate (unknown ≠ zero), el reuso del motor/modal, sent ≠ confirmed, el saneo y que `/funding`/API/contratos no se tocaron. Advisories: la rama «sin wallet → `/portfolio`» es efectivamente inalcanzable en producción (sin clave no hay `investorContributionStroops`, así que el control queda oculto; coincide con el flujo de aporte, el test la cubre con un doble); «Enviada…» persiste tras un envío fallido (mismo patrón que el aporte, copy owner-pending).
+- **Límite.** Sin migraciones (web-only). Falta WU6 (evidencia).
+
+- **Work-unit commit.** `562ad6f feat(web): add the withdraw action to the campaign detail (#422)`.
