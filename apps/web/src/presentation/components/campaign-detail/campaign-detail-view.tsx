@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { IconType } from "react-icons";
 import {
   IoAlertOutline,
@@ -16,10 +17,12 @@ import {
   formatRevenueSharePercent,
   fundedPercent
 } from "@/application/marketplace/format";
+import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail } from "@/application/ports/campaign-detail-port";
 import { microcopy } from "@/application/trust/disclosures";
 import { Badge, type BadgeTone } from "../badge";
 import { ProgressBar } from "../progress-bar";
+import { CampaignContribution, type CampaignContributionInjection } from "./campaign-contribution";
 
 /**
  * The account-gated campaign detail body (Feature #422, WU2): the template's
@@ -268,7 +271,13 @@ function HumanDecisionSection({ detail }: { readonly detail: CampaignDetail }) {
   );
 }
 
-function FundingAside({ detail }: { readonly detail: CampaignDetail }) {
+function FundingAside({
+  detail,
+  contribution
+}: {
+  readonly detail: CampaignDetail;
+  readonly contribution: ReactNode;
+}) {
   const raisedLabel = detail.raisedArs === null ? SIN_DATO : formatArsAmount(detail.raisedArs);
   const percent = fundedPercent(detail.fundedPercentBps);
   const percentLabel = formatFundedPercentLabel(detail.fundedPercentBps);
@@ -318,6 +327,8 @@ function FundingAside({ detail }: { readonly detail: CampaignDetail }) {
           ))}
         </dl>
 
+        {contribution}
+
         <p className="m-0 text-center text-xs leading-relaxed text-text-secondary">
           Podés retirar tu aporte mientras el fondeo siga abierto. Freighter firma; Vaqcrow nunca recibe tu seed.
         </p>
@@ -334,8 +345,37 @@ function FundingAside({ detail }: { readonly detail: CampaignDetail }) {
   );
 }
 
-export function CampaignDetailView({ detail }: { readonly detail: CampaignDetail }) {
+export function CampaignDetailView({
+  detail,
+  role = null,
+  contribution,
+  onContributionSubmitted
+}: {
+  readonly detail: CampaignDetail;
+  readonly role?: PrincipalRole | null;
+  readonly contribution?: CampaignContributionInjection;
+  readonly onContributionSubmitted?: () => void;
+}) {
   const RiskIcon = detail.riskBand ? RISK_ICON[detail.riskBand] : IoHelpCircleOutline;
+
+  // The contribution gate the template draws: only a funding campaign, only for
+  // an investor, and only when a vault id is known. A PYME never contributes to
+  // its own campaign; the detail does not expose the owner id, so the verified
+  // role is the gate (a PYME or admin sees no CTA at all).
+  const canContribute =
+    detail.status === "funding" && role === "INVERSOR" && Boolean(detail.vaultAddress && detail.vaultAddress.trim() !== "");
+
+  const contributionNode = canContribute ? (
+    <CampaignContribution
+      campaignId={detail.campaignId}
+      campaignName={detail.name}
+      vaultAddress={detail.vaultAddress}
+      status={detail.status}
+      viewerRole={role}
+      {...contribution}
+      {...(onContributionSubmitted ? { onContributionSubmitted } : {})}
+    />
+  ) : null;
 
   return (
     <div className="flex flex-col gap-10">
@@ -394,7 +434,7 @@ export function CampaignDetailView({ detail }: { readonly detail: CampaignDetail
           </div>
         </div>
 
-        <FundingAside detail={detail} />
+        <FundingAside detail={detail} contribution={contributionNode} />
       </div>
     </div>
   );

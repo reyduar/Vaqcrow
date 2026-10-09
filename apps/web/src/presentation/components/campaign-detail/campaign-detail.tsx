@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { IoLockClosedOutline } from "react-icons/io5";
+import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetailPort } from "@/application/ports/campaign-detail-port";
 import { createBrowserCampaignDetailPort } from "@/infrastructure/campaign/create-campaign-detail-port";
 import { useSession } from "@/state/session-store-provider";
@@ -10,6 +12,7 @@ import { useCampaignDetail } from "@/state/use-campaign-detail";
 import { ErrorState } from "../error-state";
 import { Skeleton } from "../skeleton";
 import { CampaignDetailView } from "./campaign-detail-view";
+import type { CampaignContributionInjection } from "./campaign-contribution";
 
 /**
  * Campaign detail controller (Feature #422, WU2). The route is public but the
@@ -26,8 +29,12 @@ import { CampaignDetailView } from "./campaign-detail-view";
 export interface CampaignDetailProps {
   readonly campaignId: string;
   readonly signedIn: boolean;
+  /** The verified viewer role; only `INVERSOR` may contribute (WU3). */
+  readonly role?: PrincipalRole | null;
   /** Injectable for tests; `null`/omitted forces "no backend". */
   readonly port?: CampaignDetailPort | null;
+  /** Injectable contribution ports/navigation; production wires them in the container. */
+  readonly contribution?: CampaignContributionInjection;
 }
 
 /** The template's logged-out gate (`Vaqcrow Detalle PyME.dc.html` lines 91–102). */
@@ -84,7 +91,7 @@ export function CampaignDetailNotFound() {
   );
 }
 
-export function CampaignDetail({ campaignId, signedIn, port }: CampaignDetailProps) {
+export function CampaignDetail({ campaignId, signedIn, role = null, port, contribution }: CampaignDetailProps) {
   // Captured once: an omitted prop stays null, so a test's injected port is
   // never re-created and the browser port is created only by the container.
   const [resolvedPort] = useState<CampaignDetailPort | null>(() => port ?? null);
@@ -103,12 +110,21 @@ export function CampaignDetail({ campaignId, signedIn, port }: CampaignDetailPro
       />
     );
   }
-  return <CampaignDetailView detail={state.detail} />;
+  return (
+    <CampaignDetailView
+      detail={state.detail}
+      role={role}
+      {...(contribution ? { contribution } : {})}
+      onContributionSubmitted={state.reload}
+    />
+  );
 }
 
 /**
  * Browser-wired entry point. It reads the session and injects the browser port;
  * `null`/omitted `port` means the browser default, so tests can inject a fake.
+ * Without a connected wallet the contribution CTA sends the person to
+ * `/portfolio` to connect or create Freighter (the template's behaviour).
  */
 export function CampaignDetailContainer({
   campaignId,
@@ -118,7 +134,20 @@ export function CampaignDetailContainer({
   readonly port?: CampaignDetailPort | null;
 }) {
   const signedIn = useSession((state) => state.status === "signed-in");
+  const role = useSession((state) => state.principal?.role ?? null);
+  const router = useRouter();
   const [resolvedPort] = useState(() => port ?? createBrowserCampaignDetailPort());
+  const [resolvedContribution] = useState<CampaignContributionInjection>(() => ({
+    onConnectWallet: () => router.push("/portfolio")
+  }));
 
-  return <CampaignDetail campaignId={campaignId} signedIn={signedIn} port={resolvedPort} />;
+  return (
+    <CampaignDetail
+      campaignId={campaignId}
+      signedIn={signedIn}
+      role={role}
+      port={resolvedPort}
+      contribution={resolvedContribution}
+    />
+  );
 }
