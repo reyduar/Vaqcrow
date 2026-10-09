@@ -95,7 +95,9 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 - `supabase migration up --local`: aplicó `20261009150000_persist_vault_transaction_hashes.sql`.
 - `pnpm run test:db`: «Files=23, Tests=846 … Result: PASS» (`campaign_persistence.sql` con `plan(39)`: columna y chequeo de formato del hash de despliegue, tabla, RLS, sin privilegios para `anon`/`authenticated`, sin `DELETE` ni `UPDATE` de monto para `service_role`, insert-or-ignore idempotente y confirmación ejecutados como `service_role`, y la reversión que la quita antes de `campaign`).
 - `pnpm run verify`: exit 0 en la primera corrida (una advertencia de lint preexistente en `@vaqcrow/web`, ajena a este cambio).
-- **Remoto:** pendiente — lo aplica el orquestador con autorización del owner, con `version` `20261009150000`.
+- **Remoto (2026-10-09, autorización del owner):** aplicada vía MCP `apply_migration` (registrada como `20261009234352`) y `version` alineado a `20261009150000` en `supabase_migrations.schema_migrations`. Verificado en el remoto: columna `campaign.deploy_transaction_hash` presente; `campaign_contribution_transaction` con RLS activo y 0 políticas; grants de tabla `service_role: SELECT, INSERT` (ninguno para `anon`/`authenticated`); `UPDATE` sólo de columna `service_role: observed_at, last_correlation_id`.
+
+**Verificación independiente** (RDD apagado; riesgo `medium`, `review_due_reason: slice_budget_reached`): PASS con notas. Recorrió el diff `fda3a27..4edb50c` y re-ejecutó `@vaqcrow/api test` (121 archivos / 2539 tests), `test:db` (23 / 846, PASS), `boundaries` (sin violaciones). Notas de baja severidad: el upsert de PostgREST bajo el grant de columna sólo está probado a nivel SQL (la suite de integración no corrió); el registro usa `command.*` en vez de `verification.value.*` (iguales por el chequeo exacto de argumentos).
 
 **Advertencias**
 
