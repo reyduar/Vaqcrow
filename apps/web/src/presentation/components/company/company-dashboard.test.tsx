@@ -8,10 +8,14 @@ import type {
   MyCampaigns,
   MyCampaignsPort
 } from "@/application/ports/my-campaigns-port";
+import type { RevenueShareDistributionGateway } from "@/application/ports/revenue-share-distribution-gateway";
 import type {
   SalesDeclarationPort,
   SalesDeclarationResult
 } from "@/application/ports/sales-declaration-port";
+import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
+import type { WalletPort } from "@/application/ports/wallet-port";
+import type { PreparedRevenueShareDistribution, RevenueShareDistributionSnapshot } from "@vaqcrow/contracts";
 import { CompanyDashboard } from "./company-dashboard";
 
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
@@ -86,6 +90,72 @@ function businessPort(): BusinessPort {
 function declarePort(result: SalesDeclarationResult = { ok: true }) {
   const declare = vi.fn().mockResolvedValue(result);
   return { port: { declare } as SalesDeclarationPort, declare };
+}
+
+const APPLICATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SOURCE = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37";
+
+const preparedDistribution = {
+  distributionId: "11111111-1111-4111-8111-111111111111",
+  network: "testnet",
+  networkPassphrase: "passphrase-from-the-response",
+  sourceAccountId: SOURCE,
+  sourceSequence: "1234567891",
+  recipients: [{ accountId: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", amountStroops: 33_712_200n }],
+  memo: null,
+  expiresAt: "2026-09-21T12:15:00.000Z",
+  xdr: "UNSIGNED-XDR",
+  applicationId: APPLICATION_ID,
+  campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10",
+  derivation: {
+    ruleVersion: "RS-2026-01",
+    rateBps: 450,
+    period: "2026-08",
+    salesArs: "3745800",
+    obligationArs: "168561",
+    excludedPeriods: [],
+    conversion: { goalStroops: "1000000000", approvedLimitArs: "5000000", totalStroops: "33712200" },
+    simulated: true
+  }
+} as unknown as PreparedRevenueShareDistribution;
+
+const submittedDistribution = {
+  ...preparedDistribution,
+  state: "submitted",
+  transactionHash: "TRANSACTION-HASH",
+  explorerUrl: "https://stellar.expert/explorer/testnet/tx/TRANSACTION-HASH",
+  failureReason: null,
+  lastCorrelationId: "22222222-2222-4222-8222-222222222222",
+  period: "2026-08",
+  createdAt: "2026-09-21T12:00:00.000Z",
+  updatedAt: "2026-09-21T12:00:05.000Z"
+} as unknown as RevenueShareDistributionSnapshot;
+
+function distributionGateway(overrides: Partial<RevenueShareDistributionGateway> = {}): RevenueShareDistributionGateway {
+  return {
+    prepare: vi.fn().mockResolvedValue({ ok: true, value: preparedDistribution }),
+    submit: vi.fn().mockResolvedValue({ ok: true, value: { applied: true, distribution: submittedDistribution } }),
+    getStatus: vi.fn().mockResolvedValue({ ok: true, value: submittedDistribution }),
+    ...overrides
+  } as unknown as RevenueShareDistributionGateway;
+}
+
+function signingWallet(overrides: Partial<WalletPort> = {}): WalletPort {
+  return {
+    isAvailable: vi.fn().mockResolvedValue(true),
+    connect: vi.fn().mockResolvedValue({ publicKey: SOURCE }),
+    signTransaction: vi.fn().mockResolvedValue("SIGNED-XDR"),
+    signMessage: vi.fn().mockResolvedValue("SIGNATURE"),
+    ...overrides
+  } as unknown as WalletPort;
+}
+
+function signingConnection(): WalletConnectionPort {
+  return {
+    requestChallenge: vi.fn(),
+    submitConnection: vi.fn(),
+    getConnection: vi.fn().mockResolvedValue({ ok: true, publicKey: SOURCE, frozen: false })
+  } as unknown as WalletConnectionPort;
 }
 
 function renderDashboard(props: Parameters<typeof CompanyDashboard>[0]) {
@@ -225,5 +295,47 @@ describe("CompanyDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enviar declaración" }));
 
     await waitFor(() => expect(campaigns.get).toHaveBeenCalledTimes(2));
+  });
+
+  it("opens the signing action for a submitted distribution and prepares with the resolved application identity", async () => {
+    const gateway = distributionGateway();
+    const wallet = signingWallet();
+    renderDashboard({
+      port: okPort(),
+      resolveApplicationId: vi.fn().mockResolvedValue(APPLICATION_ID),
+      distributionGateway: gateway,
+      wallet,
+      connection: signingConnection()
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Revisar y firmar" }));
+
+    await screen.findByRole("dialog");
+    expect(gateway.prepare).toHaveBeenCalledWith({
+      sourceAccountId: SOURCE,
+      applicationId: APPLICATION_ID,
+      campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10",
+      memo: null
+    });
+    expect(wallet.signTransaction).not.toHaveBeenCalled();
+  });
+
+  it("never reaches the wallet when the service refuses the distribution for this PyME", async () => {
+    const gateway = distributionGateway({
+      prepare: vi.fn().mockResolvedValue({ ok: false, error: { kind: "not_found" } })
+    });
+    const wallet = signingWallet();
+    renderDashboard({
+      port: okPort(),
+      resolveApplicationId: vi.fn().mockResolvedValue(APPLICATION_ID),
+      distributionGateway: gateway,
+      wallet,
+      connection: signingConnection()
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Revisar y firmar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/No se encontró la distribución/i);
+    expect(wallet.signTransaction).not.toHaveBeenCalled();
   });
 });
