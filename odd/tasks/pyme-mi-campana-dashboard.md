@@ -15,7 +15,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 | # | Pregunta del issue | Resolución |
 |---|---|---|
 | D1 | Entrada de la declaración mensual + validación/anomalía. | **Combinar simulado + real**: datos simulados para la demo **y** el form preparado para **montos reales** (helper «Completar con datos de ejemplo», como el wizard de onboarding). El `POST /businesses/:id/sales-periods` debe aceptar montos declarados. |
-| D2 | Pantalla/modal «Revisar y firmar». | **Reusar el flujo actual**: `prepare` → `TransactionReviewModal` → Freighter → `submit`, por distribución dentro de la lista (el `distribution-workspace` ya lo hace). |
+| D2 | Pantalla/modal «Revisar y firmar». | **Reusar el flujo actual**: `prepare` → `TransactionReviewModal` → Freighter → `submit` (el `distribution-workspace` ya lo hace). Implementado a **nivel campaña** (`settled`), ver la corrección de WU4: el estado «Calculada · pendiente de tu firma» del template no tiene fuente persistida. |
 | D3 | Bóvedas históricas y varias campañas por PyME. | **Listar todas** (vigente + históricas) en «Bóveda y distribuciones». |
 | D4 | Convención de doble visualización ARS + XLM. | **ARS principal + «≈ X XLM»** con la conversión sintética existente (`fx_rate`), badge `SIMULADO`. |
 | D5 | Cargar fondos en la wallet de la PyME (no diseñado). | **Guía/atajo friendbot de Testnet** (no custodial: Vaqcrow no mueve fondos). |
@@ -53,7 +53,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 - [x] **WU1b — Declaración de ventas (backend).** `POST /businesses/:id/sales-periods` acepta montos declarados (además del demo `{}`); sin eventos (diferidos a otro WU por sus puntos de disparo).
 - [x] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones». Slots (sin cablear) para declaración (WU3) y «Revisar y firmar» (WU4); estados de la solicitud y guía friendbot → WU5.
 - [x] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
-- [ ] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), por distribución.
+- [x] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), a nivel **campaña** cuando está liquidada.
 - [ ] **WU5 — Estados y guía.** Vistas de estado + vacío previo + guía friendbot de Testnet.
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, `docs/planning/pyme-mi-campana-dashboard-evidence.md`.
 
@@ -115,3 +115,15 @@ Ruta: **delegado** (un writer; port + gateway + factory + null + hook + helpers 
 - **Advisories / owner-pending.** (a) `GET /businesses/mine` devuelve el business más nuevo → con varias campañas/negocios la declaración puede apuntar a otro negocio que la tarjeta clickeada (follow-up recomendado: exponer `businessId` en `my-campaigns`); (b) ventana demo de 8 meses derivada del `deadline` de la campaña (sin reloj de pared) — design choice; (c) vaciar un mes prellenado envía `null` → `missing` (sobrescribe), a confirmar; (d) copy del panel owner-pending.
 
 - **Work-unit commit.** `291e64d feat(web): let the PyME declare monthly sales (#434)`.
+
+### WU4 — Revisar y firmar (commits `0d146c9` + `f66a578`)
+
+Ruta: **delegado** (un writer; hook + componente + wire) **más una corrección semántica**.
+
+- **Diseño (D2).** Acción **a nivel campaña**: se ofrece «Revisar y firmar» cuando la campaña está **`settled`** (meta alcanzada); reusa el motor de distribución (`prepare` → `TransactionReviewModal` → Freighter → `submit` → `TransactionStatusList`). El `prepare` deriva la obligación del último período reportado; si ya está distribuido, el motor responde su propio `already_distributed` (manejado). `sourceAccountId` = la conexión persistida (`GET /profile/wallet`); `applicationId` se resuelve vía `CampaignGateway.getCampaign(campaignId)` (el read model no lo trae). `sent ≠ confirmed`; guarda de in-flight.
+- **RED/GREEN observado.** RED: módulos ausentes; luego 14 fallos al actualizar los tests. GREEN: web enfocado **94/94** (12 archivos); `tsc` limpio; `lint` sin errores; `boundaries` sin violaciones (1241 módulos / 4061 deps).
+- **Corrección semántica (HIGH, reportada por el writer, commit `f66a578`).** Un `revenue_share_distribution.submitted` **ya está firmado y enviado** (`signed_xdr`+`transaction_hash`), NO «pendiente de tu firma». Se corrigió el vocabulario (`submitted` → «Enviada · pendiente de confirmación») y se movió «Revisar y firmar» de la fila de distribución al **nivel campaña** (`settled`), porque el estado «Calculada · pendiente de tu firma» del template **no tiene fuente persistida** (es una obligación *derivable* que el `prepare` produce on-demand). Tests negativos: `funding`/`refunding` no ofrecen la acción aunque tengan un `submitted`.
+- **Verificación.** Spot-checks del padre; la verificación independiente se integra en WU6.
+- **Advisories / owner-pending.** El template muestra la distribución «pendiente de firma» como una fila; hoy se ofrece como acción de campaña (el read model no expone la obligación derivable) — a decidir si se agrega una señal derivada al backend; copy del panel owner-pending; el heading del panel ya no lleva el período.
+
+- **Work-unit commit.** `0d146c9 feat(web): add the PyME distribution review and sign action (#434)` · `f66a578 fix(web): align the PyME distribution states with the engine (#434)`.
