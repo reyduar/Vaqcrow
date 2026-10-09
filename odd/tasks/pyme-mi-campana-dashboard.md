@@ -54,7 +54,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 - [x] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones». Slots (sin cablear) para declaración (WU3) y «Revisar y firmar» (WU4); estados de la solicitud y guía friendbot → WU5.
 - [x] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
 - [x] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), a nivel **campaña** cuando está liquidada.
-- [ ] **WU5 — Estados y guía.** Vistas de estado + vacío previo + guía friendbot de Testnet.
+- [x] **WU5 — Estados y guía.** Vistas de estado (En revisión / Requiere cambios / Rechazada / Aprobada / Sin enviar) + vacío previo + guía friendbot de Testnet.
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, `docs/planning/pyme-mi-campana-dashboard-evidence.md`.
 
 Forecast: Feature grande. Entrega **feature-branch-chain**.
@@ -127,3 +127,14 @@ Ruta: **delegado** (un writer; hook + componente + wire) **más una corrección 
 - **Advisories / owner-pending.** El template muestra la distribución «pendiente de firma» como una fila; hoy se ofrece como acción de campaña (el read model no expone la obligación derivable) — a decidir si se agrega una señal derivada al backend; copy del panel owner-pending; el heading del panel ya no lleva el período.
 
 - **Work-unit commit.** `0d146c9 feat(web): add the PyME distribution review and sign action (#434)` · `f66a578 fix(web): align the PyME distribution states with the engine (#434)`.
+
+### WU5 — Estados y guía (commits `97913c2` + `47ed532`)
+
+Ruta: **delegado** (un writer, con dos bloqueos resueltos por el padre: superficies del read path y la forma del contrato).
+
+- **Diseño.** (D6) Banner de estado de la solicitud: se agregó `findReviewStateByApplicationId` al port de `sme-request` (lectura `service_role` de `application_review.state`), el read `GET /sme-requests/:applicationId` (PYME) ahora devuelve el `state` owner-scoped, y la web lo lleva al banner. Como `/company` no tiene `applicationId`, `CompanyWorkspace` **captura el id del submit del wizard** envolviendo el gateway (B1) — banner robusto tras registrar; ante un reload sin submit previo, no aparece (**advisory**: un `GET /my-application`/`findReviewStateByOwner` lo haría robusto, follow-up). (D5) Guía de fondos de Testnet (Friendbot + nota no custodial + badge `TESTNET`).
+- **RED/GREEN observado.** RED: API (10 fallos), web (4 fallos). GREEN: contracts **634**; api **2524**; `test:db` **828**; web enfocado **139/139**; `tsc` (api+web) limpio; `boundaries` sin violaciones (1248 módulos / 4088 deps). Fix de lint en un test de WU1a (`_drop` sin usar) → commit aparte.
+- **Verificación.** Spot-checks del padre; la verificación independiente se integra en WU6.
+- **Advisories / owner-pending.** B1 (banner por id capturado en sesión, no persistido); copy del banner y de la guía friendbot owner-pending; dos archivos de test fuera de la lista literal se editaron como consecuencia mecánica del cambio de port/contrato.
+
+- **Work-unit commit.** `97913c2 feat: show the PyME application state and the Testnet funds guide (#434)`.
