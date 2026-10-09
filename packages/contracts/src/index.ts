@@ -113,7 +113,10 @@ export type {
 } from "./revenue-share-distribution.js";
 
 export {
+  declaredSalesPeriodSchema,
+  declaredSalesRequestSchema,
   evidenceReferenceSchema,
+  parseDeclaredSalesRequest,
   parseReviewFinding,
   parseSalesPeriod,
   parseSmeRequest,
@@ -128,6 +131,8 @@ export {
   smeRequestSubmissionSchema
 } from "./sme-evidence.js";
 export type {
+  DeclaredSalesPeriod,
+  DeclaredSalesRequest,
   EvidenceReference,
   ReviewFinding,
   ReviewFindingKind,

@@ -297,6 +297,160 @@ describe("POST /businesses/:businessId/sales-periods", () => {
   });
 });
 
+describe("POST /businesses/:businessId/sales-periods — declared amounts (#434/WU1b)", () => {
+  function declarable(
+    saveForBusiness: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    provider: SalesDataProviderPort = createSimulatedSalesDataProvider(),
+    owned: Pick<BusinessRepositoryPort, "findOwnedById"> = businesses()
+  ) {
+    return buildAppAs("PYME", {
+      salesFeed: { provider, businesses: owned, salesPeriods: { saveForBusiness } }
+    });
+  }
+
+  it("persists the declared months and answers 200 with them, source declared", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+    const response = await declarable(saveForBusiness).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: {
+        periods: [
+          { period: "2026-01", salesArs: 3_150_000 },
+          { period: "2026-04", salesArs: null }
+        ]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.businessId).toBe(BUSINESS);
+    expect(body.periods).toEqual([
+      { period: "2026-01", amountArs: 3_150_000, status: "reported", source: "declared" },
+      { period: "2026-04", amountArs: null, status: "missing", source: "declared" }
+    ]);
+
+    expect(saveForBusiness).toHaveBeenCalledTimes(1);
+    const saved = saveForBusiness.mock.calls.at(0)?.at(0);
+    expect(saved.businessId).toBe(BUSINESS);
+    expect(saved.periods[0]).toMatchObject({ period: "2026-01", status: "reported", source: "declared" });
+    expect(saved.periods[0].salesArs).toBe(3_150_000n);
+    expect(saved.periods[1]).toEqual({ period: "2026-04", salesArs: null, status: "missing", source: "declared" });
+  });
+
+  it("flags an anomalous declared month and persists that status", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+    const response = await declarable(saveForBusiness).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: {
+        periods: [
+          { period: "2026-01", salesArs: 100 },
+          { period: "2026-02", salesArs: 300 }
+        ]
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().periods.map((period: { status: string }) => period.status)).toEqual([
+      "reported",
+      "anomalous"
+    ]);
+    const saved = saveForBusiness.mock.calls.at(0)?.at(0);
+    expect(saved.periods[1]).toMatchObject({ period: "2026-02", status: "anomalous" });
+  });
+
+  it("never touches the simulated provider on the declared path", async () => {
+    const provider = { getPeriods: vi.fn(), recordNextPeriod: vi.fn() } as unknown as SalesDataProviderPort;
+
+    const response = await declarable(
+      vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+      provider
+    ).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: { periods: [{ period: "2026-01", salesArs: 1 }] }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(provider.getPeriods).not.toHaveBeenCalled();
+    expect(provider.recordNextPeriod).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 and never persists onto another owner's business", async () => {
+    const saveForBusiness = vi.fn();
+    const owned = businesses(vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }));
+
+    const response = await declarable(saveForBusiness, createSimulatedSalesDataProvider(), owned).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: { periods: [{ period: "2026-01", salesArs: 1 }] }
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+    expect(saveForBusiness).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 with a sanitized code when the persistence write fails", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } });
+
+    const response = await declarable(saveForBusiness).inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: { periods: [{ period: "2026-01", salesArs: 1 }] }
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("answers 503 when the sales-period writer is not wired", async () => {
+    const app = buildAppAs("PYME", {
+      salesFeed: { provider: createSimulatedSalesDataProvider(), businesses: businesses() }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: SERIES_URL,
+      payload: { periods: [{ period: "2026-01", salesArs: 1 }] }
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it.each([
+    ["an empty periods array", { periods: [] }],
+    ["a missing periods key", { amountArs: 1 }],
+    ["an unknown top-level key", { periods: [{ period: "2026-01", salesArs: 1 }], extra: true }],
+    ["an unknown key inside a period", { periods: [{ period: "2026-01", salesArs: 1, extra: true }] }],
+    ["a negative amount", { periods: [{ period: "2026-01", salesArs: -1 }] }],
+    ["a fractional amount", { periods: [{ period: "2026-01", salesArs: 1.5 }] }],
+    ["a bad period format", { periods: [{ period: "2026-13", salesArs: 1 }] }],
+    ["a non-array periods value", { periods: "2026-01" }]
+  ])("refuses %s with 400 and never persists", async (_description, payload) => {
+    const saveForBusiness = vi.fn();
+
+    const response = await declarable(saveForBusiness).inject({ method: "POST", url: SERIES_URL, payload });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(saveForBusiness).not.toHaveBeenCalled();
+  });
+
+  it("preserves the demo refresh path when the body is the empty object", async () => {
+    const saveForBusiness = vi.fn().mockResolvedValue({ ok: true, value: undefined });
+
+    const response = await declarable(saveForBusiness).inject({ method: "POST", url: SERIES_URL, payload: {} });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().applied).toBe(true);
+    // The demo path re-persists the provider's series, not a declared one.
+    const saved = saveForBusiness.mock.calls.at(0)?.at(0);
+    expect(saved.periods[8]).toMatchObject({ period: "2026-09", status: "reported" });
+  });
+});
+
 describe("sales-feed route registration", () => {
   it("is not registered when the dependency group is not supplied", async () => {
     const app = buildAppAs("PYME");
