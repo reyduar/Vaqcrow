@@ -38,7 +38,7 @@ Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafol
 - [x] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
 - [x] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
 - [x] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
-- [ ] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
+- [x] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
 - [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
 
 Forecast: Feature grande. Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
@@ -89,3 +89,16 @@ Ruta: **delegado** (un writer; acción + helpers puros + composición en la vist
 - **Límite explícito.** Sin estados vacío/sin-wallet/errores Freighter/fondos Testnet (WU4).
 
 - **Work-unit commit.** `b90a96c feat(web): add the portfolio withdraw and refund actions (#426)`.
+
+### WU4 — Estados y wallet del inversor (commit `84fd356`)
+
+Ruta: **delegado** (un writer; API + web) **más dos correcciones acotadas**.
+
+- **Diseño — API.** Se abrieron las tres rutas de wallet a `only("PYME", "INVERSOR")` (`POST /profile/wallet/challenge`, `POST /profile/wallet`, `GET /profile/wallet`); **sin `ADMIN`**. Las rutas y casos de uso ya eran role-agnósticos (resuelven el dueño del principal verificado) y `isFrozen` es `false` sin `sme_request`, así que un INVERSOR persiste su propia clave sin efecto privilegiado. Se actualizó la **MATRIX** de `authorization.test.ts` (exact-match contra `ROUTE_POLICY_KEYS`) y el bloque de `wallet.route.test.ts` que exigía 403 para no-PYME → ahora INVERSOR permitido, ADMIN 403.
+- **Diseño — web.** Reusa `connectAndStoreWallet` + `WALLET_KIND_COPY`/`WALLET_CONNECTION_COPY` (sin duplicar copy) y el `WalletCard` conectado; construye una **tarjeta modo conectar** (nueva) con la guía de fondos de Testnet (Friendbot + Stellar Laboratory). Estado vacío con CTA «Explorar PyMEs» → `/explore`. `Desconectar` sigue siendo local (persistirlo requiere una ruta nueva, fuera de alcance).
+- **RED/GREEN observado.** RED: MATRIX 3 fallos tras editar la política; web: módulos nuevos ausentes + 4 casos del container. GREEN: API **366/366** (authorization 351 + wallet.route 15); web **85/85** (13 archivos); `tsc` limpio; `lint` 1 warning preexistente ajeno; `boundaries` verde (1108 módulos / 3636 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **7/8 PASS**, 1 **FAIL** real accionado en corrección.
+- **Correcciones acotadas.** (1) **Honestidad del estado vacío**: `GET /portfolio` devuelve 200 con portafolio vacío sintético cuando no hay clave persistida, así que «Todavía no aportaste» se mostraba **sin wallet** (afirmación no respaldada). Se gatea el `EmptyState` a `wallet !== null && contributions.length === 0`; se corrigen los tests que codificaban el bug y se endurece el assert del body `GET /profile/wallet` del inversor (`{ publicKey: null, frozen: false }`). (2) **Superficie completa**: sin wallet ya no se muestran totales en cero ni secciones vacías — sólo la tarjeta de conexión. Re-corrido: web **85/85**, API **366/366**, `tsc` limpio, `boundaries` verde.
+- **Advisories / owner-pending.** (a) copy del estado vacío y de la tarjeta de conexión/guía de fondos: redacción owner-pending (voseo neutro, sin promesa de retorno); (b) `Desconectar` local (oculta la tarjeta → modo conectar), el desconectado persistido necesita ruta nueva; (c) el modal, ante un error inconcluso post-envío (WU3), puede mostrar copy contradictorio — preexistente y sistémico en `campaign-withdraw`.
+
+- **Work-unit commit.** `84fd356 feat: enable the investor wallet and add the portfolio states (#426)`.
