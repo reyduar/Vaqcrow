@@ -41,7 +41,7 @@ El marketplace (#414) lista campañas y su CTA apunta a `/campaigns/<id>`, que h
 
 - [x] **WU1 — Modelo de lectura y endpoint de detalle.** Contract `campaignDetail` + port + adaptador (vista SQL `service_role`) + caso de uso + ruta AUTHENTICATED + política, con el **estado derivado** y los campos persistidos; «Sin dato» para los ausentes. Sin `apps/web`.
 - [x] **WU2 — Vista `/campaigns/[id]` (web).** Compuerta de cuenta, secciones del template, estados (carga/error/404/no-sesión) y variantes por estado de campaña.
-- [ ] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
+- [x] **WU3 — Flujo de aporte.** Modal «Revisión antes de firmar» reusado + redirección a wallet + «Enviada · pendiente de confirmación» + confirmación por ledger.
 - [ ] **WU4 — KYC simulado del inversor.** Interstitial one-shot en el primer aporte, `SIMULADO`, auto-aprobado.
 - [ ] **WU5 — «Retirar».** Acción en el aside gateada por estado/aporte ≠ 0.
 - [ ] **WU6 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/campaign-detail-and-contributions-evidence.md`.
@@ -80,3 +80,15 @@ Ruta: **delegado** (un writer; port + gateway + factory + hook + controlador + v
 - **Límite explícito.** Sin flujo de aporte (WU3), sin KYC del inversor (WU4), sin «Retirar» (WU5).
 
 - **Work-unit commit.** `4967b1f feat(web): add the campaign detail view with the account gate (#422)`.
+
+### WU3 — Flujo de aporte (commit `c22f9f1`)
+
+Ruta: **delegado** (un writer; helper puro + hook de wallet + componente de aporte + wiring en la vista, 2+ archivos no triviales). Sin tocar `/funding`, la API ni los contratos.
+
+- **Diseño.** Reusa el **motor de invocación** existente (`useCampaignVault`: prepare→sign→submit→poll→refresh), el `TransactionReviewModal` compartido y `campaign-vault-errors`. CTA «Aportar a la campaña» **sólo** con `status==="funding"` + rol **INVERSOR** + `vaultAddress` presente (una PyME no aporta a su propia campaña; ADMIN nunca es INVERSOR). **Sin wallet** conectada → navega a `/portfolio` (conectar/crear Freighter); **con wallet** → abre «Revisión antes de firmar» con el contrato **truncado**, `Función contribute`, `Custodia` y el mínimo «10 XLM de prueba». Regla de aporte **pura** (`campaign-contribution.ts`, mínimo `100000000` stroops = 10 XLM, Testnet, vault id) validada antes de abrir el modal. «Enviada · pendiente de confirmación» se fija en el **momento de la firma** (sent ≠ confirmed); la confirmación aparece recién con el poll del ledger; luego «Aportar de nuevo». Sin cambios de contrato (`min_contribution` no se agregó, D3); no se inventa un error de «saldo insuficiente» (D4).
+- **RED/GREEN observado.** RED: módulo puro ausente (import sin resolver). GREEN: enfocados **4 archivos / 29 tests** (helper 9, hook 4, detalle 8, aporte 8); web **199 archivos / 2010 tests**; `typecheck` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1020 módulos, 3329 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **PASS, sin bloqueantes**. Confirmó el doble gate, la redirección sin wallet, el mínimo, el sent-vs-confirmed, la ausencia de secretos, y que no se tocó `/funding` ni los contratos. Advisories (cobertura): el rol ADMIN no tiene test propio; el aviso «Enviada…» queda tras confirmar (por diseño); `setReview(null)` en render (patrón derivado guardado).
+- **Seams para WU4/WU5.** WU4: insertar el interstitial de KYC una sola vez antes de `setReview`. WU5: agregar «Retirar» junto al bloque de aporte (el disclaimer ya se renderiza) reusando `withdraw`.
+- **Desvío.** El campo de monto vive en el aside, no dentro del modal (el `TransactionReviewModal` compartido renderiza valores y no colecta input, y está fuera de la superficie); el modal igual muestra el monto y el mínimo.
+
+- **Work-unit commit.** `c22f9f1 feat(web): add the campaign contribution flow to the detail (#422)`.
