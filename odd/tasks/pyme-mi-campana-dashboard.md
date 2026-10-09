@@ -51,7 +51,7 @@ Entregar el dashboard **«Mi campaña»** de la PyME (template `Vaqcrow Portafol
 
 - [x] **WU1a — Modelo de lectura «mis campañas» (backend).** Contrato + port/adaptador (vistas `service_role`) + caso de uso + ruta `only("PYME")` que devuelve las campañas del PyME (vigente + históricas) con estado, fondeo/aportantes, distribuciones (ARS+XLM) y ventas declaradas. Sin `apps/web`.
 - [x] **WU1b — Declaración de ventas (backend).** `POST /businesses/:id/sales-periods` acepta montos declarados (además del demo `{}`); sin eventos (diferidos a otro WU por sus puntos de disparo).
-- [ ] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones», estados (En revisión / Requiere cambios / Rechazada / vacío).
+- [x] **WU2 — Dashboard `/company` (web).** Wallet card, stats (ARS+XLM), «Bóveda y distribuciones» (lista de campañas + sort), «Ventas declaradas · 2026», «Distribuciones». Slots (sin cablear) para declaración (WU3) y «Revisar y firmar» (WU4); estados de la solicitud y guía friendbot → WU5.
 - [ ] **WU3 — Declaración mensual (web).** Form preparado para montos reales + helper «Completar con datos de ejemplo»; reusa el POST extendido.
 - [ ] **WU4 — Revisar y firmar (web).** Reuso del flujo `distribution-workspace` (`TransactionReviewModal` + Freighter), por distribución.
 - [ ] **WU5 — Estados y guía.** Vistas de estado + vacío previo + guía friendbot de Testnet.
@@ -93,3 +93,14 @@ Ruta: **delegado** (un writer; contrato + caso de uso + ruta dual-path + tests).
 - **Advisories.** El response declarado no tiene contrato compartido (la superficie aprobada del barrel se limitó al request); `Number(bigint)` para ARS (patrón preexistente); el adapter de ventas quedó como *characterization* (sin cambio de comportamiento).
 
 - **Work-unit commit.** `140d1e7 feat(api): allow the PyME to declare monthly sales (#434)`.
+
+### WU2 — Dashboard `/company` (web) (commit `a4b17a3`)
+
+Ruta: **delegado** (un writer; port + gateway + factory + null object + hook SWR + helpers puros + componentes + container + workspace, 2+ archivos no triviales). Sin declaración ni firma (WU3/WU4) ni estados/guía (WU5).
+
+- **Diseño.** Capa de datos calcada del cuarteto del portafolio contra `GET /my-campaigns`: bearer, errores saneados, `imageSrc` absoluta. Hook SWR `["my-campaigns"]`. Helpers puros: formatos ARS (`es-AR`) + «≈ N XLM» (7 dec) + fecha; copy de estado de campaña; sort `Recientes`/`Por estado`; series de ventas (`reported`/`missing`/`anomalous`); distribuciones (ARS+XLM, `needsSignature`); stats. Componentes: stats (`Fondeado` + nota, `Aportantes`), «Bóveda y distribuciones» (lista de todas las campañas + sort + bloque de bóveda), «Ventas declaradas · 2026» (bar-chart), «Distribuciones» + footnote. Slots presentacionales deshabilitados («Disponible próximamente») para declaración y firma. Estados loading/error+retry/vacío previo. Se preservan el wallet card, «Registrar mi PyME» y el wizard.
+- **RED/GREEN observado.** RED: `application/company` (6 archivos) sin resolver. GREEN: web enfocado **67/67** (11 archivos); contracts build OK; `tsc` limpio; `lint` sin errores (1 warning preexistente); `boundaries` sin violaciones (1218 módulos / 3949 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **7/7 PASS**, sin bloqueantes. Corregida inline la desviación de copy del footnote (punto final sobrante respecto al template).
+- **Advisories / owner-pending.** `Aportantes` suma conteos por campaña (puede sobrecontar cuentas en varias campañas); un gráfico de ventas por campaña con datos (el template diseña una sola); copy de los slots «Declarar ventas»/«Revisar y firmar»/«Disponible próximamente», vacío previo y «Sin distribuciones» owner-pending; el estado de la solicitud (En revisión/Requiere cambios/Rechazada) no se obtuvo limpiamente → diferido a WU5 (no inventado).
+
+- **Work-unit commit.** `a4b17a3 feat(web): add the PyME Mi campaña dashboard (#434)`.
