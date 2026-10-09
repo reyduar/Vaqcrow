@@ -44,6 +44,7 @@ function campaign(
     ...overrides
   };
   if (options.noSnapshot) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- dropping the snapshot to exercise the "sin dato" path
     const { rateSnapshot: _drop, ...rest } = base;
     return rest;
   }
