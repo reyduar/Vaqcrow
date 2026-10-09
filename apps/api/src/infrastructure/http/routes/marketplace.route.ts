@@ -1,7 +1,9 @@
 import { campaignIdSchema } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
+import type { CampaignDetailRepositoryPort } from "../../../application/ports/campaign-detail-repository-port.js";
 import type { MarketplaceCampaignRepositoryPort } from "../../../application/ports/marketplace-campaign-repository-port.js";
 import type { StoragePort } from "../../../application/ports/storage-port.js";
+import { getCampaignDetail } from "../../../application/use-cases/get-campaign-detail.js";
 import { getMarketplaceCampaignImage } from "../../../application/use-cases/get-marketplace-campaign-image.js";
 import { listMarketplaceCampaigns } from "../../../application/use-cases/list-marketplace-campaigns.js";
 
@@ -20,10 +22,18 @@ import { listMarketplaceCampaigns } from "../../../application/use-cases/list-ma
  * through the shared `StoragePort`. The object path and any storage URL never
  * cross the wire; a campaign that is not published or has no image is a `404`,
  * and a repository/storage failure is a sanitized `503`.
+ *
+ * `GET /marketplace/campaigns/:campaignId` is the account-gated campaign detail
+ * (#422/WU1): it requires a session (any role, see `route-policy.ts`) and only
+ * serves a **published** campaign. A non-UUID id is a `400`, an unpublished or
+ * unknown campaign a `404`, and a repository failure a sanitized `503`. It is
+ * registered only when the detail repository is wired.
  */
 export interface MarketplaceRouteDependencies {
   readonly campaigns: Pick<MarketplaceCampaignRepositoryPort, "listPublished" | "findPublishedImage">;
   readonly storage: Pick<StoragePort, "downloadObject">;
+  /** The account-gated campaign detail read model (#422/WU1). Omitted when unwired. */
+  readonly detail?: Pick<CampaignDetailRepositoryPort, "findPublished"> | undefined;
 }
 
 /** Short, revalidating window: the listing is public but changes as campaigns fund. */
@@ -75,4 +85,26 @@ export function registerMarketplaceRoute(app: FastifyInstance, dependencies: Mar
         .send(Buffer.from(result.value.bytes));
     }
   );
+
+  if (dependencies.detail !== undefined) {
+    const detail = dependencies.detail;
+    app.get<{ Params: { campaignId: string } }>("/marketplace/campaigns/:campaignId", async (request, reply) => {
+      // A malformed id is a 400 here (unlike the image route's 404): the detail
+      // route is reachable by any signed-in caller and a bad id is a bad request,
+      // not a campaign that does not exist.
+      const parsed = campaignIdSchema.safeParse(request.params.campaignId);
+      if (!parsed.success) {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      const result = await getCampaignDetail({ repository: detail }, parsed.data);
+      if (!result.ok) {
+        return result.error.code === "not_found"
+          ? reply.code(404).send({ code: "not_found" })
+          : reply.code(503).send({ code: "unavailable" });
+      }
+
+      return reply.code(200).send(result.value);
+    });
+  }
 }

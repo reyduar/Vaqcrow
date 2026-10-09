@@ -106,6 +106,9 @@ select lives_ok(
 
 -- Exercise the documented reversal in an isolated transaction. The rollback
 -- keeps the test database at the forward migration state for later tests.
+-- A later migration (#422) adds a view over campaign and campaign_contribution,
+-- so it is reversed before the mirrors it depends on.
+drop view if exists public.marketplace_campaign_detail;
 drop table public.campaign_refund_contact;
 drop table public.campaign_contribution;
 -- Later migrations that reference campaign must be reversed first

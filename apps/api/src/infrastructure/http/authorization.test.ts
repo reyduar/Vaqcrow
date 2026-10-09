@@ -14,6 +14,9 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // reachable without a token.
   ["GET", "/marketplace/campaigns", "public"],
   ["GET", "/marketplace/campaigns/:campaignId/image", "public"],
+  // Account-gated campaign detail (#422/WU1): any signed-in role may open a
+  // published campaign; it is not public.
+  ["GET", "/marketplace/campaigns/:campaignId", "any"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
@@ -113,7 +116,10 @@ function buildFullApp(auth?: AuthDependency): {
       },
       storage: {
         downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array([1]), contentType: "image/png" } })
-      }
+      },
+      // The account-gated detail route (#422/WU1) is registered so the matrix
+      // exercises it; the probe answers before the handler runs.
+      detail: { findPublished: async () => ({ ok: true as const, value: undefined }) }
     },
     favorite: stub,
     observeRoutes: (route) => routes.push(route),

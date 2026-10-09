@@ -27,6 +27,7 @@ import { SupabaseFavoriteRepository } from "./infrastructure/adapters/supabase-f
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
+import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
 import { createEmailPort } from "./infrastructure/adapters/resend-email-adapter.js";
 import { createContentAwareCompletenessCheckAdapter } from "./infrastructure/adapters/content-aware-completeness-check-adapter.js";
 import { createPdfiumPdfRasterizerAdapter } from "./infrastructure/adapters/pdfium-pdf-rasterizer-adapter.js";
@@ -192,6 +193,10 @@ const rateTableRepository = new SupabaseRateTableRepository(supabase);
 // published (confirmed vault, open campaign) rows.
 const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(supabase);
 
+// The account-gated campaign detail (#422/WU1): reads the joined
+// `marketplace_campaign_detail` view as service_role. No PII; published rows only.
+const campaignDetailRepository = new SupabaseCampaignDetailRepository(supabase);
+
 // The per-account favorites surface (#414/WU2): reads and writes
 // `campaign_favorite` as service_role, always scoped by the verified
 // principal's user_id. Anonymous visitors retain nothing (owner decision D1).
@@ -316,7 +321,7 @@ const app = buildApp({
   // The public marketplace listing (#414/WU1) and the real PyME photo it
   // serves (#414/WU3): published campaigns only. The image route reads the
   // bytes through the same storage adapter the upload/content checks use.
-  marketplace: { campaigns: marketplaceCampaignRepository, storage: storageAdapter },
+  marketplace: { campaigns: marketplaceCampaignRepository, storage: storageAdapter, detail: campaignDetailRepository },
   // Per-account favorites (#414/WU2): the signed-in caller's own rows only.
   favorite: { favorites: favoriteRepository },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use

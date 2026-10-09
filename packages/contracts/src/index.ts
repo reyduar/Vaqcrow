@@ -191,6 +191,20 @@ export {
 export type { FavoriteCampaignList, FavoriteCampaignResult } from "./favorite.js";
 
 export {
+  campaignDetailAssessmentSchema,
+  campaignDetailDecisionSchema,
+  campaignDetailSchema,
+  campaignDetailStatusSchema,
+  parseCampaignDetail
+} from "./campaign-detail.js";
+export type {
+  CampaignDetail,
+  CampaignDetailAssessment,
+  CampaignDetailDecision,
+  CampaignDetailStatus
+} from "./campaign-detail.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,

@@ -1,13 +1,17 @@
-import { parseMarketplaceCampaignList } from "@vaqcrow/contracts";
+import { parseCampaignDetail, parseMarketplaceCampaignList } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
+import type {
+  CampaignDetailRecord,
+  CampaignDetailRepositoryPort
+} from "../../../application/ports/campaign-detail-repository-port.js";
 import type {
   MarketplaceCampaignRecord,
   MarketplaceCampaignRepositoryPort
 } from "../../../application/ports/marketplace-campaign-repository-port.js";
 import type { StoragePort } from "../../../application/ports/storage-port.js";
 import { buildApp } from "../build-app.js";
-import { fakeAuthPort } from "../test-support/auth.js";
+import { bearer, fakeAuthPort } from "../test-support/auth.js";
 import type { MarketplaceRouteDependencies } from "./marketplace.route.js";
 
 /**
@@ -38,11 +42,45 @@ const RECORD: MarketplaceCampaignRecord = {
 const OBJECT_PATH = "123e4567-e89b-42d3-a456-426614174000/photo/abc-panaderia.jpg";
 const IMAGE_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
 
+/** A fully populated published campaign detail (#422/WU1). */
+const DETAIL_RECORD: CampaignDetailRecord = {
+  campaignId: RECORD.campaignId,
+  name: "Panadería Sol",
+  sector: "Alimentos",
+  city: "CABA",
+  description: "Panadería artesanal con tres locales.",
+  foundedAt: "2024-03-01T00:00:00.000Z",
+  goalArs: 1000n,
+  totalStroops: 2_500_000n,
+  goalStroops: 10_000_000n,
+  revenueShare: 5,
+  deadline: "2026-12-01T00:00:00.000Z",
+  state: "open",
+  hasImage: false,
+  vaultAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+  backers: 12,
+  rateSnapshot: { version: 5, usdToArs: 1_000_000_000n, stroopsPerUsd: 10_000_000n },
+  assessment: {
+    riskBand: "medium",
+    confidence: 0.72,
+    reasons: ["Ventas declaradas consistentes."],
+    model: "simulated-v1",
+    generatedAt: "2026-09-30T12:00:00.000Z"
+  },
+  decision: {
+    actor: "Admin Vaqcrow",
+    reason: "Aprobada tras revisar la evidencia.",
+    approvedLimitArs: 5_000_000n,
+    recordedAt: "2026-10-01T09:00:00.000Z"
+  }
+};
+
 function marketplace(
   options: {
     listed?: Awaited<ReturnType<MarketplaceCampaignRepositoryPort["listPublished"]>>;
     image?: Awaited<ReturnType<MarketplaceCampaignRepositoryPort["findPublishedImage"]>>;
     download?: Awaited<ReturnType<StoragePort["downloadObject"]>>;
+    detail?: Awaited<ReturnType<CampaignDetailRepositoryPort["findPublished"]>>;
   } = {}
 ): MarketplaceRouteDependencies {
   return {
@@ -53,6 +91,9 @@ function marketplace(
     storage: {
       downloadObject: async () =>
         options.download ?? { ok: true as const, value: { bytes: IMAGE_BYTES, contentType: "image/jpeg" } }
+    },
+    detail: {
+      findPublished: async () => options.detail ?? { ok: true as const, value: undefined }
     }
   };
 }
@@ -207,6 +248,71 @@ describe("GET /marketplace/campaigns/:campaignId/image", () => {
     });
 
     const response = await app.inject({ method: "GET", url });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.body).toBe(JSON.stringify({ code: "unavailable" }));
+  });
+});
+
+describe("GET /marketplace/campaigns/:campaignId", () => {
+  const url = `/marketplace/campaigns/${RECORD.campaignId}`;
+
+  it("requires a session and serves the published campaign detail to any signed-in role", async () => {
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: true, value: DETAIL_RECORD } })
+    });
+
+    const unauthorized = await app.inject({ method: "GET", url });
+    expect(unauthorized.statusCode).toBe(401);
+
+    const response = await app.inject({ method: "GET", url, headers: bearer("INVERSOR") });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/^application\/json/);
+    const body = parseCampaignDetail(response.json());
+    expect(body.campaignId).toBe(RECORD.campaignId);
+    expect(body.raisedArs).toBe(250);
+    expect(body.status).toBe("funding");
+    expect(body.assessment?.reasons).toEqual(["Ventas declaradas consistentes."]);
+    expect(body.decision?.actor).toBe("Admin Vaqcrow");
+  });
+
+  it("answers 400 for a non-UUID id before touching the repository", async () => {
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: true, value: DETAIL_RECORD } })
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/marketplace/campaigns/not-a-uuid",
+      headers: bearer("INVERSOR")
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+  });
+
+  it("answers 404 when the campaign is unknown or not published", async () => {
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: true, value: undefined } })
+    });
+
+    const response = await app.inject({ method: "GET", url, headers: bearer("INVERSOR") });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ code: "not_found" });
+  });
+
+  it("answers a sanitized 503 when the repository is unavailable", async () => {
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: false, error: { code: "unavailable" } } })
+    });
+
+    const response = await app.inject({ method: "GET", url, headers: bearer("INVERSOR") });
 
     expect(response.statusCode).toBe(503);
     expect(response.body).toBe(JSON.stringify({ code: "unavailable" }));
