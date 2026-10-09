@@ -50,7 +50,7 @@ Entregar la vista **«Informes»** (template `Vaqcrow Informes.dc.html`): select
 - [x] **WU2 — Vista `/reports` (web).** Selector de período (3 presets generados desde los datos + rango personalizado), KPI cards con badge de fuente, gráfico mensual + tabla accesible, bloque «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga.
 - [x] **WU3 — Export.** Descarga CSV + imprimir-a-PDF (estilos de impresión, sin deps nuevas).
 - [x] **WU4 — Acceso.** Gate de ruta para todos los autenticados + política; revisar el menú.
-- [ ] **WU5 — Verificación y evidencia.** Suites, `verify`, `docs/planning/investor-reports-evidence.md`.
+- [x] **WU5 — Verificación y evidencia.** Suites, `verify`, `docs/planning/investor-reports-evidence.md`.
 
 Forecast: Feature grande (mayor que #426 por el alcance ampliado). Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
 
@@ -111,3 +111,10 @@ Ruta: **delegado** (un writer; cambio del gate + matcher del proxy + tests). Sin
 - **Owner-pending.** Entrada de menú para PYME/ADMIN (hoy `/reports` es alcanzable por URL pero sólo el menú INVERSOR lo enlaza).
 
 - **Work-unit commit.** `c2e4d45 feat(web): allow every authenticated role to open the reports (#430)`.
+
+### WU5 — Verificación y evidencia
+
+- **Cierre de la Feature.** `pnpm run verify` → **exit 0** tras los reintentos por el **flake de carga** (los suites pasan aislados: web **2270**, api **2455**; `test:boundaries` **164/164**; `boundaries` limpio). Nota: el flake se manifestó alternando entre `@vaqcrow/api:test` y `@vaqcrow/web:test` bajo la carga de turbo; cada suite pasa por separado.
+- **Evidencia.** `docs/planning/investor-reports-evidence.md` (español, 9 secciones, estructura del hermano #426): los **6 criterios de aceptación de #430 citados textualmente**, cada uno mapeado a evidencia; registra **D2 supersede el criterio "export remains disabled"**; límites, advisories y copy owner-pending; deja explícito que **nada está en `main`** (pila con #426, Opción A con #438) y que la migración remota quedó aplicada con autorización del owner.
+
+- **Work-unit commit.** `docs(evidence): close Feature #430 with the investor reports evidence (#433)`.
