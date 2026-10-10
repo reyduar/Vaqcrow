@@ -20,7 +20,7 @@ status: draft
 > [!info] 2026-10-10 — #438: qué cambió
 > Esta guía describía antes un recorrido guiado de seis pasos con rutas propias (`/request`, `/ai-assessment`, `/approval`, `/funding`, `/distribution`, `/evidence`). La Feature [#438](https://github.com/reyduar/Vaqcrow/issues/438) retiró esas seis rutas: ahora **responden 404**, sin redirección. El flujo vive en la app por roles y la evidencia Testnet se reparte por rol (§13).
 >
-> La rama de #438 está apilada sobre las Features por rol y **todavía no está en `main`**. Esta guía describe esa rama.
+> #438 y las Features por rol están en `main` desde [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (2026-10-10, merge `2b7e0d5`). Esta guía describe `main`; no afirma qué versión está desplegada en Railway o Vercel.
 
 ## Ruta rápida
 
@@ -318,7 +318,7 @@ Los dejamos por escrito para que nadie los confunda con una falla, ni con una pr
 - **La meta la impone el contrato, no la interfaz.** La interfaz sólo deja de ofrecer lo que el contrato ya rechazaría.
 - **Una bóveda por solicitud.** La campaña queda ligada a la solicitud que la originó.
 - **Lo anterior a #438 queda «Sin dato».** Los hashes de despliegue y de aporte empezaron a guardarse con #438.
-- **No está en `main`.** El flujo por roles y el retiro de las seis rutas viven en ramas apiladas hasta que la pila se integre.
+- **Mergeado no es verificado de punta a punta.** El flujo por roles y el retiro de las seis rutas están en `main` desde #466 (2026-10-10); ese día se verificó que Railway ya usa la fábrica nueva con tope (`CCDNM6W4…SV7J`; despliegue `3539d681` en `SUCCESS` desde `2b7e0d5`). Falta el smoke test de despliegue de bóveda contra la API hosteada con esa fábrica.
 
 ## 16. Referencias
 
@@ -336,6 +336,6 @@ Los dejamos por escrito para que nadie los confunda con una falla, ni con una pr
 > [!question] Verificación de este documento
 > Los enlaces de instalación de Freighter, el comportamiento de Friendbot (exige una dirección `G` o `C`) y la disponibilidad de Stellar Lab y de Horizon se verificaron en vivo el **2026-09-20**. La passphrase de red está fijada en `apps/api/src/application/config/stellar-config.ts` y afirmada por un test.
 >
-> **Reescrita el 2026-10-10 (#438, WU7b)** para el flujo por roles. Las rutas salen del árbol de `apps/web/src/app` en la rama de #438; las etiquetas, del código: selector y redirección por rol (`application/auth/auth-form.ts`), wizard (`application/pyme-onboarding/{kyc,registration,ai,review}-step.ts`), conexión de wallet por mensaje firmado (`application/pyme-onboarding/wallet-connection.ts`), consola admin (`application/admin/{admin-guard,queue,kyc,assessment,decision,deployment,evidence}.ts`), detalle y aporte (`presentation/components/campaign-detail/`), retiro y reembolso (`application/portfolio/actions.ts`), estados de la campaña (`application/company/campaign-state.ts`), PyME (`application/company/copy.ts`, `presentation/components/company/`). El despliegue disparado por la aprobación sale de `apps/api/src/application/use-cases/record-human-decision.ts`, y el alta de la cuenta de la PyME con 2 XLM, de `open-campaign.ts`. Ningún paso se ejecutó en vivo para esta reescritura.
+> **Reescrita el 2026-10-10 (#438, WU7b)** para el flujo por roles. Las rutas salen del árbol de `apps/web/src/app` (rama de #438, hoy en `main`); las etiquetas, del código: selector y redirección por rol (`application/auth/auth-form.ts`), wizard (`application/pyme-onboarding/{kyc,registration,ai,review}-step.ts`), conexión de wallet por mensaje firmado (`application/pyme-onboarding/wallet-connection.ts`), consola admin (`application/admin/{admin-guard,queue,kyc,assessment,decision,deployment,evidence}.ts`), detalle y aporte (`presentation/components/campaign-detail/`), retiro y reembolso (`application/portfolio/actions.ts`), estados de la campaña (`application/company/campaign-state.ts`), PyME (`application/company/copy.ts`, `presentation/components/company/`). El despliegue disparado por la aprobación sale de `apps/api/src/application/use-cases/record-human-decision.ts`, y el alta de la cuenta de la PyME con 2 XLM, de `open-campaign.ts`. Ningún paso se ejecutó en vivo para esta reescritura.
 >
 > **Corregido el 2026-09-25:** una versión anterior de §5 decía que la segunda cuenta tenía su propia frase de recuperación. Es incorrecto. Freighter no genera una frase nueva al agregar una cuenta: la deriva de la frase existente mediante otro índice de derivación, cosa que está confirmada por el comportamiento de la extensión y por el propio código de Freighter, que ancla el cálculo del índice a la mnemónica (`stellar/freighter-mobile#874`) y ofrece agregar cuentas por clave secreta (`stellar/freighter#2208`). El punto se detectó al ejecutar la guía, no al escribirla.

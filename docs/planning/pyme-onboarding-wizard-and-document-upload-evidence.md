@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #398, #399, #400 ni #401 está en `main`
 > El trabajo vive en la pila de ramas `Vaqcrow#399_Task_Implement_the_PyME_onboarding_wizard_and_document_upload` (tip `4528564`) → `Vaqcrow#400_Task_Test_the_PyME_onboarding_wizard_and_document_upload` (tip `3c9149b`) → `Vaqcrow#401_Task_Document_evidence_for_the_PyME_onboarding_wizard_and_document_upload` (este documento), creada desde la rama de la Feature #398 (`eaad04f`), que a su vez es la punta de la rama de #378. Verificado el 2026-10-04 con `git merge-base --is-ancestor`: el commit de #400 (`1301a53`) **no** es ancestro de `origin/main` (`aaee084`). Por decisión del owner, #369 y #378 llegan juntas a `main` junto con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)); #398, #399, #400 y #401 son la pila siguiente. La demo desplegada desde `main` todavía no tiene el wizard.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #398 entrega el wizard de alta de la PyME —KYC simulado, registro de la PyME, evaluación AI simulada y revisión humana— con carga real de documentos y fotos a un bucket privado de Supabase Storage, siguiendo el template `Vaqcrow Onboarding PyME.dc.html` y las decisiones del owner del 2026-10-01. Depende de [#369](https://github.com/reyduar/Vaqcrow/issues/369) (Supabase Auth, roles, RLS y autorización de la API) y [#378](https://github.com/reyduar/Vaqcrow/issues/378) (creación de cuenta, ingreso y shell por rol; evidencia en [[docs/planning/account-creation-sign-in-and-role-aware-shell-evidence|Evidencia de #378]]).

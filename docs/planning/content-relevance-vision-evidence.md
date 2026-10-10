@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de esta unidad está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, que ya contenía la pila de #382/#406/#409. Por la **Opción A del owner** (vigente), nada llega a `main` hasta el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta unidad, y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra ni el chequeo de completitud ni la relevancia por contenido.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 El chequeo de completitud de #402 era **determinista y de metadatos**: sólo miraba que el documento *esté*, no *qué es*. El owner pidió, por sobre todo, que detecte **documentos irrelevantes por contenido** — p. ej. una foto de Pikachu donde va la Constancia de CUIT — además de la presencia de documentos que ya validaba. Esta unidad agrega ese paso: resuelve los documentos persistidos del owner, lee sus bytes, rasteriza la primera página de un PDF, manda la imagen a un **modelo con visión** y emite un finding `content_irrelevant` (`gap`, avisa pero **no bloquea**) o `content_unverified` (`warning`, cuando no se pudo juzgar). La IA sigue siendo **solo asesora**: no aprueba, no calcula obligaciones y no mueve fondos.

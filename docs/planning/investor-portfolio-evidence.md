@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #426 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#426_Feat_Deliver_the_investor_portfolio`, apilada sobre la punta de #422. Nada llega a `main`: la **Opción A del owner** mergea la pila junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature; los commits WU1–WU4 son **locales** y este documento **no** reporta un estado mergeado ni de CI.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #426 entrega la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafolio.dc.html`, modo inversor): tarjeta de wallet no custodial, totales, «Mis aportes en PyMEs» con estados y orden, «Aportes por sector» y «Distribuciones». Sólo con sesión de rol `INVERSOR`; `/portfolio` era un esqueleto (`PageHeading`) y el inversor que había aportado no veía sus posiciones, sus distribuciones recibidas ni podía retirar o reembolsar desde un solo lugar.

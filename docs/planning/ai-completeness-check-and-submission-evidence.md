@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #402, #403, #404 ni #405 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review`, creada desde la punta de la pila de #382/#406/#409 (`997ab08`). Por la **Opción A del owner**, nada llega a `main` todavía: toda la pila se mergea junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature, y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra el chequeo de completitud, no exige la clave de wallet en el servidor ni publica la notificación de "Nueva solicitud".
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #402 cierra la última pieza del **paso 3 del wizard de la PyME** y del **envío a revisión humana**: un **chequeo de completitud** que devuelve faltantes y anomalías estructurados, la **precondición de wallet** verificada del lado servidor, el **envío idempotente** de la solicitud y la **primera publicación real** por el puerto de notificaciones de #382 (evento `admin.new_application`, in-app + email). La IA sigue siendo **solo asesora**: no aprueba, no calcula obligaciones y no mueve fondos.

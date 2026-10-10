@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #386 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#386_Feat_Provide_the_admin_login_shell_and_PyMEs_queue`, creada desde la punta de [#382](https://github.com/reyduar/Vaqcrow/issues/382) (`997ab08`), que ya contiene #369/#378 (auth + shell por rol), #398 (onboarding PyME) y #382 (campana). **No hay PR ni merge en esta Feature**, y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la consola `/admin`. La migración de la vista `20261007120000` sí fue aplicada y verificada en el **proyecto remoto** (bitácora, 2026-10-07). #386 desbloquea [#390](https://github.com/reyduar/Vaqcrow/issues/390) y [#410](https://github.com/reyduar/Vaqcrow/issues/410).
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #386 entrega la **entrada de la consola de operación** en `/admin`: login real con Supabase Auth (sólo rol `ADMIN`), el **shell** de la consola (marca, navegación PyMEs/Usuarios, tema, campana de notificaciones, chip de usuario y cerrar sesión) y la **cola de PyMEs** (KPIs como filtros, búsqueda, tabla con estados y acciones, paginación/orden y estados honestos de carga/vacío/error). Todo sale de la única pantalla del template que diseña la consola, `docs/design/template/design_handoff_vaqcrow/screens/Vaqcrow Admin.dc.html` (vistas `login` y `pymes`).

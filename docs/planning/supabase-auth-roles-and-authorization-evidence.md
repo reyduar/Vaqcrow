@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #369 está en `main`
 > Las PRs [#443](https://github.com/reyduar/Vaqcrow/pull/443) (#370) y [#444](https://github.com/reyduar/Vaqcrow/pull/444) (#371) están mergeadas en la **rama de la Feature** `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization`, no en `main`. Por decisión del owner (D4, 2026-10-01), #369 y [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) llegan **juntas** a `main`: la autorización con denegación por defecto rompería la web desplegada antes de que exista el login. Verificado el 2026-10-02 con `git merge-base --is-ancestor`: ni `a094e91` (merge de #443) ni `84fe98d` (merge de #444) son ancestros de `origin/main` (`aaee084`). La demo desplegada sigue usando la sesión de demostración.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 El issue [#372](https://github.com/reyduar/Vaqcrow/issues/372) ("Task: Document evidence for Supabase Auth, roles, RLS and API authorization") es la tercera Task de la Feature #369. La Feature reemplaza la sesión de demostración por autenticación real con Supabase Auth (email y contraseña), los roles `PYME`, `INVERSOR` y `ADMIN`, RLS por rol, autorización con denegación por defecto en cada endpoint de `apps/api`, el superadmin sembrado y un registro de auditoría append-only. Supersede el límite de Auth.js v5 planificado en [#134](https://github.com/reyduar/Vaqcrow/issues/134).

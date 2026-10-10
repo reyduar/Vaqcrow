@@ -45,7 +45,7 @@ graph TB
     subgraph "Stellar Testnet"
         RPC["Soroban RPC"]
         HORIZON["Horizon"]
-        FACTORY["Fábrica de bóvedas CDVSSQ55…"]
+        FACTORY["Fábrica de bóvedas CCDNM6W4…"]
         VAULT["Bóveda de campaña — una por campaña"]
     end
 
@@ -117,7 +117,7 @@ La bóveda de campaña se habilita con **cinco variables**, y dos de ellas son u
 | Variable | Obligatoriedad | Nota |
 |---|---|---|
 | `STELLAR_NETWORK` | Requerida | Sólo `testnet`; `production` se rechaza al arrancar |
-| `STELLAR_CAMPAIGN_FACTORY_ID` | **Juntas** | Dirección **pública** de la fábrica de Testnet `CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ` |
+| `STELLAR_CAMPAIGN_FACTORY_ID` | **Juntas** | Dirección **pública** de la fábrica de Testnet con tope `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J` (desde el 2026-10-10; antes `CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ`) |
 | `STELLAR_PLATFORM_SECRET_KEY` | **Juntas** | **Secreto**; se setea en el servicio de Railway, nunca en el repositorio |
 | `STELLAR_TOKEN_CONTRACT_ID` | Opcional | Sin valor, la API deriva la SAC nativa de XLM |
 | `STELLAR_RPC_URL` | Opcional | Sin valor, la API usa el RPC canónico de Testnet |
@@ -127,15 +127,15 @@ La bóveda de campaña se habilita con **cinco variables**, y dos de ellas son u
 
 La fábrica de Testnet tiene como `owner` la identidad `vaqcrow-testnet`, con clave pública `GBCOTYYE3KGV745LQ4MELTP4IK2Z2RX2OESRNWP2LY6XLEI73X3PX2ZG` (leída de la red). La correspondencia entre `STELLAR_PLATFORM_SECRET_KEY` y ese `owner` **quedó probada** el 2026-09-25, cuando la API abrió una campaña contra el despliegue hosteado (`POST /campaigns` → `201`, bóveda `CBANYZNPLW…`): un `factory.deploy()` exitoso sólo es posible si la clave de plataforma es el `owner` almacenado, que es inmutable. La evidencia y las tres capas de verificación están en [[docs/planning/cloud-environment-configuration-evidence|Evidencia de la configuración del entorno en la nube]].
 
-> [!info] Fábrica con tope por inversor lista, no activa (2026-10-08)
-> Existe una segunda fábrica en Testnet, `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J`, con el mismo `owner` y el wasm de bóveda con el tope `goal/10` (#410/T3b). La API hosteada sigue usando `CDVSSQ55…5GXJ` a propósito: `main` aún no respeta el tope. Se activa re-apuntando `STELLAR_CAMPAIGN_FACTORY_ID` cuando la pila llegue a `main` (#438). Registro: [[docs/planning/application-review-and-vault-deployment-evidence|Evidencia de #410]] §10.7.
+> [!info] Fábrica con tope por inversor activa en la API hosteada (2026-10-10)
+> Existe una segunda fábrica en Testnet, `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J`, con el mismo `owner` y el wasm de bóveda con el tope `goal/10` (#410/T3b). Tras el merge de #466 a `main`, el 2026-10-10 se verificó con la Railway CLI (sólo lectura) que `STELLAR_CAMPAIGN_FACTORY_ID` en `vaqcrow-api` / `production` / `api` apunta a ella y que el despliegue activo `3539d681` está en `SUCCESS`, construido desde `2b7e0d5`, sin errores de arranque. La fábrica anterior `CDVSSQ55…5GXJ` ya no la usa la API hosteada. Pendiente: un smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva. Registro: [[docs/planning/application-review-and-vault-deployment-evidence|Evidencia de #410]] §10.7.
 
 ## 6. Red local vs Testnet: dos mundos que no se mezclan
 
 | | Red local (Stellar Quickstart) | Stellar Testnet |
 |---|---|---|
 | **Identidad de plataforma** | `vaqcrow-platform`, en el keystore de la Stellar CLI | `vaqcrow-testnet` |
-| **Origen de los valores** | Se generan **por corrida**: cada `bootstrap` redespliega la fábrica con un id nuevo | Valores **fijos**: fábrica `CDVSSQ55…`, owner `GBCOTYY…` |
+| **Origen de los valores** | Se generan **por corrida**: cada `bootstrap` redespliega la fábrica con un id nuevo | Valores **fijos**: fábrica `CCDNM6W4…` (desde el 2026-10-10), owner `GBCOTYY…` |
 | **`STELLAR_NETWORK`** | `local`; `STELLAR_HORIZON_URL`/`STELLAR_RPC_URL` apuntan al Quickstart | `testnet`; Horizon y RPC usan las constantes canónicas |
 | **Registro del despliegue** | `contracts/.local-deployment.json` (sólo datos públicos, en `.gitignore`) | Direcciones verificadas contra la red y documentadas |
 | **Para qué sirve** | Correr el recorrido completo de forma determinística, sin tocar la red pública | La demo presentada; es la red de los despliegues en Vercel/Railway |

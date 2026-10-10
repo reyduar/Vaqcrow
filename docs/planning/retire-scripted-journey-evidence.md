@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #438 está en `main`
 > El trabajo vive en la rama `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes`, creada desde la punta de #434 (`fda3a27`) y apilada sobre toda la pila por roles: #369 / #378 / #398 / #399 / #402 / #406 / #410 / #414 / #422 / #426 / #430 / #434. Con autorización del owner (Opción A: la pila llega a `main` junta con este retiro) **se abrió la PR [#466](https://github.com/reyduar/Vaqcrow/pull/466) hacia `main`**; este documento **no** reporta un estado mergeado ni un resultado de CI. En `main` sigue el recorrido de seis pasos hasta que esa PR se mergee. Las dos migraciones de #438 ya están **aplicadas en el proyecto remoto** con autorización del owner (§3.7).
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 > [!info] Nombre del archivo
 > El issue #441 pide `retire-scripted-demo-journey-evidence.md`; la hoja de ruta (`demo-tasks-list.md`, entrada #441) y la bitácora fijaron `retire-scripted-journey-evidence.md`, el nombre que lleva este documento. La diferencia se registra en §7.4.
 

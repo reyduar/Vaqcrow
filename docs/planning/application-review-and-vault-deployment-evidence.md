@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #410 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#410_Feat_Review_applications_and_approve_to_deploy_and_publish_the_vault`, apilada sobre las ramas de integración de #406/#399 y de #402. Nada llega a `main`: la consola `/admin` de [#386](https://github.com/reyduar/Vaqcrow/issues/386) **ya está integrada en esta rama** (merge `f930365`), así que el bloqueo vigente es sólo la **Opción A del owner** (la pila se mergea junta con el retiro del recorrido de seis pasos, [#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la revisión real ni despliega bóvedas desde la aprobación.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 > [!info] Actualización 2026-10-07: fase UI (U1–U7)
 > Las secciones 1–9 registran el cierre **backend-first** del 2026-10-06 y se conservan como registro histórico. Después, la rama de #410 integró la consola `/admin` de #386 (merge `f930365`) y construyó la vista de revisión en una cadena de work units U1–U7. La §10 documenta esa fase y trae la **tabla de criterios de esa fase** (§10.5), que reemplazó a la de la §7 donde difieren (criterios 1 y 2). Nada de eso está en `main`.
 

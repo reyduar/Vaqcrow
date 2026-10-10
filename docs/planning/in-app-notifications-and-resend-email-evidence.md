@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #382, #383, #384 ni #385 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#382_Feat_Deliver_in_app_notifications_and_Resend_email`, creada desde la punta de la pila #398/#399/#400/#401 y #406/#407/#408/#409 (`be6b758`, tip de #409). Por la **Opción A del owner**, nada llega a `main` todavía: toda la pila se mergea junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature, y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra la campana ni envía email transaccional desde la API.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #382 entrega la campana de notificaciones in-app —con contador de no leídas y el modal del template— para los tres roles (ADMIN, PYME e INVERSOR), más el envío de email por la **API de Resend** detrás de un puerto y un adaptador, con el catálogo de eventos definido por el owner (13 eventos). La entrega es **idempotente por evento** y **un fallo de email nunca bloquea la acción de origen**. La campana se construye a partir de la única pantalla del template que la diseña, `Vaqcrow Admin.dc.html`; el owner decidió (2026-10-04) replicarla exactamente y montarla en el header público de PYME e INVERSOR mientras el montaje en Admin espera a [#386](https://github.com/reyduar/Vaqcrow/issues/386) (la consola `/admin` todavía no existe).
