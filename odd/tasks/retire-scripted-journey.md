@@ -35,7 +35,7 @@ La app por roles ya cubre el flujo, pero `/evidence` es la única pantalla que j
 Porción A — transparencia (backend)
 - [x] **WU1** Persistir hashes: `campaign_deployment.transaction_hash` (desde `factory.deploy().hash`) y tabla `campaign_contribution_transaction` (hash, campaña, inversor, monto, observado) escrita al confirmar un aporte; RLS + grants `service_role` en la misma migración; reversión en `supabase/tests/campaign_persistence.sql`. Local → remoto con autorización del owner.
 - [x] **WU2** Ruta ADMIN de evidencia por solicitud (`GET /application-reviews/:applicationId/evidence`, en `route-policy.ts` + MATRIX de `authorization.test.ts`): decisión, despliegue (hash + URL), bóveda (dirección + URL), aportes[], distribuciones[] (`listByCampaign`), reconciliación guardada sin llamar a la cadena. Contrato en `packages/contracts` (+ barrel).
-- [ ] **WU3** Roles: `transactionHash` + `explorerUrl` en distribuciones de portafolio, informes y mis campañas; hashes de aporte en portafolio/informes; `vaultExplorerUrl` en portafolio, mis campañas y detalle de campaña. Vistas con columnas agregadas al final; contratos y rutas.
+- [x] **WU3** Roles: `transactionHash` + `explorerUrl` en distribuciones de portafolio, informes y mis campañas; hashes de aporte en portafolio/informes; `vaultExplorerUrl` en portafolio, mis campañas y detalle de campaña. Vistas con columnas agregadas al final; contratos y rutas.
 
 Porción B — transparencia (web)
 - [ ] **WU4** Vista admin `/admin/pymes/[applicationId]/evidence`: línea de tiempo de la cadena completa (reusa `EvidenceTimeline`, builder por arrays sin la entrada «Caso simulado»), link «Evidencia» desde la fila de la cola y desde la revisión.
@@ -148,3 +148,66 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 - Los aportes y despliegues anteriores a WU1 se ven como `null`/lista vacía («Sin dato»).
 
 **Verificación independiente** (RDD apagado): PASS con notas. Recorrió el diff `71cb45f..3c8a7a1` y re-ejecutó `@vaqcrow/contracts test` (24 archivos / 646 tests), `@vaqcrow/api test` (124 / 2588), `boundaries` (sin violaciones, 1256 módulos) y `lint` (5/5). Confirmó `only("ADMIN")` con fila en la MATRIX (401/403), que no hay llamada a la cadena, el filtro `observed_at IS NOT NULL`, el alcance por campaña y la sanitización de errores. Notas de baja severidad: `campaign.application_id` no es único, y con dos campañas `maybeSingle()` responde 503 (falla cerrado, comportamiento previo); la ruta no re-parsea su salida con el contrato en runtime; `companyName` asume una empresa por PyME.
+
+### WU3 — Hashes de Testnet y links al explorador para inversor, PyME y detalle de campaña
+
+- **Commit:** `aa79d1e` — `feat(api): expose Testnet hashes and explorer links to investors, PyMEs and campaign detail (#438)`.
+- **Ruta:** delegada (writer único; trigger de escritura: 2+ archivos no triviales — migración, contratos, puertos, use cases, adaptadores, rutas, composición).
+- **Migración:** `supabase/migrations/20261009160000_expose_transaction_hashes_in_role_views.sql`. Sin cambios en `apps/web` salvo objetos de fixture de tests (la UI llega en WU5).
+
+**Qué entrega**
+
+| Superficie | Campos nuevos (requeridos, nullable donde corresponde) |
+|---|---|
+| `GET /portfolio` (`portfolio.ts`) | posición: `vaultExplorerUrl \| null`, `transactions[]` (`transactionHash`, `amountXlm`, `observedAt`, `explorerUrl \| null`); distribución: `transactionHash` (no nulo), `explorerUrl \| null` |
+| `GET /reports` (`investor-report.ts`) | `latestDistributions[]`: `transactionHash`, `explorerUrl \| null`; nuevo `contributionTransactions[]` (`date`, `pyme`, `amountXlm`, `transactionHash`, `explorerUrl`, `vaultAddress`, `vaultExplorerUrl`) filtrado por el rango del informe |
+| `GET /my-campaigns` (`my-campaigns.ts`) | campaña: `vaultExplorerUrl \| null`; distribución: `transactionHash`, `explorerUrl \| null` |
+| `GET /marketplace/campaigns/:id` (`campaign-detail.ts`) | `vaultExplorerUrl \| null` junto a `vaultAddress` (refine: un link sin dirección de bóveda es irrepresentable) |
+
+Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula), `explorerUrlSchema` (`z.url().nullable()`), `portfolioContributionTransactionSchema`, `reportContributionTransactionSchema` y sus tipos.
+
+**Migración (resumen para el remoto)**
+
+- `create or replace view` con `transaction_hash` **agregada al final** (ninguna columna existente cambia de nombre, tipo ni posición): `investor_portfolio_distribution`, `investor_report_distribution` y `my_campaign_distribution` (esta última agrupa por distribución; sumar `d.transaction_hash` al `GROUP BY` no cambia filas porque `distribution_id` es la clave).
+- Vista **nueva** `investor_contribution_transaction`: `investor_account_id`, `transaction_hash`, `campaign_id`, `campaign_name`, `vault_address`, `amount_stroops`, `observed_at`, desde `campaign_contribution_transaction` (WU1) con `observed_at IS NOT NULL`, `join campaign` y lateral LEFT a la empresa (mismo criterio que #426/#430).
+- Las cuatro con `security_invoker = true` re-declarado; grants re-declarados: `revoke all … from public, anon, authenticated, service_role` y `grant select … to service_role`. Postgres conserva el ACL en un `replace`, pero se re-declara para que la migración sea autoevidente.
+- Reversión: `drop view investor_contribution_transaction`; las tres vistas modificadas se revierten con `drop` + cuerpos originales (un `replace` no puede quitar columnas). `supabase/tests/campaign_persistence.sql` dropea la vista nueva antes de `campaign_contribution_transaction`.
+- Verificación remota sugerida: las cuatro vistas con `reloptions` `security_invoker=true`, `SELECT` sólo para `service_role` (nada para `anon`/`authenticated`), la columna `transaction_hash` última en las tres vistas, y `version` alineado a `20261009160000`.
+
+**RED → GREEN**
+
+- pgTAP: RED observado antes de la migración («Files=23, Tests=831 … Result: FAIL»: `portfolio.sql` 30-31, `investor_report.sql` 21, `my_campaigns.sql` 31 — columna/vista inexistentes); GREEN tras `supabase migration up --local`: «Files=23, Tests=869 … Result: PASS» (+23 aserciones: `portfolio.sql` 48→67, `investor_report.sql` 52→54, `my_campaigns.sql` 60→62).
+- Contratos: «Tests 28 failed | 45 passed (73)» → 661/661 en el paquete.
+- Use cases: portafolio 9 fallando → 13/13 (el RED se observó con `git stash` del use case: se implementó antes de correr el test por primera vez); informe 9 fallando → 19/19; mis campañas 7 fallando → 10/10; detalle 7 fallando → 14/14.
+- Adaptadores: portafolio 3 → 8/8; informes 4 → 9/9; mis campañas 2 → 9/9.
+- Rutas (con el use case anterior vía `git stash`): portafolio 5 fallando → 10/10; informes 9 → 15/15; mis campañas 3 → 9/9; marketplace 1 → 14/14. Cubren links con base, `null` sin base, 503 saneado y aislamiento del inversor (un `?investor=`/`?account=` ajeno se ignora; el adaptador se llama una sola vez con la cuenta del principal y el hash ajeno no aparece en la respuesta).
+
+**Decisiones de diseño**
+
+1. **Una vista nueva compartida, no dos.** `investor_contribution_transaction` sirve al portafolio (agrupa por `campaign_id`) y al informe (lista con PyME y bóveda). El aislamiento es el de las demás vistas de rol: `service_role` sólo, y la API filtra por la cuenta que resuelve del principal verificado; el pgTAP prueba que el alcance de un inversor no contiene el hash de otro y que un envío no observado no aparece.
+2. **Portafolio: transacciones por posición** (`transactions[]` en cada posición, de la más vieja a la más nueva) y no una lista plana: la posición ya es «mi aporte a esta campaña», y el hash prueba ese aporte. Una transacción cuya campaña no es una posición (campaña no desplegada) se descarta.
+3. **Montos en XLM canónico (`amountXlm`), no `amountStroops`.** Los contratos de portafolio, informe y mis campañas usan XLM de 7 decimales en todos sus montos; mezclar stroops en el mismo contrato obligaría a la web a convertir. (El contrato admin de WU2 sí usa stroops, coherente con su propio vocabulario.)
+4. **Informe: lista nueva `contributionTransactions`** filtrada por el mes de `observed_at` dentro del rango, de la más nueva a la más vieja. El informe no tenía filas de aporte; el KPI `contributedXlm` sigue saliendo del agregado `campaign_contribution`. `isEmpty` ahora también es `false` si el rango sólo tiene una transacción observada (su mes puede diferir del `coalesce(last_observed_at, created_at)` del agregado). `/reports/sales-by-pyme` no lee transacciones.
+5. **Puertos ampliados, no separados** (a diferencia de WU1/WU2): los dobles escritos a mano de estos puertos viven todos dentro de las superficies de WU3 y se actualizaron; un puerto aparte habría duplicado la composición en cuatro factories sin beneficio.
+6. **`explorerBaseUrl: string | undefined` requerido** en las cuatro dependencias (mismo patrón que WU2), cableado en `apps/api/src/index.ts` desde `config.stellar.explorerUrl`; obliga a cablearlo y con base indefinida (`local`) todos los links son `null` pero los hashes se devuelven igual. En el marketplace se agregó a `MarketplaceRouteDependencies` (lo usa sólo el detalle); los fixtures de `authorization.test.ts` y `build-app.test.ts` pasan `undefined`.
+7. **Hash de distribución no nulo con regla hex de 64**, igual que WU2: la columna es `NOT NULL`; una fila con hash mal formado hace fallar el parseo y la ruta responde 503 (falla cerrado), nunca un hash inventado.
+8. **Detalle de campaña sin cambio de vista:** `marketplace_campaign_detail` ya expone `vault_address`; el link se arma en el use case. Por eso `marketplace_campaign_detail.sql` no cambió.
+9. **Fixtures web:** sólo los objetos de cuatro tests de gateway (`http-portfolio-gateway`, `http-report-gateway`, `http-my-campaigns-gateway`, `http-campaign-detail-gateway`), con `explorerUrl: null` para no meter URLs de red en `apps/web`; en `http-my-campaigns-gateway.test.ts` también la expectativa que replica la distribución tal cual llega (el gateway la pasa sin transformar).
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/contracts test`: «Test Files 24 passed (24) · Tests 661 passed (661)».
+- `pnpm --filter @vaqcrow/api test`: «Test Files 124 passed (124) · Tests 2617 passed (2617)».
+- `pnpm --filter @vaqcrow/web test`: «Test Files 255 passed (255) · Tests 2430 passed (2430)».
+- `pnpm run env:docker:status`: Supabase local, Quickstart y API sanos.
+- `supabase migration up --local`: aplicó `20261009160000_expose_transaction_hashes_in_role_views.sql`.
+- `pnpm run test:db`: «Files=23, Tests=869 … Result: PASS».
+- `pnpm run verify`: corrida 1 exit 1 (11 errores de lint por desestructuraciones `_x` sin uso en tests nuevos → helper `without()`); corrida 2 exit 2 (typecheck: índice posiblemente `undefined` en dos tests de contratos → `!`); corrida 3 exit 1 por timeout de 5 s en `pyme-onboarding-wizard.test.tsx` (ajeno, bajo carga); corrida 4 (reintento) exit 0 («no dependency violations found (1256 modules, 4156 dependencies cruised)»; única advertencia la preexistente de `@vaqcrow/web`).
+- **Remoto:** pendiente — lo aplica el orquestador con autorización del owner (este writer no toca el proyecto remoto).
+
+**Advertencias**
+
+- Los aportes anteriores a WU1 no tienen fila: la posición muestra `transactions: []` y el informe no los lista («Sin dato»).
+- `observed_at` es el instante de la lectura de cadena que confirmó el éxito, no el cierre del ledger (heredado de WU1).
+
