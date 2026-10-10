@@ -38,7 +38,7 @@ Porción A — transparencia (backend)
 - [x] **WU3** Roles: `transactionHash` + `explorerUrl` en distribuciones de portafolio, informes y mis campañas; hashes de aporte en portafolio/informes; `vaultExplorerUrl` en portafolio, mis campañas y detalle de campaña. Vistas con columnas agregadas al final; contratos y rutas.
 
 Porción B — transparencia (web)
-- [ ] **WU4** Vista admin `/admin/pymes/[applicationId]/evidence`: línea de tiempo de la cadena completa (reusa `EvidenceTimeline`, builder por arrays sin la entrada «Caso simulado»), link «Evidencia» desde la fila de la cola y desde la revisión.
+- [x] **WU4** Vista admin `/admin/pymes/[applicationId]/evidence`: línea de tiempo de la cadena completa (reusa `EvidenceTimeline`, builder por arrays sin la entrada «Caso simulado»), link «Evidencia» desde la fila de la cola y desde la revisión.
 - [ ] **WU5** Inversor, PyME y detalle de campaña: `HashDisplay` con link al explorador en aportes, distribuciones y bóveda; «Sin dato» para lo histórico.
 
 Porción C — retiro
@@ -212,4 +212,53 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 
 - Los aportes anteriores a WU1 no tienen fila: la posición muestra `transactions: []` y el informe no los lista («Sin dato»).
 - `observed_at` es el instante de la lectura de cadena que confirmó el éxito, no el cierre del ledger (heredado de WU1).
+
+### WU4 — Vista admin de la cadena de evidencia Testnet por solicitud
+
+- **Commit:** `d165c28` — `feat(web): show the admin Testnet evidence chain per application (#438)`.
+- **Ruta:** delegada (writer único; trigger de escritura: 2+ archivos no triviales — builder, puerto, gateway, hook, componentes, ruta, enlaces, e2e).
+- **Desvío del plan:** la tarea decía «reusa `EvidenceTimeline`»; como ese componente y `application/evidence/evidence-timeline.ts` se borran en WU6, la vista se construyó con módulos admin nuevos (`application/admin/evidence.ts`, `presentation/components/admin/evidence-chain.tsx`) sin importar nada de `(demo)`.
+
+**Qué entrega**
+
+- Ruta `/admin/pymes/[applicationId]/evidence` (hereda `AdminConsoleGate` + `AdminShell`) y `adminEvidencePath()` junto a `adminReviewPath()`.
+- Lectura de `GET /application-reviews/:applicationId/evidence` con el contrato `adminApplicationEvidenceSchema` (estricto: un campo de más o mal formado, o un `applicationId` distinto del pedido, es `unavailable`); 404 → `not_found`; id no UUID v4 → `not_found` sin request; transporte → `network`. Hook `useAdminEvidence` (SWR, mismo patrón que `useAdminReview`).
+- Cadena vertical de seis pasos, de la más vieja a la más nueva: 1 · Solicitud → 2 · Decisión humana → 3 · Despliegue de la bóveda → 4 · Aportes → 5 · Distribuciones → 6 · Reconciliación; encabezado «Evidencia: {empresa}» con referencia e id, pill de estado, badge TESTNET y la nota canónica `microcopy.hashTechnicalOnly`.
+- Enlaces: «Evidencia» por fila en la cola (`aria-label` «Evidencia de {PyME}», contiene el texto visible) y «Ver evidencia Testnet» en el encabezado de la revisión (sólo con la solicitud cargada). Migas «PyMEs / Revisión / Evidencia».
+- e2e: el stub sirve `GET …/evidence` (decisión y despliegue del propio doble; sin bóveda ni links) y un test navega cola → evidencia → revisión → evidencia.
+
+**RED → GREEN**
+
+- Builder `evidence.test.ts`: RED (módulo inexistente) → 16/16.
+- Gateway `http-admin-review-gateway-evidence.test.ts`: 6 fallando (`getEvidence` inexistente) → 6/6.
+- Hook `use-admin-evidence.test.tsx`: RED (módulo inexistente) → 5/5.
+- `evidence-chain.test.tsx` se escribió antes del componente pero se corrió por primera vez ya implementado: su RED no se observó (7/7).
+- `evidence-view.test.tsx` + `admin-evidence.test.tsx`: RED (módulos inexistentes) → 7/7 (un test se corrigió: «Aprobada» aparece dos veces, en la pill y en el paso 1).
+- Enlaces (`admin-console.test.tsx`, `admin-review.test.tsx`): 2 fallando → verdes.
+- e2e `admin-review.spec.ts`: el test nuevo falló en frío porque `next dev` compila la ruta en la primera visita y la espera por defecto no alcanzó; pasó al reintentar y se le dio `timeout: 30_000` a esa primera navegación (comentado). Corrida completa 5/5.
+
+**Decisiones de diseño**
+
+1. **Puerto aparte `AdminEvidencePort`** (lección de WU1/WU2), en `admin-review-port.ts`: agrandar `AdminReviewPort` rompía seis dobles escritos a mano fuera de las superficies (`admin-review-ai/decision/deployment/kyc.test.tsx`, `use-admin-review.test.tsx`, `use-admin-deployment.test.tsx`). `HttpAdminReviewGateway` y el null object implementan ambos; `createBrowserAdminEvidencePort()` vive en `create-admin-review-port.ts`.
+2. **Template:** la pantalla no está diseñada; se compuso sólo con piezas existentes. Tarjetas de paso como las secciones de la revisión (`rounded-card`, `border-page-border`, `bg-raised`, padding 22 px, título 18 px bold numerado «N · …» como «3 · Decisión humana»); badges de `Vaqcrow Sistema.dc.html` §04 vía `Badge` (tonos `trust-*`, «Evidencia faltante» con `remove-circle-outline`, «Pendiente de confirmación» con reloj, «Confirmada» con check, TESTNET con `microcopy.testnetBadge`); `AdminStatePill` del `ST` de `Vaqcrow Admin.dc.html`; `HashDisplay` para contrato y hash de despliegue; la fila compacta «CDLZ…7Q4K Explorador» del diálogo «Revisión antes de firmar» (mono truncado + link con `open-outline` y `aria-label` completo) para aportes y distribuciones; filas separadas por `border-t` como el «Registro de auditoría»; `dl` de dos columnas (140 px) que colapsa a una en móvil; `EmptyState`, `ErrorState`, `Skeleton`; `FOCUS_RING` de la consola. Única disposición nueva: el riel conector con un marcador por paso (superficie de tono + ícono, decorativo: el estado va en texto en el badge). Sin colores nuevos.
+3. **Reglas de confianza (`demo-ui.md` §2):** verde sólo para lo registrado o confirmado en el ledger (bóveda confirmada, aportes observados, distribución confirmada, «Conciliado»); una distribución `submitted` es «Enviada · pendiente de confirmación» (copy reusado de `application/company/distributions.ts`) en tono de precaución y su «Confirmada» dice «Pendiente de confirmación»; «Divergente» en crítico con ícono de alerta; todo estado es texto + ícono.
+4. **«Sin dato», nunca cero:** hash de despliegue `null` → «Sin dato» + «Evidencia faltante»; límite aprobado `null`, ledger `null` y empresa `null` → «Sin dato»; listas vacías → `EmptyState`; sin decisión, despliegue o reconciliación → estado neutro con ícono de faltante. `explorerUrl` `null` → hash sin link (la web no conoce la red).
+5. **Montos y fechas:** stroops → XLM con `formatStroopsAsXlm` (bigint) + `formatXlmAmount` («250,5000000 XLM», siete decimales como el template); fechas `dd/mm/aaaa hh:mm UTC` en UTC para que el mismo instante se lea igual en cualquier entorno. Motivo de una distribución fallida con el vocabulario cerrado de `failureReasonCopy` (`application/funding/`, que sobrevive a WU6 porque lo usa `company-sign-distribution.tsx`).
+6. **Despliegue sin bóveda espejada:** se muestra el estado del registro (`pending`/`deploying`/`failed`) sin hechos ni pruebas; con bóveda espejada el paso es «Bóveda confirmada» aunque no haya fila de despliegue (camino `POST /campaigns`).
+
+**Copy pendiente del owner** (diseñada sin template, en `EVIDENCE_COPY` y el builder): «Evidencia: {empresa}», «Evidencia» / «Evidencia de {PyME}» (cola), «Ver evidencia Testnet» (revisión), títulos «1 · Solicitud» … «6 · Reconciliación», «Sin decisión registrada» + «Todavía nadie registró una decisión sobre esta solicitud.», «Sin despliegue registrado», «Bóveda confirmada», descripción del despliegue («La plataforma despliega la bóveda en Stellar Testnet después de la aprobación; el destino de los fondos es la cuenta de la PyME y es inmutable.»), «{n} confirmado(s) en el ledger», «Sin aportes confirmados», «Todavía no hay aportes confirmados» + cuerpo, «{c} de {n} confirmadas», «Sin distribuciones», «Todavía no hay distribuciones» + cuerpo, «Sin período», «Pendiente de confirmación», «Conciliado» / «Divergente», «Sin conciliación registrada», «Es el último estado guardado al leer la bóveda; esta vista no consulta la red.», «Sin divergencias registradas», términos («Decidió», «Razón», «Límite aprobado», «Fecha», «Estado de la bóveda», «Meta», «Aportado», «Plazo», «Inversor», «Observado», «Total», «Destinatarios», «Enviada», «Confirmada», «Ledger», «Motivo»), «Cargando evidencia…», «No pudimos cargar la evidencia.» + «No se modificó ningún dato. Podés reintentar.», «Volver a PyMEs».
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/web test`: «Test Files 261 passed (261) · Tests 2474 passed (2474)».
+- `pnpm --filter @vaqcrow/web typecheck`: primera corrida exit 2 (ids de fixture sin la marca `ApplicationId` en cuatro tests nuevos → `as AdminApplicationEvidence["applicationId"]`); luego sin errores.
+- `pnpm --filter @vaqcrow/web lint`: 0 errores; una advertencia nueva (constante sin uso en un test) corregida; queda sólo la preexistente `_request` de `fetch-http-client.ts`.
+- `pnpm --filter @vaqcrow/web exec playwright test e2e/admin-review.spec.ts`: corrida 1 «1 failed, 4 passed» (compilación en frío, ver arriba); tras el ajuste «5 passed».
+- `pnpm run verify`: exit 0 en la primera corrida («no dependency violations found (1270 modules, 4219 dependencies cruised)»; `test:boundaries` 164/164).
+
+**Advertencias**
+
+- Las distribuciones y aportes reales sólo aparecen con datos de WU1 en adelante; lo anterior se ve vacío o «Sin dato».
+- El e2e cubre la navegación y el estado sin bóveda; la cadena con bóveda, aportes y distribuciones está cubierta por tests de componente, no por e2e.
 
