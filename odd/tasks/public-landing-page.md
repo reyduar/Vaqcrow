@@ -43,7 +43,7 @@ Memoria Engram: `decision/418-featured-campaign`, `decision/418-help-assistant`,
 - [x] **WU1 — Shell full-bleed + ancla + secciones estáticas.** Variante full-bleed de `AppShell`; ancla `/#como-funciona` en `shell-nav.ts` (+ sus tests); reescribir `page.tsx` con hero (badges, h1, copy, CTAs por rol, «Leer los límites»), franja de garantías, «Cómo funciona» (4 pasos, ancla `#como-funciona`) y «Qué es real y qué es simulado» (ancla `#limites`, disclosure canónico). Reescribir `page.test.tsx`. — **Commit `d60d3ef`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU2 — Datos públicos + destacada + grilla.** Selección derivada de la destacada (mayor `fundedPercentBps`, preferir foto, desempate cierre); card de ejemplo simulada; «PyMEs en campaña» (destacada excluida, 3 por cierre, vacío/error con copy de `/explore`); estados de carga/error sanitizados. — **Commit `84ebf4b`.** Verificado (tier high, verificador independiente PASS tras una corrección).
 - [x] **WU3 — Footer rico de la landing.** Footer del template de la landing (columnas Plataforma / Aprender / Proyecto + disclosure canónico + fila legal), links reales donde existan y 404-aceptado para el resto; sin tocar el footer de las demás páginas. — **Commit `8f2bfa8`.** Verificado (tier high, verificador independiente PASS).
-- [ ] **WU4 — Asistente flotante «Ayuda».** Botón flotante + panel del template (saludo, 3 links rápidos, input deshabilitado, «Ir al centro de ayuda»); accesible (dialog, `aria-expanded`, cierre con Escape); links al centro de ayuda (#394).
+- [x] **WU4 — Asistente flotante «Ayuda».** Botón flotante + panel del template (saludo, 3 links rápidos, input deshabilitado, «Ir al centro de ayuda»); accesible (dialog, `aria-expanded`, cierre con Escape); links al centro de ayuda (#394). — **Commit `8536a77`.** Verificado (tier high, verificador independiente PASS; `build` OK).
 - [ ] **WU5 — Evidencia + cierre.** `docs/planning/public-landing-page-evidence.md` (español, criterios citados) + alineación de docs (`demo-tasks-list.md`, `README.md`, `DEMO.md`, `CLAUDE.md`/`AGENTS.md` si aplica) y cierre de esta bitácora.
 
 ## Estrategia de entrega
@@ -77,3 +77,10 @@ Por WU: `pnpm --filter @vaqcrow/web test` (+ `pnpm --filter @vaqcrow/web typeche
 - Tests: `landing-footer.test.tsx` (4), `app-shell.test.tsx` (2, bidireccional default/override), `page.test.tsx` (+1).
 - RED→GREEN: 1 fallando / 11 pasando → 18 pasando. Suite web: 199 archivos / 2001 tests.
 - Verificación independiente (tier `high`): **PASS**. Cosmético: títulos de columna en `font-semibold` (600) vs 650 del template (sin impacto). Rutas no construidas (`/help`, `/about`, `/entrepreneur-guide`, `/investor-guide`) quedan 404-aceptadas; `Contacto` sigue `#` (pregunta abierta de #394).
+
+### WU4 — Asistente flotante «Ayuda» · commit `8536a77`
+
+- Código: `landing/help-assistant.tsx` (isla client: pill «Ayuda» con `aria-expanded`, panel `role="dialog"`, saludo, 3 links rápidos → `/help`,`/help`,`#limites`, input deshabilitado, «Ir al centro de ayuda» → `/help`, cierre con Escape); montado en `page.tsx`.
+- Tests: `help-assistant.test.tsx` (6), `page.test.tsx` (+1).
+- RED→GREEN: import sin resolver → 6 pasando; `page`+assistant 19 pasando. Suite web: 200 archivos / 2008 tests.
+- Verificación independiente (tier `high`): **PASS**. `build` de web corrido por el padre: `/` prerenderiza estático (server + islas componen) y compila el primer `[&_[data-brand-isotipo]]` del repo. Avisos: el isotipo del header reusa `BrandIsotipo` 33×32 vs 28×28 del template (delta menor); la sombra del pill retipa el rgba del template (no el fill de marca). El swap de ícono chat↔close no está asertado por test (solo inspección).
