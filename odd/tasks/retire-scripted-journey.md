@@ -318,3 +318,31 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 
 
 **Verificación independiente** (RDD apagado): PASS con notas. Recorrió `fc54865..62a6c3c`: los cuatro gateways mapean todos los campos nuevos y los puertos los exigen; la web no arma URLs de explorador nuevas; «Sin dato» nunca como cero; sin link cuando `explorerUrl` es null; nombres accesibles distintos en listas; nota canónica una vez por sección; sólo tokens de `globals.css`; sin filtrado de cuentas en la web. Re-ejecutó web test (268 / 2510), typecheck, lint (0 errores), `boundaries` y `test:boundaries` (164). Notas: (1) baja, a11y: en `ExplorerProof` el texto visible «Ver en el explorador» no aparece contiguo en el nombre accesible (WCAG 2.5.3 débil); (2) baja: en `PositionProof` una posición que mezcla aportes con y sin hash lista sólo los que tienen hash sin avisar que hay aportes previos sin dato; (3) previa a #438: `escapeCsvField` (`application/reports/export.ts`) no neutraliza prefijos de fórmula `= + - @`, y el nombre de la PyME llega al CSV.
+
+### WU5b — Correcciones de la verificación de WU5
+
+- **Commit:** `b338759` — `fix(web): neutralize CSV formulas, disclose unhashed contributions and align proof link names (#438)`.
+- **Ruta:** delegada (writer único; corrige las tres notas de la verificación independiente de WU5, autorizadas por el owner).
+- **Superficie ampliada (autorización explícita del owner):** `apps/web/src/presentation/components/company/company-distributions.test.tsx`, sólo la aserción de la línea 63 al nuevo formato de nombre accesible. El writer se detuvo sin commitear al ver que era el único test fuera de superficie que fallaba; el owner lo autorizó y se aplicó ese único cambio.
+
+**Qué corrige**
+
+1. **Inyección de fórmulas en el CSV** (nota 3, previa a #438). `escapeCsvField` (`application/reports/export.ts`) ahora pasa primero por `neutralizeFormula`: un campo que empieza con `=`, `+`, `-`, `@`, TAB o CR recibe un `'` adelante (guía OWASP de CSV injection) y después se aplica el quoting RFC 4180 de siempre. Se aplica a **todos** los campos: los nombres de PyME, sector y campaña son texto de terceros, y el resto (fechas, períodos, XLM canónico, conteos, hashes, URLs) nunca empieza con esos caracteres, así que no hay una lista de «campos de texto» que mantener sincronizada. Única excepción: un decimal negativo puro (`/^-\d+(?:\.\d+)?$/`) queda numérico; `-2+3` y `+1` se neutralizan.
+2. **Aportes sin hash en una posición mixta** (nota 2). `unhashedContributionLine` (`application/portfolio/proofs.ts`, puro) compara `contributionXlm` con la suma de los `amountXlm` de las transacciones con hash, en stroops `bigint` vía `xlmToStroops` (sin errores de float: 0,3 − 0,1 − 0,1 da exactamente 0,1). Devuelve `null` si las transacciones cubren el total o si no hay ninguna (la tarjeta sigue con «Hash del aporte: Sin dato»); con remanente, «Aportes anteriores sin hash registrado: X XLM · Sin dato»; si un monto no se puede leer exacto, «Hay aportes anteriores sin hash registrado», sin número. `PositionProof` muestra la línea bajo la lista; los comentarios de ambos archivos describen ahora este comportamiento.
+3. **Nombre accesible de `ExplorerProof`** (nota 1, WCAG 2.5.3). `explorerLinkName(linkText, proofLabel, value)` arma «{texto visible}: {qué prueba} {valor} (abre en una pestaña nueva)», empezando contiguo por el texto visible, como `HashDisplay`. Los links «Ver bóveda en el explorador» (lista de bóvedas PyME, detalle de campaña, cadena admin) pasan su `linkText` y quedan «Ver bóveda en el explorador: bóveda de …»; ningún componente que usa `ExplorerProof` necesitó cambios. Ningún e2e afirmaba el formato viejo.
+
+**RED → GREEN**
+
+- CSV: 1 fallando (casos `=HYPERLINK`, `+1`, `-2+3`, `@SUM`, TAB, CR y sección de ventas; valores planos y negativo puro sin cambios) → 13/13.
+- Posición: 5 fallando (todo con hash, nada con hash, mixto, monto ilegible; tarjeta mixta y completa) → 17/17.
+- Nombre accesible: 9 fallando en 8 archivos de test → verdes; quedaba 1 en `company-distributions.test.tsx` (fuera de superficie, ver arriba) → verde tras la autorización.
+
+**Copy pendiente del owner:** «Aportes anteriores sin hash registrado: {X} XLM · Sin dato», «Hay aportes anteriores sin hash registrado» y el formato de nombre accesible «{texto visible}: {qué prueba} {valor} (abre en una pestaña nueva)».
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/web test`: «Test Files 268 passed (268) · Tests 2518 passed (2518)».
+- `pnpm --filter @vaqcrow/web typecheck`: sin errores.
+- `pnpm --filter @vaqcrow/web lint`: 0 errores; sólo la advertencia preexistente `_request`.
+- `pnpm run verify`: exit 0 en la primera corrida tras el cambio autorizado (contracts 661, domain 120, ai 143, api 2617, web 2518; «no dependency violations found (1283 modules, 4276 dependencies cruised)»; `test:boundaries` 164/164). Una corrida anterior, con la aserción fuera de superficie aún sin actualizar, falló sólo en ese test.
