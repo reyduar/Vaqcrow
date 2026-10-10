@@ -47,6 +47,8 @@ Porción C — retiro
 
 Porción D — cierre
 - [ ] **WU8** Evidencia `docs/planning/retire-scripted-journey-evidence.md` (#441, en español) y PR de la pila a `main` (decisión del owner).
+  - [x] Documento de evidencia (`890e2d8`).
+  - [ ] PR de la pila a `main`: abierta por el orquestador (número pendiente).
 
 ## Pronóstico de entrega
 
@@ -485,3 +487,23 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - Barrido `rg -n '"?/(request|ai-assessment|approval|funding|distribution|evidence)\b' docs/guides docs/design`: las menciones que quedan están en las notas fechadas, en el texto histórico de los dos briefs y de `demo-ui.md`; tres falsos positivos del patrón (`/admin/pymes/[applicationId]/evidence` en la guía; «warnings/evidence» y «distribution-pending» en un prompt en inglés de `demo-ui.md`).
 - `cmp AGENTS.md CLAUDE.md`: sin diferencias (no se tocaron).
 - `pnpm run verify`: exit 0 en la primera corrida (contracts 661, domain 120, ai 143, api 2617, web 1964; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
+
+### WU8 — Documento de evidencia
+
+- **Commit:** `890e2d8` — `docs(evidence): close Feature #438 with the journey retirement evidence (#441)`.
+- **Ruta:** delegada (writer único; documento de evidencia + bitácora). Sin RED: cambio sólo de documentación.
+- **Nombre del archivo:** `retire-scripted-journey-evidence.md`, como fijaron `demo-tasks-list.md` (#441) y esta bitácora; el issue #441 pide `retire-scripted-demo-journey-evidence.md`. La diferencia queda declarada en el documento (criterio 2 de #441, ⚠️).
+- **Mapeo:** 17 criterios citados textualmente (#438: 7, #439: 3, #440: 3, #441: 4): 13 ✅, 4 ⚠️, 0 ❌. Los ⚠️: #438 «replacement features are live…» (verificados en la rama, no desplegados en `main`), #438 «Required evidence and failure behavior…» (aporte/retiro/reembolso desde la UI sin e2e live), #439 «matching the template screens and copy…» (vistas sin pantalla en el template, copy owner-pending) y #441 (nombre del archivo).
+
+**Verificación re-ejecutada para el documento** (2026-10-10, árbol de trabajo en `295eae2`)
+
+- `pnpm run verify`: exit 0 en la primera corrida, sin reintentos (contracts 661, domain 120, ai 143, api 2617, web 1964; lint sin advertencias; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
+- `pnpm --filter @vaqcrow/web build`: ok; 13 rutas (`/`, `/_not-found`, `/admin`, `/admin/pymes`, `/admin/pymes/[applicationId]`, `/admin/pymes/[applicationId]/evidence`, `/campaigns/[id]`, `/company`, `/explore`, `/login`, `/portfolio`, `/reports`, `/signup`), ninguna de las seis.
+- `pnpm --filter @vaqcrow/web exec vitest run src/app/retired-journey-routes.test.ts`: 3/3.
+- `pnpm --filter @vaqcrow/web exec playwright test` (stub): 14 passed.
+- `pnpm run env:docker:status`: Supabase local, Quickstart y API sanos.
+- `supabase migration list --local`: `20261009150000` y `20261009160000` aplicadas en la base local.
+- `pnpm run test:db`: «Files=23, Tests=869 … Result: PASS».
+- El remoto no se consultó: se cita la verificación del 2026-10-09 (WU1, WU3).
+
+**Pendiente:** la PR de la pila a `main` la abre el orquestador con autorización del owner; su número se agrega aquí y en el documento de evidencia.
