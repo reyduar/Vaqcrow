@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest";
 import type { ApiConfig } from "../application/config/api-config.js";
 import { Secret } from "../application/config/secret.js";
 import type { ApplicationReviewRepositoryPort } from "../application/ports/application-review-repository-port.js";
+import type { BusinessRepositoryPort } from "../application/ports/business-repository-port.js";
+import type { SmeRequestRepositoryPort } from "../application/ports/sme-request-repository-port.js";
+import { SupabaseCampaignDeploymentRepository } from "./adapters/supabase-campaign-deployment-repository.js";
 import { SupabaseCampaignRepository } from "./adapters/supabase-campaign-repository.js";
-import { buildCampaignDependencies } from "./campaign-dependencies.js";
+import { SupabaseRevenueShareDistributionRepository } from "./adapters/supabase-revenue-share-distribution-repository.js";
+import { buildAdminApplicationEvidenceDependencies, buildCampaignDependencies } from "./campaign-dependencies.js";
 
 /**
  * `Keypair.random()` and reading `.secret()` straight back off it are both
@@ -129,5 +133,36 @@ describe("buildCampaignDependencies", () => {
 
     expect(first).toBeDefined();
     expect(first).not.toBe(second);
+  });
+});
+
+describe("buildAdminApplicationEvidenceDependencies (#438/WU2)", () => {
+  const smeRequests = {} as SmeRequestRepositoryPort;
+  const businesses = {} as BusinessRepositoryPort;
+
+  function build(config: ApiConfig) {
+    return buildAdminApplicationEvidenceDependencies(config, {
+      supabase,
+      applicationReviews: applicationReviewsDouble(),
+      smeRequests,
+      businesses
+    });
+  }
+
+  it("is wired even with the campaign vault disabled: it only reads the stored mirror, never the chain", () => {
+    const dependencies = build(baseConfig({ enabled: false, explorerUrl: "https://stellar.expert/explorer/testnet" }));
+
+    expect(dependencies.campaigns).toBeInstanceOf(SupabaseCampaignRepository);
+    // One adapter backs both the mirror and its per-transaction contribution read.
+    expect(dependencies.contributionTransactions).toBe(dependencies.campaigns);
+    expect(dependencies.deployments).toBeInstanceOf(SupabaseCampaignDeploymentRepository);
+    expect(dependencies.distributions).toBeInstanceOf(SupabaseRevenueShareDistributionRepository);
+    expect(dependencies.smeRequests).toBe(smeRequests);
+    expect(dependencies.businesses).toBe(businesses);
+    expect(dependencies.explorerBaseUrl).toBe("https://stellar.expert/explorer/testnet");
+  });
+
+  it("passes an undefined explorer base through, so every link is null on the local network", () => {
+    expect(build(baseConfig({ enabled: true, explorerUrl: undefined })).explorerBaseUrl).toBeUndefined();
   });
 });

@@ -158,3 +158,29 @@ export interface CampaignContributionTransactionPort {
     readonly correlationId: CorrelationId;
   }): Promise<CampaignRepositoryResult<void>>;
 }
+
+/** A contribute transaction the chain confirmed (#438/WU2): `observedAt` is always set. */
+export interface ObservedContributionTransaction {
+  readonly transactionHash: string;
+  readonly campaignId: string;
+  readonly investorAccountId: string;
+  readonly amountStroops: bigint;
+  /** The chain read that confirmed the transaction, not the ledger close time. */
+  readonly observedAt: string;
+}
+
+/**
+ * The read side of the per-transaction contribution record (#438/WU2), kept
+ * apart from `CampaignContributionTransactionPort` so a reader never gains the
+ * write methods and the existing hand-written doubles stay untouched.
+ */
+export interface CampaignContributionTransactionReadPort {
+  /**
+   * Only confirmed rows (`observed_at IS NOT NULL`), oldest observation first:
+   * an unconfirmed row is a submission that never (or not yet) landed, so it is
+   * not evidence of a contribution. An empty list is a valid answer.
+   */
+  listObservedContributionTransactions(
+    campaignId: string
+  ): Promise<CampaignRepositoryResult<readonly ObservedContributionTransaction[]>>;
+}

@@ -10,6 +10,7 @@ import {
 } from "@vaqcrow/contracts";
 import type { CorrelationId } from "@vaqcrow/contracts";
 import type {
+  RevenueShareDistributionCampaignReadPort,
   RevenueShareDistributionConfirmation,
   RevenueShareDistributionRecord,
   RevenueShareDistributionRepositoryError,
@@ -54,7 +55,7 @@ const SUBMITTED_STATE: RevenueShareDistributionState = "submitted";
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 export class SupabaseRevenueShareDistributionRepository
-  implements RevenueShareDistributionRepositoryPort
+  implements RevenueShareDistributionRepositoryPort, RevenueShareDistributionCampaignReadPort
 {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -220,6 +221,35 @@ export class SupabaseRevenueShareDistributionRepository
       // Strict on purpose: one malformed row makes the whole read `unavailable`
       // rather than being skipped. A skipped row would silently stop being
       // polled, which is indistinguishable from a confirmation that never came.
+      return { ok: true, value: data.map((row) => this.toRecord(row)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  async listByCampaign(
+    campaignId: string
+  ): Promise<RevenueShareDistributionRepositoryResult<readonly RevenueShareDistributionRecord[]>> {
+    try {
+      // Every state, failed included: the admin evidence chain (#438/WU2) shows
+      // what happened, not only what moved money. The id breaks creation ties.
+      const { data, error } = await this.client
+        .from(PARENT_TABLE)
+        .select(SELECT_WITH_RECIPIENTS)
+        .eq("campaign_id", campaignId)
+        .order("created_at", { ascending: true })
+        .order("distribution_id", { ascending: true });
+
+      if (error) {
+        return { ok: false, error: this.toRepositoryError(error, undefined, undefined) };
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("Malformed campaign distribution read");
+      }
+
+      // Strict, like `findPending`: one malformed row makes the read unavailable
+      // rather than silently dropping a distribution from the evidence.
       return { ok: true, value: data.map((row) => this.toRecord(row)) };
     } catch {
       return { ok: false, error: { code: "unavailable" } };

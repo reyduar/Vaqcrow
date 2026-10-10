@@ -10,7 +10,8 @@ import { createAdminReviewContextRouteDependencies } from "./infrastructure/http
 import { createDocumentVerdictRouteDependencies } from "./infrastructure/http/routes/document-verdict.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
-import { buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
+import { buildAdminApplicationEvidenceDependencies, buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
+import { createAdminApplicationEvidenceRouteDependencies } from "./infrastructure/http/routes/admin-application-evidence.route.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
@@ -320,6 +321,16 @@ const app = buildApp({
     assessments: applicationAssessmentRepository,
     verdicts: documentVerdictRepository
   }),
+  // The ADMIN per-application Testnet evidence chain (#438/WU2): reads only the
+  // stored mirror, so it is served whether or not the vault slice is enabled.
+  adminApplicationEvidence: createAdminApplicationEvidenceRouteDependencies(
+    buildAdminApplicationEvidenceDependencies(config, {
+      supabase,
+      applicationReviews: applicationReviewRepository,
+      smeRequests: smeRequestRepository,
+      businesses: businessRepository
+    })
+  ),
   documentVerdict: createDocumentVerdictRouteDependencies({
     applicationReviews: applicationReviewRepository,
     smeRequests: smeRequestRepository,

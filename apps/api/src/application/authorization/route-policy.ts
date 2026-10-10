@@ -73,6 +73,9 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // reads the read-only detail.
   "POST /application-reviews/:applicationId/deployment": only("ADMIN"),
   "GET /application-reviews/:applicationId/deployment": only("ADMIN"),
+  // The per-application Testnet evidence chain (#438/WU2): read-only, from the
+  // stored mirror, reached from the admin PyMEs queue.
+  "GET /application-reviews/:applicationId/evidence": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),

@@ -48,6 +48,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // reads the read-only detail; both are ADMIN-only.
   ["POST", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
   ["GET", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
+  // The per-application Testnet evidence chain (#438/WU2): ADMIN only.
+  ["GET", "/application-reviews/:applicationId/evidence", ["ADMIN"]],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
   ["POST", "/admin/rates", ["ADMIN"]],
@@ -143,6 +145,7 @@ function buildFullApp(auth?: AuthDependency): {
     portfolio: stub,
     reports: stub,
     myCampaigns: stub,
+    adminApplicationEvidence: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

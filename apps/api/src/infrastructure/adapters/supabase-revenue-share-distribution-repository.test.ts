@@ -813,6 +813,70 @@ describe("SupabaseRevenueShareDistributionRepository", () => {
     });
   });
 
+  describe("listByCampaign (#438/WU2)", () => {
+    it("lists every distribution of the campaign in any state, oldest first", async () => {
+      const failed = persistedRow({
+        distribution_id: OTHER_DISTRIBUTION_ID,
+        transaction_hash: OTHER_TRANSACTION_HASH,
+        state: "failed",
+        failure_reason: "unsuccessful"
+      });
+      const { client, calls } = createFakeSupabaseClient([{ data: [persistedRow(), failed], error: null }]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const result = await repository.listByCampaign(CAMPAIGN_ID);
+
+      expect(calls.eq).toEqual([["campaign_id", CAMPAIGN_ID]]);
+      // No state filter: a failed distribution is evidence too.
+      expect(calls.neq).toEqual([]);
+      expect(calls.order).toEqual([
+        ["created_at", { ascending: true }],
+        ["distribution_id", { ascending: true }]
+      ]);
+      expect(result).toEqual({
+        ok: true,
+        value: [
+          EXPECTED_RECORD,
+          {
+            ...EXPECTED_RECORD,
+            distributionId: OTHER_DISTRIBUTION_ID,
+            transactionHash: OTHER_TRANSACTION_HASH,
+            state: "failed",
+            failureReason: "unsuccessful"
+          }
+        ]
+      });
+    });
+
+    it("answers an empty list for a campaign without distributions, which is not not_found", async () => {
+      const { client } = createFakeSupabaseClient([{ data: [], error: null }]);
+
+      const result = await new SupabaseRevenueShareDistributionRepository(client).listByCampaign(CAMPAIGN_ID);
+
+      expect(result).toEqual({ ok: true, value: [] });
+    });
+
+    it("maps a malformed row, a PostgREST error or a transport rejection to a bare unavailable", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [persistedRow({ state: "manual_review" })], error: null },
+        { data: null, error: fakeError("42501") },
+        { reject: new Error("fetch failed: network unreachable") }
+      ]);
+      const repository = new SupabaseRevenueShareDistributionRepository(client);
+
+      const results = [
+        await repository.listByCampaign(CAMPAIGN_ID),
+        await repository.listByCampaign(CAMPAIGN_ID),
+        await repository.listByCampaign(CAMPAIGN_ID)
+      ];
+
+      for (const result of results) {
+        expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+      }
+      expect(JSON.stringify(results)).not.toMatch(/simulated (message|details|hint)/);
+    });
+  });
+
   describe("error mapping and sanitization", () => {
     it.each(["23503", "23514", "42501", "PGRST000", "08P01"])(
       "maps Postgres/PostgREST error %s to unavailable",

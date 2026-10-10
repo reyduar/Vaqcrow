@@ -4,6 +4,7 @@ import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import type {
   CampaignContributionRecord,
   CampaignContributionTransactionPort,
+  CampaignContributionTransactionReadPort,
   CampaignRateSnapshot,
   CampaignRecord,
   CampaignReconciliationOutcome,
@@ -13,6 +14,7 @@ import type {
   CampaignRepositoryResult,
   CampaignState,
   ChainCampaignSnapshot,
+  ObservedContributionTransaction,
   ReconciliationStatus
 } from "../../application/ports/campaign-repository-port.js";
 
@@ -28,7 +30,9 @@ const RECONCILIATION_STATUSES: readonly ReconciliationStatus[] = ["in_sync", "di
  * Supabase mirror for contract custody. The adapter only accepts snapshots that
  * a caller has already read from Stellar; it never creates a financial fact.
  */
-export class SupabaseCampaignRepository implements CampaignRepositoryPort, CampaignContributionTransactionPort {
+export class SupabaseCampaignRepository
+  implements CampaignRepositoryPort, CampaignContributionTransactionPort, CampaignContributionTransactionReadPort
+{
   constructor(private readonly client: SupabaseClient) {}
 
   async create(input: {
@@ -222,6 +226,29 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort, Campa
     }
   }
 
+  async listObservedContributionTransactions(
+    campaignId: string
+  ): Promise<CampaignRepositoryResult<readonly ObservedContributionTransaction[]>> {
+    try {
+      // Only confirmed rows are evidence (#438/WU1): `observed_at IS NOT NULL`.
+      // The hash breaks ties so two observations at the same instant read stably.
+      const { data, error } = await this.client
+        .from(CONTRIBUTION_TRANSACTION_TABLE)
+        .select("transaction_hash, campaign_id, investor_account_id, amount_stroops, observed_at")
+        .eq("campaign_id", campaignId)
+        .not("observed_at", "is", null)
+        .order("observed_at", { ascending: true })
+        .order("transaction_hash", { ascending: true });
+
+      if (error) return { ok: false, error: this.toError(error) };
+      if (!Array.isArray(data)) throw new Error("Malformed contribution transaction read");
+      // Strict: one malformed row makes the read unavailable rather than silently shrinking the evidence.
+      return { ok: true, value: data.map((row) => this.toObservedContributionTransaction(row)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
   private async resolveUnappliedReconciliation(
     campaignId: string
   ): Promise<CampaignRepositoryResult<CampaignReconciliationOutcome>> {
@@ -371,6 +398,17 @@ export class SupabaseCampaignRepository implements CampaignRepositoryPort, Campa
       investorAccountId: this.text(value["investor_account_id"]),
       amountStroops: this.bigint(value["amount_stroops"]),
       lastObservedAt: this.text(value["last_observed_at"])
+    };
+  }
+
+  private toObservedContributionTransaction(row: unknown): ObservedContributionTransaction {
+    const value = this.asRecord(row);
+    return {
+      transactionHash: this.text(value["transaction_hash"]),
+      campaignId: this.text(value["campaign_id"]),
+      investorAccountId: this.text(value["investor_account_id"]),
+      amountStroops: this.bigint(value["amount_stroops"]),
+      observedAt: this.text(value["observed_at"])
     };
   }
 

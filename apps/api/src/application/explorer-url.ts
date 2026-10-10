@@ -17,3 +17,11 @@
 export function transactionExplorerUrl(explorerBaseUrl: string, transactionHash: string): string {
   return `${explorerBaseUrl.replace(/\/+$/, "")}/tx/${transactionHash}`;
 }
+
+/**
+ * Builds the Testnet explorer link for a contract, such as a campaign vault.
+ * Same derivation and normalisation rule as `transactionExplorerUrl`.
+ */
+export function contractExplorerUrl(explorerBaseUrl: string, contractAddress: string): string {
+  return `${explorerBaseUrl.replace(/\/+$/, "")}/contract/${contractAddress}`;
+}

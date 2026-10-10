@@ -259,3 +259,16 @@ export interface RevenueShareDistributionRepositoryPort {
     readonly limit: number;
   }): Promise<RevenueShareDistributionRepositoryResult<readonly RevenueShareDistributionRecord[]>>;
 }
+
+/**
+ * Lists every distribution of one campaign, in any state, oldest first
+ * (#438/WU2). A separate interface rather than a new member of
+ * `RevenueShareDistributionRepositoryPort`, so the write-side doubles and use
+ * cases that implement that port are not forced to grow a read they never use.
+ * An empty list is a valid answer, not `not_found`.
+ */
+export interface RevenueShareDistributionCampaignReadPort {
+  listByCampaign(
+    campaignId: string
+  ): Promise<RevenueShareDistributionRepositoryResult<readonly RevenueShareDistributionRecord[]>>;
+}

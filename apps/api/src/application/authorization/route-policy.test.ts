@@ -23,6 +23,17 @@ describe("resolveRoutePolicy", () => {
     });
   });
 
+  it("restricts the per-application Testnet evidence chain to ADMIN (#438/WU2)", () => {
+    expect(resolveRoutePolicy("GET", "/application-reviews/:applicationId/evidence")).toEqual({
+      kind: "roles",
+      roles: ["ADMIN"]
+    });
+    expect(resolveRoutePolicy("HEAD", "/application-reviews/:applicationId/evidence")).toEqual({
+      kind: "roles",
+      roles: ["ADMIN"]
+    });
+  });
+
   it("lists the public marketplace listing and campaign image as public (#414/WU1/WU3)", () => {
     expect(resolveRoutePolicy("GET", "/marketplace/campaigns")).toEqual({ kind: "public" });
     expect(resolveRoutePolicy("HEAD", "/marketplace/campaigns")).toEqual({ kind: "public" });

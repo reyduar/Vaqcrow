@@ -8,6 +8,8 @@ import type { DecisionDeploymentDependencies, DecisionNotificationDependencies }
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
 import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
+import { registerAdminApplicationEvidenceRoute } from "./routes/admin-application-evidence.route.js";
+import type { AdminApplicationEvidenceRouteDependencies } from "./routes/admin-application-evidence.route.js";
 import { registerAdminReviewContextRoute } from "./routes/admin-review-context.route.js";
 import type { AdminReviewContextRouteDependencies } from "./routes/admin-review-context.route.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
@@ -110,6 +112,8 @@ export function buildApp(dependencies: {
    */
   readonly humanDecisionDeployment?: DecisionDeploymentDependencies | undefined;
   readonly adminReviewContext?: AdminReviewContextRouteDependencies;
+  /** The ADMIN per-application Testnet evidence chain (#438/WU2). */
+  readonly adminApplicationEvidence?: AdminApplicationEvidenceRouteDependencies | undefined;
   /** Per-document KYC/KYB verdicts in the admin review (#410/U1). */
   readonly documentVerdict?: DocumentVerdictRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
@@ -186,6 +190,9 @@ export function buildApp(dependencies: {
   registerHealthRoute(app);
   if (dependencies.adminReviewContext) {
     registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
+  }
+  if (dependencies.adminApplicationEvidence) {
+    registerAdminApplicationEvidenceRoute(app, dependencies.adminApplicationEvidence);
   }
   if (dependencies.documentVerdict) {
     registerDocumentVerdictRoute(app, dependencies.documentVerdict);

@@ -58,6 +58,7 @@ interface RecordedCalls {
   readonly update: unknown[];
   readonly upsert: Array<readonly [payload: unknown, options: unknown]>;
   readonly is: Array<readonly [column: string, value: unknown]>;
+  readonly not: Array<readonly [column: string, operator: string, value: unknown]>;
   readonly eq: Array<readonly [column: string, value: unknown]>;
   readonly lte: Array<readonly [column: string, value: unknown]>;
   readonly order: Array<readonly [column: string, options: unknown]>;
@@ -74,7 +75,7 @@ function fakeError(code: string): FakePostgrestError {
 
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { tables: [], insert: [], update: [], upsert: [], is: [], eq: [], lte: [], order: [] };
+  const calls: RecordedCalls = { tables: [], insert: [], update: [], upsert: [], is: [], not: [], eq: [], lte: [], order: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -99,6 +100,10 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
       },
       is: (column: string, value: unknown) => {
         calls.is.push([column, value]);
+        return self;
+      },
+      not: (column: string, operator: string, value: unknown) => {
+        calls.not.push([column, operator, value]);
         return self;
       },
       select: () => self,
@@ -344,6 +349,127 @@ describe("SupabaseCampaignRepository", () => {
       expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(/sensitive/);
       consoleError.mockRestore();
     });
+  });
+
+  describe("observed contribution transactions (#438/WU2)", () => {
+    const TX_HASH = "c".repeat(64);
+    const OTHER_TX_HASH = "d".repeat(64);
+    const INVESTOR = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF";
+
+    function persistedTransaction(overrides: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
+      return {
+        transaction_hash: TX_HASH,
+        campaign_id: CAMPAIGN_ID,
+        investor_account_id: INVESTOR,
+        amount_stroops: "5000",
+        observed_at: OBSERVED_AT,
+        last_correlation_id: CORRELATION_ID,
+        created_at: "2026-09-23T17:59:00.000Z",
+        ...overrides
+      };
+    }
+
+    it("lists only confirmed contributions of the campaign, oldest observation first", async () => {
+      const { client, calls } = createFakeSupabaseClient([
+        {
+          data: [
+            persistedTransaction(),
+            persistedTransaction({ transaction_hash: OTHER_TX_HASH, amount_stroops: 12, observed_at: "2026-09-23T18:10:00.000Z" })
+          ],
+          error: null
+        }
+      ]);
+
+      const result = await new SupabaseCampaignRepository(client).listObservedContributionTransactions(CAMPAIGN_ID);
+
+      expect(result).toEqual({
+        ok: true,
+        value: [
+          {
+            transactionHash: TX_HASH,
+            campaignId: CAMPAIGN_ID,
+            investorAccountId: INVESTOR,
+            amountStroops: 5_000n,
+            observedAt: OBSERVED_AT
+          },
+          {
+            transactionHash: OTHER_TX_HASH,
+            campaignId: CAMPAIGN_ID,
+            investorAccountId: INVESTOR,
+            amountStroops: 12n,
+            observedAt: "2026-09-23T18:10:00.000Z"
+          }
+        ]
+      });
+      expect(calls.tables).toEqual(["campaign_contribution_transaction"]);
+      expect(calls.eq).toEqual([["campaign_id", CAMPAIGN_ID]]);
+      // The WU1 rule: an unconfirmed row is not evidence of a contribution.
+      expect(calls.not).toEqual([["observed_at", "is", null]]);
+      expect(calls.order).toEqual([
+        ["observed_at", { ascending: true }],
+        ["transaction_hash", { ascending: true }]
+      ]);
+    });
+
+    it("answers an empty list for a campaign without confirmed contributions", async () => {
+      const { client } = createFakeSupabaseClient([{ data: [], error: null }]);
+
+      const result = await new SupabaseCampaignRepository(client).listObservedContributionTransactions(CAMPAIGN_ID);
+
+      expect(result).toEqual({ ok: true, value: [] });
+    });
+
+    it("maps a malformed row (an unobserved one included) to unavailable rather than skipping it", async () => {
+      const { client } = createFakeSupabaseClient([
+        { data: [persistedTransaction({ observed_at: null })], error: null },
+        { data: [persistedTransaction({ amount_stroops: "1.5" })], error: null }
+      ]);
+      const repository = new SupabaseCampaignRepository(client);
+
+      expect(await repository.listObservedContributionTransactions(CAMPAIGN_ID)).toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+      expect(await repository.listObservedContributionTransactions(CAMPAIGN_ID)).toEqual({
+        ok: false,
+        error: { code: "unavailable" }
+      });
+    });
+
+    it("sanitizes a failed read without leaking PostgREST text", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { client } = createFakeSupabaseClient([
+        { data: null, error: fakeError("42501") },
+        { reject: new Error("network down") }
+      ]);
+      const repository = new SupabaseCampaignRepository(client);
+
+      const failed = await repository.listObservedContributionTransactions(CAMPAIGN_ID);
+      const thrown = await repository.listObservedContributionTransactions(CAMPAIGN_ID);
+
+      expect(failed).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(thrown).toEqual({ ok: false, error: { code: "unavailable" } });
+      expect(JSON.stringify([failed, thrown, consoleError.mock.calls])).not.toMatch(/sensitive/);
+      consoleError.mockRestore();
+    });
+  });
+
+  it("reads the stored reconciliation (status and timestamps) without calling the chain", async () => {
+    const { client, calls } = createFakeSupabaseClient([
+      {
+        data: persistedCampaign({ reconciliation_status: "diverged", last_diverged_at: "2026-09-23T17:30:00.000Z" }),
+        error: null
+      }
+    ]);
+
+    const result = await new SupabaseCampaignRepository(client).findByApplicationId(APPLICATION_ID);
+
+    expect(result).toEqual({
+      ok: true,
+      value: { ...CAMPAIGN, reconciliationStatus: "diverged", lastDivergedAt: "2026-09-23T17:30:00.000Z" }
+    });
+    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.update).toEqual([]);
   });
 
   it("maps a duplicate campaign to already_exists and does not expose PostgREST text", async () => {

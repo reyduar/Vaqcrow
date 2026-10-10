@@ -326,3 +326,25 @@ export type {
   StellarContractId,
   SubmitContractInvocationCommand
 } from "./campaign.js";
+
+export {
+  adminApplicationEvidenceSchema,
+  adminEvidenceContributionSchema,
+  adminEvidenceDecisionSchema,
+  adminEvidenceDeploymentSchema,
+  adminEvidenceDeploymentStateSchema,
+  adminEvidenceDistributionSchema,
+  adminEvidenceReconciliationSchema,
+  adminEvidenceVaultSchema,
+  parseAdminApplicationEvidence
+} from "./admin-application-evidence.js";
+export type {
+  AdminApplicationEvidence,
+  AdminEvidenceContribution,
+  AdminEvidenceDecision,
+  AdminEvidenceDeployment,
+  AdminEvidenceDeploymentState,
+  AdminEvidenceDistribution,
+  AdminEvidenceReconciliation,
+  AdminEvidenceVault
+} from "./admin-application-evidence.js";
