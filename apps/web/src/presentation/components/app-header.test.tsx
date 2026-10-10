@@ -74,7 +74,7 @@ describe("AppHeader signed out", () => {
 
     expect(navLinks()).toEqual([
       ["Explorar PyMEs", "/explore"],
-      ["Cómo funciona", "/#how-it-works"],
+      ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
       ["Acerca de", "/about"]
     ]);
@@ -233,7 +233,7 @@ describe("AppHeader PYME", () => {
 
     expect(navLinks()).toEqual([
       ["Mi campaña", "/company"],
-      ["Cómo funciona", "/#how-it-works"],
+      ["Cómo funciona", "/#como-funciona"],
       ["Acerca de", "/about"]
     ]);
     expect(

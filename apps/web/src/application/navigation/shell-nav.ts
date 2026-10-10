@@ -4,11 +4,11 @@ import type { PrincipalRole } from "@/application/ports/auth-session-port";
  * The role-aware shell's navigation (owner decision D9, 2026-10-02), React-free.
  *
  * Signed out shows the public header of `Vaqcrow Landing.dc.html`; INVERSOR
- * and PYME follow the owner's menus. Routes are always in English; links to
- * pages that do not exist yet (`/about`, the guides, `/reports`,
- * `/#how-it-works`) are shown on purpose — the owner accepted a 404 until
- * #394/#430/#418 build them. (`/explore` is now built by #414.) No view ever
- * links to `/admin`.
+ * and PYME follow the owner's menus. Routes are always in English; in-page
+ * anchors are Spanish (#como-funciona, #limites — owner decision, 2026-10-10).
+ * Links to pages that do not exist yet (`/about`, the guides, `/reports`) are
+ * shown on purpose — the owner accepted a 404 until #394/#430/#418 build them.
+ * (`/explore` is now built by #414.) No view ever links to `/admin`.
  */
 export interface ShellLink {
   readonly label: string;
@@ -53,7 +53,7 @@ export function accountMenuLabel(displayName: string): string {
 }
 
 const EXPLORE: ShellLink = { label: "Explorar PyMEs", href: "/explore" };
-const HOW_IT_WORKS: ShellLink = { label: "Cómo funciona", href: "/#how-it-works" };
+const HOW_IT_WORKS: ShellLink = { label: "Cómo funciona", href: "/#como-funciona" };
 const ABOUT: ShellLink = { label: "Acerca de", href: "/about" };
 
 const view = (shell: ShellView): ShellView => Object.freeze(shell);
