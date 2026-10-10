@@ -32,6 +32,10 @@ async function renderHome(role: PrincipalRole | null = null) {
       <Home />
     </SessionStoreProvider>
   );
+  // No API base URL means the marketplace island's port is the null object, so
+  // the list settles on `unavailable`. Waiting for that error copy keeps the
+  // SWR state update inside `act` rather than logging after the assertion.
+  await screen.findByText("No pudimos cargar las campañas");
   return { fake, landing: within(await screen.findByRole("main")) };
 }
 
@@ -66,6 +70,37 @@ describe("Home landing (Feature #418)", () => {
 
     expect(landing.getByRole("heading", { level: 2, name: "Cómo funciona" })).toBeInTheDocument();
     expect(landing.getByRole("heading", { level: 2, name: "Qué es real y qué es simulado" })).toBeInTheDocument();
+  });
+
+  it("renders the featured campaign inside the hero as its second grid column, not a separate section", async () => {
+    await renderHome(null);
+
+    const hero = document.querySelector("section[aria-labelledby='hero-t']");
+    expect(hero).not.toBeNull();
+    // The featured `article` (feat-t) shares the hero `<section>`: it is the grid's second column.
+    expect(hero?.querySelector("[aria-labelledby='feat-t']")).not.toBeNull();
+    // It must not be a sibling section rendered after the hero.
+    expect(document.querySelector("main > section[aria-labelledby='feat-t']")).toBeNull();
+  });
+
+  it("keeps the template section order: hero (text | featured) → trust strip → grid → explanatory", async () => {
+    const { landing } = await renderHome(null);
+
+    // The featured card's h2 is inside the hero, so it precedes the grid heading.
+    const headings = landing.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      "Panadería Horizonte SRL",
+      "PyMEs en campaña",
+      "Cómo funciona",
+      "Qué es real y qué es simulado"
+    ]);
+  });
+
+  it("renders the marketplace section heading and its link to /explore", async () => {
+    const { landing } = await renderHome(null);
+
+    expect(landing.getByRole("heading", { level: 2, name: "PyMEs en campaña" })).toBeInTheDocument();
+    expect(landing.getByRole("link", { name: "Ver el marketplace" })).toHaveAttribute("href", "/explore");
   });
 
   it("anchors the Spanish in-page sections and the header link", async () => {
