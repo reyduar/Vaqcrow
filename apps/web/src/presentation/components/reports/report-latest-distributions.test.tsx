@@ -34,7 +34,7 @@ describe("ReportLatestDistributions proof (#438/WU5)", () => {
     expect(screen.getByRole("columnheader", { name: "Transacción" })).toBeInTheDocument();
     const rows = screen.getAllByRole("row").slice(1);
     const link = within(rows[0]!).getByRole("link", {
-      name: `Ver hash de la transacción ${HASH_A} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: hash de la transacción ${HASH_A} (abre en una pestaña nueva)`
     });
     expect(link).toHaveAttribute("href", `https://explorer.example/tx/${HASH_A}`);
     expect(link).toHaveAttribute("target", "_blank");

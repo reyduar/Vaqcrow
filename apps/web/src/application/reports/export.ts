@@ -21,6 +21,8 @@ import { formatPeriod, formatPeriodRange } from "./periods";
  *   URL, and the period's observed contributions get their own section with
  *   hash, vault and explorer URLs — the URLs are the API's own, a missing one
  *   is an empty cell.
+ * - Formula prefixes (`= + - @`, TAB, CR) are neutralized with a leading `'`
+ *   before quoting, because PyME names reach the file (CSV injection).
  * - Rows are CRLF-terminated and the file starts with a UTF-8 BOM so Excel
  *   opens the Spanish accents and the `·` correctly.
  */
@@ -37,8 +39,26 @@ const MONTHLY_STATE_COPY: Readonly<Record<ReportMonthlyPointState, string>> = {
   none: "Sin distribución"
 };
 
-/** RFC 4180 escaping: quote a field containing a comma, a quote or a newline. */
-function escapeCsvField(value: string): string {
+/** A spreadsheet reads a cell starting with one of these as a formula (OWASP CSV injection). */
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+/** A plain negative decimal is a number, not a formula, so it stays usable. */
+const PLAIN_NEGATIVE_NUMBER = /^-\d+(?:\.\d+)?$/;
+
+/**
+ * CSV injection guard: a field that a spreadsheet would evaluate as a formula
+ * (`=HYPERLINK(…)`, `+1`, `-2+3`, `@SUM(…)`, a leading TAB or CR) gets a
+ * leading `'`, so it is read as text. Applied to every field because PyME,
+ * campaign and sector names are third-party text and every other field (dates,
+ * periods, canonical XLM, counts, hashes, URLs) never starts with those
+ * characters; a plain negative number is the one exemption, kept numeric.
+ */
+function neutralizeFormula(value: string): string {
+  return FORMULA_PREFIX.test(value) && !PLAIN_NEGATIVE_NUMBER.test(value) ? `'${value}` : value;
+}
+
+/** Formula neutralization, then RFC 4180 escaping: quote a field containing a comma, a quote or a newline. */
+function escapeCsvField(raw: string): string {
+  const value = neutralizeFormula(raw);
   if (!/[",\r\n]/.test(value)) return value;
   return `"${value.replace(/"/g, '""')}"`;
 }

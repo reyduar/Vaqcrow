@@ -103,7 +103,7 @@ describe("PortfolioPositionCard", () => {
     );
 
     const vaultLink = screen.getByRole("link", {
-      name: `Ver bóveda de Panadería Horizonte SRL ${VAULT} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: bóveda de Panadería Horizonte SRL ${VAULT} (abre en una pestaña nueva)`
     });
     expect(vaultLink).toHaveAttribute("href", `https://explorer.example/contract/${VAULT}`);
     expect(vaultLink).toHaveAttribute("target", "_blank");
@@ -114,7 +114,7 @@ describe("PortfolioPositionCard", () => {
     expect(list).toHaveTextContent("01/10/2026");
     expect(screen.getByTitle(HASH_A)).toBeInTheDocument();
     const txLink = screen.getByRole("link", {
-      name: `Ver hash del aporte ${HASH_B} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: hash del aporte ${HASH_B} (abre en una pestaña nueva)`
     });
     expect(txLink).toHaveAttribute("href", `https://explorer.example/tx/${HASH_B}`);
     // The first transaction has no explorer URL: its hash renders without a link.
@@ -130,6 +130,34 @@ describe("PortfolioPositionCard", () => {
     // No explorer base: the vault renders without a link, too.
     expect(screen.queryByRole("link", { name: /bóveda/ })).not.toBeInTheDocument();
     expect(screen.getByTitle(VAULT)).toBeInTheDocument();
+  });
+
+  it("lists the hashed contributions and discloses the earlier part with no recorded hash", () => {
+    renderCard(
+      position({
+        contributionXlm: "350.0000000",
+        transactions: [
+          { transactionHash: HASH_B, amountXlm: "100.0000000", observedAt: "2026-10-08T10:05:00.000Z", explorerUrl: null }
+        ]
+      })
+    );
+
+    expect(screen.getByRole("list", { name: "Tus transacciones de aporte" })).toHaveTextContent("100,0000000 XLM");
+    expect(
+      screen.getByText("Aportes anteriores sin hash registrado: 250,0000000 XLM · Sin dato")
+    ).toBeInTheDocument();
+  });
+
+  it("shows no unhashed-contribution line when every contribution has a hash", () => {
+    renderCard(
+      position({
+        transactions: [
+          { transactionHash: HASH_B, amountXlm: "250.0000000", observedAt: "2026-10-08T10:05:00.000Z", explorerUrl: null }
+        ]
+      })
+    );
+
+    expect(screen.queryByText(/sin hash registrado/)).not.toBeInTheDocument();
   });
 
   it("renders no action slot by default", () => {

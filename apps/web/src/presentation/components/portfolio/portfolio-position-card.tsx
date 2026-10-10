@@ -2,7 +2,7 @@ import { Link } from "@heroui/react";
 import type { ReactNode } from "react";
 import { formatShortAddress } from "@/application/company/format";
 import { formatXlmAmount } from "@/application/portfolio/format";
-import { PORTFOLIO_PROOF_COPY, toPositionTransactionRows } from "@/application/portfolio/proofs";
+import { PORTFOLIO_PROOF_COPY, toPositionTransactionRows, unhashedContributionLine } from "@/application/portfolio/proofs";
 import { PORTFOLIO_STATUS_COPY, positionStatusBody } from "@/application/portfolio/status";
 import type { PortfolioPosition } from "@/application/ports/portfolio-port";
 import { Badge } from "../badge";
@@ -20,13 +20,15 @@ import { ProgressBar } from "../progress-bar";
  * The Testnet proof row (#438/WU5, owner decision D3) spans the card: the vault
  * with its explorer link and the investor's own observed contribute
  * transactions (amount, day, hash + link), in the template's compact contract
- * row (`ExplorerProof`). A contribution made before hashes were persisted shows
- * «Sin dato» for its hash, never a zero; a `null` explorer URL shows the value
- * without a link.
+ * row (`ExplorerProof`). With no hashed transaction the hash proof reads «Sin
+ * dato»; when hashed transactions cover only part of the contribution, they are
+ * listed with one line naming the earlier, unhashed remainder — never a zero.
+ * A `null` explorer URL shows the value without a link.
  */
 
 function PositionProof({ position }: { readonly position: PortfolioPosition }) {
   const rows = toPositionTransactionRows(position);
+  const unhashed = unhashedContributionLine(position);
   const listId = `position-transactions-${position.campaignId}`;
   return (
     <div className="flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:col-span-4">
@@ -61,6 +63,7 @@ function PositionProof({ position }: { readonly position: PortfolioPosition }) {
               </li>
             ))}
           </ul>
+          {unhashed === null ? null : <span className="text-[13px] text-text-secondary">{unhashed}</span>}
         </div>
       )}
     </div>

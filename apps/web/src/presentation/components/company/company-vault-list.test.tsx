@@ -36,7 +36,7 @@ describe("CompanyVaultList vault proof (#438/WU5)", () => {
     renderList([campaign({ vaultExplorerUrl: url })]);
 
     const link = screen.getByRole("link", {
-      name: `Ver bóveda de Campaña 2026 · Panadería Horizonte ${VAULT} en el explorador (abre en una pestaña nueva)`
+      name: `Ver bóveda en el explorador: bóveda de Campaña 2026 · Panadería Horizonte ${VAULT} (abre en una pestaña nueva)`
     });
     expect(link).toHaveAttribute("href", url);
     expect(link).toHaveTextContent("Ver bóveda en el explorador");

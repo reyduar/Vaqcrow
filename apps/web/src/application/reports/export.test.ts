@@ -159,6 +159,41 @@ describe("buildReportCsv", () => {
     );
   });
 
+  it("neutralizes spreadsheet formula prefixes in third-party text with a leading quote (CSV injection)", () => {
+    const base = report();
+    const names = ["=HYPERLINK(\"https://evil.example\",\"x\")", "+1", "-2+3", "@SUM(A1:A2)", "\tTab", "\rCR"];
+    const csv = buildReportCsv(
+      report({
+        latestDistributions: names.map((pyme) => ({ ...base.latestDistributions[1]!, pyme }))
+      }),
+      sales({ pymes: [{ ...sales().pymes[0]!, name: "=1+1", sector: "@cmd" }] })
+    );
+
+    expect(csv).toContain('20/08/2026,"\'=HYPERLINK(""https://evil.example"",""x"")",,,Fallida');
+    expect(csv).toContain("20/08/2026,'+1,,,Fallida");
+    expect(csv).toContain("20/08/2026,'-2+3,,,Fallida");
+    expect(csv).toContain("20/08/2026,'@SUM(A1:A2),,,Fallida");
+    expect(csv).toContain("20/08/2026,'\tTab,,,Fallida");
+    expect(csv).toContain('20/08/2026,"\'\rCR",,,Fallida');
+    expect(csv).toContain("'=1+1,'@cmd,agosto 2026,3902100,Declarada en término");
+  });
+
+  it("leaves plain values and a plain negative number unchanged", () => {
+    const base = report();
+    const csv = buildReportCsv(
+      report({
+        latestDistributions: [
+          { ...base.latestDistributions[1]!, pyme: "Panadería - Sucursal 2" },
+          { ...base.latestDistributions[1]!, pyme: "-12.5" }
+        ]
+      })
+    );
+
+    expect(csv).toContain("20/08/2026,Panadería - Sucursal 2,,,Fallida");
+    expect(csv).toContain("20/08/2026,-12.5,,,Fallida");
+    expect(csv).toContain("Aportado en el período,850.0000000,,TESTNET");
+  });
+
   it("omits the sales-by-PyME section when no sales are present", () => {
     expect(buildReportCsv(report())).not.toContain("Ventas declaradas por PyME");
     expect(buildReportCsv(report(), null)).not.toContain("Ventas declaradas por PyME");

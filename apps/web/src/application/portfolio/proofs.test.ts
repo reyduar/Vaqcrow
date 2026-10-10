@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PortfolioPosition } from "@/application/ports/portfolio-port";
-import { PORTFOLIO_PROOF_COPY, toPositionTransactionRows } from "./proofs";
+import { PORTFOLIO_PROOF_COPY, toPositionTransactionRows, unhashedContributionLine } from "./proofs";
 
 const HASH_A = "a".repeat(64);
 const HASH_B = "b".repeat(64);
@@ -48,6 +48,39 @@ describe("toPositionTransactionRows", () => {
 
   it("returns no rows (never an invented hash or a zero) for a contribution made before hashes were persisted", () => {
     expect(toPositionTransactionRows(position({ transactions: [] }))).toEqual([]);
+  });
+});
+
+describe("unhashedContributionLine", () => {
+  it("returns null when the hashed transactions cover the whole contribution", () => {
+    expect(unhashedContributionLine(position())).toBeNull();
+  });
+
+  it("returns null when no contribution has a hash (the card shows «Hash del aporte: Sin dato» instead)", () => {
+    expect(unhashedContributionLine(position({ transactions: [] }))).toBeNull();
+  });
+
+  it("discloses the exact unhashed remainder of a mixed position, computed in stroops, never a zero", () => {
+    expect(unhashedContributionLine(position({ contributionXlm: "350.1000001" }))).toBe(
+      "Aportes anteriores sin hash registrado: 0,1000001 XLM · Sin dato"
+    );
+    expect(
+      unhashedContributionLine(
+        position({
+          contributionXlm: "0.3000000",
+          transactions: [
+            { transactionHash: HASH_A, amountXlm: "0.1000000", observedAt: "2026-10-01T23:30:00.000Z", explorerUrl: null },
+            { transactionHash: HASH_B, amountXlm: "0.1000000", observedAt: "2026-10-02T23:30:00.000Z", explorerUrl: null }
+          ]
+        })
+      )
+    ).toBe("Aportes anteriores sin hash registrado: 0,1000000 XLM · Sin dato");
+  });
+
+  it("states the gap without a number when an amount cannot be read exactly", () => {
+    expect(unhashedContributionLine(position({ contributionXlm: "350.00000001" }))).toBe(
+      "Hay aportes anteriores sin hash registrado"
+    );
   });
 });
 

@@ -6,7 +6,7 @@ import { truncateMiddle } from "./hash-display";
  * ExplorerProof (#438 WU5): the template's compact contract row from the
  * «Revisión antes de firmar» dialog (`Vaqcrow Sistema.dc.html`: «CDLZ…7Q4K
  * Explorador», mono truncated value + an `open-outline` link whose
- * `aria-label` names the full value). Extracted from the admin evidence chain
+ * `aria-label` names the full value, after the visible link text). Extracted from the admin evidence chain
  * (WU4) so investors, PyMEs and campaign visitors read their Testnet proof the
  * same way.
  *
@@ -47,9 +47,14 @@ function lowerFirst(text: string): string {
   return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
 
-/** The link's accessible name: what it proves, the full value, and that it opens a new tab. */
-export function explorerLinkName(proofLabel: string, value: string): string {
-  return `Ver ${lowerFirst(proofLabel)} ${value} en el explorador (abre en una pestaña nueva)`;
+/**
+ * The link's accessible name. It starts with the visible link text, contiguous
+ * (WCAG 2.5.3 Label in Name, the same rule as `HashDisplay`), then says what it
+ * proves, the full value, and that it opens a new tab — e.g. «Ver en el
+ * explorador: hash del aporte 9c4e… (abre en una pestaña nueva)».
+ */
+export function explorerLinkName(linkText: string, proofLabel: string, value: string): string {
+  return `${linkText}: ${lowerFirst(proofLabel)} ${value} (abre en una pestaña nueva)`;
 }
 
 export function ExplorerProof({
@@ -88,7 +93,7 @@ export function ExplorerProof({
           href={explorerUrl}
           target="_blank"
           rel="noreferrer noopener"
-          aria-label={explorerLinkName(proofLabel ?? label, value)}
+          aria-label={explorerLinkName(linkText, proofLabel ?? label, value)}
           className={`inline-flex items-center gap-1 rounded text-[13px] font-semibold text-brand-accent-text ${FOCUS_RING}`}
         >
           {linkText}

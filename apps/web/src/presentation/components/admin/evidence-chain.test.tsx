@@ -145,7 +145,7 @@ describe("EvidenceChain", () => {
     const distributions = stepNamed("5 · Distribuciones");
     expect(within(distributions).getByText("Enviada · pendiente de confirmación")).toBeTruthy();
     const link = within(distributions).getByRole("link", {
-      name: `Ver hash de la transacción ${HASH_DISTRIBUTION} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: hash de la transacción ${HASH_DISTRIBUTION} (abre en una pestaña nueva)`
     });
     expect(link.getAttribute("href")).toBe(DISTRIBUTION_URL);
     expect(link.getAttribute("target")).toBe("_blank");

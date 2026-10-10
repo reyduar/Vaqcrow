@@ -41,12 +41,12 @@ describe("ReportContributionTransactions (#438/WU5)", () => {
     expect(rows[0]).toHaveTextContent("100,0000000 XLM");
     expect(
       within(rows[0]!).getByRole("link", {
-        name: `Ver hash de la transacción ${HASH_A} en el explorador (abre en una pestaña nueva)`
+        name: `Ver en el explorador: hash de la transacción ${HASH_A} (abre en una pestaña nueva)`
       })
     ).toHaveAttribute("href", `https://explorer.example/tx/${HASH_A}`);
     expect(
       within(rows[0]!).getByRole("link", {
-        name: `Ver bóveda de Café Tostadero del Paraná ${VAULT} en el explorador (abre en una pestaña nueva)`
+        name: `Ver en el explorador: bóveda de Café Tostadero del Paraná ${VAULT} (abre en una pestaña nueva)`
       })
     ).toHaveAttribute("href", `https://explorer.example/contract/${VAULT}`);
     expect(within(rows[1]!).queryByRole("link")).not.toBeInTheDocument();

@@ -30,7 +30,7 @@ describe("PortfolioDistributions", () => {
     );
 
     const link = screen.getByRole("link", {
-      name: `Ver hash ${"a".repeat(64)} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: hash ${"a".repeat(64)} (abre en una pestaña nueva)`
     });
     expect(link).toHaveAttribute("href", "https://explorer.example/tx/a");
     expect(screen.getByTitle("b".repeat(64))).toBeInTheDocument();

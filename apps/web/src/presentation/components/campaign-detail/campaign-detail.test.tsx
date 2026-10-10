@@ -175,7 +175,7 @@ describe("CampaignDetail (detail sections)", () => {
     await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
     const aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
     const link = within(aside).getByRole("link", {
-      name: `Ver bóveda ${VAULT} en el explorador (abre en una pestaña nueva)`
+      name: `Ver bóveda en el explorador: bóveda ${VAULT} (abre en una pestaña nueva)`
     });
     expect(link).toHaveAttribute("href", url);
     expect(link).toHaveTextContent("Ver bóveda en el explorador");

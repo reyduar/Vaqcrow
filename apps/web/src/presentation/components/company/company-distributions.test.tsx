@@ -60,7 +60,7 @@ describe("CompanyDistributions proof (#438/WU5)", () => {
     expect(screen.getByTitle(HASH_A)).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAccessibleName(`Ver hash ${HASH_B} en el explorador (abre en una pestaña nueva)`);
+    expect(links[0]).toHaveAccessibleName(`Ver en el explorador: hash ${HASH_B} (abre en una pestaña nueva)`);
     expect(links[0]).toHaveAttribute("href", `https://explorer.example/tx/${HASH_B}`);
     expect(screen.getAllByText(microcopy.hashTechnicalOnly)).toHaveLength(1);
   });

@@ -19,7 +19,7 @@ describe("ExplorerProof", () => {
     render(<ExplorerProof label="Hash de la transacción" value={HASH} explorerUrl={URL} />);
 
     const link = screen.getByRole("link", {
-      name: `Ver hash de la transacción ${HASH} en el explorador (abre en una pestaña nueva)`
+      name: `Ver en el explorador: hash de la transacción ${HASH} (abre en una pestaña nueva)`
     });
     expect(link).toHaveAttribute("href", URL);
     expect(link).toHaveAttribute("target", "_blank");
@@ -58,7 +58,7 @@ describe("ExplorerProof", () => {
 
     expect(screen.getByText("Evidencia faltante")).toBeInTheDocument();
     const link = screen.getByRole("link", {
-      name: "Ver bóveda de Panadería CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2 en el explorador (abre en una pestaña nueva)"
+      name: "Ver bóveda en el explorador: bóveda de Panadería CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2 (abre en una pestaña nueva)"
     });
     expect(link).toHaveTextContent("Ver bóveda en el explorador");
   });
