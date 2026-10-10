@@ -46,7 +46,7 @@ Memoria Engram: `decision/394-contact-and-terms`.
 ## Tareas (checklist)
 
 - [x] **WU1 — Contenido puro + test de términos prohibidos.** `application/about/copy.ts`, `application/guides/*` (guía emprendedores + inversión, 7 secciones c/u + ejemplo trabajado ARS 3.745.800 × 4,5 % = ARS 168.561,00), `application/help/faq.ts` (4 categorías + 9 FAQs). Test que espeja la denylist. — **Commit `e326a5a`.** Verificado (tier high, verificador independiente PASS).
-- [ ] **WU2 — Acerca de (`/about`).** Hero, «Misión y visión», «Pilares / ¿Qué es Vaqcrow?» (callout canónico no-production), «Sobre el creador» (foto `creador-gris.png`), «Hablemos» (4 links reales), monedas decorativas `aria-hidden`.
+- [x] **WU2 — Acerca de (`/about`).** Hero, «Misión y visión», «Pilares / ¿Qué es Vaqcrow?» (callout canónico no-production), «Sobre el creador» (foto `creador-gris.png`), «Hablemos» (4 links reales), monedas decorativas `aria-hidden`. — **Commit `5fd806b`.** Verificado (tier high, verificador independiente PASS).
 - [ ] **WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`).** Hero + TOC + 7 secciones c/u + CTA + footer estándar.
 - [ ] **WU4 — Centro de ayuda (`/help`).** Hero + buscador + 4 categorías + acordeón FAQ (`aria-expanded`) + estado vacío «No encontramos resultados para "…"» + bloque de contacto + aviso «Próximamente».
 - [ ] **WU5 — Modal Términos + trigger + nav `/help`.** Modal de T&C; trigger de «Términos»; entrada `/help` en el nav.
@@ -73,3 +73,12 @@ Por WU: `pnpm --filter @vaqcrow/web test` + typecheck + lint. Al cierre: `pnpm r
 - RED→GREEN: import sin resolver → 15 pasando. Suite web: 195 archivos / 1979 tests.
 - **Hallazgo (resuelto):** la denylist (`/garantiz/`, `/garantía/`, `/asegur/`, `/retorno/`) choca con el copy **honesto** del template («no garantiza…», «Sin retorno garantizado», «asegurate de tener»). Se resuelve como el precedente del repo: se exceptúan las 7 frases de disclaimer (cada una asserted presente para que la cobertura no envejezca) antes de correr la denylist; una promesa real igual falla. Verificador independiente: **PASS** (exención exacta y sound).
 - Pendiente para WU2: el CTA «Ver perfil profesional completo» no tiene destino decidido (template `#`) — propuesta: → LinkedIn del owner.
+
+### WU2 — Acerca de (`/about`) · commit `5fd806b`
+
+- Código: `app/about/page.tsx` (ruta pública fuera de `(app)`, sin gate) + `presentation/components/about/*` (hero + stack, misión, pilares con `CanonicalDisclosure id="no-production"`, creador con foto/estadísticas/CTA LinkedIn, hablemos con los 4 links reales, monedas decorativas `aria-hidden`/`pointer-events-none`); asset `public/creador-gris.png` copiado del template.
+- Tests: `app/about/page.test.tsx` (6).
+- RED→GREEN: `./page` sin resolver → 6 pasando.
+- El CTA del creador → LinkedIn del owner (decisión); se corrigió un comentario de procedencia contradictorio en `copy.ts`.
+- Verificador independiente (tier `high`): **PASS**. El writer reportó `partial` solo por flakiness de la suite completa (timeouts de 5s bajo carga en archivos ajenos, ya visto en #418); el test de `/about` pasa y typecheck/lint limpios.
+- Nota: esta rama predata #418, así que `AppShell` no tiene `fullBleed`/`footer`; las bandas a sangre se aproximan con `-mx-8 border-y` contra el contenedor del shell. A reconciliar al mergear #468.
