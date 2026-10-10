@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
-import { disclosures } from "@/application/trust/disclosures";
+import { disclosures, microcopy } from "@/application/trust/disclosures";
 import { SessionStoreProvider } from "@/state/session-store-provider";
 import { FakeAuthSession } from "@/test/fake-auth-session";
 
@@ -48,12 +48,24 @@ afterEach(() => {
 });
 
 describe("Home landing (Feature #418)", () => {
-  it("is the landing, not a redirect to the journey, and keeps the shell footer", async () => {
+  it("is the landing, not a redirect to the journey, and renders a footer with the canonical disclosure", async () => {
     await renderHome(null);
 
     expect(redirect).not.toHaveBeenCalled();
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("No apto para producción")).toBeInTheDocument();
+  });
+
+  it("renders the landing's rich footer, not the compact shell footer", async () => {
+    await renderHome(null);
+
+    const footer = document.querySelector("footer");
+    expect(footer).not.toBeNull();
+    const rich = within(footer as HTMLElement);
+    expect(rich.getByRole("navigation", { name: "Plataforma" })).toBeInTheDocument();
+    expect(rich.getByText("Vaqcrow · Trabajo Fin de Máster · 2026")).toBeInTheDocument();
+    expect(rich.getByText(microcopy.testnetBadge)).toBeInTheDocument();
+    expect(rich.queryByText("Vaqcrow · 2026")).not.toBeInTheDocument();
   });
 
   it("opens with the hero heading and its primary CTA", async () => {
