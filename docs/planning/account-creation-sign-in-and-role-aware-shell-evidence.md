@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #369 ni de #378 está en `main`
 > Las PRs [#446](https://github.com/reyduar/Vaqcrow/pull/446) (#379) y [#447](https://github.com/reyduar/Vaqcrow/pull/447) (#380) están mergeadas en la **rama de la Feature** `Vaqcrow#378_Feat_Provide_account_creation_sign_in_and_a_role_aware_shell`, que a su vez se creó desde la rama de la Feature #369 (`8688136`), no en `main`. Por decisión del owner, #369 y #378 llegan **juntas** a `main`, junto con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). Verificado el 2026-10-03 con `git merge-base --is-ancestor`: ni `8688136` (base de la rama), ni `e6942af` (merge de #446), ni `3766b09` (merge de #447) son ancestros de `origin/main` (`aaee084`). La demo desplegada desde `main` sigue usando la sesión de demostración.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 El issue [#381](https://github.com/reyduar/Vaqcrow/issues/381) ("Task: Document evidence for account creation, sign-in and the role-aware shell") es la tercera Task de la Feature #378. La Feature permite crear una cuenta `INVERSOR` o `PYME`, ingresar con Supabase Auth real y navegar un header que cambia según haya sesión y según el rol verificado, siguiendo `Vaqcrow Onboarding.dc.html` y el menú de avatar del template. Depende de #369 (Supabase Auth, roles, RLS y autorización de la API; evidencia en [[docs/planning/supabase-auth-roles-and-authorization-evidence|Evidencia de #369]]).

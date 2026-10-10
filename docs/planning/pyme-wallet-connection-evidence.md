@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: la implementación y la evidencia están completas en la rama de integración; #406 no está en `main`
 > La rama activa `Vaqcrow#406_Feat_Connect_the_PyME_Freighter_wallet_before_review` está en el tip `0c740f8`. Los commits de implementación, pruebas y evidencia de #407/#408/#409 son ancestros de esta base actual; no hay trabajo de #406 integrado en `main`. El owner cerró manualmente #407, #408, #409 y #406 el 2026-10-06. La demo desplegada desde `main` todavía no conecta Freighter.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #406 permite que una PyME conecte (o cree) Freighter, demuestre que controla la cuenta firmando un challenge de un solo uso y guarde su public key en el perfil antes de que la solicitud llegue a revisión del admin. La key es el **destino inmutable** de la bóveda cuando el admin aprueba, y la conexión es no-custodial: Vaqcrow nunca recibe ni guarda un seed ni una clave privada. Entrega además el **wallet card** del template y un adaptador de Freighter **reutilizable por los flujos de inversor** a través del puerto existente. Depende de [#398](https://github.com/reyduar/Vaqcrow/issues/398) (wizard de alta de la PyME; evidencia en [[docs/planning/pyme-onboarding-wizard-and-document-upload-evidence|Evidencia de #398]]).

@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #430 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#430_Feat_Deliver_investor_reports`, apilada sobre la punta de #426. Nada llega a `main`: la **Opción A del owner** mergea la pila junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature; los commits WU1–WU4 son **locales** y este documento **no** reporta un estado mergeado ni de CI. La única pieza que ya está aplicada en el **proyecto remoto** es la migración de vistas de WU1, con autorización explícita del owner (§3.1).
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #430 entrega la vista **«Informes»** (template `Vaqcrow Informes.dc.html`): selector de período, KPIs con badge de fuente, gráfico de distribuciones mensuales con su tabla accesible, «Ventas declaradas por PyME» con error propio, «Últimas distribuciones», estados vacío/carga y exportación. Antes de esta Feature `/reports` era un **404 pendiente**: existía el ítem de menú `Informes → /reports` en `shell-nav.ts` (menú INVERSOR) sin ruta ni datos; el inversor no tenía un informe de su actividad.

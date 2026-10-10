@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #422 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#422_Feat_Show_campaign_detail_and_handle_contributions`, apilada sobre la punta de #414. Nada llega a `main`: la **Opción A del owner** mergea la pila junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #422 entrega la página de detalle de campaña (template `Vaqcrow Detalle PyME.dc.html`) y el flujo de aporte: compuerta de cuenta, modal «Revisión antes de firmar», redirección a la wallet y el KYC simulado del inversor en el primer aporte. El detalle sólo muestra campañas **publicadas** (misma definición que el marketplace de #414) y, por decisión del owner, **abrir el detalle exige cuenta** (la compuerta «Ingresá para ver esta campaña» del template).

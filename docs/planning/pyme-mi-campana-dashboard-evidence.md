@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #434 está en `main`
 > El trabajo vive en la rama `Vaqcrow#434_Feat_Deliver_the_PyME_Mi_campaña_dashboard`, creada desde la punta de #430 (`74237b1`). Nada llega a `main`: la **Opción A del owner** mergea la pila junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature; los commits WU1a–WU5 son **locales** y este documento **no** reporta un estado mergeado ni de CI. La única pieza que ya está aplicada en el **proyecto remoto** es la migración de vistas de WU1a, con autorización explícita del owner (§3.1).
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #434 entrega el dashboard **«Mi campaña»** (template `Vaqcrow Portafolio.dc.html`, **modo pyme**): tarjeta de wallet no custodial, stats («Fondeado» / «Aportantes»), «Bóveda y distribuciones» (vigentes e históricas) con orden «Recientes» / «Por estado», «Ventas declaradas · 2026», «Distribuciones» con la acción «Revisar y firmar», la declaración mensual de ventas, el dinero en **ARS + equivalente XLM** rotulado `SIMULADO`, y los estados de la solicitud antes y después de la decisión. `/company` era, antes de esta Feature, un `PageHeading` con el botón «Registrar mi PyME» y —si había wallet— la `WalletCard`: la PyME no veía el estado de su bóveda, sus ventas declaradas, sus distribuciones ni podía firmarlas.

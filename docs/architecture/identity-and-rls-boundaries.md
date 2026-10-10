@@ -12,8 +12,8 @@ status: accepted
 
 # Vaqcrow — Límites de identidad y RLS
 
-> [!important] Actualización 2026-10-01: el modelo de identidad ya existe, en la rama de la Feature
-> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación vive en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y todavía no está en `main`**: llega junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) en una entrega apilada. Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen `main` y el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6). Encima de esa pila, la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) agrega el bucket privado `pyme-documents` y sus políticas de `storage.objects` (§9.10), tampoco en `main`.
+> [!important] Actualización 2026-10-01 (estado al 2026-10-10): el modelo de identidad existe y está en `main`
+> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación se hizo en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y llegó a `main` junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) mediante [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (2026-10-10, merge `2b7e0d5`).** Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6). Encima de esa pila, la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) agrega el bucket privado `pyme-documents` y sus políticas de `storage.objects` (§9.10), también en `main` desde #466.
 
 > [!info] Objetivo
 > Registrar la decisión que resuelve el issue [#196](https://github.com/reyduar/Vaqcrow/issues/196): qué se hace con las dos tablas que hoy tienen RLS habilitada y cero políticas —`public.application_review` y `public.human_decision`—, por qué **todavía no** se escriben políticas de fila, y qué las desbloquea. Complementa [[docs/planning/supabase-schema-and-persistence-evidence|la evidencia del esquema y la persistencia]] (#13) y [[docs/planning/human-assessment-and-approval-evidence|la evidencia de la evaluación y aprobación humana]] (#19), que difieren este trabajo acá.
@@ -93,8 +93,8 @@ Cuando eso ocurra, las políticas se escriben como una **Task bajo la Feature qu
 
 ## 7. Lo que este documento no afirma
 
-- **No afirma que exista autenticación en `main`.** La implementación (§9) está en la rama de la Feature #369, apilada con #378, y no se fusionó a `main`.
-- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas en el esquema `public` son las de `profile` (§9.3); en la rama de #398/#399 se agregan las de `storage.objects` (§9.10).
+- **No afirma qué versión está desplegada.** La implementación (§9) está en `main` desde #466 (2026-10-10); mergeado no implica desplegado en Railway ni en Vercel.
+- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas en el esquema `public` son las de `profile` (§9.3); #398/#399 agregan las de `storage.objects` (§9.10).
 - **No afirma que la demo exponga estas tablas.** No hay hoy ninguna ruta, pantalla ni endpoint que las lea o escriba para un rol distinto de `service_role`.
 - **No afirma que el estado actual sea producto de una política.** Lo que deniega es el GRANT (§2).
 
@@ -107,7 +107,7 @@ Si en cambio se decide que la demo acotada **nunca** expondrá estas tablas a un
 ## 9. El modelo de identidad implementado (Task #370, rama de la Feature #369)
 
 > [!warning] Alcance de entrega
-> Todo lo de esta sección está en la rama de la Feature #369 y **no en `main`**. Se entrega apilado con #378: hasta entonces la demo desplegada conserva el comportamiento anterior. No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La sesión real de la web ya existe en la rama de #378 (§9.9) y el cliente HTTP sabe mandar `Authorization: Bearer`, pero los gateways del recorrido de seis pasos **no envían el token**: contra la API autorizada responden `401`. Es una ruptura conocida que se cierra al retirar el recorrido ([#438](https://github.com/reyduar/Vaqcrow/issues/438)), en la misma entrega a `main`: en la rama de #438 las seis rutas y esos gateways ya se borraron.
+> Todo lo de esta sección se implementó en la rama de la Feature #369 y llegó a `main` apilado con #378 mediante [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (2026-10-10). No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La sesión real de la web llegó con #378 (§9.9) y el cliente HTTP manda `Authorization: Bearer`. Los gateways del recorrido de seis pasos, que no enviaban el token y respondían `401` contra la API autorizada, se borraron con [#438](https://github.com/reyduar/Vaqcrow/issues/438) en la misma entrega a `main` (#466).
 
 ### 9.1 Roles y perfil
 
@@ -148,7 +148,7 @@ Confirmación de email activada: en local Mailpit captura los correos (`:54324`)
 
 ### 9.9 El lado web (Task #379, rama de la Feature #378)
 
-Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
+Todo esto se implementó en la rama de #378, apilada sobre #369, y está en `main` desde #466 (2026-10-10).
 
 | Pieza | Comportamiento |
 |---|---|
@@ -160,9 +160,9 @@ Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
 | `ADMIN` | Puede ingresar por `/login` y va a `/`; ninguna página pública enlaza a `/admin` (la consola es #386). |
 | Errores | Los del proveedor se reducen a códigos saneados (`invalid_credentials`, `email_not_confirmed`, `network`, `unavailable`, …); el proxy registra sólo `[Proxy] session read failed` con una `cause` saneada. |
 
-### 9.10 El bucket privado de documentos de la PyME (rama de #398/#399)
+### 9.10 El bucket privado de documentos de la PyME (#398/#399)
 
-En la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) —apilada, **no en `main`**— el wizard de alta de la PyME carga documentos y fotos a un bucket **privado** `pyme-documents` de Supabase Storage (`file_size_limit` 10 MB, `allowed_mime_types` PDF/JPEG/PNG). Las políticas viven en `storage.objects`, tabla gestionada por Storage que ya trae RLS y sus propios grants; a diferencia de las migraciones de `public`, la migración sólo agrega políticas y no toca `REVOKE`/`GRANT`. Quedan dos políticas de lectura:
+En la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) —en `main` desde #466 (2026-10-10)— el wizard de alta de la PyME carga documentos y fotos a un bucket **privado** `pyme-documents` de Supabase Storage (`file_size_limit` 10 MB, `allowed_mime_types` PDF/JPEG/PNG). Las políticas viven en `storage.objects`, tabla gestionada por Storage que ya trae RLS y sus propios grants; a diferencia de las migraciones de `public`, la migración sólo agrega políticas y no toca `REVOKE`/`GRANT`. Quedan dos políticas de lectura:
 
 - `pyme_documents_owner_read`: el dueño lee los objetos cuyo primer segmento de ruta es su propio `auth.uid()`. La ruta es `<user_id>/<kind>/<uuid>-<nombre-saneado>`, con `kind ∈ {sales-declarations, cuit, articles-of-incorporation, photo}`.
 - `pyme_documents_admin_read`: un `ADMIN` (`public.profile.role = 'ADMIN'`) lee todo el bucket.

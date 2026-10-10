@@ -5,6 +5,8 @@
 > [!warning] Estado de entrega: nada de #414 está en `main`
 > El trabajo vive en la rama de integración `Vaqcrow#414_Feat_Explore_PyMEs_marketplace_and_campaign_listing_API`, apilada sobre la punta de la pila #406/#410/#382/#386 (`8856864`). Nada llega a `main`: la **Opción A del owner** mergea la pila junta con el retiro del recorrido de seis pasos ([#438](https://github.com/reyduar/Vaqcrow/issues/438)). No hay PR ni merge en esta Feature y este documento no reporta un estado mergeado. La demo desplegada desde `main` todavía no muestra el marketplace público.
 
+> [!info] 2026-10-10 — Mergeado en `main` vía [#466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`).
+
 ## 1. Contexto y objetivo
 
 La Feature #414 entrega el marketplace público **«Explorar PyMEs»** y el endpoint de listado de campañas que lo alimenta. Sólo aparecen campañas **publicadas**: la bóveda quedó confirmada (`campaign_deployment.state = 'confirmed'`) **y** la campaña está abierta (`campaign.state = 'open'`). Un visitante **sin cuenta** navega, busca, filtra, ordena y ve la foto real de cada PyME; **abrir el detalle de una campaña sí exige cuenta** (Feature de detalle, [#422](https://github.com/reyduar/Vaqcrow/issues/422)).

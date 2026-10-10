@@ -358,7 +358,7 @@ tests
 | Variable | Valor | Descripción |
 |---|---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `https://api-production-c07f.up.railway.app` | URL de la API en Railway |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto remoto de Supabase | Sesión real de Supabase Auth en la web (Task #379, rama de #378) |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto remoto de Supabase | Sesión real de Supabase Auth en la web (Task #379, #378; en `main` desde #466) |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publicable del mismo proyecto | Pensada para el navegador (RLS acota el acceso); **nunca** la `service_role` |
 
 `pnpm demo:preflight` exige las tres en su chequeo de la web (`env-web`). Detalle en [[docs/architecture/environments|Perfiles de entorno]] §13.4.
@@ -754,7 +754,7 @@ export default defineConfig({
 ### Tests E2E — Estructura
 
 > [!info] Plan anterior a #438 (nota del 2026-10-10)
-> Esta estructura es el plan original, organizado alrededor del recorrido guiado de seis pasos. La rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) retiró ese recorrido: los specs reales de `apps/web/e2e/` son por rol (`auth-roles`, `app-header`, `pyme-onboarding`, `admin-review`) y el ensayo en vivo es `apps/web/e2e-live/admin-review.live.spec.ts`.
+> Esta estructura es el plan original, organizado alrededor del recorrido guiado de seis pasos. [#438](https://github.com/reyduar/Vaqcrow/issues/438) retiró ese recorrido (en `main` desde #466, 2026-10-10): los specs reales de `apps/web/e2e/` son por rol (`auth-roles`, `app-header`, `pyme-onboarding`, `admin-review`) y el ensayo en vivo es `apps/web/e2e-live/admin-review.live.spec.ts`.
 
 ```
 apps/web/e2e/
