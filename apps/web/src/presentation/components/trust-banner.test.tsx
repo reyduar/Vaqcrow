@@ -40,11 +40,11 @@ describe("TrustBanner", () => {
         title="Respuesta de respaldo"
         body="Respuesta de respaldo previamente generada; no corresponde a una llamada en vivo"
         badge={{ variant: "fallback", label: "RESPUESTA DE RESPALDO" }}
-        link={{ href: "/evidence", label: "Ver evidencia" }}
+        link={{ href: "/portfolio", label: "Ver evidencia" }}
       />
     );
 
     expect(screen.getByText("RESPUESTA DE RESPALDO")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ver evidencia" })).toHaveAttribute("href", "/evidence");
+    expect(screen.getByRole("link", { name: "Ver evidencia" })).toHaveAttribute("href", "/portfolio");
   });
 });

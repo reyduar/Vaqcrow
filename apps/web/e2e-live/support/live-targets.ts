@@ -31,21 +31,3 @@ export const LIVE_DB_CONTAINER = "supabase_db_vaqcrow";
 
 /** One stroop, as a bigint multiplier — 1 XLM = 10_000_000 stroops. */
 export const STROOPS_PER_XLM = 10_000_000n;
-
-export function xlmToStroops(xlm: number): bigint {
-  return BigInt(Math.round(xlm * Number(STROOPS_PER_XLM)));
-}
-
-/**
- * `apps/web/src/application/fixtures/demo-application.ts`'s fixed id,
- * duplicated literally — `e2e-live/` must not import from `src/`, the same
- * "cross-boundary fixture literals are duplicated on purpose" convention
- * `apps/web/e2e/support/targets.ts` already documents. The real `/funding`
- * route never overrides `CampaignWorkspace`'s `applicationId` prop
- * (`apps/web/src/app/(demo)/funding/page.tsx`), so this is the *only*
- * application id the real "Abrir bóveda" form can ever open a vault for —
- * and therefore, on this local database, the only application that can ever
- * have more than one campaign-open attempt resolve to the *same* campaign
- * (idempotent replay, `openCampaign`'s own `findByApplicationId` check).
- */
-export const DEMO_APPLICATION_ID = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";

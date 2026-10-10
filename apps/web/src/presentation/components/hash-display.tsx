@@ -11,9 +11,8 @@ import { Button } from "./button";
  * available to assistive tech (`title` plus a visually-hidden `sr-only`
  * span) and copyable via `navigator.clipboard`. Presentational only — the
  * caller supplies the already-known value and, optionally, an explorer URL;
- * this component never talks to the network or derives a link itself,
- * mirroring `campaign-workspace.tsx`/`funding-workspace.tsx`'s existing "the
- * API supplies the link" rule.
+ * this component never talks to the network or derives a link itself: the
+ * API supplies the link.
  *
  * The TESTNET context is the canonical `microcopy.testnetBadge` rendered
  * through the shared `Badge`, the same pair every other Testnet-context

@@ -5,20 +5,16 @@ import { type AccessTokenProvider, AxiosHttpClient } from "@/infrastructure/http
 import { HttpSmeRequestGateway } from "./http-sme-request-gateway";
 
 /**
- * Builds the SME-request gateway from the API base URL and, when given, the
- * session's access token. `null` when no backend is configured: callers then
- * run on synthetic fixtures only. Without a provider no `Authorization` header
- * is sent (the legacy scripted journey).
+ * Builds the SME-request gateway from the API base URL and the session's
+ * access token. `null` when no backend is configured.
  */
 export function createSmeRequestGateway(
   baseUrl: string | undefined,
-  accessToken?: AccessTokenProvider
+  accessToken: AccessTokenProvider
 ): SmeRequestGateway | null {
   const trimmed = baseUrl?.trim();
   if (!trimmed) return null;
-  return new HttpSmeRequestGateway(
-    AxiosHttpClient.create({ baseUrl: trimmed, ...(accessToken ? { accessToken } : {}) })
-  );
+  return new HttpSmeRequestGateway(AxiosHttpClient.create({ baseUrl: trimmed, accessToken }));
 }
 
 /**

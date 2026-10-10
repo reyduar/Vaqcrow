@@ -8,8 +8,7 @@ const FOOTER_COPYRIGHT = "Vaqcrow · 2026";
 /**
  * Page frame of the role-based app (`/`, `/portfolio`, `/company`): the
  * role-aware header, the template's 1264 px container and the canonical
- * footer with the "No apto para producción" disclosure — the same footer the
- * journey shell uses.
+ * footer with the "No apto para producción" disclosure.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (

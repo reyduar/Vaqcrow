@@ -50,9 +50,9 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * never a public URL).
  *
  * U5 adds the human decision write (`POST …/decisions`, body exactly
- * `{ decisionId, outcome, reason, approvedLimitArs }`). The legacy
- * `http-human-decision-gateway.ts` sends an `actor` the API now refuses, so it
- * is not reused: the actor is the verified admin and is never sent.
+ * `{ decisionId, outcome, reason, approvedLimitArs }`). The retired journey's
+ * human-decision gateway sent an `actor` the API now refuses: the actor is
+ * the verified admin and is never sent.
  *
  * U6 adds the vault-deployment read (`GET …/deployment`) and the deploy/retry
  * write (`POST …/deployment`, empty body). Both bodies are `{ deployment }` and

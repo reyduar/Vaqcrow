@@ -6,7 +6,7 @@ import { Button, type ButtonVariant } from "./button";
  * action rendered through the shared `Button` — e.g. "Limpiar filtros" on
  * `Explorar PyMEs` when no campaign matches the active filters. Distinct
  * from HeroUI's own `EmptyState` (a minimal "no results" placeholder meant
- * for a `ListBox` popover, already used inside `combo-box.tsx`): this one is
+ * for a `ListBox` popover): this one is
  * a full section-level state with a title, a decorative icon and an action.
  */
 export interface EmptyStateAction {

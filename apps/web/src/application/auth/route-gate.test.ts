@@ -43,7 +43,7 @@ describe("gateRoute", () => {
     expect(gateRoute(pathname, null)).toBeNull();
   });
 
-  it.each(["/", "/request", "/explore", "/portfolios", "/companyx"])("leaves %s alone", (pathname) => {
+  it.each(["/", "/help", "/explore", "/portfolios", "/companyx"])("leaves %s alone", (pathname) => {
     expect(gateRoute(pathname, null)).toBeNull();
     expect(gateRoute(pathname, as("PYME"))).toBeNull();
   });

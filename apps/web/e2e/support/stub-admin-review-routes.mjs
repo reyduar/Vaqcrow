@@ -286,12 +286,8 @@ export async function tryHandleAdminReviewRequest(request, response, method, pat
   const isStorageRead = method === "GET" && pathname === "/storage/uploads";
   const contextMatch = CONTEXT_PATH.exec(pathname);
   const verdictMatch = VERDICT_PATH.exec(pathname);
-  // Decisions for any other application stay with the legacy `/approval` double in
-  // `stub-api-server.mjs` (its gateway still sends an `actor`), so only this
-  // review's id is claimed here.
-  const rawDecisionMatch = method === "POST" ? DECISION_PATH.exec(pathname) : null;
-  const decisionMatch =
-    rawDecisionMatch && decodeURIComponent(rawDecisionMatch[1]) === REVIEW_APPLICATION_ID ? rawDecisionMatch : null;
+  // Every decision write is claimed here; an unknown application is a truthful 404.
+  const decisionMatch = method === "POST" ? DECISION_PATH.exec(pathname) : null;
   const deploymentMatch = DEPLOYMENT_PATH.exec(pathname);
   const evidenceMatch = method === "GET" ? EVIDENCE_PATH.exec(pathname) : null;
   if (!isQueue && !isStorageRead && !contextMatch && !verdictMatch && !decisionMatch && !deploymentMatch && !evidenceMatch) {

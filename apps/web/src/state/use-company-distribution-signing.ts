@@ -21,7 +21,7 @@ import type {
  * resolve the persisted SME account, prepare the distribution, sign it in
  * Freighter, submit it, and read its status back. It reuses the shipped
  * `RevenueShareDistributionGateway` port and the same signed → sent → confirmed
- * discipline the scripted workspace applies — `submitted` never renders as
+ * discipline the retired journey's distribution step applied — `submitted` never renders as
  * confirmed.
  *
  * The source account is the wallet the PyME linked during onboarding

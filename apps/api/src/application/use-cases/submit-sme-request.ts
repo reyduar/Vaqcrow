@@ -8,7 +8,7 @@ import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
 /**
  * Submits the SME request and creates the application it belongs to. The
  * application id is generated here, server-side, and is the root identifier of
- * the whole demo journey: the caller never supplies it.
+ * the whole application lifecycle: the caller never supplies it.
  *
  * Validation uses the shared contract and reports only sanitized
  * `{ field, code }` pairs — the envelope `apps/web` already understands. Raw

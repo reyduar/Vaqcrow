@@ -31,7 +31,7 @@ const PORTFOLIO_HREF = "/portfolio";
 
 /**
  * Maps a withdraw failure to the review modal's signing state, the same mapping
- * `campaign-workspace.tsx` and `campaign-contribution.tsx` use: `wallet_rejected`
+ * `campaign-contribution.tsx` uses: `wallet_rejected`
  * is the only failure the modal calls a signature rejection; a wrong network
  * blocks signing through the network state; every other failure is the closest
  * existing prop, `verification-rejected`. No new modal state is invented.

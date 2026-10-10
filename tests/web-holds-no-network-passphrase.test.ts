@@ -137,9 +137,10 @@ describe("the scanned surface", () => {
 
     expect(WEB_SOURCE_FILES.length).toBeGreaterThan(60);
     expect(names).toContain("freighter-wallet.ts");
-    expect(names).toContain("funding-workspace.tsx");
-    expect(names).toContain("use-funding-intent.ts");
-    expect(names).toContain("http-funding-intent-gateway.ts");
+    // The signing flows that receive the passphrase from the API response.
+    expect(names).toContain("campaign-contribution.tsx");
+    expect(names).toContain("use-campaign-vault.ts");
+    expect(names).toContain("use-company-distribution-signing.ts");
   });
 });
 

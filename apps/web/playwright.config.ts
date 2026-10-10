@@ -56,7 +56,7 @@ export default defineConfig({
     {
       name: "next",
       command: `next dev --hostname 127.0.0.1 --port ${APP_PORT}`,
-      url: `${APP_BASE_URL}/request`,
+      url: `${APP_BASE_URL}/login`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
       env: {

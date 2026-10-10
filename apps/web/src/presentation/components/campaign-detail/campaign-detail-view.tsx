@@ -66,7 +66,7 @@ const RISK_ICON: Readonly<Record<RiskBandValue, IconType>> = {
   high: IoWarningOutline
 };
 
-/** Mirror of the campaign vocabulary `evidence-timeline.ts` and `campaign-workspace.tsx` render. */
+/** The campaign status vocabulary (inherited from the retired journey's funding and evidence steps). */
 const STATUS_LABEL: Readonly<Record<CampaignDetail["status"], string>> = {
   funding: "Fondeo abierto",
   settled: "Meta alcanzada",

@@ -32,7 +32,7 @@ import {
   type TransactionReviewSigningState
 } from "../transaction-review-modal";
 
-/** Module scope keeps the default ports stable across renders (mirrors `campaign-workspace`). */
+/** Module scope keeps the default ports stable across renders. */
 const defaultWallet = new FreighterWallet();
 const defaultGateway = createCampaignGateway(process.env["NEXT_PUBLIC_API_BASE_URL"]);
 
@@ -42,8 +42,8 @@ const PORTFOLIO_HREF = "/portfolio";
 const MIN_AMOUNT_HELPER = `Activo de prueba sin valor económico · mínimo ${MIN_CONTRIBUTION_XLM} XLM`;
 
 /**
- * Maps a contribute failure to the review modal's signing state, the same
- * mapping `campaign-workspace.tsx` uses (D5): `wallet_rejected` is the only
+ * Maps a contribute failure to the review modal's signing state (D5, the
+ * mapping the retired journey's funding step used): `wallet_rejected` is the only
  * failure the modal calls a signature rejection; a wrong network blocks
  * signing through the network state; every other failure is the closest
  * existing prop, `verification-rejected`. No new modal state is invented.

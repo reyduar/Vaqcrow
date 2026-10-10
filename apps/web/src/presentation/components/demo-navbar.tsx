@@ -25,8 +25,7 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   (`flex-wrap:nowrap; overflow-x:auto`), the role-aware header's nav never
  *   wraps its items from the `@md` width up: it takes the free space and
  *   scrolls sideways if it ever runs out. The collapsed narrow-screen
- *   disclosure still wraps. Opt-in, so the six-step journey (more items,
- *   retired by #438) keeps wrapping as before.
+ *   disclosure still wraps. Opt-in; without it the nav wraps its items.
  * - **Room for wider text (`singleLineNav`).** The 44 px theme buttons
  *   (`demo-ui.md` §5.6; template 36 px) cost 18 px the template never had,
  *   and Linux/Windows render the same labels ~4 % wider than macOS (the CI
@@ -40,8 +39,8 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   8 px side padding and no gap (template: 12 px plus a 4 px gap; text to
  *   text 16 px). Below `@6xl` the gaps stay at the template's values, so a
  *   scrolling nav never runs into the theme switcher.
- * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`
- *   (the six-step journey keeps it); the role-aware header passes the
+ * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`;
+ *   the role-aware header passes the
  *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
  *   `TESTNET` en encabezado fijo") and keeps the full note in its footer.
  * - **Brand token, not HeroUI accent.** The template's `--accent` is the

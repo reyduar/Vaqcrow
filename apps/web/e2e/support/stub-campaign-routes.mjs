@@ -21,10 +21,9 @@
  * the same "no test hooks in production shape" discipline `D2` applies to
  * the Freighter emulator applies here to the wire contract.
  *
- * `DEMO_APPLICATION_ID` is duplicated from `apps/web/src/application/fixtures/demo-application.ts`
- * on purpose, the same way `targets.ts` already duplicates it: `e2e/` must
- * not import from `src/`, and this is test-fixture data, not a shared
- * contract.
+ * `DEMO_APPLICATION_ID` is a literal placeholder id (the retired journey's
+ * former fixture id): `e2e/` must not import from `src/`, and this is
+ * test-fixture data, not a shared contract.
  */
 
 const DEMO_APPLICATION_ID = "5d1f7c2e-8a4b-4c6d-9e3f-1a2b3c4d5e6f";

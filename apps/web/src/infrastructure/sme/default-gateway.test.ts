@@ -35,15 +35,17 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+const TOKEN = async () => "token-123";
+
 describe("createSmeRequestGateway", () => {
-  it("returns null when no backend base URL is configured, so the demo runs on fixtures", () => {
-    expect(createSmeRequestGateway(undefined)).toBeNull();
-    expect(createSmeRequestGateway("")).toBeNull();
-    expect(createSmeRequestGateway("   ")).toBeNull();
+  it("returns null when no backend base URL is configured", () => {
+    expect(createSmeRequestGateway(undefined, TOKEN)).toBeNull();
+    expect(createSmeRequestGateway("", TOKEN)).toBeNull();
+    expect(createSmeRequestGateway("   ", TOKEN)).toBeNull();
   });
 
   it("returns a gateway when a base URL is configured", () => {
-    expect(createSmeRequestGateway("https://api.example.test")).not.toBeNull();
+    expect(createSmeRequestGateway("https://api.example.test", TOKEN)).not.toBeNull();
   });
 
   it("sends POST /sme-requests with the Bearer token from the given provider", async () => {
@@ -56,14 +58,6 @@ describe("createSmeRequestGateway", () => {
     expect(call.method).toBe("POST");
     expect(call.url).toBe("/sme-requests");
     expect(call.headers).toEqual({ Authorization: "Bearer token-123" });
-  });
-
-  it("keeps sending without Authorization when no provider is given (legacy scripted journey)", async () => {
-    const request = captureRequests();
-
-    await createSmeRequestGateway("https://api.example.test")!.submit(REQUEST);
-
-    expect(request.mock.calls[0]![0].headers).toBeUndefined();
   });
 });
 

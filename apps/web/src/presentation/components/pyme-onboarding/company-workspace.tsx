@@ -130,8 +130,7 @@ export function CompanyWorkspace({
 
   // The id is captured at its creation boundary: the wizard's send returns it,
   // and the wrapped gateway records it without the wizard knowing. The read is
-  // provider-free (`useSmeRequestState`), because `/company` mounts no journey
-  // store. A returning PyME with no in-session submit has no id and sees no
+  // provider-free (`useSmeRequestState`). A returning PyME with no in-session submit has no id and sees no
   // banner until an owner-scoped read exists (WU5 advisory).
   const effectiveApplicationId = capturedApplicationId ?? applicationId ?? null;
   const readState = useSmeRequestState(smeGateway, effectiveApplicationId);

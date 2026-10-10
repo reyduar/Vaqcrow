@@ -16,7 +16,7 @@ import type { PortfolioPositionStatus } from "@vaqcrow/contracts";
  *
  * Every string is reused verbatim from the shipped flows
  * (`campaign-withdraw.tsx`'s "Retirar mi aporte" / "Retirando…",
- * `campaign-workspace.tsx`'s "Reembolsar" / "Reembolsando…", and the custody
+ * the retired journey's "Reembolsar" / "Reembolsando…", and the custody
  * row), so the portfolio never invents copy the template did not design.
  */
 

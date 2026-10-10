@@ -4,8 +4,8 @@ import { microcopy } from "@/application/trust/disclosures";
 import { DemoNavbar, type DemoNavItem } from "./demo-navbar";
 
 const ITEMS: readonly DemoNavItem[] = [
-  { label: "Registro de PyME", href: "/request", current: true },
-  { label: "Mi campaña", href: "/portfolio" },
+  { label: "Explorar PyMEs", href: "/explore", current: true },
+  { label: "Mi campaña", href: "/company" },
   { label: "Cómo funciona", href: "/#como-funciona" }
 ];
 
@@ -66,7 +66,7 @@ describe("DemoNavbar", () => {
     expect(within(nav).getAllByRole("link")).toHaveLength(ITEMS.length);
     expect(within(nav).getByRole("link", { name: "Mi campaña" })).toHaveAttribute(
       "href",
-      "/portfolio"
+      "/company"
     );
     expect(within(nav).getByRole("link", { name: "Cómo funciona" })).toHaveAttribute(
       "href",
@@ -77,7 +77,7 @@ describe("DemoNavbar", () => {
   it("marks the current item with aria-current=page and a non-colour underline cue", () => {
     render(<DemoNavbar items={ITEMS} />);
 
-    const current = screen.getByRole("link", { name: "Registro de PyME" });
+    const current = screen.getByRole("link", { name: "Explorar PyMEs" });
     expect(current).toHaveAttribute("aria-current", "page");
     // The shape cue is a 2px underline; the brand token sets its colour.
     expect(current.className).toMatch(/\bborder-b-2\b/);

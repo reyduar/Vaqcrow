@@ -190,8 +190,8 @@ describe("local stub double determinism", () => {
   });
 
   it("pins the server-side literals the UI asserts on", () => {
-    expect(stub).toMatch(/const DECIDED_AT = "/);
-    expect(stub).toMatch(/const CORRELATION_ID = "/);
+    expect(stub).toMatch(/const APPLICATION_ID = "/);
+    expect(stub).toMatch(/const BUSINESS_CREATED_AT = "/);
   });
 
   it("listens on loopback only", () => {
@@ -284,8 +284,8 @@ describe("E2E sources stay outside the enforced workspace boundaries", () => {
         expect.stringContaining("local-only.ts"),
         expect.stringContaining("local-hosts.ts"),
         expect.stringContaining("targets.ts"),
-        expect.stringContaining("guided-journey.spec.ts"),
-        expect.stringContaining("human-decision.spec.ts")
+        expect.stringContaining("admin-review.spec.ts"),
+        expect.stringContaining("pyme-onboarding.spec.ts")
       ])
     );
   });
