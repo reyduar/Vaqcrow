@@ -135,9 +135,9 @@ export const ABOUT_COPY = Object.freeze({
       Object.freeze({ label: "Stack", value: "Stellar y Soroban" })
     ] as const),
     /**
-     * The template's href is a placeholder `#`; no real destination was
-     * decided (the owner's real links are the four «Hablemos» CTAs).
-     * Owner-pending, flagged in the WU1 report.
+     * The template's href is a placeholder `#`. Owner decision (2026-10-10):
+     * the real destination is the owner's LinkedIn profile — wired as
+     * `CREATOR_PROFILE_HREF` in `about-creator.tsx`.
      */
     profileCta: "Ver perfil profesional completo"
   }),
