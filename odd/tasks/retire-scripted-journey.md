@@ -34,7 +34,7 @@ La app por roles ya cubre el flujo, pero `/evidence` es la única pantalla que j
 
 Porción A — transparencia (backend)
 - [x] **WU1** Persistir hashes: `campaign_deployment.transaction_hash` (desde `factory.deploy().hash`) y tabla `campaign_contribution_transaction` (hash, campaña, inversor, monto, observado) escrita al confirmar un aporte; RLS + grants `service_role` en la misma migración; reversión en `supabase/tests/campaign_persistence.sql`. Local → remoto con autorización del owner.
-- [ ] **WU2** Ruta ADMIN de evidencia por solicitud (`GET /application-reviews/:applicationId/evidence`, en `route-policy.ts` + MATRIX de `authorization.test.ts`): decisión, despliegue (hash + URL), bóveda (dirección + URL), aportes[], distribuciones[] (`listByCampaign`), reconciliación guardada sin llamar a la cadena. Contrato en `packages/contracts` (+ barrel).
+- [x] **WU2** Ruta ADMIN de evidencia por solicitud (`GET /application-reviews/:applicationId/evidence`, en `route-policy.ts` + MATRIX de `authorization.test.ts`): decisión, despliegue (hash + URL), bóveda (dirección + URL), aportes[], distribuciones[] (`listByCampaign`), reconciliación guardada sin llamar a la cadena. Contrato en `packages/contracts` (+ barrel).
 - [ ] **WU3** Roles: `transactionHash` + `explorerUrl` en distribuciones de portafolio, informes y mis campañas; hashes de aporte en portafolio/informes; `vaultExplorerUrl` en portafolio, mis campañas y detalle de campaña. Vistas con columnas agregadas al final; contratos y rutas.
 
 Porción B — transparencia (web)
@@ -103,3 +103,46 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 
 - `observed_at` es el instante de la lectura de cadena que confirmó el éxito (`chainState.observedAt`), no el cierre del ledger.
 - Los aportes enviados antes de este cambio no tienen fila: se muestran «Sin dato».
+
+### WU2 — Ruta ADMIN con la cadena de evidencia Testnet por solicitud
+
+- **Commit:** `178fc2a` — `feat(api): serve the admin Testnet evidence chain per application (#438)`.
+- **Ruta:** delegada (writer único; trigger de escritura: 2+ archivos no triviales — contrato, puertos, use case, adaptadores, ruta, composición).
+- **Superficie agregada con autorización del owner:** `apps/api/src/index.ts` no estaba en las superficies iniciales; sin él la ruta quedaba registrada en `buildApp` pero no servida en producción. El owner autorizó sólo los 2 imports y la clave `adminApplicationEvidence` de `buildApp`.
+- **Sin migración:** todo se lee de columnas existentes (WU1 incluida).
+
+**Qué entrega**
+
+`GET /application-reviews/:applicationId/evidence`, `only("ADMIN")`, sólo lectura. Contrato `AdminApplicationEvidence` en `packages/contracts/src/admin-application-evidence.ts` (exportado en el barrel): `applicationId`, `applicationState`, `smeReference`, `companyName | null`; `decision | null` (`actor`, `outcome`, `reason`, `approvedLimitArs`, `decidedAt`); `deployment | null` (`state`, `campaignId | null`); `vault | null` (`contractAddress`, `vaultExplorerUrl`, `deployTransactionHash`, `deployExplorerUrl`, `state` en vocabulario `funding|settled|refunding`, `goalStroops`, `totalStroops`, `deadline`); `contributions[]` (hash, inversor, monto, `observedAt`, `explorerUrl`); `distributions[]` (id, estado, período, hash, `explorerUrl`, total y cantidad de destinatarios, `createdAt`, `confirmedAt`, `ledgerSequence`, `failureReason`); `reconciliation | null` (`status`, `lastReconciledAt`, `lastDivergedAt`). Stroops como string decimal; hashes hex de 64 en minúscula; un link de despliegue sin hash es irrepresentable (refine).
+
+**RED → GREEN**
+
+- Contrato: RED (módulo inexistente) → 12/12.
+- Use case `get-admin-application-evidence`: RED (módulo inexistente) → 18/18. Se corrigió un error del propio test: un parámetro por defecto tragaba el `undefined` explícito de la base del explorador.
+- `SupabaseCampaignRepository.listObservedContributionTransactions`: 4 fallando → 23/23 (el test de reconciliación guardada es de caracterización y pasó de entrada).
+- `SupabaseRevenueShareDistributionRepository.listByCampaign`: 3 fallando → 55/55.
+- Ruta (200, 200 con nulls, 401, 403 PYME/INVERSOR, 400, 404, 503 saneado, extremo a extremo con base de explorador indefinida → links `null`): RED (módulo inexistente) → verde.
+- `buildAdminApplicationEvidenceDependencies`: 2 fallando → 8/8.
+- `contractExplorerUrl`: el helper se escribió antes que su test; su RED no se observó.
+
+**Decisiones de diseño**
+
+1. **Puertos de lectura separados, sin agrandar los existentes** (lección de WU1): `CampaignContributionTransactionReadPort` (`observed_at IS NOT NULL`, orden `observed_at` + hash) y `RevenueShareDistributionCampaignReadPort.listByCampaign` (todos los estados, orden `created_at` + id). Los implementan los adaptadores Supabase existentes; ningún doble escrito a mano se rompió. `supabase-admin-application-evidence.ts` no hizo falta: el use case compone repositorios existentes.
+2. **La campaña se lee por `campaigns.findByApplicationId`**, no por el `campaignId` del despliegue: cubre tanto el despliegue por aprobación admin como `POST /campaigns`. La reconciliación es la **guardada** en el espejo; no se llama a la cadena.
+3. **404 vs 200:** revisión o solicitud inexistente → 404 (igual que `…/context`); sin decisión, despliegue, campaña o empresa → 200 con `null`/listas vacías; solicitud legada sin dueño → `companyName: null` sin leer empresas; cualquier otra lectura fallida → 503 `{ code: "unavailable" }` (nunca una cadena parcial).
+4. **Links al explorador armados en la API** (`transactionExplorerUrl` y el nuevo `contractExplorerUrl` en `explorer-url.ts`) desde `StellarConfig.explorerUrl`; con base indefinida (`local`) todos son `null`. La web no conoce la red.
+5. **Cableado independiente de `campaignVault.enabled`:** `buildAdminApplicationEvidenceDependencies` (en `campaign-dependencies.ts`) sólo lee Supabase, sin firmante ni cadena.
+6. **Desvío del brief:** `transactionHash` de distribución quedó **no nulo** (el brief pedía nullable): el tipo del registro y la columna `revenue_share_distribution.transaction_hash` son `NOT NULL`, así que `null` no puede ocurrir. Su `explorerUrl` sí es nullable.
+7. **Supuesto no verificado:** `revenue_share_distribution.transaction_hash` no tiene chequeo de formato en la base; la regla hex minúscula del contrato confía en el hash que produce el XDR. Los hashes de despliegue y de aporte sí tienen `CHECK (^[0-9a-f]{64}$)` (WU1).
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/contracts test`: «Test Files 24 passed (24) · Tests 646 passed (646)».
+- `pnpm --filter @vaqcrow/api test` (con `index.ts` cableado): «Test Files 124 passed (124) · Tests 2588 passed (2588)».
+- `pnpm run verify`: primera corrida exit 1 por 3 errores de lint en el test nuevo del use case (`_omitted` sin uso), corregidos con un helper `without()`; segunda corrida exit 0; tras cablear `index.ts`, tercera corrida exit 0 («no dependency violations found (1256 modules, 4150 dependencies cruised)»; única advertencia la preexistente `_request` de `@vaqcrow/web`).
+
+**Advertencias**
+
+- La ruta no tiene llamador web todavía: la vista admin llega en WU4.
+- Los aportes y despliegues anteriores a WU1 se ven como `null`/lista vacía («Sin dato»).
