@@ -204,7 +204,9 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - `supabase migration up --local`: aplicó `20261009160000_expose_transaction_hashes_in_role_views.sql`.
 - `pnpm run test:db`: «Files=23, Tests=869 … Result: PASS».
 - `pnpm run verify`: corrida 1 exit 1 (11 errores de lint por desestructuraciones `_x` sin uso en tests nuevos → helper `without()`); corrida 2 exit 2 (typecheck: índice posiblemente `undefined` en dos tests de contratos → `!`); corrida 3 exit 1 por timeout de 5 s en `pyme-onboarding-wizard.test.tsx` (ajeno, bajo carga); corrida 4 (reintento) exit 0 («no dependency violations found (1256 modules, 4156 dependencies cruised)»; única advertencia la preexistente de `@vaqcrow/web`).
-- **Remoto:** pendiente — lo aplica el orquestador con autorización del owner (este writer no toca el proyecto remoto).
+- **Remoto (2026-10-09, autorización del owner):** aplicada vía MCP `apply_migration` y `version` alineado a `20261009160000`. Verificado en el remoto: las cuatro vistas con `security_invoker=true`; `SELECT` sólo para `service_role` (nada para `anon`/`authenticated`); `transaction_hash` es la última columna de las tres vistas modificadas. Antes de aplicar se comprobó que `revenue_share_distribution` no tiene filas con un hash fuera de `^[0-9a-f]{64}$` (0 filas en total).
+
+**Verificación independiente** (RDD apagado): PASS con notas. Recorrió `7a1ae8e..dc9cb13`; ningún camino deja a un inversor ver hashes o distribuciones de otro, ni a una PyME campañas ajenas (cuenta resuelta desde el principal verificado; parámetros de query ignorados). Vistas sólo agregan columnas al final; reversión correcta. Re-ejecutó contracts (661), api (2617), web (2430), `test:db` (869, PASS), `boundaries` y `test:boundaries` (164). Notas: `revenue_share_distribution.transaction_hash` no tiene CHECK de formato en la base y la API no re-parsea su respuesta, así que un hash mal formado rompería la lectura en el cliente (hoy no hay filas); las transacciones de aporte sin posición se descartan en el portafolio.
 
 **Advertencias**
 
