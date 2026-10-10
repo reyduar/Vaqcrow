@@ -68,7 +68,6 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 - Copy: `application/distribution/derivation-failure-copy.ts` (vivo en la firma de distribución de la PyME) dice «Retome el recorrido…» en tres mensajes.
 - El dataset simulado de ventas de la API ya no tiene gemelo web: la guarda `tests/monthly-sales-feed-parity*` se borró en WU6 y nada compara las dos copias.
 - Opcional: `CHECK (^[0-9a-f]{64}$)` en `revenue_share_distribution.transaction_hash`, como ya tienen los hashes de despliegue y de aporte (WU2/WU3: hoy no hay filas mal formadas).
-- Docs fuera de las superficies de WU7 que todavía describen las seis rutas como vigentes: `docs/guides/freighter-and-testnet-walkthrough.md` (guía viva, 15 menciones, tabla y pasos por ruta) y `docs/design/demo-ui.md` (tabla pantalla → ruta, ya superada por la regla de rutas en inglés). `docs/design/claude-design-brief.md` y `claude-design-continuation-pack.md` son briefs históricos.
 
 ## Progreso
 
@@ -453,4 +452,36 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 
 - `cmp AGENTS.md CLAUDE.md`: sin diferencias.
 - Barrido `rg` (seis rutas, `(demo)`, `journey-store`, `full-journey`, `campaign-vault.live`, `evidence-workspace`) en Markdown fuera de `*-evidence.md` y `odd/`: las menciones que quedan en README, gemelos, `DEMO.md`, `demo-run-preflight.md`, `environments.md` y `demo-tasks-list.md` describen `main` o el retiro; las restantes están en los cuatro archivos fuera de superficie listados arriba.
+- `pnpm run verify`: exit 0 en la primera corrida (contracts 661, domain 120, ai 143, api 2617, web 1964; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
+
+### WU7b — Guía del operador y notas de diseño
+
+- **Commit:** `13ea32f` — `docs: rewrite the Freighter and Testnet walkthrough for the role workflows (#438)`.
+- **Decisión del owner (2026-10-10):** reescribir la guía viva del operador para los flujos por rol y agregar notas fechadas, sin reescribir la historia, en los tres documentos de diseño que WU7 había dejado fuera de superficie.
+- **Ruta:** delegada (writer único; trigger de escritura: guía reescrita + tres notas + bitácora). Sin RED: cambio sólo de documentación; el chequeo es estructural (barrido `rg`, `cmp`) más `pnpm run verify`.
+
+**Qué se tocó**
+
+| Archivo | Cambio |
+|---|---|
+| `docs/guides/freighter-and-testnet-walkthrough.md` | Reescrita: callout «2026-10-10 — #438: qué cambió» (las seis rutas responden 404, sin redirección; la rama no está en `main`), ruta rápida, tabla de los tres roles y qué firma cada uno, y el recorrido PyME (alta «Soy PyME», wizard «Registrar mi PyME», «Enviar a revisión» con Freighter obligatorio) → ADMIN (`/admin`, cola, revisión, «Aprobar con límite», despliegue) → INVERSOR (`/explore`, `/campaigns/[id]`, KYC simulado, «Aportar a la campaña», «Firmar en Freighter», «Enviada · pendiente de confirmación») → PyME (`/company`, «Declarar ventas», «Revisar y firmar») → evidencia por rol y cadena admin. Se conservan Freighter, Testnet, Friendbot, la regla no custodia, la passphrase, los tres estados, el reembolso sin permisos, «Qué NO hacer» y la corrección del 2026-09-25. Se quitó la nota de la fecha límite a las 00:00 UTC (el plazo ahora sale del wizard). |
+| `docs/design/demo-ui.md` | Nota «2026-10-10 — #438» antes de la tabla pantalla → ruta: rutas retiradas, vale la regla de rutas en inglés, evidencia por rol y cadena admin. |
+| `docs/design/claude-design-brief.md` | Nota fechada bajo el aviso inicial: brief histórico, sus rutas «heredadas» se retiraron. |
+| `docs/design/claude-design-continuation-pack.md` | Nota fechada bajo el aviso inicial: pack histórico, `/request` y `/funding` se retiraron. |
+
+**Verificado contra el código** (rama de #438, sin ejecución en vivo)
+
+- Rutas: árbol de `apps/web/src/app` (`/`, `/login`, `/signup`, `/company`, `/portfolio`, `/reports`, `/explore`, `/campaigns/[id]`, `/admin`, `/admin/pymes`, `/admin/pymes/[applicationId]`, `/admin/pymes/[applicationId]/evidence`).
+- Alta e ingreso: «Soy PyME» / «Soy inversor», «Nombre completo» / «Nombre o Razón Social», rechazo por selector incorrecto y redirección `INVERSOR` → `/portfolio`, `PYME` → `/company` (`application/auth/auth-form.ts`); `/admin` es la pantalla de ingreso y lleva a `/admin/pymes` (`admin-guard.ts`).
+- Wizard: pasos «KYC», «Registro PyME», «Evaluación AI», «Revisión humana»; «Iniciar verificación simulada», «KYC aprobado · SIMULADO», «Siguiente paso», «Completar con datos de ejemplo», «Enviar a evaluación AI», «Continuar» / «Corregir datos», «Conectar Freighter», «Obligatorio», «Enviar a revisión», «En proceso», «Solicitud enviada · en revisión.» (`application/pyme-onboarding/*-step.ts`). Conectar la wallet firma un **mensaje** (`wallet.signMessage` del challenge, `wallet-connection.ts`), no una transacción; la guía lo dice así.
+- Admin: «Pendiente de revisión», «Revisar solicitud» (`queue.ts`); «1 · KYC/KYB», «2 · Recomendación de IA» con «Consultiva · no aprueba», «3 · Decisión humana», «Aprobar con límite», «Registrar decisión» → «Confirmar» (`kyc.ts`, `assessment.ts`, `decision.ts`); estados del despliegue hasta «Bóveda confirmada / PyME publicada», «Actualizar», «Desplegar», «Reintentar» (`deployment.ts`). La aprobación dispara el despliegue en segundo plano (`record-human-decision.ts`); el alta de la cuenta de la PyME con 2 XLM sigue en `open-campaign.ts`.
+- Inversor: «Ver evidencia y riesgo» → `/campaigns/{id}` (`marketplace/view-model.ts`), «Ingresá para ver esta campaña», «Aportar a la campaña», sin wallet → `/portfolio`, «Firmar en Freighter», «Enviada · pendiente de confirmación», «Retirar mi aporte» / «Reembolsar» (`portfolio/actions.ts`), estados «Fondeo abierto» / «Meta alcanzada» / «Reembolso disponible» (`company/campaign-state.ts`).
+- PyME: «Bóveda y distribuciones», «Distribuciones», «Enviar declaración», «Consultar estado», «Ver la transacción en el explorador», «Cálculo determinístico; la IA no calcula esta obligación» (`company/copy.ts`, `company-declare-sales.tsx`, `company-sign-distribution.tsx`).
+
+**Etiquetas owner-pending** (marcadas en la guía con una nota al pie, sin inventar copy): «Aprobar y continuar» (KYC del inversor, #422), «Declarar ventas» y «Revisar y firmar» (#434), «Tus transacciones de aporte», «Aportes en el período» y «Ver bóveda en el explorador» (WU5), «Evidencia», «Ver evidencia Testnet» y los títulos «1 · Solicitud» … «6 · Reconciliación» de la cadena admin (WU4).
+
+**Verificación**
+
+- Barrido `rg -n '"?/(request|ai-assessment|approval|funding|distribution|evidence)\b' docs/guides docs/design`: las menciones que quedan están en las notas fechadas, en el texto histórico de los dos briefs y de `demo-ui.md`; tres falsos positivos del patrón (`/admin/pymes/[applicationId]/evidence` en la guía; «warnings/evidence» y «distribution-pending» en un prompt en inglés de `demo-ui.md`).
+- `cmp AGENTS.md CLAUDE.md`: sin diferencias (no se tocaron).
 - `pnpm run verify`: exit 0 en la primera corrida (contracts 661, domain 120, ai 143, api 2617, web 1964; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
