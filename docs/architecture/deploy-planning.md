@@ -753,6 +753,9 @@ export default defineConfig({
 
 ### Tests E2E — Estructura
 
+> [!info] Plan anterior a #438 (nota del 2026-10-10)
+> Esta estructura es el plan original, organizado alrededor del recorrido guiado de seis pasos. La rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) retiró ese recorrido: los specs reales de `apps/web/e2e/` son por rol (`auth-roles`, `app-header`, `pyme-onboarding`, `admin-review`) y el ensayo en vivo es `apps/web/e2e-live/admin-review.live.spec.ts`.
+
 ```
 apps/web/e2e/
 ├── journey.spec.ts          # Journey completo: request → distribution

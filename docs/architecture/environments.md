@@ -163,7 +163,7 @@ pnpm env:docker:up                            # levanta el contenedor de la API 
 ## 12. Recorrido Playwright en vivo (`pnpm test:e2e:live`)
 
 > [!info] Objetivo
-> Manejar la página real de fondeo contra la API del perfil docker (con la red local del §11 ya arriba) en vez del doble determinístico — cuenta real de la PyME, contrato real, Horizon real. Es **opt-in**, no forma parte de `pnpm run test:e2e`, de `pnpm run verify` ni de CI: se corre a mano, cuando hace falta verificar el recorrido contra la cadena, del mismo modo que `test:integration` de `apps/api` ([[README|README]], `CLAUDE.md`).
+> Ensayar el flujo por roles real contra la API del perfil docker (con la red local del §11 ya arriba) en vez del doble determinístico — cuenta real de la PyME, contrato real, Horizon real. Es **opt-in**, no forma parte de `pnpm run test:e2e`, de `pnpm run verify` ni de CI: se corre a mano, cuando hace falta verificar el flujo contra la cadena, del mismo modo que `test:integration` de `apps/api` ([[README|README]], `CLAUDE.md`).
 
 **Requisitos previos** (§11, en orden): `pnpm env:docker:bootstrap` → `./scripts/env/generate-docker-env.sh --force` → `pnpm env:docker:up`. `apps/web/e2e-live/support/global-setup.ts` falla rápido, con esas mismas instrucciones en el mensaje, si la API (`/health`), el RPC de Soroban (`getHealth`) o las rutas de campaña no responden.
 
@@ -172,22 +172,15 @@ pnpm run test:e2e:live                       # desde la raíz
 pnpm --filter @vaqcrow/web run test:e2e:live # equivalente, filtrado al workspace
 ```
 
-**Qué cubre:**
+**Qué cubre:** `apps/web/e2e-live/admin-review.live.spec.ts` (Feature #410, U9). Una PyME real se registra y envía su solicitud por el wizard, el admin la revisa y la aprueba en `/admin`, la bóveda con tope se despliega en la red local y liquida: Horizon confirma la cuenta de la PyME y el saldo que recibe. Donde la UI por rol no tiene control para un paso, el ensayo llama a la misma ruta real que usaría el producto y lo dice en el título del paso: la cotización (`POST /admin/rates`) y los aportes de los inversores (`POST /campaigns/:id/invocations[/submission]`, firmados en el proceso de Playwright).
 
-| Escenario | Qué verifica |
-|---|---|
-| Abrir la bóveda | Freighter emulado conecta como la PyME (sin firmar nada); la vista de campaña queda en `Fondeo abierto`; Horizon confirma que la cuenta de la PyME existe después de abrir |
-| Aportar y retirar | Un inversor aporta y retira su propio aporte; el total de la campaña y el saldo del inversor en Horizon reflejan cada paso |
-| Liquidar | Un aporte que alcanza la meta deja la bóveda en `Meta alcanzada` sin controles de aporte; el saldo de la PyME en Horizon sube exactamente el monto de la meta |
-| Reembolsar tras el plazo | Con un plazo de ~25 s, un inversor aporta por debajo de la meta; tras esperar el plazo, una wallet **distinta** dispara el reembolso permissionless a favor del primer inversor; el estado pasa a `Reembolso disponible` y el saldo del inversor reembolsado sube en Horizon |
-
-> [!warning] Sólo el primer escenario abre la bóveda por el panel real
-> La página real (`apps/web/src/app/(demo)/funding/page.tsx`) nunca reemplaza el `applicationId` fijo de `CampaignWorkspace`, así que **todo** open por UI apunta a la misma aplicación demo — y `openCampaign` es idempotente por aplicación, de modo que un segundo submit del panel sólo adopta la campaña que ya exista ahí. Sólo el escenario de apertura ejercita "Abrir bóveda"; los otros tres abren su propia campaña con `POST /campaigns` directo (misma ruta real, sin pasar por el navegador) y manejan aportar/retirar/reembolsar siempre por la página real — el mismo patrón que ya usa `apps/web/e2e/campaign-vault.spec.ts` para su propio fixture de reembolso.
+> [!warning] El aporte por la UI no tiene e2e en vivo (#438)
+> El spec que manejaba la página de fondeo del recorrido guiado (`campaign-vault.live.spec.ts`: abrir, aportar y retirar, liquidar, reembolsar tras el plazo) se retiró junto con las seis rutas en la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438). Hasta que exista un reemplazo por rol, el aporte, el retiro y el reembolso desde la UI sólo tienen cobertura de componente y de API; es un hueco registrado en `odd/tasks/retire-scripted-journey.md`.
 
 > [!warning] Firma sin salir del proceso de Playwright
 > `apps/web/src` nunca puede importar `@stellar/stellar-sdk` (regla `web-never-imports-server-stellar-sdk`). `apps/web/e2e-live/support/freighter-live-emulator.ts` emula el mismo protocolo `postMessage` de Freighter que el doble determinístico, pero el paso `SUBMIT_TRANSACTION` llama a un puente `page.exposeFunction("vaqcrowLiveSign", …)`: la página manda el XDR sin firmar y la clave pública, y la firma real ocurre en el proceso de Node de Playwright (`apps/web/e2e-live/support/identities.ts`, `Keypair.random()` de la Stellar CLI SDK, fondeadas con Friendbot). La clave privada nunca cruza al navegador.
 
-No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts`'s guard contra hosts externos, `apps/web/playwright.config.ts` y `pnpm run test:e2e` (17 tests, `testDir: "./e2e"`) no cambian. `apps/web/e2e-live/` vive fuera del glob que `tests/testing-and-ci-gates.test.ts` recorre, y `apps/web/playwright.live.config.ts` es una configuración separada, nunca referenciada por `turbo.json`, `.github/workflows/ci.yml` ni `pnpm run verify`.
+No forma parte de la corrida gateada por PR: `apps/web/e2e/support/local-only.ts`'s guard contra hosts externos, `apps/web/playwright.config.ts` y `pnpm run test:e2e` (`testDir: "./e2e"`) no cambian. `apps/web/e2e-live/` vive fuera del glob que `tests/testing-and-ci-gates.test.ts` recorre, y `apps/web/playwright.live.config.ts` es una configuración separada, nunca referenciada por `turbo.json`, `.github/workflows/ci.yml` ni `pnpm run verify`.
 
 ## 13. Supabase Auth: email, superadmin y proyecto remoto
 
@@ -262,7 +255,7 @@ La web abre la sesión real de Supabase Auth en el navegador (Task [#379](https:
 - `generate-docker-env.sh` las escribe solo, a partir de `supabase status -o env` (las mismas URL y clave publicable que `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`).
 - En `.env.cloud` y en el panel de Vercel las agrega la persona operadora; las plantillas `.env.*.example` también las tienen que listar vacías (las sesiones de agente no pueden editar `.env*`).
 - `pnpm demo:preflight` las exige en el chequeo «Web environment variables», junto con `NEXT_PUBLIC_API_BASE_URL`; como la de la API, sólo nombra la variable faltante, nunca el valor.
-- Si falta alguna, crear el cliente falla con `SupabaseConfigError`, que nombra la variable sin imprimir valores. La web no se cae: el puerto de sesión se construye perezosamente en el navegador y una configuración faltante se vuelve el error saneado `unavailable` (la pantalla de ingreso muestra «No pudimos ingresar…»), y el proxy la trata como «sin sesión». Así las rutas del recorrido de seis pasos siguen funcionando sin estas variables.
+- Si falta alguna, crear el cliente falla con `SupabaseConfigError`, que nombra la variable sin imprimir valores. La web no se cae: el puerto de sesión se construye perezosamente en el navegador y una configuración faltante se vuelve el error saneado `unavailable` (la pantalla de ingreso muestra «No pudimos ingresar…»), y el proxy la trata como «sin sesión». Así las páginas que no exigen sesión siguen renderizando sin estas variables (en `main` eso incluye las seis rutas del recorrido guiado, retiradas en la rama de #438).
 - El cliente del navegador es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, y por eso el servidor puede leer la misma sesión. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.
 
 **Lectura de la sesión en el servidor (`apps/web/src/proxy.ts`).** Next.js 16 renombró `middleware.ts` a `proxy.ts` (runtime Node). El proxy corre sólo en `/portfolio`, `/company`, `/login` y `/signup` (su `matcher`, atado por un test a `GATED_PATHS`) y, antes de renderizar:

@@ -19,7 +19,7 @@ status: draft
 
 ## 1. Decisión: no hay reset de base de datos
 
-Opción A (decidida el 2026-09-30): **no se reinicia la base entre ensayos**. Cada ensayo crea una solicitud (`POST /sme-requests`) y una campaña nuevas; la página de evidencia filtra por los identificadores del recorrido en curso, así que las filas de ensayos anteriores no interfieren. El estado de la cadena tampoco se puede reiniciar. Por eso `supabase/seed/demo-application.sql` se eliminó: el recorrido ya no depende de ninguna fila sembrada.
+Opción A (decidida el 2026-09-30): **no se reinicia la base entre ensayos**. Cada ensayo crea una solicitud (`POST /sme-requests`) y una campaña nuevas; la evidencia se acota a los identificadores del ensayo en curso, así que las filas de ensayos anteriores no interfieren. En la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438), que retira la página `/evidence` del recorrido guiado, la cadena completa se lee por solicitud en `/admin/pymes/[applicationId]/evidence` y cada rol ve sólo sus propios hashes. El estado de la cadena tampoco se puede reiniciar. Por eso `supabase/seed/demo-application.sql` se eliminó: el recorrido ya no depende de ninguna fila sembrada.
 
 ## 2. Prerrequisitos
 

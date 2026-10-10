@@ -136,6 +136,9 @@ T3b (siguiente) aplica el tope individual atómico en `campaign-vault::contribut
 > - Transacciones: upload `b2eec2379a2618fae57e8807a27b60167ccfd3cba17ef1520cbcee0b4a208df9`, deploy `2b63249f7771e29b46439780d3f39dae9841835a66a5f78e49f5ba67dc36cf92`. Pagó las fees la identidad CLI `vaqcrow-factory-deployer` (`GCOSKYEK2FB3YPK4MRXUDR6NNSNZOICFLNQATKSGCYUXV2WJIGJ5FI3N`, fondeada con Friendbot); el comando lo ejecutó el owner.
 > - **Por qué no está activa:** Railway construye la API desde `main` (`6b9acbe`), que todavía tiene el recorrido guionado donde un solo inversor aporta el objetivo completo (`apps/web/e2e-live/campaign-vault.live.spec.ts:130`). Con el tope, ese aporte se rechaza con `Error(Contract, #10)`. El owner re-apuntó `STELLAR_CAMPAIGN_FACTORY_ID` en Railway y lo **revirtió** a la fábrica anterior `CDVSSQ55LBBYHAK5DNQG2UNPIG3PMPJELKJ7LKSNOBAIHAEHPMX75GXJ` el mismo día, El deploy con la fábrica nueva (`8a3002b4`) estuvo activo unos 52 s (11:16:31–11:17:24 UTC) sin recibir ninguna petición HTTP (logs de Railway), hasta que lo reemplazó el deploy con la fábrica anterior (`870c3a1e`, `SUCCESS`): ninguna campaña se abrió contra la fábrica nueva.
 > - **Cuándo activarla:** cuando la pila llegue a `main` con #438 (el recorrido por roles respeta el tope), re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` a `CCDNM6W4…SV7J` en Railway. Tras el reset de Testnet del 2026-12-16 hay que redesplegarla otra vez.
+>
+> [!info] 2026-10-10 — #438
+> La rama de #438 retiró `apps/web/e2e-live/campaign-vault.live.spec.ts` junto con las seis rutas del recorrido (WU6, `709fc28`). El re-apuntado de la fábrica sigue pendiente del owner tras el merge de la pila a `main` (`odd/tasks/retire-scripted-journey.md`, «Pendientes del owner»).
 - **Límite explícito.** T3b es sólo el guardrail on-chain autoritativo; la integración con el flujo de aprobación (`T1`/`T2`), las notificaciones (`T4`) y la consola admin (#386) siguen pendientes.
 
 - **Work-unit commit.** `53621e0 feat(contracts): cap investor contribution at a tenth of the goal`.
@@ -672,6 +675,9 @@ Ruta: **delegado** (mismo writer que U9; 2+ archivos no triviales: factory, wiza
   - `pnpm --filter @vaqcrow/web exec playwright test` (suite determinista) → 45 passed.
   - `pnpm run verify` → exit 0 (lint con 1 warning preexistente en `fetch-http-client.ts`, typecheck, test, build, `no dependency violations found (927 modules)`, boundaries tests 164 verdes).
 - **Límite explícito.** La exención del doble para `sme:SYN-` es una heurística del harness que vive hasta que #438 retire `/request`; el workspace legado sigue enviando sin token y fallaría contra la API real, igual que antes. La sesión perezosa duplicada (una por puerto) sigue siendo la deuda ya anotada en `create-upload-port.ts`.
+
+  > [!info] 2026-10-10 — #438
+  > WU6 de #438 (`709fc28`) borró `/request`, el workspace legado y la exención sin Bearer para `sme:SYN-` de `stub-api-server.mjs`.
 
 - **Work-unit commit.** `40c277b fix(web): send the session token when the wizard submits for review`.
 

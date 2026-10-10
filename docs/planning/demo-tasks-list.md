@@ -1984,7 +1984,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 - **Objetivo:** Entregar la landing pública con la campaña destacada, PyMEs en campaña, las secciones explicativas y el placeholder del asistente «Ayuda».
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
   - Cómo se elige la campaña destacada (el template solo tiene la prop `featured`).
-  - El bloque «Recorré la demo completa… Empezar el recorrido» refiere al recorrido de seis pasos que se retira: si se mantiene y adónde apunta el CTA.
+  - ~~El bloque «Recorré la demo completa… Empezar el recorrido» refiere al recorrido de seis pasos que se retira: si se mantiene y adónde apunta el CTA.~~ **Resuelta (owner, 2026-10-09, decisión D1 de [#438](#^issue-438)):** el bloque se elimina en forma definitiva; la landing de #418 nunca lo implementó y no se agrega.
   - El comportamiento del asistente más allá de «Próximamente».
 - **Orden:** Sin bloqueo nativo; dependencia blanda de [#414](#^issue-414) para mostrar campañas reales.
 
@@ -2718,12 +2718,12 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 - **GitHub y estado:** [issue #438](https://github.com/reyduar/Vaqcrow/issues/438) · Tipo `Feature` · Área `demo` · Prioridad `High` · Workflow `Backlog`.
 - **Jerarquía y bloqueos:** padre [#10](#^issue-10); bloqueada nativamente por [#434](#^issue-434), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#398](#^issue-398).
 - **Objetivo:** Retirar las rutas del recorrido guiado de seis pasos una vez que su motor está alojado en las Features por rol. Hijo del Epic existente [#10](#^issue-10).
-- **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
-  - El bloque de la landing «Recorré la demo completa…»: se elimina, se reescribe para los workflows por rol o se apunta a otra parte.
-  - Dónde vive la vista de evidencia de Testnet (hashes, enlaces al explorador) del recorrido en la estructura nueva.
+- **Preguntas resueltas por el owner (2026-10-09):**
+  - ~~El bloque de la landing «Recorré la demo completa…»: se elimina, se reescribe para los workflows por rol o se apunta a otra parte.~~ **D1:** se elimina en forma definitiva; la landing de [#418](#^issue-418) nunca lo implementó.
+  - ~~Dónde vive la vista de evidencia de Testnet (hashes, enlaces al explorador) del recorrido en la estructura nueva.~~ **D2/D3:** repartida por rol, sin página pública dedicada. El inversor (`/portfolio`, `/reports`), la PyME (`/company`) y el detalle de campaña muestran hashes y links al explorador (bóveda, aportes, distribuciones; «Sin dato» para lo anterior a #438, nunca cero); el admin ve la cadena completa por solicitud en `/admin/pymes/[applicationId]/evidence`, a la que llega desde la lista de PyMEs.
 - **Orden:** Requiere [#398](#^issue-398), [#410](#^issue-410), [#422](#^issue-422), [#426](#^issue-426) y [#434](#^issue-434); bloquea [#33](#^issue-33).
 
-**Rama propuesta.** `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes`, creada desde la punta de #434 (`fda3a27`), entregada como `feature-branch-chain` (D4) en work units: WU1 persiste los hashes de despliegue y de aporte (`8452329`; migración `20261009150000`), WU2 sirve la cadena admin `GET /application-reviews/:applicationId/evidence` (`178fc2a`), WU3 expone hashes y links a inversor, PyME y detalle (`aa79d1e`; migración `20261009160000`), WU4 la vista admin (`d165c28`), WU5 las vistas por rol (`4a5db4e`, correcciones `b338759` y `4bbe99c`), WU6 retira las seis rutas, su engine y el código muerto (`709fc28`, guarda de subrutas `3213933`) y WU7 alinea la documentación. Las seis rutas responden 404, sin redirección. Las dos migraciones se aplicaron al proyecto remoto el 2026-10-09. Falta WU8: la evidencia [#441](#^issue-441) y la PR de la pila a `main`. **No está en `main`.** Bitácora: `odd/tasks/retire-scripted-journey.md`.
 
 ### #439 — Implementar el retiro de las rutas del recorrido guiado de seis pasos
 
@@ -2735,7 +2735,7 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#440](#^issue-440).
 
-**Rama propuesta.** `Vaqcrow#439_Task_Implement_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de implementación revisable.
+**Rama e implementación.** No se creó la rama propuesta `Vaqcrow#439_Task_Implement_the_retirement_of_the_scripted_six_step_demo_journey`: la implementación son los work units WU1–WU6 en la rama de [#438](#^issue-438) (ver arriba). **No está en `main`.**
 
 ### #440 — Probar el retiro de las rutas del recorrido guiado de seis pasos
 
@@ -2747,7 +2747,7 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#441](#^issue-441).
 
-**Rama propuesta.** `Vaqcrow#440_Task_Test_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de pruebas revisable.
+**Rama e implementación.** No se creó la rama propuesta `Vaqcrow#440_Task_Test_the_retirement_of_the_scripted_six_step_demo_journey`: cada work unit de [#438](#^issue-438) trae sus pruebas (RED → GREEN), incluida la guarda `apps/web/src/app/retired-journey-routes.test.ts`, que falla si una página o un literal vuelve a servir una de las seis rutas. **No está en `main`.**
 
 ### #441 — Documentar evidencia del retiro de las rutas del recorrido guiado de seis pasos
 
@@ -2759,7 +2759,7 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#438](#^issue-438).
 
-**Rama propuesta.** `Vaqcrow#441_Task_Document_evidence_for_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de documentación revisable.
+**Rama propuesta.** `Vaqcrow#441_Task_Document_evidence_for_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de documentación revisable. Pendiente: se escribe como WU8 en la rama de [#438](#^issue-438), en `docs/planning/retire-scripted-journey-evidence.md`.
 
 ## Discrepancias y exclusiones
 
