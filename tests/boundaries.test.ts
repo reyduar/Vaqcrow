@@ -9,6 +9,9 @@ import config from "../.dependency-cruiser.cjs";
 const FIXTURE_ROOT = fileURLToPath(new URL("./fixtures/boundaries", import.meta.url));
 const API_MODULES = fileURLToPath(new URL("../apps/api/node_modules", import.meta.url));
 const WEB_MODULES = fileURLToPath(new URL("../apps/web/node_modules", import.meta.url));
+// Cruising the real app sources walks the whole repository (~800 modules) and
+// already takes ~4s on an idle machine, too close to vitest's 5s default.
+const REAL_SOURCES_CRUISE_TIMEOUT_MS = 30_000;
 const RULE_NAME = "api-application-stays-provider-free";
 const WEB_RULE_NAME = "web-presentation-stays-contracts-free";
 const WEB_DOMAIN_RULE_NAME = "web-never-imports-domain";
@@ -266,7 +269,7 @@ describe("Stellar SDK split across workspaces", () => {
 
     expect(resolved.some((path) => path.includes("/@stellar/freighter-api/"))).toBe(true);
     expect(resolved.some((path) => path.includes("/@stellar/stellar-sdk/"))).toBe(true);
-  });
+  }, REAL_SOURCES_CRUISE_TIMEOUT_MS);
 });
 
 describe("boundary fixtures stay outside build/typecheck/boundaries globs", () => {
@@ -325,5 +328,5 @@ describe("boundary fixtures stay outside build/typecheck/boundaries globs", () =
     for (const fixturePath of FIXTURE_REPO_PATHS) {
       expect(modulePaths).not.toContain(fixturePath);
     }
-  });
+  }, REAL_SOURCES_CRUISE_TIMEOUT_MS);
 });

@@ -12,18 +12,19 @@ import type {
   ApplicationReviewRepositoryResult,
   HumanDecisionRepositoryOutcome
 } from "../../../application/ports/application-review-repository-port.js";
-import { buildApp } from "../build-app.js";
+import { ADMIN_DISPLAY_NAME, bearer, buildAppAs, principalFor } from "../test-support/auth.js";
 
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222";
 const CALLER_CORRELATION_ID = "123e4567-e89b-42d3-a456-426614174000";
 const body = {
   decisionId: "11111111-1111-4111-8111-111111111111",
   outcome: "approved",
-  actor: "reviewer@example.test",
   reason: "Verified synthetic evidence",
   approvedLimitArs: 1_000_000
 } as const;
-const command = parseHumanDecisionCommand({ applicationId: APPLICATION_ID, ...body });
+// The recorded actor is the authenticated admin's display name, never a body field (D5).
+const ACTOR = ADMIN_DISPLAY_NAME;
+const command = parseHumanDecisionCommand({ applicationId: APPLICATION_ID, actor: ACTOR, ...body });
 const storedCorrelationId = parseCorrelationId("33333333-3333-4333-8333-333333333333");
 const RECORDED_AT = "2026-09-19T12:00:00.000Z";
 const decision = parseHumanDecisionRecord({
@@ -128,7 +129,7 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
     [false, 200]
   ] as const)("returns applied=%s with status %s", async (applied, status) => {
     const fake = repositoryReturning({ ok: true, value: { record: decision, applied } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "POST",
@@ -148,11 +149,12 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
   it.each([
     ["invalid path", "/application-reviews/not-an-id/decisions", body],
     ["invalid body", `/application-reviews/${APPLICATION_ID}/decisions`, { ...body, reason: "" }],
-    ["missing field", `/application-reviews/${APPLICATION_ID}/decisions`, { ...body, actor: undefined }],
+    ["missing field", `/application-reviews/${APPLICATION_ID}/decisions`, { ...body, reason: undefined }],
+    ["a caller-supplied actor", `/application-reviews/${APPLICATION_ID}/decisions`, { ...body, actor: "someone-else" }],
     ["extra field", `/application-reviews/${APPLICATION_ID}/decisions`, { ...body, unexpected: true }]
   ])("rejects %s without calling the repository", async (_name, url, payload) => {
     const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({ method: "POST", url, payload });
 
@@ -172,7 +174,7 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
     [{ code: "unavailable" } as const, 503, { code: "unavailable" }]
   ])("maps %s to status %s", async (error, status, expectedBody) => {
     const fake = repositoryReturning({ ok: false, error });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "POST",
@@ -184,9 +186,23 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
     expect(response.json()).toEqual(expectedBody);
   });
 
+  it("records the authenticated admin's display name as the actor", async () => {
+    const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
+
+    await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      headers: bearer("ADMIN"),
+      payload: body
+    });
+
+    expect(fake.recordHumanDecision.mock.calls[0]?.[0].command.actor).toBe(ADMIN_DISPLAY_NAME);
+  });
+
   it("ignores a caller-supplied correlation ID", async () => {
     const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "POST",
@@ -198,6 +214,87 @@ describe("POST /application-reviews/:applicationId/decisions", () => {
 
     expect(generatedCorrelationId).not.toBe(CALLER_CORRELATION_ID);
     expect(response.headers["x-correlation-id"]).toBe(generatedCorrelationId);
+  });
+
+  it("publishes the addressed notification for an applied decision when wired", async () => {
+    const changesBody = { ...body, outcome: "changes_requested", approvedLimitArs: null } as const;
+    const changesCommand = parseHumanDecisionCommand({
+      applicationId: APPLICATION_ID,
+      actor: ACTOR,
+      ...changesBody
+    });
+    const changesDecision = parseHumanDecisionRecord({
+      ...changesCommand,
+      decidedAt: RECORDED_AT,
+      correlationId: storedCorrelationId
+    });
+    const fake = repositoryReturning({ ok: true, value: { record: changesDecision, applied: true } });
+    const ownerUserId = principalFor("PYME").userId;
+    const publish = vi.fn().mockResolvedValue({
+      recipients: 1,
+      inserted: 1,
+      skipped: 0,
+      emailsSent: 1,
+      emailsFailed: 0,
+      failed: false
+    });
+    const findByApplicationId = vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        applicationId: APPLICATION_ID,
+        request: {
+          smeReference: "sme:SYN-PH-0001",
+          declaredTotalArs: 15_000_000,
+          periodStart: "2026-01",
+          periodEnd: "2026-08",
+          simuladoLabel: "SIMULADO"
+        },
+        ownerUserId
+      }
+    });
+    app = buildAppAs("ADMIN", {
+      applicationReviewRepository: fake.repository,
+      humanDecisionNotifications: {
+        smeRequests: { findByApplicationId },
+        notifications: { publish }
+      }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: changesBody
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(findByApplicationId).toHaveBeenCalledWith(APPLICATION_ID);
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledWith({
+      eventKey: `application:${APPLICATION_ID}:decision:${changesDecision.decisionId}:changes_requested`,
+      type: "pyme.changes_requested",
+      recipientUserIds: [ownerUserId]
+    });
+  });
+
+  it("advances the vault deployment for an applied approved decision when wired", async () => {
+    const fake = repositoryReturning({ ok: true, value: { record: decision, applied: true } });
+    const onApproved = vi.fn().mockResolvedValue(undefined);
+    app = buildAppAs("ADMIN", {
+      applicationReviewRepository: fake.repository,
+      humanDecisionDeployment: { onApproved }
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/application-reviews/${APPLICATION_ID}/decisions`,
+      payload: body
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(onApproved).toHaveBeenCalledWith({
+      applicationId: decision.applicationId,
+      correlationId: decision.correlationId
+    });
   });
 });
 
@@ -211,7 +308,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("returns the application's latest recorded decision", async () => {
     const fake = repositoryReading({ ok: true, value: decision });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -226,7 +323,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("reports not_found truthfully when no decision is recorded", async () => {
     const fake = repositoryReading({ ok: false, error: { code: "not_found" } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -239,7 +336,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("rejects a malformed application id with 400 before calling the repository", async () => {
     const fake = repositoryReading({ ok: true, value: decision });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -253,7 +350,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("maps unavailable to a sanitized 503", async () => {
     const fake = repositoryReading({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -269,7 +366,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
       ok: false,
       error: { code: "state_conflict", actualState: "approved" }
     });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -282,7 +379,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("serializes an envelope of exactly the decision key", async () => {
     const fake = repositoryReading({ ok: true, value: decision });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -296,7 +393,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("re-parses through the shared contract with every field the web consumes", async () => {
     const fake = repositoryReading({ ok: true, value: decision });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -311,7 +408,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
       decisionId: decision.decisionId,
       applicationId: APPLICATION_ID,
       outcome: "approved",
-      actor: body.actor,
+      actor: ACTOR,
       reason: body.reason,
       approvedLimitArs: body.approvedLimitArs,
       decidedAt: decision.decidedAt,
@@ -324,14 +421,14 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
       decisionId: "44444444-4444-4444-8444-444444444444",
       applicationId: APPLICATION_ID,
       outcome: "changes_requested",
-      actor: body.actor,
+      actor: ACTOR,
       reason: body.reason,
       approvedLimitArs: null,
       decidedAt: RECORDED_AT,
       correlationId: storedCorrelationId
     });
     const fake = repositoryReading({ ok: true, value: changesRequested });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",
@@ -346,7 +443,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
   });
 
   it("round-trips a decision through the real POST and GET routes", async () => {
-    app = buildApp({ applicationReviewRepository: statefulRepository() });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: statefulRepository() });
 
     const write = await app.inject({
       method: "POST",
@@ -367,7 +464,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
   });
 
   it("keeps an application with no recorded decision a truthful not_found, never an empty success", async () => {
-    app = buildApp({ applicationReviewRepository: statefulRepository() });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: statefulRepository() });
 
     const response = await app.inject({
       method: "GET",
@@ -382,7 +479,7 @@ describe("GET /application-reviews/:applicationId/decisions", () => {
 
   it("sanitizes an unavailable read to a 503 that leaks no message, details or hint", async () => {
     const fake = repositoryReading({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ applicationReviewRepository: fake.repository });
+    app = buildAppAs("ADMIN", { applicationReviewRepository: fake.repository });
 
     const response = await app.inject({
       method: "GET",

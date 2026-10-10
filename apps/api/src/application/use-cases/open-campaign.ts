@@ -4,8 +4,10 @@ import type { ApplicationReviewRepositoryPort } from "../ports/application-revie
 import type { CampaignFactoryPort } from "../ports/campaign-factory-port.js";
 import type { CampaignVaultChainPort, VaultChainState } from "../ports/campaign-vault-chain-port.js";
 import { mapVaultStateToCampaignState } from "../ports/campaign-vault-chain-port.js";
-import type { CampaignRecord, CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { CampaignRateSnapshot, CampaignRecord, CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { RateTableRepositoryPort } from "../ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../ports/stellar-account-port.js";
+import { validateCampaignGuardrails } from "./campaign-guardrails.js";
 
 /**
  * Opens the campaign vault after human approval (D5 in
@@ -36,6 +38,14 @@ export interface OpenCampaignCommand {
   readonly smeAccountId: string;
   readonly goalStroops: bigint;
   readonly deadline: Date;
+  /**
+   * When true, adopting a vault an earlier attempt already deployed accepts
+   * that vault's on-chain deadline instead of requiring `deadline` exactly
+   * (#410/U13). The approval flow sets it when the deadline is derived from the
+   * attempt's moment, which necessarily differs between attempts; every other
+   * term (state, goal, SME, token) must still match.
+   */
+  readonly adoptDeployedDeadline?: boolean;
 }
 
 export type OpenCampaignErrorCode =
@@ -43,6 +53,8 @@ export type OpenCampaignErrorCode =
   | "application_not_approved"
   | "sme_account_unavailable"
   | "vault_state_mismatch"
+  | "rate_unavailable"
+  | "goal_limit_exceeded"
   | "unavailable";
 
 export interface OpenCampaignError {
@@ -59,6 +71,13 @@ export interface OpenCampaignDependencies {
   readonly accounts: StellarAccountPort;
   readonly factory: CampaignFactoryPort;
   readonly chain: CampaignVaultChainPort;
+  /**
+   * Resolves the rate a fresh deployment's terms are validated against and
+   * snapshotted with (#410/T3a, D6). Not consulted on a replay or when an
+   * already-deployed vault is adopted: idempotency must not depend on a rate
+   * that may have changed (or a table that may be down) since the deploy.
+   */
+  readonly rates: RateTableRepositoryPort;
   readonly network: string;
   /** The vault's payment asset (native XLM SAC in this demo). Config-level, not per-application. */
   readonly tokenContractId: string;
@@ -117,9 +136,40 @@ export async function openCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
+  const adopting = probe.ok;
   let contractAddress = predicted.value;
+  let rateSnapshot: CampaignRateSnapshot | undefined;
+  // Known only when this attempt deployed the vault itself: an adopted vault
+  // was deployed by an earlier attempt whose hash was never persisted, so the
+  // campaign carries none rather than an invented one (#438/WU1).
+  let deployTransactionHash: string | undefined;
 
   if (!probe.ok) {
+    // The hard campaign cap (D4/D6) is enforced at creation, in integer
+    // arithmetic only — the goal must not exceed USD 50,000 at the current
+    // rate. An unusable rate is reported as `rate_unavailable`, never as a
+    // 5xx or with any provider text.
+    const rate = await deps.rates.findCurrent(new Date().toISOString());
+    if (!rate.ok) {
+      return { ok: false, error: { code: "rate_unavailable" } };
+    }
+
+    const guardrail = validateCampaignGuardrails({ goalStroops: command.goalStroops, rate: rate.value });
+    if (!guardrail.ok) {
+      return {
+        ok: false,
+        error: { code: guardrail.code === "goal_limit_exceeded" ? "goal_limit_exceeded" : "rate_unavailable" }
+      };
+    }
+
+    // Snapshotted with the terms: the values copied here are what the cap was
+    // checked against, so a later rate change never moves this campaign's cap.
+    rateSnapshot = {
+      version: rate.value.version,
+      usdToArs: rate.value.usdToArs,
+      stroopsPerUsd: rate.value.stroopsPerUsd
+    };
+
     const accountReady = await ensureSmeAccount(deps.accounts, command.smeAccountId);
     if (!accountReady) {
       return { ok: false, error: { code: "sme_account_unavailable" } };
@@ -138,6 +188,7 @@ export async function openCampaign(
     }
 
     contractAddress = deployed.value.contractAddress;
+    deployTransactionHash = deployed.value.hash;
   }
 
   const chainState = await deps.chain.readCampaign(contractAddress);
@@ -145,7 +196,8 @@ export async function openCampaign(
     return { ok: false, error: { code: "unavailable" } };
   }
 
-  if (!matchesRequestedVault(chainState.value, command, deps.tokenContractId)) {
+  const acceptOnChainDeadline = adopting && command.adoptDeployedDeadline === true;
+  if (!matchesRequestedVault(chainState.value, command, deps.tokenContractId, acceptOnChainDeadline)) {
     return { ok: false, error: { code: "vault_state_mismatch" } };
   }
 
@@ -158,11 +210,13 @@ export async function openCampaign(
       network: deps.network,
       tokenContractAddress: deps.tokenContractId,
       goalStroops: chainState.value.goalStroops,
-      deadline: command.deadline.toISOString(),
+      deadline: (acceptOnChainDeadline ? chainState.value.deadline : command.deadline).toISOString(),
       state: mapVaultStateToCampaignState(chainState.value.state),
       totalStroops: chainState.value.totalStroops,
       reconciliationStatus: "in_sync",
-      lastReconciledAt: chainState.value.observedAt.toISOString()
+      lastReconciledAt: chainState.value.observedAt.toISOString(),
+      ...(rateSnapshot === undefined ? {} : { rateSnapshot }),
+      ...(deployTransactionHash === undefined ? {} : { deployTransactionHash })
     },
     correlationId
   });
@@ -220,13 +274,14 @@ async function ensureSmeAccount(accounts: StellarAccountPort, smeAccountId: stri
 function matchesRequestedVault(
   state: VaultChainState,
   command: OpenCampaignCommand,
-  tokenContractId: string
+  tokenContractId: string,
+  acceptOnChainDeadline: boolean
 ): boolean {
   return (
     state.state === "funding" &&
     state.goalStroops === command.goalStroops &&
     state.smeAccountId === command.smeAccountId &&
     state.tokenContractId === tokenContractId &&
-    state.deadline.getTime() === command.deadline.getTime()
+    (acceptOnChainDeadline || state.deadline.getTime() === command.deadline.getTime())
   );
 }

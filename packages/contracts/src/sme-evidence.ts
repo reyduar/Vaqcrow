@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { applicationIdSchema } from "./application-id.js";
+import { applicationReviewStateSchema } from "./application-review.js";
 
 /** Period in `YYYY-MM` form, month 01-12. */
 export const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -35,6 +36,31 @@ export const salesPeriodSchema = z.strictObject({
 
 export type SalesPeriodContract = z.infer<typeof salesPeriodSchema>;
 
+/**
+ * A single declared monthly figure (Feature #434, WU1b): the amount the PyME
+ * declares for one month, as whole ARS, or `null` for a missing month — an
+ * absence, never a `0`.
+ */
+export const declaredSalesPeriodSchema = z.strictObject({
+  period: periodSchema,
+  salesArs: z.number().int().nonnegative().nullable()
+});
+
+export type DeclaredSalesPeriod = z.infer<typeof declaredSalesPeriodSchema>;
+
+/**
+ * The body of `POST /businesses/:businessId/sales-periods` when the PyME
+ * declares its own amounts (Feature #434, WU1b). Distinct from the demo path:
+ * an empty body (`{}`) keeps the simulated provider refresh, while this shape
+ * carries at least one declared month. Strict, so an unknown key is refused
+ * rather than silently ignored.
+ */
+export const declaredSalesRequestSchema = z.strictObject({
+  periods: z.array(declaredSalesPeriodSchema).min(1)
+});
+
+export type DeclaredSalesRequest = z.infer<typeof declaredSalesRequestSchema>;
+
 export const smeRequestSchema = z
   .strictObject({
     smeReference: z.string().min(1),
@@ -61,10 +87,16 @@ export const smeRequestSubmissionSchema = z.strictObject({
 
 export type SmeRequestSubmission = z.infer<typeof smeRequestSubmissionSchema>;
 
-/** `GET /sme-requests/:applicationId` response: the request and its sales series. */
+/** `GET /sme-requests/:applicationId` response: the request, its sales series and the application's review state. */
 export const smeRequestReadSchema = z.strictObject({
   request: smeRequestSchema,
-  salesPeriods: z.array(salesPeriodSchema)
+  salesPeriods: z.array(salesPeriodSchema),
+  /**
+   * The owner's `application_review` state (Feature #434, WU5): the PyME reads
+   * where its own application stands. Required — the API always resolves it for
+   * the verified owner, so a read without it is malformed, never "unknown".
+   */
+  state: applicationReviewStateSchema
 });
 
 export type SmeRequestRead = z.infer<typeof smeRequestReadSchema>;
@@ -84,6 +116,10 @@ export type ReviewFinding = z.infer<typeof reviewFindingSchema>;
 
 export function parseSalesPeriod(input: unknown): SalesPeriodContract {
   return salesPeriodSchema.parse(input);
+}
+
+export function parseDeclaredSalesRequest(input: unknown): DeclaredSalesRequest {
+  return declaredSalesRequestSchema.parse(input);
 }
 
 export function parseSmeRequest(input: unknown): SmeRequest {

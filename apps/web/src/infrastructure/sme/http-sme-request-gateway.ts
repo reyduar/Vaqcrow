@@ -10,7 +10,7 @@ import type { SmeRequest } from "@vaqcrow/contracts";
 /**
  * HTTP adapter for the `apps/api` SME request contract:
  *   POST /sme-requests                  body: SmeRequest -> 201 (200 on replay) { applicationId, request }
- *   GET  /sme-requests/:applicationId   -> { request, salesPeriods }; 404 unknown id, 400 malformed id
+ *   GET  /sme-requests/:applicationId   -> { request, salesPeriods, state }; 404 unknown id, 400 malformed id
  *   400 { errors: [{ field, code }] } and 503 { code: "unavailable" } (see AxiosHttpClient)
  * Responses are validated with the contract schemas; violations throw.
  */

@@ -27,10 +27,16 @@ const FIELD_MESSAGES: Readonly<
 
 const GENERIC_MESSAGE = "No se pudo enviar la solicitud. Revisá los datos e intentá de nuevo.";
 const NETWORK_MESSAGE = "No hay conexión con el servicio. La solicitud no se envió; intentá de nuevo.";
+// Defensive mapping for the API's server-side wallet precondition (Feature #402,
+// T1b): the UI already gates on a stored key, so this only fires when the server
+// disagrees (e.g. the key was lost). New copy, flagged for owner approval.
+const WALLET_REQUIRED_MESSAGE =
+  "El servidor no tiene tu wallet Freighter registrada. Volvé a conectar Freighter y enviá la solicitud de nuevo.";
 
 export function toSmeSubmitError(error: unknown): SmeRequestSubmitError {
   if (!(error instanceof HttpClientError)) return { message: GENERIC_MESSAGE };
   if (error.kind === "network") return { message: NETWORK_MESSAGE };
+  if (error.status === 409 && error.errorCode === "wallet_required") return { message: WALLET_REQUIRED_MESSAGE };
 
   const fieldErrors: Partial<Record<SmeRequestFormField, string>> = {};
   for (const [field, code] of Object.entries(error.fieldErrors ?? {})) {

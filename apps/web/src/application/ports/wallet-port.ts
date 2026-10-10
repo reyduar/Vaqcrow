@@ -42,4 +42,12 @@ export interface WalletPort {
   isAvailable(): Promise<boolean>;
   connect(): Promise<WalletAccount>;
   signTransaction(xdr: string, networkPassphrase: string): Promise<string>;
+  /**
+   * Signs a UTF-8 message (SEP-53) and resolves the base64 signature.
+   *
+   * Used to prove the person controls the account before the API stores its
+   * public key as the vault's immutable destination (#406/#407). Signing a
+   * message authorizes no payment or transaction.
+   */
+  signMessage(message: string): Promise<string>;
 }

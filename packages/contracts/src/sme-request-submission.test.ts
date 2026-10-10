@@ -46,15 +46,25 @@ describe("smeRequestSubmissionSchema", () => {
 });
 
 describe("smeRequestReadSchema", () => {
-  it("parses the request with its sales periods", () => {
-    expect(smeRequestReadSchema.parse({ request, salesPeriods: [salesPeriod] })).toEqual({
+  it("parses the request, its sales periods and the application review state", () => {
+    expect(smeRequestReadSchema.parse({ request, salesPeriods: [salesPeriod], state: "human_review" })).toEqual({
       request,
-      salesPeriods: [salesPeriod]
+      salesPeriods: [salesPeriod],
+      state: "human_review"
     });
   });
 
   it("accepts an empty sales series and rejects malformed periods", () => {
-    expect(smeRequestReadSchema.safeParse({ request, salesPeriods: [] }).success).toBe(true);
-    expect(smeRequestReadSchema.safeParse({ request, salesPeriods: [{ period: "x" }] }).success).toBe(false);
+    expect(smeRequestReadSchema.safeParse({ request, salesPeriods: [], state: "approved" }).success).toBe(true);
+    expect(
+      smeRequestReadSchema.safeParse({ request, salesPeriods: [{ period: "x" }], state: "approved" }).success
+    ).toBe(false);
+  });
+
+  it("requires the application review state and rejects an unknown one", () => {
+    expect(smeRequestReadSchema.safeParse({ request, salesPeriods: [] }).success).toBe(false);
+    expect(
+      smeRequestReadSchema.safeParse({ request, salesPeriods: [], state: "not_a_state" }).success
+    ).toBe(false);
   });
 });

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  declaredSalesPeriodSchema,
+  declaredSalesRequestSchema,
   evidenceReferenceSchema,
+  parseDeclaredSalesRequest,
   parseReviewFinding,
   parseSalesPeriod,
   parseSmeRequest,
@@ -79,6 +82,53 @@ describe("salesPeriodSchema provenance (issue #83)", () => {
 
   it("rejects an empty provenance", () => {
     expect(salesPeriodSchema.safeParse({ ...validPeriod, provenance: "" }).success).toBe(false);
+  });
+});
+
+describe("declaredSalesRequestSchema (#434/WU1b)", () => {
+  it("parses a request declaring whole-ARS amounts", () => {
+    const request = {
+      periods: [
+        { period: "2026-01", salesArs: 3_150_000 },
+        { period: "2026-02", salesArs: 3_320_500 }
+      ]
+    };
+    expect(parseDeclaredSalesRequest(request)).toEqual(request);
+  });
+
+  it("accepts a null amount as a missing month (never 0)", () => {
+    const request = { periods: [{ period: "2026-04", salesArs: null }] };
+    const parsed = parseDeclaredSalesRequest(request);
+    expect(parsed.periods[0]?.salesArs).toBeNull();
+  });
+
+  it("accepts a single-period declaration (at least one)", () => {
+    expect(declaredSalesRequestSchema.safeParse({ periods: [{ period: "2026-01", salesArs: 0 }] }).success).toBe(true);
+  });
+
+  it.each([
+    ["no periods key", {}],
+    ["empty periods", { periods: [] }],
+    ["periods not an array", { periods: "2026-01" }],
+    ["a non-object period", { periods: ["2026-01"] }],
+    ["a bad period format", { periods: [{ period: "2026-13", salesArs: 1 }] }],
+    ["a missing period", { periods: [{ salesArs: 1 }] }],
+    ["a negative amount", { periods: [{ period: "2026-01", salesArs: -1 }] }],
+    ["a fractional amount", { periods: [{ period: "2026-01", salesArs: 1.5 }] }],
+    ["a missing amount key", { periods: [{ period: "2026-01" }] }],
+    ["an unknown key inside a period", { periods: [{ period: "2026-01", salesArs: 1, extra: true }] }],
+    ["an unknown top-level key", { periods: [{ period: "2026-01", salesArs: 1 }], extra: true }]
+  ])("rejects %s", (_description, override) => {
+    expect(declaredSalesRequestSchema.safeParse(override).success).toBe(false);
+  });
+
+  it("validates a period on its own (declaredSalesPeriodSchema)", () => {
+    expect(declaredSalesPeriodSchema.safeParse({ period: "2026-01", salesArs: 100 }).success).toBe(true);
+    expect(declaredSalesPeriodSchema.safeParse({ period: "2026-1", salesArs: 100 }).success).toBe(false);
+  });
+
+  it("throws through parseDeclaredSalesRequest on an invalid payload", () => {
+    expect(() => parseDeclaredSalesRequest({ periods: [] })).toThrow();
   });
 });
 

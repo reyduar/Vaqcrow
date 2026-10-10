@@ -1,0 +1,151 @@
+# Bitácora: endurecimiento del chequeo de contenido (hallazgos RDD de S4)
+
+> Unidad de trabajo posterior a la feature de **relevancia por contenido (visión)** de [#402](https://github.com/reyduar/Vaqcrow/issues/402). Cierra los cuatro hallazgos **non-blocking** que dejó la revisión RDD de la rebanada S4 (`review-a7fb517f7003089c`), sin abrir una corrección de review (ninguno bloqueaba). Continúa la bitácora [[odd/tasks/content-relevance-vision]] y su evidencia [[docs/planning/content-relevance-vision-evidence]].
+
+## Objetivo
+
+Cerrar los cuatro hallazgos de S4 sobre `apps/api/src/infrastructure/adapters/content-aware-completeness-check-adapter.ts`:
+
+| # | Severidad | Hallazgo |
+|---|---|---|
+| R3-1 | WARNING | El paso de contenido recorre las filas del owner **en serie, sin tope de filas ni deadline global**; la ruta espera todo antes de responder. Un set grande o lento (o un timeout por documento) puede exceder el presupuesto de request y surface como fallo genérico en vez de los findings no bloqueantes. |
+| R3-2 | WARNING | La rama de **imagen** hace base64 de los bytes descargados **sin redimensionar ni validar tamaño** (el bucket acepta hasta 10 MB), mientras la rama PDF pasa por el rasterizador. Una foto grande podría rechazarse/timeoutear y degradar a `content_unverified`, justo en las fotos más grandes. Sin test de imagen grande. |
+| R3-3 | SUGGESTION | Los `await` por fila **no tienen `try/catch`**: un puerto que **rechace** (en vez de devolver `ok:false`) propaga y la ruta lo convierte en `503`, descartando los findings declarados ya calculados. |
+| R3-4 | SUGGESTION | Cada fila produce su propio finding y el `detail` de `content_irrelevant` sale solo de la etiqueta por kind, así que **varias fotos irrelevantes dan findings byte-idénticos**, indistinguibles y sin deduplicar. |
+
+## Por qué
+
+La revisión nativa de la feature aprobó el alcance (S1–S4 con autoridad quemada) pero dejó estos cuatro puntos como **trabajo posterior**. No bloquean la demo, pero R3-3 es un camino real a perder findings ya calculados y R3-1/R3-2 afectan al peor caso (set grande / foto grande). El owner pidió cerrarlos.
+
+## Alcance
+
+- **Dentro:** el adaptador content-aware (`content-aware-completeness-check-adapter.ts`), sus tests, y —si hace falta— el wiring en `index.ts` para inyectar un reloj/deadline.
+- **Fuera:** el chequeo determinista, la ruta HTTP, el gateway web, la copy ya aprobada (salvo que el owner decida lo contrario para R3-4), y cualquier cambio de contrato del puerto `CompletenessCheckPort`.
+
+## Restricciones
+
+- La IA sigue siendo **solo asesora**: un fallo **nunca** bloquea el envío ni tira el chequeo; degrada a `content_unverified` (`warning`).
+- **Nunca un pase silencioso**: lo que no se puede juzgar se declara.
+- El `ownerUserId` sigue saliendo del principal verificado, nunca del body.
+- Nada llega a `main` hasta [#438](https://github.com/reyduar/Vaqcrow/issues/438) (Opción A del owner).
+
+## Criterios de aceptación
+
+1. Un puerto que **rechaza** (no `ok:false`) no rechaza `check`: el documento degrada a `content_unverified` y los findings declarados ya calculados se conservan (R3-3).
+2. El paso de contenido **acota** su trabajo: tope de filas procesadas, concurrencia acotada y un **deadline global** tras el cual lo no juzgado se declara `content_unverified` (R3-1).
+3. La rama de imagen tiene un **tope de tamaño explícito y testeado**: una imagen por encima del tope degrada a `content_unverified` de forma determinista, no por rechazo del proveedor (R3-2).
+4. Varias fotos irrelevantes producen una salida **no ambigua** (decisión del owner sobre la copy o deduplicación) (R3-4).
+5. `pnpm run verify` completo en verde; suites API/web y `test:boundaries` sin regresiones.
+
+## Tareas
+
+- [x] **T1 — R3-3: aislar rechazos por documento.** `try/catch` alrededor de `listByOwner` y de cada `checkDocument`; un rechazo se convierte en el mismo `content_unverified` que un `ok:false`. Tests: un doble que **rechaza** en descarga/rasterizado/visión/lista. Commit.
+- [x] **T2 — R3-1: acotar el fan-out.** Tope de filas + deadline global (reloj inyectable). **Concurrencia diferida a propósito** (es una optimización de latencia, no lo que pide el hallazgo, y agrega riesgo de determinismo). Tests: deadline vencido → `content_unverified`; más filas que el tope. Commit.
+- [x] **T3 — R3-2: tope de tamaño de imagen.** Guarda explícita en la rama de imagen; test de borde (justo en el tope y por encima). Commit.
+- [x] **T4 — R3-4: findings de fotos no ambiguos.** El owner eligió deduplicar los `content_irrelevant` de fotos, preservando la copy aprobada; los warnings `content_unverified` siguen siendo uno por documento. Commit.
+- [x] **T5 — Verificación + evidencia.** `pnpm run verify` literal pasó con exit 0 tras el ajuste de recursos `8a0dda8`; evidencia de visión y bitácora actualizadas.
+
+## Checks
+
+- `pnpm --filter @vaqcrow/api test` (suite API).
+- `pnpm --filter @vaqcrow/web exec vitest run` (suite web, si T4 toca la web).
+- `pnpm run verify` (lint + typecheck + test + build + boundaries + test:boundaries) antes de cerrar.
+- `git diff CLAUDE.md AGENTS.md` → idénticos (si se tocan los gemelos).
+
+## Progreso
+
+_(se completa a medida que avanza cada tarea; una entrada por unidad de trabajo con el hash del commit)_
+
+### T1 — R3-3: aislar rechazos por documento (commit: este work unit)
+
+- **RED.** Cinco casos nuevos en `content-aware-completeness-check-adapter.test.ts` (un `describe` «rejected ports (R3-3)»): `listByOwner` que rechaza; descarga que rechaza; rasterizador que rechaza; visión que rechaza; y un rechazo que debe **conservar** el finding declarado ya calculado (`missing_document`). Con el código previo: **5 failed | 14 passed (19)** — el rechazo propagaba desde `check` y `checkDocument`.
+- **GREEN.** `listByOwner` envuelto en `try/catch` → entra por un `degradeListRead()` idéntico al camino `!listed.ok` (mismo `UNVERIFIED_LIST_COPY`, sin bloquear). Cada `await checkDocument(...)` envuelto en `try/catch` → empuja `unverifiedDocumentFinding(record.kind)`, el mismo finding que produce un `ok:false` interno; los findings ya calculados se preservan. Se extrajo `unverifiedDocumentFinding(kind)` para que ambos caminos emitan copy idéntica. Contrato del puerto, copy y comportamiento ante `ok:false`: sin cambios.
+- **Verificación.** `vitest run` del archivo → **19 passed (19)**; `pnpm --filter @vaqcrow/api test` → **83 files / 1882 passed**; `pnpm run typecheck` → **8 ok**; `pnpm run lint` → **5 ok** (0 errores; 1 warning preexistente en `apps/web`).
+- **Nota de comando.** La suite de `apps/api` corre con cwd en el workspace, así que la ruta del archivo es `src/infrastructure/adapters/...` (no `apps/api/src/...`).
+
+### T2 — R3-1: tope de filas + deadline global (commit: este work unit)
+
+- **RED.** Tres casos nuevos en un `describe` «bounded content pass (R3-1)»: tope de filas (9 filas → 8 juzgadas + 1 warning de lista), deadline vencido (`deadlineMs: 0` → ningún puerto tocado, todos degradan, declarados preservados) y guard de no-regresión (deadline vigente → se juzgan todos). Salida real: **2 failed | 20 passed (22)** — el tercero ya pasaba (sin deadline hoy juzga los 3 igual), así que es guard, no rojo. No se forzó.
+- **GREEN.** `MAX_DOCUMENTS_CHECKED = 8` y `DEFAULT_DEADLINE_MS = 8_000` (por debajo del timeout de 10 s del cliente web). Las dependencias ganaron `now?` y `deadlineMs?` **opcionales** (los callers actuales, incluido `index.ts`, no cambian). `deadlineAt = now() + deadlineMs` se resuelve **una vez** después de leer la lista; se procesan `listed.value.slice(0, MAX_DOCUMENTS_CHECKED)`; si la lista excede el tope se empuja **un** `content_unverified` reusando `UNVERIFIED_LIST_COPY`; en el loop secuencial, `now() >= deadlineAt` declara la fila `content_unverified` **sin tocar ningún puerto**. El `try/catch` de T1 y el orden de findings quedan intactos.
+- **Decisión de diseño.** **Sin concurrencia**: el hallazgo pide tope + deadline, y el deadline ya acota el peor caso por debajo del timeout del cliente. La concurrencia queda como optimización futura (bajar la latencia típica), no como parte de este cierre.
+- **Verificación.** `vitest run` del archivo → **22 passed (22)**; `pnpm --filter @vaqcrow/api test` → **83 files / 1885 passed**; `pnpm run typecheck` → **8 ok**; `pnpm run lint` → **5 ok** (0 errores; 1 warning preexistente).
+
+### T3 — R3-2: tope de tamaño de imagen (commit: `5de3a24`)
+
+- **RED.** Se agregó primero el caso de una imagen de `4 MiB + 1` bytes y falló como esperaba: el camino anterior todavía llamaba a visión (**1 expected failure; 23 passed**).
+- **GREEN.** La rama de imagen comprueba `downloaded.value.bytes.byteLength` antes de convertir a base64. Una imagen de hasta `4 * 1024 * 1024` bytes sigue el camino normal; una mayor degrada a un único `content_unverified` (`warning`) sin invocar visión. Los PDFs mantienen su ruta de rasterización sin cambios.
+- **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **24 passed (24)**; los tests cubren el borde exacto y el primer byte por encima.
+- **Deuda residual.** El guard evita enviar imágenes grandes al modelo, pero no las redimensiona; un downscaler WASM sigue siendo una optimización futura fuera de este cierre.
+- **RDD.** El rango completo de hardening excedió el presupuesto de contexto nativo, así que se reencuadró el candidato a `7893e68..d30f0ac`; la evaluación quedó en riesgo **medium**, `under_budget`, sin crear autoridad de review.
+
+### T4 — R3-4: findings de fotos no ambiguos (commit: `1971c68`)
+
+- **Decisión del owner.** Se eligió deduplicar: varias fotos irrelevantes conservan un único finding `content_irrelevant` con la copy aprobada «Foto del negocio», sin eco de nombres de archivo. Los `content_unverified` no se deduplican porque cada documento puede haber fallado por separado.
+- **RED.** El caso con dos fotos irrelevantes observó el defecto anterior (**1 failed; 24 passed**): se emitían dos findings byte-idénticos.
+- **GREEN.** La agregación conserva el primer finding irrelevante de una foto y descarta solo los siguientes findings `content_irrelevant` de otras fotos; findings de documentos y warnings quedan intactos.
+- **Verificación.** `pnpm --filter @vaqcrow/api exec vitest run src/infrastructure/adapters/content-aware-completeness-check-adapter.test.ts` → **26 passed (26)**; incluye dos fotos irrelevantes y dos warnings de fotos para fijar que solo se deduplica el gap.
+- **RDD.** El candidato acumulado `7893e68..708fa38` quedó en riesgo **medium**, `under_budget`; no se creó autoridad de review.
+
+### T5 — verificación + evidencia (2026-10-06; incompleta aceptada)
+
+- **Gate literal incompleto.** `pnpm run verify` no es un pase: lint terminó con **5/5**, 0 errores y 1 warning preexistente; typecheck con **8/8**; la fase de tests de API terminó con **83 archivos / 1.889 tests**; la fase web encontró timeouts en varias suites y la herramienta padre alcanzó su límite de **120 s** antes de build/boundaries. Por eso no se afirma que `pnpm run verify` haya completado.
+- **Suite enfocada.** `pnpm --filter @vaqcrow/web exec vitest run src/presentation/components/pyme-onboarding/pyme-onboarding-wizard.test.tsx` → **13/13 passed**; el timeout de «Requiere cambios» no se reprodujo.
+- **Suite web acotada.** `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4` → **161 archivos / 1.539 tests passed**, duración **100.88 s**, sin fallos. Esto respalda contención de recursos en la ejecución sin límite de workers, pero no convierte el `pnpm run verify` literal en pase.
+- **Checks independientes.** `pnpm run build` → **5/5 tasks passed**. `pnpm run boundaries` → **0 violations**, **814 módulos**, **2.576 dependencias** inspeccionadas. `pnpm run test:boundaries` → **10 archivos / 164 tests passed**.
+- **Cobertura de hardening ya verificada.** T3 conserva el guard de imagen directa de **4 MiB**, commit `5de3a24`; T4 conserva la deduplicación exclusiva de gaps `content_irrelevant` de fotos, commit `1971c68`; la suite enfocada del adaptador pasó **26/26**. Los warnings `content_unverified` siguen siendo uno por documento.
+- **Decisión del owner (2026-10-06).** Se acepta la evidencia parcial para continuar el trabajo; no se solicita ajustar ahora el runner ni sus recursos. T5 sigue técnicamente **incompleta** para el gate agregado literal `pnpm run verify` y podrá repetirse más adelante. Esto no convierte el comando en pase ni cierra completamente la feature.
+- **Estado.** T1–T4 siguen completadas. T5 queda **incompleta aceptada** porque el comando literal agregado no terminó, aunque todos los checks individuales pasaron con workers web acotados. La acción restante es repetir `pnpm run verify` literalmente con éxito o adoptar y documentar explícitamente un ajuste de recursos del runner, si se decide más adelante.
+- **Worktree.** Sólo permanece el cambio preexistente `M .env.docker.example`; no forma parte de T5 ni se editó.
+
+### T5 — cierre del gate literal (2026-10-06, `8a0dda8`)
+
+- **Causa.** Los timeouts web (`layout.traversal`, `demo-shell`, `select`) pasan aislados (traversal **301 ms**): contención de CPU de jsdom con workers sin límite bajo turbo. Acotado web, dos tests de `tests/boundaries.test.ts` que cruzan las fuentes reales quedaron como cuello propio: **3,8 s / 4,0 s** con la máquina ociosa, contra 5 s.
+- **Ajuste.** `maxWorkers: 4` en `apps/web/vitest.config.ts`; timeout explícito de 30 s (`REAL_SOURCES_CRUISE_TIMEOUT_MS`) sólo para esos dos tests. Route: inline (2 archivos mecánicos ya entendidos).
+- **Gate.** `pnpm run verify` → **exit 0**: web 161/1.539, API 83/1.889, contracts 15/526, domain 2/120, ai 8/143, boundaries 0 violaciones, `test:boundaries` 10/164.
+- **RDD.** Medium, consentido; aprobado y quemado (`review-203d9620b050ff0a`). Una revisión previa del mismo cambio marcó sangría de 3 espacios en los cierres con timeout; corregida antes del commit. Advisory abierto: `maxWorkers` fijo vs. valor relativo (`"50%"`).
+- **Estado.** T1–T5 completadas; la evidencia parcial aceptada anterior queda superada por el gate literal en verde.
+
+### Bitácora RDD — tramo pendiente `bc7feb0..f647391` (2026-10-06)
+
+- **Por qué en tramos.** Tras los commits de T5, el hook propuso todo el rango commiteado desde `aaee084` (159 commits, 39.043 líneas) y la revisión nativa respondió `lens_context_budget_exceeded`. La última frontera revisada era `bc7feb0` (fin de S4), así que el tramo pendiente `bc7feb0..HEAD` (~1.236 líneas, riesgo alto) se partió en cuatro slices; A–C se revisaron desde un worktree detached en el commit final de cada slice, ya eliminado.
+
+| Slice | Rango | Lineage | Resultado |
+|---|---|---|---|
+| A | `bc7feb0..3467bd9` (antiguo S5: env/sesión + docs) | `review-9cb2d970a1d777c8` | aprobado + acknowledged; `R3-shell-sourced-env` WARNING, `R3-403-as-expired-session` WARNING, `R3-completeness-ui-unauthorized-untested` SUGGESTION |
+| B | `3467bd9..ff92df4` (T1/T2) | `review-0311c78b41db8455` | aprobado + acknowledged; `R3-deadline-not-bounding-inflight` WARNING, `R3-mid-pass-deadline-unproved` WARNING, `R3-deadline-invalid-input` SUGGESTION, `R3-cap-selection-unasserted` SUGGESTION |
+| C | `ff92df4..7893e68` (sync de `opencode.json`) | — | **no revisado**: un solo archivo de 261 líneas, riesgo alto; `lens_context_budget_exceeded` sin crear autoridad. El owner aceptó dejarlo sin revisar (configuración generada por `gentle-ai sync`, no código de la demo) |
+| D | `7893e68..f647391` (T3/T4/T5) | `review-b5019e7322966e3c` | aprobado + acknowledged; `R3-dedup-doc-scope-unproved` SUGGESTION, `R3-fixed-maxworkers` SUGGESTION |
+
+- **Hallazgos para trabajo posterior (todos non-blocking).** Los más concretos son de B: el deadline global sólo se chequea antes de cada documento, así que una llamada lenta iniciada justo antes puede pasar el presupuesto de 8 s (el comentario junto a `MAX_DOCUMENTS_CHECKED` promete más de lo que el código garantiza), y ningún test usa el reloj inyectable `now` para probar un vencimiento a mitad de pasada. De A: los scripts `dev:docker`/`dev:cloud` hacen `source` del env como shell (valores con `$`, espacios o `#` se expanden) y un `403` se muestra como sesión vencida.
+
+## Estado al 2026-10-06 (fallback local previo a T3; mirror Engram pendiente en ese momento)
+
+> [!warning] Espejo Engram pendiente
+> `mem_session_summary` (×2) y `mem_save` (×1) fallaron con `could not confirm Engram session registration`. `mem_doctor` reporta el store sano (**9/10 checks OK**; `ambiguous_active_runtime_sessions` e `invalid_session_identity` en OK) y **un** error ajeno a esta escritura: el target de sync `cloud:vaqcrow` tiene **2371 mutaciones sin confirmar**, más targets colgados (`cloud:/`, `cloud:arielduarte`, `cloud:news-reader-app`, `cloud:scratch-2026-09-10-dddd53`). No se inventó ni registró un `session_id` para destrabarlo. **Este bloque es el registro local hasta que el mirror a Engram se pueda escribir.**
+
+**Rama / HEAD.** `Vaqcrow#402_Feat_Run_the_AI_completeness_check_and_submit_to_human_review` en `f30f9c7`. Nada llega a `main` hasta [#438](https://github.com/reyduar/Vaqcrow/issues/438) (Opción A del owner).
+
+**Revisión RDD de la feature de visión — cerrada.** Cinco slices sobre `122f713..b817074`: S1 `review-c09e239e893d1507`, S2 `review-0837c1eec97116ef`, S3 `review-1d41600d7f2239ab`, S4 `review-a7fb517f7003089c` — los cuatro **aprobados + acknowledged** (autoridad quemada), ninguno abrió corrección. **S5** (`bc7feb0..b817074`, 272 líneas) devolvió `review_due: false` / `under_budget` ⇒ **no revisado, pendiente**; su envelope de consentimiento se descartó sin START (sin autoridad creada). **14 hallazgos non-blocking** (3+3+4+4). Outcome registrado en [[docs/planning/content-relevance-vision-evidence]] §7/§9/§10 y en [[odd/tasks/content-relevance-vision]] → commit `3467bd9`.
+
+**Endurecimiento de S4 — estado por tarea.**
+
+| Tarea | Estado | Commit | Notas |
+|---|---|---|---|
+| T1 (R3-3) | ✅ hecho | `34c02a1` | `try/catch` en `listByOwner` y por documento; un rechazo degrada como `ok:false`. RED 5/19 → GREEN 19; API 83/1882. |
+| T2 (R3-1) | ✅ hecho | `f30f9c7` | `MAX_DOCUMENTS_CHECKED = 8`, `DEFAULT_DEADLINE_MS = 8_000`, `now?`/`deadlineMs?` opcionales. Concurrencia **diferida a propósito**. RED 2/22 → GREEN 22; API 83/1885. |
+| T3 (R3-2) | ✅ hecho | `5de3a24` | `MAX_IMAGE_BYTES = 4 * 1024 * 1024` en la rama de imagen; el borde exacto se procesa y el primer byte extra degrada de forma determinista a `content_unverified` sin llamar a visión. Downscaler WASM queda como deuda futura. |
+| T4 (R3-4) | ✅ hecho | `1971c68` | El owner eligió deduplicar findings `content_irrelevant` de fotos; se conserva el primero y los warnings `content_unverified` siguen por documento. |
+| T5 | ✅ hecho | `8a0dda8` | `pnpm run verify` literal con exit 0 tras `maxWorkers: 4` en web y timeout de 30 s en los dos tests de boundaries que cruzan el repo. |
+
+**Gotchas acumulados.**
+- El prompt del reviewer es **una línea de ~450 bytes** (`GENTLE_AI_REVIEW_BINDING {...}`); el hook de transporte materializa el contexto congelado. Un prompt gigante reconstruido rompe el JSON de la tool (`SchemaError(Missing key ["subagent_type"])`); `subagent_type` debe setearse explícito.
+- La suite de `apps/api` corre con cwd en el workspace: la ruta es `src/infrastructure/adapters/...`, **no** `apps/api/src/...`.
+- `.env.docker.example` (template versionado) **no** tenía `LLM_VISION_MODEL`; sí lo tienen `.env.cloud.example` (línea 65) y los `.env.docker`/`.env.cloud` locales. El operador ya lo agregó al template, **sin commitear**.
+- Dobles `vi.fn(async () => result)` **no** cubren un puerto que *rechaza* (ese es R3-3).
+
+**Pendiente operativo.** Primer envío real por Resend de `admin.new_application` cuando la pila llegue a la demo.
+
+## Estado actual de la sesión T3/T4
+
+- La escritura de Engram volvió a funcionar: `mem_save` registró las decisiones e implementaciones de T3/T4 y sus relaciones de compatibilidad; el espejo completo de esta bitácora se sincroniza en esta sesión.
+- Último commit de implementación de T4: `1971c68`; las actualizaciones posteriores de esta bitácora son commits de documentación separados.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TrustBanner } from "./trust-banner";
 
 const LONG_BODY =
-  "Demostración con datos simulados. La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.";
+  "Demostración con datos simulados. El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.";
 
 describe("TrustBanner", () => {
   it("renders role='alert' for the error variant", () => {
@@ -40,11 +40,11 @@ describe("TrustBanner", () => {
         title="Respuesta de respaldo"
         body="Respuesta de respaldo previamente generada; no corresponde a una llamada en vivo"
         badge={{ variant: "fallback", label: "RESPUESTA DE RESPALDO" }}
-        link={{ href: "/evidence", label: "Ver evidencia" }}
+        link={{ href: "/portfolio", label: "Ver evidencia" }}
       />
     );
 
     expect(screen.getByText("RESPUESTA DE RESPALDO")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ver evidencia" })).toHaveAttribute("href", "/evidence");
+    expect(screen.getByRole("link", { name: "Ver evidencia" })).toHaveAttribute("href", "/portfolio");
   });
 });

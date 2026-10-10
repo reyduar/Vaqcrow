@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM,
   DEFAULT_THRESHOLDS_XLM,
   REQUIRED_API_ENV,
   REQUIRED_WEB_ENV,
@@ -8,9 +10,15 @@ import {
   STELLAR_TESTNET_RPC_URL,
   exitCodeFor,
   formatReport,
+  isValidEmailFrom,
   parseArgs,
   runPreflight
 } from "../scripts/demo/preflight/preflight.mjs";
+import {
+  DEFAULT_APP_BASE_URL as API_DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM as API_DEFAULT_EMAIL_FROM,
+  parseEmailConfigResult
+} from "../apps/api/src/application/config/email-config.js";
 
 const TESTNET = "Test SDF Network ; September 2015";
 const SECRET = "SSECRETSECRETSECRETSECRETSECRETSECRETSECRETSECRET0000";
@@ -35,6 +43,7 @@ const env = {
   SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
   LLM_PROVIDER: "openai",
   LLM_MODEL: "model",
+  LLM_VISION_MODEL: "vision-model",
   LLM_API_KEY: LLM_KEY,
   STELLAR_NETWORK: "testnet",
   STELLAR_HORIZON_URL: HORIZON,
@@ -42,7 +51,9 @@ const env = {
   STELLAR_CAMPAIGN_FACTORY_ID: FACTORY,
   STELLAR_PLATFORM_SECRET_KEY: SECRET,
   CORS_ALLOWED_ORIGINS: "https://web.example.test",
-  NEXT_PUBLIC_API_BASE_URL: API
+  NEXT_PUBLIC_API_BASE_URL: API,
+  NEXT_PUBLIC_SUPABASE_URL: SUPABASE,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test"
 };
 
 const options = parseArgs(["--sme", SME, "--investor", INVESTOR]);
@@ -78,6 +89,8 @@ function fetchDouble(overrides: Record<string, Handler> = {}) {
     ),
     [`HEAD ${SUPABASE}/rest/v1/revenue_share_distribution?select=campaign_id,period&limit=0`]: () =>
       new Response(null, { status: 200 }),
+    [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () =>
+      json([{ user_id: "11111111-1111-4111-8111-111111111111" }]),
     ...overrides
   };
   const calls: { key: string; url: string; init?: RequestInit }[] = [];
@@ -199,6 +212,10 @@ describe("demo preflight: environment names", () => {
     expect(REQUIRED_API_ENV).not.toContain("STELLAR_RPC_URL");
   });
 
+  it("mirrors the API's required vision model: it is a journey-critical name", () => {
+    expect(REQUIRED_API_ENV).toContain("LLM_VISION_MODEL");
+  });
+
   it("exports the canonical Testnet endpoints mirrored from the API config", () => {
     expect(STELLAR_TESTNET_HORIZON_URL).toBe(CANONICAL_HORIZON);
     expect(STELLAR_TESTNET_RPC_URL).toBe(CANONICAL_RPC);
@@ -211,6 +228,102 @@ describe("demo preflight: environment names", () => {
     const report = await runPreflight({ ...deps(fetchFn, { env: rest }), options: { ...options, platform: PLATFORM } });
     const check = report.checks.find((candidate) => candidate.id === "env-api");
     expect(check?.detail).toContain("STELLAR_PLATFORM_SECRET_KEY");
+  });
+});
+
+describe("demo preflight: email configuration", () => {
+  it("passes with email disabled, reporting the defaults mirrored from the API config", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn));
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("RESEND_API_KEY unset");
+    expect(check?.detail).toContain("no-reply@vaqcrow.com");
+    expect(check?.detail).toContain("http://localhost:3001");
+  });
+
+  it("passes and reports the configured sender and base when the key is present", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(
+      deps(fetchFn, {
+        env: {
+          ...env,
+          RESEND_API_KEY: "resend-key-never-printed",
+          EMAIL_FROM: "Vaqcrow <hola@vaqcrow.com>",
+          APP_BASE_URL: "https://web.example.test"
+        }
+      })
+    );
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("enabled");
+    expect(check?.detail).toContain("hola@vaqcrow.com");
+    expect(check?.detail).toContain("https://web.example.test");
+  });
+
+  it.each([
+    ["APP_BASE_URL", "/portfolio"],
+    ["APP_BASE_URL", "web.example.test"],
+    ["APP_BASE_URL", "ftp://web.example.test"],
+    ["EMAIL_FROM", "not an address"]
+  ])("fails when %s is invalid: %s", async (name, value) => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, [name]: value } }));
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain(name);
+  });
+
+  it("never prints the Resend key in the report", async () => {
+    const key = "resend-key-never-printed";
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, RESEND_API_KEY: key } }));
+    expect(formatReport(report, { json: false })).not.toContain(key);
+    expect(formatReport(report, { json: true })).not.toContain(key);
+  });
+
+  it("normalises APP_BASE_URL like the API: a trailing slash is stripped from the detail", async () => {
+    const { fetchFn } = fetchDouble();
+    const report = await runPreflight(
+      deps(fetchFn, {
+        env: {
+          ...env,
+          RESEND_API_KEY: "resend-key-never-printed",
+          APP_BASE_URL: "https://web.example.test/"
+        }
+      })
+    );
+    const check = report.checks.find((candidate) => candidate.id === "email");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).toContain("links https://web.example.test)");
+    expect(check?.detail).not.toContain("https://web.example.test/");
+  });
+});
+
+describe("demo preflight: mirrors the API email config", () => {
+  it("keeps the exported sender and base equal to the API module's constants", () => {
+    expect(DEFAULT_EMAIL_FROM).toBe(API_DEFAULT_EMAIL_FROM);
+    expect(DEFAULT_APP_BASE_URL).toBe(API_DEFAULT_APP_BASE_URL);
+  });
+
+  it("validates the sender exactly as the API does once the slice is enabled", () => {
+    const values = [
+      "Vaqcrow <no-reply@vaqcrow.com>",
+      "hola@vaqcrow.com",
+      "not an address",
+      "Vaqcrow <>",
+      "vaqcrow.com",
+      "Name <broken@>",
+      "Vaqcrow\nBcc: attacker@example.test <no-reply@vaqcrow.com>"
+    ];
+
+    for (const value of values) {
+      const api = parseEmailConfigResult(
+        { RESEND_API_KEY: "sentinel", APP_ENV: "local", EMAIL_FROM: value },
+        "local"
+      );
+      expect(isValidEmailFrom(value)).toBe(api.ok);
+    }
   });
 });
 
@@ -433,6 +546,55 @@ describe("demo preflight: remote schema", () => {
     const report = await runPreflight(deps(fetchFn, { env: rest }));
     expect(statusOf(report, "schema-tables")).toBe("fail");
     expect(calls.some((call) => call.key.includes("/rest/v1/"))).toBe(false);
+  });
+});
+
+describe("demo preflight: identity", () => {
+  it("includes the identity tables in the journey tables", () => {
+    expect(JOURNEY_TABLES).toEqual(expect.arrayContaining(["profile", "audit_log"]));
+  });
+
+  it("passes when an active ADMIN profile exists, asking for one row with the service key", async () => {
+    const { fetchFn, calls } = fetchDouble();
+    const report = await runPreflight(deps(fetchFn));
+    expect(statusOf(report, "admin-profile")).toBe("pass");
+    const call = calls.find((candidate) => candidate.key.startsWith("GET ") && candidate.url.includes("/rest/v1/profile"));
+    expect(call?.init?.headers).toMatchObject({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
+  });
+
+  it("fails, pointing at the seed command, when no active ADMIN exists", async () => {
+    const { fetchFn } = fetchDouble({
+      [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () => json([])
+    });
+    const report = await runPreflight(deps(fetchFn));
+    const check = report.checks.find((candidate) => candidate.id === "admin-profile");
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toContain("seed:superadmin");
+    expect(exitCodeFor(report)).toBe(1);
+  });
+
+  it("fails when the profile query errors, and skips it with a reason when Supabase env is missing", async () => {
+    const { fetchFn } = fetchDouble({
+      [`GET ${SUPABASE}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`]: () => json({}, 404)
+    });
+    expect(statusOf(await runPreflight(deps(fetchFn)), "admin-profile")).toBe("fail");
+
+    const { SUPABASE_URL: _url, ...rest } = env;
+    void _url;
+    const second = fetchDouble();
+    const report = await runPreflight(deps(second.fetchFn, { env: rest }));
+    expect(statusOf(report, "admin-profile")).toBe("fail");
+    expect(second.calls.some((call) => call.key.includes("/rest/v1/"))).toBe(false);
+  });
+
+  it("does not require the super-admin password, and redacts it if it is ever present", async () => {
+    expect(REQUIRED_API_ENV).not.toContain("VAQCROW_SUPERADMIN_PASSWORD");
+    expect(REQUIRED_API_ENV).not.toContain("VAQCROW_SUPERADMIN_EMAIL");
+    const password = "superadmin-password-never-printed";
+    const { fetchFn } = fetchDouble({ [`GET ${API}/health`]: () => json({ leak: password }, 500) });
+    const report = await runPreflight(deps(fetchFn, { env: { ...env, VAQCROW_SUPERADMIN_PASSWORD: password } }));
+    expect(statusOf(report, "env-api")).toBe("pass");
+    expect(formatReport(report, { json: true })).not.toContain(password);
   });
 });
 

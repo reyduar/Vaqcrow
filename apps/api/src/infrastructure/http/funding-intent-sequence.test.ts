@@ -19,7 +19,7 @@ import type {
 } from "../../application/ports/funding-intent-repository-port.js";
 import type { LedgerAccount, LedgerPort } from "../../application/ports/ledger-port.js";
 import { StellarFundingIntentXdr } from "../adapters/stellar-funding-intent-xdr.js";
-import { buildApp } from "./build-app.js";
+import { buildAppAs } from "./test-support/auth.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 
 /**
@@ -191,7 +191,7 @@ function start(): Harness {
     explorerBaseUrl: EXPLORER_BASE_URL,
     generateIntentId: () => parseFundingIntentId(INTENT_ID)
   };
-  const app = buildApp({ fundingIntent: dependencies });
+  const app = buildAppAs("ADMIN", { fundingIntent: dependencies });
   activeApp = app;
 
   return { app, submissions };

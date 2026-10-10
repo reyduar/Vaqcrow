@@ -11,9 +11,8 @@ import { Button } from "./button";
  * available to assistive tech (`title` plus a visually-hidden `sr-only`
  * span) and copyable via `navigator.clipboard`. Presentational only — the
  * caller supplies the already-known value and, optionally, an explorer URL;
- * this component never talks to the network or derives a link itself,
- * mirroring `campaign-workspace.tsx`/`funding-workspace.tsx`'s existing "the
- * API supplies the link" rule.
+ * this component never talks to the network or derives a link itself: the
+ * API supplies the link.
  *
  * The TESTNET context is the canonical `microcopy.testnetBadge` rendered
  * through the shared `Badge`, the same pair every other Testnet-context
@@ -29,7 +28,21 @@ export interface HashDisplayProps {
   readonly value: string;
   /** Caller-supplied Testnet explorer URL; omit to render no link. */
   readonly explorerUrl?: string;
+  /**
+   * What the explorer link proves, for its accessible name (#438/WU5), e.g.
+   * «Contrato de la bóveda» vs «Transacción de despliegue». Defaults to
+   * `label`, so two links in one section stay distinguishable to assistive tech.
+   * The name starts with the visible «Ver en el explorador» (WCAG 2.5.3, label
+   * in name).
+   */
+  readonly proofLabel?: string;
   readonly className?: string;
+}
+
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
+
+function lowerFirst(text: string): string {
+  return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
 
 const HEAD_CHARS = 10;
@@ -51,7 +64,7 @@ export function truncateMiddle(value: string): string {
 
 type CopyState = "idle" | "copied" | "failed";
 
-export function HashDisplay({ label, value, explorerUrl, className }: HashDisplayProps) {
+export function HashDisplay({ label, value, explorerUrl, proofLabel, className }: HashDisplayProps) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const truncated = truncateMiddle(value);
   const isTruncated = truncated !== value;
@@ -79,7 +92,7 @@ export function HashDisplay({ label, value, explorerUrl, className }: HashDispla
           {isTruncated ? <span className="sr-only">{value}</span> : null}
         </span>
         <Button variant="secondary" onPress={handleCopy}>
-          {`Copiar ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+          {`Copiar ${lowerFirst(label)}`}
         </Button>
       </div>
       <span aria-live="polite" className="text-sm">
@@ -92,9 +105,14 @@ export function HashDisplay({ label, value, explorerUrl, className }: HashDispla
       ) : null}
       <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" />
       {explorerUrl ? (
-        <a className="text-sm underline" href={explorerUrl} rel="noreferrer noopener" target="_blank">
+        <a
+          className={`self-start rounded text-sm underline ${FOCUS_RING}`}
+          href={explorerUrl}
+          rel="noreferrer noopener"
+          target="_blank"
+          aria-label={`Ver en el explorador: ${lowerFirst(proofLabel ?? label)} (abre en una pestaña nueva)`}
+        >
           Ver en el explorador
-          <span className="sr-only"> (abre en una pestaña nueva)</span>
         </a>
       ) : null}
     </div>

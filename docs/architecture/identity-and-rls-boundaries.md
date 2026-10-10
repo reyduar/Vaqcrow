@@ -6,10 +6,14 @@ tags:
   - supabase
   - rls
 date: 2026-09-28
+updated: 2026-10-03
 status: accepted
 ---
 
 # Vaqcrow — Límites de identidad y RLS
+
+> [!important] Actualización 2026-10-01: el modelo de identidad ya existe, en la rama de la Feature
+> La Task [#370](https://github.com/reyduar/Vaqcrow/issues/370) de la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) implementa Supabase Auth, roles, RLS y autorización de la API (§9). **Esa implementación vive en la rama de la Feature `Vaqcrow#369_Feat_Establish_Supabase_Auth_roles_RLS_and_API_authorization` y todavía no está en `main`**: llega junto con [#378](https://github.com/reyduar/Vaqcrow/issues/378) (login y shell por rol) en una entrega apilada. Las secciones §1–§8 conservan la decisión original de #196 y su razonamiento; donde describen «no hay autenticación», describen `main` y el estado previo a #370. La decisión de que `application_review` y `human_decision` siguen siendo **sólo `service_role`** se mantiene vigente (§9.6). Encima de esa pila, la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) agrega el bucket privado `pyme-documents` y sus políticas de `storage.objects` (§9.10), tampoco en `main`.
 
 > [!info] Objetivo
 > Registrar la decisión que resuelve el issue [#196](https://github.com/reyduar/Vaqcrow/issues/196): qué se hace con las dos tablas que hoy tienen RLS habilitada y cero políticas —`public.application_review` y `public.human_decision`—, por qué **todavía no** se escriben políticas de fila, y qué las desbloquea. Complementa [[docs/planning/supabase-schema-and-persistence-evidence|la evidencia del esquema y la persistencia]] (#13) y [[docs/planning/human-assessment-and-approval-evidence|la evidencia de la evaluación y aprobación humana]] (#19), que difieren este trabajo acá.
@@ -54,10 +58,10 @@ En síntesis: **RLS habilitada, cero políticas, `service_role` como único rol 
 
 ## 3. Por qué las políticas no se pueden escribir todavía
 
-Una política RLS necesita un **sujeto**: `auth.uid()`, un claim de un JWT, un rol — algo contra lo cual escribir `using (...)`. Este repositorio **no tiene ninguna capa de autenticación**: no hay Auth.js, no hay sesión, no hay `auth.uid()`. El único llamador es la API como `service_role`, que hace bypass de RLS por completo.
+Una política RLS necesita un **sujeto**: `auth.uid()`, un claim de un JWT, un rol — algo contra lo cual escribir `using (...)`. En `main` **no hay ninguna capa de autenticación** (estado al decidir #196): no hay Auth.js, no hay sesión, no hay `auth.uid()`. El único llamador es la API como `service_role`, que hace bypass de RLS por completo.
 
 > [!warning] La tensión de [#134](https://github.com/reyduar/Vaqcrow/issues/134)
-> [#134](https://github.com/reyduar/Vaqcrow/issues/134) ("Establish Auth.js authentication and session boundaries") es la Feature donde nacería una identidad de persona usuaria. Está **cerrado como completed**, pero **todos sus criterios de aceptación siguen sin marcar y no hay ninguna implementación versionada en `main`**. Este documento nombra esa contradicción en lugar de taparla: el estado del issue no es evidencia de que la capa de autenticación exista. Hoy, en el código, no existe.
+> [#134](https://github.com/reyduar/Vaqcrow/issues/134) ("Establish Auth.js authentication and session boundaries") es la Feature donde nacería una identidad de persona usuaria. Está **cerrado como completed**, pero **todos sus criterios de aceptación siguen sin marcar y no hay ninguna implementación versionada en `main`**. Este documento nombra esa contradicción en lugar de taparla: el estado del issue no es evidencia de que la capa de autenticación exista. En `main`, hoy, no existe; la Feature [#369](https://github.com/reyduar/Vaqcrow/issues/369) lo reemplaza con Supabase Auth (§9) y supersede el límite de Auth.js (decisión del owner, 2026-10-01).
 
 Escribir una política ahora sería inventar un modelo de seguridad sin ninguna identidad contra la cual fijarlo —y una política que devolviera `true` para todos convertiría un aviso INFO en un agujero real, con la apariencia de estar resuelto. Ése es el único movimiento que empeoraría la situación. Por eso la política se **posterga**, no se improvisa.
 
@@ -89,13 +93,78 @@ Cuando eso ocurra, las políticas se escriben como una **Task bajo la Feature qu
 
 ## 7. Lo que este documento no afirma
 
-- **No afirma que exista autenticación.** Este repositorio no tiene capa de autenticación hoy. Ningún nivel de acceso de §1 es una identidad autenticada implementada: son los niveles declarados para el modelo de identidad que todavía no está.
-- **No afirma que las políticas existan.** No existen; están diferidas.
+- **No afirma que exista autenticación en `main`.** La implementación (§9) está en la rama de la Feature #369, apilada con #378, y no se fusionó a `main`.
+- **No afirma que existan políticas sobre `application_review` ni `human_decision`.** No existen y se mantienen así por decisión (§9.6); las únicas políticas implementadas en el esquema `public` son las de `profile` (§9.3); en la rama de #398/#399 se agregan las de `storage.objects` (§9.10).
 - **No afirma que la demo exponga estas tablas.** No hay hoy ninguna ruta, pantalla ni endpoint que las lea o escriba para un rol distinto de `service_role`.
 - **No afirma que el estado actual sea producto de una política.** Lo que deniega es el GRANT (§2).
 
 ## 8. Reversión / cuándo revisar
 
-Esta decisión se revisa cuando se elija un modelo de identidad —en particular, cuando [#134](https://github.com/reyduar/Vaqcrow/issues/134) (o la Feature que finalmente lo introduzca) se implemente de verdad en `main`. En esa revisión hay que: (a) decidir el mapeo definitivo de los niveles de §1 contra las filas de cada tabla, (b) escribir las políticas como una Task de esa Feature, y (c) reemplazar la guarda por las pruebas de acceso no privilegiado que correspondan.
+Esta decisión se revisa cuando el modelo de identidad de §9 llegue a `main` (el reemplazo de [#134](https://github.com/reyduar/Vaqcrow/issues/134) es la Feature #369). En esa revisión hay que: (a) decidir el mapeo definitivo de los niveles de §1 contra las filas de cada tabla, (b) escribir las políticas como una Task de esa Feature, y (c) reemplazar la guarda por las pruebas de acceso no privilegiado que correspondan.
 
 Si en cambio se decide que la demo acotada **nunca** expondrá estas tablas a un rol distinto de `service_role`, la resolución correcta es la **opción 1** del issue: dejar registrada esa decisión y conservar la guarda como contención permanente. Ambas salidas son legítimas; lo que no lo es es escribir una política sin identidad.
+
+## 9. El modelo de identidad implementado (Task #370, rama de la Feature #369)
+
+> [!warning] Alcance de entrega
+> Todo lo de esta sección está en la rama de la Feature #369 y **no en `main`**. Se entrega apilado con #378: hasta entonces la demo desplegada conserva el comportamiento anterior. No hay un interruptor `API_AUTH_MODE`: la autorización por defecto rompería la web desplegada antes del login, y un interruptor de seguridad mal configurado dejaría la API abierta (decisión del owner, 2026-10-01). La sesión real de la web ya existe en la rama de #378 (§9.9) y el cliente HTTP sabe mandar `Authorization: Bearer`, pero los gateways del recorrido de seis pasos **no envían el token**: contra la API autorizada responden `401`. Es una ruptura conocida que se cierra al retirar el recorrido ([#438](https://github.com/reyduar/Vaqcrow/issues/438)), en la misma entrega a `main`: en la rama de #438 las seis rutas y esos gateways ya se borraron.
+
+### 9.1 Roles y perfil
+
+La migración `supabase/migrations/20260930180000_create_identity_and_audit.sql` crea `public.profile` (una fila por usuario de `auth.users`): rol `PYME` / `INVERSOR` / `ADMIN`, nombre visible, usuario único y estado `active` / `inactive`. Aplicada y verificada en el proyecto remoto. Un usuario `inactive` recibe `401` aunque su token sea válido. Se desactiva, no se borra: la FK `audit_log.actor_user_id → profile` impide borrar a quien tiene auditoría.
+
+### 9.2 Trigger de alta
+
+`on_auth_user_created` ejecuta `handle_new_user()` (`security definer`, `search_path=''`, sin `execute` para `anon`/`authenticated`) y crea el perfil. El nombre visible es **obligatorio**: el alta sin `display_name` de al menos 2 caracteres tras recortar espacios se rechaza con `22023` y no deja usuario ni perfil; el email nunca se usa como nombre (migración `20261002120000_require_signup_display_name.sql`, decisión D3 de #379). La promoción a `ADMIN` que tenga que crear un perfil faltante exige lo mismo. El rol `ADMIN` **sólo entra por `app_metadata`**, que escribe únicamente `service_role`; el `user_metadata` —editable por la propia persona— sólo puede pedir `PYME` o `INVERSOR`. Así nadie se autoasigna `ADMIN`. El superadmin («Admin Vaqcrow», `vaqcrow.admin`) se siembra con `pnpm --filter @vaqcrow/api seed:superadmin:docker|cloud` (script manual por perfil; email y contraseña desde `VAQCROW_SUPERADMIN_EMAIL` / `VAQCROW_SUPERADMIN_PASSWORD`; nunca al arrancar la API). El preflight comprueba que exista un `ADMIN` activo.
+
+### 9.3 RLS
+
+`profile` tiene RLS y la política `profile_select_own` (cada persona autenticada lee sólo su fila). Los grants son explícitos: `authenticated` sólo `SELECT`; `service_role` escribe. Esta es la primera política real del repositorio y reemplaza el «cero políticas» **para `profile`**; no cambia el patrón de las demás tablas.
+
+**Alcance de `ADMIN` en la base: sólo su propio `profile`.** No hay política RLS de administrador. Un JWT con rol `ADMIN` que consulte la base directamente es un `authenticated` más: ve únicamente su fila de `profile` y no puede leer `audit_log`, `application_review` ni `human_decision` (`42501`), ni escribir en ellas. Las lecturas y escrituras de administración pasan por la API, que valida el rol y usa `service_role`. Lo prueba `supabase/tests/admin_rls_scope.sql` (Task #371).
+
+### 9.4 Autorización en la API
+
+`apps/api` valida el token en el servidor (`AuthPort` + adaptador `SupabaseAuth`: `auth.getUser(token)` y rol leído de `profile`, con timeout de 5 s) y aplica un hook `onRequest` con **denegación por defecto**: la tabla de políticas vive en `apps/api/src/application/authorization/route-policy.ts` y toda ruta no listada se deniega. Respuestas: `401 unauthenticated` (sin token, token inválido o perfil inactivo), `403 forbidden` (rol sin permiso) y `503 unavailable` (el proveedor de identidad no responde, o el adaptador lanza una excepción en lugar de devolver el error). Todo cuerpo de denegación es exactamente `{ code }`, sin `message`, `details` ni traza. El rol sale de `profile`, nunca del cliente. El `actor` de la decisión humana es el `displayName` del admin autenticado y ya no viaja en el body (el `displayName` no es único: el `userId` quedará en `audit_log` cuando se cablee la auditoría).
+
+Si el adaptador lanza, el hook registra internamente sólo el nombre del error y el `correlationId` (`[AuthorizationHook] auth port threw`), nunca su mensaje. Fuera del hook, `buildApp` define un manejador de errores: una excepción no atrapada dentro de un handler responde `500 { code: "internal" }` y registra sólo el nombre del error, el estado que declaraba y el `correlationId` (`[HttpErrorHandler] unhandled error`); los 4xx propios de Fastify (JSON mal formado, tipo de contenido no soportado, cuerpo demasiado grande, validación de esquema) conservan su cuerpo por defecto, que es texto fijo del framework. Un error ajeno a Fastify que declare un 4xx también se trata como `500 { code: "internal" }`: las rutas responden sus 4xx con `reply.code(...).send({ code })` y nunca lanzan. La API corre con el logger de Fastify desactivado, así que estos registros siguen la convención `console.error` de los adaptadores.
+
+### 9.5 Registro de auditoría
+
+`public.audit_log` es append-only (`service_role` sólo `INSERT`/`SELECT`). El puerto `AuditLogPort` y su adaptador están cableados en `index.ts` pero **todavía no se invocan**; se usan cuando una Task posterior los llame (#410).
+
+### 9.6 Lo que no cambia
+
+`application_review` y `human_decision` siguen siendo **sólo `service_role`** (la API es la única escritora) y `tests/rls-grants-containment.test.ts` sigue vigente. No se escriben políticas sobre ellas.
+
+### 9.7 Brecha conocida: R1-002 (propiedad por fila)
+
+> [!warning] Las rutas `PYME` verifican el rol, no la propiedad de la fila
+> Una PyME registrada podría leer la solicitud de otra por id, leer o escribir las ventas de cualquier negocio y leer cualquier distribución. Reduce la exposición respecto de `main` (rutas sin autenticación) y la propiedad por fila llega con [#398](https://github.com/reyduar/Vaqcrow/issues/398). Como #369 y #378 llegan juntas a `main`, **R1-002 se resuelve o el owner lo acepta explícitamente antes de ese merge**.
+
+### 9.8 Email
+
+Confirmación de email activada: en local Mailpit captura los correos (`:54324`); en el remoto el SMTP es Resend (`no-reply@vaqcrow.com`), activado por el owner en el panel el 2026-10-03 según [[docs/architecture/environments|environments.md]] §13.2 (antes figuraba el 2026-10-02, pero los logs de Supabase Auth muestran que el primer alta real salió por el mailer por defecto de Supabase); la entrega real por Resend se observó ese mismo día. La recuperación de contraseña se difiere a un issue posterior (decisión del owner).
+
+### 9.9 El lado web (Task #379, rama de la Feature #378)
+
+Todo esto está en la rama de #378, apilada sobre #369, y **no en `main`**.
+
+| Pieza | Comportamiento |
+|---|---|
+| Sesión | `@supabase/ssr` guarda la sesión de Supabase Auth en **cookies** (`createBrowserClient` en el navegador). El puerto de sesión (`apps/web/src/application/ports/auth-session-port.ts`) expone sólo `{ role, displayName }`; el token no sale del adaptador salvo para el header `Authorization: Bearer` del cliente HTTP. |
+| Rol | Sale siempre de la **fila propia** de `public.profile`, leída con el JWT del usuario bajo RLS (`profile_select_own`) por el `sub` verificado. Nunca de los claims, del `user_metadata`, de la URL ni del selector «Soy inversor / Soy PyME» del formulario. El selector sólo decide si el ingreso se acepta: si no coincide con el rol verificado, la web cierra la sesión en el acto y muestra el rol correcto; un `ADMIN` no ingresa por `/login` (D14, owner 2026-10-03). |
+| Gating en el servidor | `apps/web/src/proxy.ts` (Next.js 16) verifica el token con `getClaims()`, lee el perfil y aplica `gateRoute`: `/portfolio` sólo `INVERSOR`, `/company` sólo `PYME`, anónimo → `/login?role=…`, sesión abierta en `/login`/`/signup` → su home. Tope de 3 s; cualquier fallo cuenta como «sin sesión» y falla cerrado. Detalle en [[docs/architecture/environments|environments.md]] §13.4. |
+| Gating en el cliente | `RouteGate` aplica la misma regla después de cargar y no renderiza nada protegido mientras la sesión carga. Tras el «Cerrar sesión» de la propia pestaña la navegación a `/` del header gana; nunca redirige a la ruta en la que ya está. |
+| Email | Nunca se muestra: el principal no lo lleva, el menú del avatar muestra nombre y chip de rol, y los mensajes de alta e ingreso no lo repiten. |
+| `ADMIN` | Puede ingresar por `/login` y va a `/`; ninguna página pública enlaza a `/admin` (la consola es #386). |
+| Errores | Los del proveedor se reducen a códigos saneados (`invalid_credentials`, `email_not_confirmed`, `network`, `unavailable`, …); el proxy registra sólo `[Proxy] session read failed` con una `cause` saneada. |
+
+### 9.10 El bucket privado de documentos de la PyME (rama de #398/#399)
+
+En la rama de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) —apilada, **no en `main`**— el wizard de alta de la PyME carga documentos y fotos a un bucket **privado** `pyme-documents` de Supabase Storage (`file_size_limit` 10 MB, `allowed_mime_types` PDF/JPEG/PNG). Las políticas viven en `storage.objects`, tabla gestionada por Storage que ya trae RLS y sus propios grants; a diferencia de las migraciones de `public`, la migración sólo agrega políticas y no toca `REVOKE`/`GRANT`. Quedan dos políticas de lectura:
+
+- `pyme_documents_owner_read`: el dueño lee los objetos cuyo primer segmento de ruta es su propio `auth.uid()`. La ruta es `<user_id>/<kind>/<uuid>-<nombre-saneado>`, con `kind ∈ {sales-declarations, cuit, articles-of-incorporation, photo}`.
+- `pyme_documents_admin_read`: un `ADMIN` (`public.profile.role = 'ADMIN'`) lee todo el bucket.
+
+Las escrituras son **mediadas por la API**: el navegador manda los bytes a `POST /storage/uploads`, la API valida MIME/magic bytes/tamaño/nombre y escribe con `service_role` (que hace bypass de RLS). Las políticas de escritura del dueño que creaba la primera migración se eliminaron en `20261003130000_restrict_pyme_documents_to_api_writes.sql` para que no quede un camino de escritura directa que saltee la validación. El borrado (`DELETE /storage/uploads?path=`) también pasa por la API; por SQL no se puede, porque Storage instala `protect_objects_delete` (el test pgTAP lo afirma contra `42501`). Prueba: `supabase/tests/pyme_documents_bucket.sql` (20 asserts). Ambas rutas exigen rol `PYME` (`route-policy.ts`).

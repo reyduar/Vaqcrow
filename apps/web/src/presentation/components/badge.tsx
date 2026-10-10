@@ -14,6 +14,11 @@ import type { IconType } from "react-icons";
  * `DEMO` is outlined, `SIMULADO` a dashed outline, `TESTNET` an accent tint —
  * while risk/transaction/evidence/fallback keep a semantic tone.
  *
+ * `size="compact"` is the template's header chip (`Vaqcrow Landing.dc.html`
+ * header, the `DEMO`/`TESTNET` pair): 22 px high, 8 px inline padding,
+ * 11 px type and a 13 px icon. The sticky header uses it; everything else
+ * keeps the 24 px badge.
+ *
  * The `success` tone is adopted from the template (`--ok-s`/`--ok-t`,
  * "Confirmada"), but `demo-ui.md` §2 bounds it: green is reserved for
  * outcomes **actually confirmed in the ledger**, never for
@@ -40,7 +45,14 @@ export interface BadgeProps {
   /** react-icons/io5 icon only, always rendered aria-hidden. */
   readonly icon?: IconType;
   readonly lang?: "es" | "en";
+  /** `compact` is the template's 22 px header chip; `default` the 24 px badge. */
+  readonly size?: "default" | "compact";
 }
+
+const SIZE_CLASSES: Readonly<Record<"default" | "compact", { readonly pill: string; readonly icon: string }>> = {
+  default: { pill: "h-6 px-2.5 text-xs", icon: "text-[14px]" },
+  compact: { pill: "h-[22px] px-2 text-[11px]", icon: "text-[13px]" }
+};
 
 const DEFAULT_TONE: Readonly<Record<BadgeVariant, BadgeTone>> = {
   simulado: "caution",
@@ -90,9 +102,10 @@ const TONE_TO_CHIP_COLOR: Readonly<
   success: "success"
 };
 
-export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
+export function Badge({ variant, label, tone, icon: Icon, lang, size = "default" }: BadgeProps) {
   const resolvedTone = tone ?? DEFAULT_TONE[variant];
   const visualClasses = VARIANT_CLASSES[variant] ?? TONE_CLASSES[resolvedTone];
+  const sizeClasses = SIZE_CLASSES[size];
 
   return (
     <Chip
@@ -102,9 +115,9 @@ export function Badge({ variant, label, tone, icon: Icon, lang }: BadgeProps) {
       data-variant={variant}
       data-tone={resolvedTone}
       lang={lang}
-      className={`inline-flex h-6 items-center gap-1 rounded-pill border px-2.5 text-xs font-semibold ${visualClasses}`}
+      className={`inline-flex ${sizeClasses.pill} items-center gap-1 rounded-pill border font-semibold ${visualClasses}`}
     >
-      {Icon ? <Icon aria-hidden="true" focusable="false" className="text-[14px]" /> : null}
+      {Icon ? <Icon aria-hidden="true" focusable="false" className={sizeClasses.icon} /> : null}
       {label}
     </Chip>
   );

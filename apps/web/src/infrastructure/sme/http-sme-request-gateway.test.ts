@@ -49,19 +49,24 @@ describe("HttpSmeRequestGateway", () => {
     await expect(new HttpSmeRequestGateway(port).submit(REQUEST)).rejects.toThrow();
   });
 
-  it("loads the request and sales history from GET /sme-requests/:applicationId", async () => {
-    const { port, send } = client({ request: REQUEST, salesPeriods: [PERIOD] });
+  it("loads the request, sales history and review state from GET /sme-requests/:applicationId", async () => {
+    const { port, send } = client({ request: REQUEST, salesPeriods: [PERIOD], state: "human_review" });
 
     const read = await new HttpSmeRequestGateway(port).load(APPLICATION_ID);
 
     expect(send).toHaveBeenCalledWith({ method: "GET", path: `/sme-requests/${APPLICATION_ID}` });
-    expect(read).toEqual({ request: REQUEST, salesPeriods: [PERIOD] });
+    expect(read).toEqual({ request: REQUEST, salesPeriods: [PERIOD], state: "human_review" });
   });
 
   it("rejects malformed sales history and a null request", async () => {
-    const bad = client({ request: REQUEST, salesPeriods: [{ ...PERIOD, period: "enero" }] });
+    const bad = client({ request: REQUEST, salesPeriods: [{ ...PERIOD, period: "enero" }], state: "human_review" });
     await expect(new HttpSmeRequestGateway(bad.port).load(APPLICATION_ID)).rejects.toThrow();
-    const nullRequest = client({ request: null, salesPeriods: [] });
+    const nullRequest = client({ request: null, salesPeriods: [], state: "human_review" });
     await expect(new HttpSmeRequestGateway(nullRequest.port).load(APPLICATION_ID)).rejects.toThrow();
+  });
+
+  it("rejects a read without the application review state", async () => {
+    const missingState = client({ request: REQUEST, salesPeriods: [PERIOD] });
+    await expect(new HttpSmeRequestGateway(missingState.port).load(APPLICATION_ID)).rejects.toThrow();
   });
 });

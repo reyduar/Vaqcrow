@@ -16,12 +16,15 @@ import type {
 import type { CampaignVaultInvocationPort } from "../../../application/ports/campaign-vault-invocation-port.js";
 import type {
   CampaignContributionRecord,
+  CampaignContributionTransactionPort,
   CampaignRecord,
   CampaignRepositoryPort,
   CampaignState,
   ReconciliationStatus
 } from "../../../application/ports/campaign-repository-port.js";
+import type { RateTableRepositoryPort } from "../../../application/ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
+import { validateCampaignGuardrails } from "../../../application/use-cases/campaign-guardrails.js";
 import { openCampaign } from "../../../application/use-cases/open-campaign.js";
 import { reconcileCampaign } from "../../../application/use-cases/reconcile-campaign.js";
 
@@ -66,10 +69,14 @@ const INVOCATION_SUBMISSION_BODY_KEYS = new Set([
 export interface CampaignRouteDependencies {
   readonly applicationReviews: ApplicationReviewRepositoryPort;
   readonly campaigns: CampaignRepositoryPort;
+  /** Per-transaction contribution record (#438/WU1): written before a contribute is submitted, confirmed by its poll. */
+  readonly contributionTransactions: CampaignContributionTransactionPort;
   readonly accounts: StellarAccountPort;
   readonly factory: CampaignFactoryPort;
   readonly chain: CampaignVaultChainPort;
   readonly invocations: CampaignVaultInvocationPort;
+  /** Resolves the rate a fresh deployment is validated against and snapshotted with (#410/T3a). */
+  readonly rates: RateTableRepositoryPort;
   readonly network: string;
   readonly networkPassphrase: string;
   /** The vault's payment asset (native XLM SAC in this demo). Config-level, not per-application. */
@@ -191,6 +198,7 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         accounts: dependencies.accounts,
         factory: dependencies.factory,
         chain: dependencies.chain,
+        rates: dependencies.rates,
         network: dependencies.network,
         tokenContractId: dependencies.tokenContractId
       },
@@ -221,6 +229,13 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         return reply.code(422).send({ code: "sme_account_unavailable" });
       case "vault_state_mismatch":
         return reply.code(422).send({ code: "vault_state_mismatch" });
+      case "rate_unavailable":
+        // The rate table is a dependency, never the caller's fault; no
+        // provider text crosses this boundary.
+        return reply.code(503).send({ code: "rate_unavailable" });
+      case "goal_limit_exceeded":
+        // A policy refusal: the declared goal is above the platform's hard cap.
+        return reply.code(422).send({ code: "goal_limit_exceeded" });
       case "unavailable":
         return reply.code(503).send({ code: "unavailable" });
     }
@@ -341,6 +356,37 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         if (chainState.value.state !== "funding") {
           return reply.code(409).send({ code: "campaign_not_funding" });
         }
+
+        // Best-effort, non-atomic contribution preflight (#410/T3a) — UX
+        // only: the authoritative per-investor cap is enforced atomically by
+        // the vault contract (T3b). The mirror supplies the campaign's
+        // snapshotted rate and goal; the chain supplies the investor's
+        // running contribution. A campaign opened before the snapshot existed
+        // has no stored rate to check against, so the preflight is skipped
+        // rather than guessed from the current rate table.
+        const rate = mirror.value.rateSnapshot;
+        if (rate !== undefined && command.amountStroops !== null) {
+          const existing = await dependencies.chain.readContribution(
+            mirror.value.contractAddress,
+            command.investorAccountId
+          );
+
+          if (!existing.ok) {
+            return reply.code(503).send({ code: "unavailable" });
+          }
+
+          const guardrail = validateCampaignGuardrails({
+            goalStroops: mirror.value.goalStroops,
+            investorContributionStroops: existing.value + command.amountStroops,
+            rate
+          });
+
+          if (!guardrail.ok) {
+            return guardrail.code === "investor_limit_exceeded"
+              ? reply.code(422).send({ code: "investor_limit_exceeded" })
+              : reply.code(503).send({ code: "unavailable" });
+          }
+        }
       }
 
       // `contribute`/`withdraw` always sign as the investor; `refund` forwards
@@ -423,6 +469,25 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
         return reply.code(422).send({ code: verification.refusal.code });
       }
 
+      // A contribute is recorded *before* it reaches the network, from the
+      // verified envelope's own facts: if the record cannot be written nothing
+      // was submitted yet, so 503 is safe to retry with the same envelope (same
+      // hash, insert-or-ignore). Recording after submitting would leave a
+      // transaction on its way with no record and a 503 inviting a resubmit.
+      if (command.operation === "contribute" && command.amountStroops !== null) {
+        const recorded = await dependencies.contributionTransactions.recordContributionSubmission({
+          transactionHash: verification.value.transactionHash,
+          campaignId: mirror.value.campaignId,
+          investorAccountId: command.investorAccountId,
+          amountStroops: command.amountStroops,
+          correlationId: parseCorrelationId(request.id)
+        });
+
+        if (!recorded.ok) {
+          return reply.code(503).send({ code: "unavailable" });
+        }
+      }
+
       const submission = await dependencies.invocations.submit(command.signedXdr);
 
       if (!submission.ok) {
@@ -501,6 +566,21 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
       });
 
       if (!reconciled.ok) {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+
+      // Confirms the contribute recorded at submission, if this hash is one;
+      // otherwise (withdraw, refund, an already-confirmed replay) it is a no-op.
+      // A failed write answers 503 so the poll is retried rather than leaving a
+      // successful contribution without its evidence row.
+      const confirmed = await dependencies.contributionTransactions.confirmContributionTransaction({
+        transactionHash: request.params.hash,
+        campaignId: mirror.value.campaignId,
+        observedAt: chainState.value.observedAt.toISOString(),
+        correlationId: parseCorrelationId(request.id)
+      });
+
+      if (!confirmed.ok) {
         return reply.code(503).send({ code: "unavailable" });
       }
 

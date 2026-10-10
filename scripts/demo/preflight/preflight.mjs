@@ -22,6 +22,11 @@ export const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
  * absent outside `APP_ENV=local` it resolves to an empty allow-list
  * (`apps/api/src/application/config/cors-config.ts`), which blocks the browser
  * origin and so does break the journey.
+ *
+ * `RESEND_API_KEY` is deliberately absent too: email is optional
+ * (`apps/api/src/application/config/email-config.ts`), and the API disables it
+ * rather than failing to boot. The dedicated `email` check below reports the
+ * effective configuration instead of demanding a key.
  */
 export const REQUIRED_API_ENV = [
   "APP_ENV",
@@ -29,6 +34,7 @@ export const REQUIRED_API_ENV = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "LLM_PROVIDER",
   "LLM_MODEL",
+  "LLM_VISION_MODEL",
   "LLM_API_KEY",
   "STELLAR_NETWORK",
   "STELLAR_CAMPAIGN_FACTORY_ID",
@@ -46,11 +52,64 @@ export const REQUIRED_API_ENV = [
 export const STELLAR_TESTNET_HORIZON_URL = "https://horizon-testnet.stellar.org";
 export const STELLAR_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 
-/** Names the web needs. */
-export const REQUIRED_WEB_ENV = ["NEXT_PUBLIC_API_BASE_URL"];
+/**
+ * Email defaults mirrored from
+ * `apps/api/src/application/config/email-config.ts` (`DEFAULT_EMAIL_FROM`,
+ * `DEFAULT_APP_BASE_URL`). The API resolves these exact values when the
+ * variables are unset, so the `email` check probes what the API would actually
+ * use rather than restating a requirement. Keep this pair in sync with that
+ * module.
+ */
+export const DEFAULT_EMAIL_FROM = "Vaqcrow <no-reply@vaqcrow.com>";
+export const DEFAULT_APP_BASE_URL = "http://localhost:3001";
+
+/**
+ * Mirrors `EMAIL_FROM`'s validation in `email-config.ts`: a single-line display
+ * name plus address, or a bare address. The explicit newline check matters
+ * because `$` also matches before a trailing newline in a JS regex.
+ *
+ * Exported so `tests/demo-preflight.test.ts` can cross-check it against the API
+ * parser: a future divergence fails the test instead of silently letting the
+ * preflight pass a sender the API would reject.
+ */
+export function isValidEmailFrom(value) {
+  if (/[\r\n]/.test(value)) return false;
+  return /^(?:[^<>\r\n]+<[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)$/.test(value);
+}
+
+/** Mirrors the absolute-http(s) check each config slice applies to a base URL. */
+function isAbsoluteHttpUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Names the web needs. The two Supabase names mirror
+ * `apps/web/src/infrastructure/auth/supabase-auth-session.ts`
+ * (`readSupabaseBrowserConfig`): the browser session cannot start without them.
+ * The publishable key is browser-safe, so it is not in SECRET_ENV_NAMES.
+ */
+export const REQUIRED_WEB_ENV = [
+  "NEXT_PUBLIC_API_BASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+];
 
 /** Env names whose VALUES are secrets: redacted from every reported string. */
-const SECRET_ENV_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "STELLAR_PLATFORM_SECRET_KEY", "LLM_API_KEY"];
+// VAQCROW_SUPERADMIN_PASSWORD is never required or read by a check (the API does
+// not need it at runtime); it is listed only so it is redacted if a shell or
+// profile file happens to expose it to this process.
+const SECRET_ENV_NAMES = [
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "STELLAR_PLATFORM_SECRET_KEY",
+  "LLM_API_KEY",
+  "RESEND_API_KEY",
+  "VAQCROW_SUPERADMIN_PASSWORD"
+];
 
 /** The tables the journey writes and reads (application through distribution). */
 export const JOURNEY_TABLES = [
@@ -60,7 +119,10 @@ export const JOURNEY_TABLES = [
   "human_decision",
   "campaign",
   "campaign_contribution",
-  "revenue_share_distribution"
+  "revenue_share_distribution",
+  // Identity (#370): roles and the append-only audit trail.
+  "profile",
+  "audit_log"
 ];
 
 /**
@@ -273,6 +335,43 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
     )
   );
 
+  // 1b. Transactional email. The API treats the Resend key as optional and
+  // disables email when it is unset, so an absent key is a valid configuration
+  // and this check reports it rather than failing. Present values are validated
+  // exactly as `email-config.ts` does, so a value the API would reject fails
+  // the run.
+  checks.push(
+    await check(
+      "email",
+      "Transactional email (Resend) configuration",
+      () => {
+        const key = get("RESEND_API_KEY");
+        const from = get("EMAIL_FROM") ?? DEFAULT_EMAIL_FROM;
+        // Normalised exactly as `email-config.ts` does: a base that kept its
+        // trailing slash would report a value the API would have stripped.
+        const base = trimSlash(get("APP_BASE_URL") ?? DEFAULT_APP_BASE_URL);
+
+        if (!isValidEmailFrom(from)) {
+          return {
+            ok: false,
+            detail: 'EMAIL_FROM must be a single-line address such as "Vaqcrow <no-reply@vaqcrow.com>"'
+          };
+        }
+        if (!isAbsoluteHttpUrl(base)) {
+          return { ok: false, detail: "APP_BASE_URL must be an absolute http(s) URL" };
+        }
+        if (!key) {
+          return {
+            ok: true,
+            detail: `email disabled: RESEND_API_KEY unset (from ${from}, links ${base})`
+          };
+        }
+        return { ok: true, detail: `enabled (from ${from}, links ${base})` };
+      },
+      redact
+    )
+  );
+
   // 2. API, Horizon, RPC, factory (independent: run together).
   const services = await Promise.all([
     check(
@@ -449,6 +548,32 @@ export async function runPreflight({ env, fetch: fetchFn, options, derivePublicK
             const status = await head("revenue_share_distribution?select=campaign_id,period&limit=0");
             const ok = status === 200 || status === 206;
             return { ok, detail: ok ? "both columns selectable" : `select of campaign_id,period answered HTTP ${status} (migration missing?)` };
+          },
+          redact
+        )
+  );
+
+  // 5. Seeded super admin: at least one active ADMIN profile (service-role read, one row).
+  checks.push(
+    schemaUnavailable
+      ? roleMissing("admin-profile", "An active ADMIN profile exists", schemaUnavailable)
+      : await check(
+          "admin-profile",
+          "An active ADMIN profile exists",
+          async () => {
+            const response = await fetchFn(
+              `${trimSlash(supabaseUrl)}/rest/v1/profile?select=user_id&role=eq.ADMIN&status=eq.active&limit=1`,
+              { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }, signal: timeout() }
+            );
+            if (!response.ok) return { ok: false, detail: `profile query answered HTTP ${response.status} (migration missing?)` };
+            const rows = await response.json();
+            const found = Array.isArray(rows) && rows.length > 0;
+            return {
+              ok: found,
+              detail: found
+                ? "an active ADMIN profile found"
+                : "no active ADMIN profile; run pnpm --filter @vaqcrow/api seed:superadmin:<docker|cloud>"
+            };
           },
           redact
         )

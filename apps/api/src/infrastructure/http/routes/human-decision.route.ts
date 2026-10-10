@@ -1,9 +1,13 @@
 import { parseApplicationId, parseCorrelationId, parseHumanDecisionCommand } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import { recordHumanDecision } from "../../../application/use-cases/record-human-decision.js";
+import type {
+  DecisionDeploymentDependencies,
+  DecisionNotificationDependencies
+} from "../../../application/use-cases/record-human-decision.js";
 import type { ApplicationReviewRepositoryPort } from "../../../application/ports/application-review-repository-port.js";
 
-const BODY_KEYS = new Set(["decisionId", "outcome", "actor", "reason", "approvedLimitArs"]);
+const BODY_KEYS = new Set(["decisionId", "outcome", "reason", "approvedLimitArs"]);
 
 function hasExactBodyKeys(input: unknown): input is Record<string, unknown> {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -16,11 +20,19 @@ function hasExactBodyKeys(input: unknown): input is Record<string, unknown> {
 
 export function registerHumanDecisionRoute(
   app: FastifyInstance,
-  repository: ApplicationReviewRepositoryPort
+  repository: ApplicationReviewRepositoryPort,
+  decisionNotifications?: DecisionNotificationDependencies,
+  decisionDeployment?: DecisionDeploymentDependencies
 ): void {
   app.post<{ Params: { applicationId: string }; Body: unknown }>(
     "/application-reviews/:applicationId/decisions",
     async (request, reply) => {
+      // The actor is the authenticated admin, never a body field (D5).
+      const principal = request.principal;
+      if (principal === undefined) {
+        return reply.code(401).send({ code: "unauthenticated" });
+      }
+
       if (!hasExactBodyKeys(request.body)) {
         return reply.code(400).send({ code: "invalid_request" });
       }
@@ -31,7 +43,7 @@ export function registerHumanDecisionRoute(
           applicationId: request.params.applicationId,
           decisionId: request.body["decisionId"],
           outcome: request.body["outcome"],
-          actor: request.body["actor"],
+          actor: principal.displayName,
           reason: request.body["reason"],
           approvedLimitArs: request.body["approvedLimitArs"]
         });
@@ -39,10 +51,15 @@ export function registerHumanDecisionRoute(
         return reply.code(400).send({ code: "invalid_request" });
       }
 
-      const result = await recordHumanDecision(repository, {
-        command,
-        correlationId: parseCorrelationId(request.id)
-      });
+      const result = await recordHumanDecision(
+        repository,
+        {
+          command,
+          correlationId: parseCorrelationId(request.id)
+        },
+        decisionNotifications,
+        decisionDeployment
+      );
 
       if (result.ok) {
         return reply.code(result.value.applied ? 201 : 200).send({

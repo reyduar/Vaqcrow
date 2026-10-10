@@ -232,3 +232,61 @@ body {
     animation: none;
   }
 }
+
+/*
+ * Print layout for the investor report (Feature #430, WU3; owner decision D2:
+ * functional export, no new dependency). Every rule lives inside `@media print`
+ * so screen mode is untouched, and it is appended here rather than carried in a
+ * `report-print.css` imported by the page because the Next App Router scopes
+ * global-CSS imports to files inside `app/`, while the `/reports` content is
+ * rendered by `presentation/components/reports/reports.tsx`.
+ *
+ * `.report-print` marks the report content (the export controls carry
+ * `.no-print`). The app chrome is hidden by element selector because the header
+ * and footer components sit outside this work unit's edit surface; no report
+ * content uses `<header>`/`<footer>`. These rules are unlayered, so they win
+ * over Tailwind's `@layer utilities` regardless of source order.
+ */
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* The shell clips its container to 1264px with padding; print uses the sheet. */
+  main {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .report-print {
+    gap: 24px;
+  }
+
+  /* Keep a KPI tile / table row from splitting across pages. */
+  .report-print section,
+  .report-print dl {
+    break-inside: avoid;
+  }
+
+  /* Printed tables need real rules to stay readable on paper. */
+  .report-print table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .report-print th,
+  .report-print td {
+    border: 1px solid #999999;
+    padding: 4px 6px;
+  }
+}

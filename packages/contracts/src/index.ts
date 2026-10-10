@@ -33,6 +33,22 @@ export type {
   HumanDecisionRecord
 } from "./application-review.js";
 
+export {
+  documentVerdictCommandSchema,
+  documentVerdictRecordSchema,
+  documentVerdictValueSchema,
+  parseDocumentVerdictCommand,
+  parseDocumentVerdictRecord,
+  parseDocumentVerdictValue,
+  parsePymeDocumentId,
+  pymeDocumentIdSchema
+} from "./document-verdict.js";
+export type {
+  DocumentVerdictCommand,
+  DocumentVerdictRecord,
+  DocumentVerdictValue
+} from "./document-verdict.js";
+
 export { fundingIntentIdSchema, parseFundingIntentId } from "./funding-intent-id.js";
 export type { FundingIntentId } from "./funding-intent-id.js";
 
@@ -97,7 +113,10 @@ export type {
 } from "./revenue-share-distribution.js";
 
 export {
+  declaredSalesPeriodSchema,
+  declaredSalesRequestSchema,
   evidenceReferenceSchema,
+  parseDeclaredSalesRequest,
   parseReviewFinding,
   parseSalesPeriod,
   parseSmeRequest,
@@ -112,6 +131,8 @@ export {
   smeRequestSubmissionSchema
 } from "./sme-evidence.js";
 export type {
+  DeclaredSalesPeriod,
+  DeclaredSalesRequest,
   EvidenceReference,
   ReviewFinding,
   ReviewFindingKind,
@@ -159,6 +180,117 @@ export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
 
 export {
+  marketplaceCampaignListSchema,
+  marketplaceCampaignSchema,
+  parseMarketplaceCampaignList,
+  riskBandSchema
+} from "./marketplace.js";
+export type { MarketplaceCampaign, MarketplaceCampaignList, RiskBand } from "./marketplace.js";
+
+export {
+  favoriteCampaignListSchema,
+  favoriteCampaignResultSchema,
+  parseFavoriteCampaignList,
+  parseFavoriteCampaignResult
+} from "./favorite.js";
+export type { FavoriteCampaignList, FavoriteCampaignResult } from "./favorite.js";
+
+export {
+  campaignDetailAssessmentSchema,
+  campaignDetailDecisionSchema,
+  campaignDetailSalesEvidenceSchema,
+  campaignDetailSalesMonthSchema,
+  campaignDetailSchema,
+  campaignDetailStatusSchema,
+  parseCampaignDetail
+} from "./campaign-detail.js";
+export type {
+  CampaignDetail,
+  CampaignDetailAssessment,
+  CampaignDetailDecision,
+  CampaignDetailSalesEvidence,
+  CampaignDetailSalesMonth,
+  CampaignDetailStatus
+} from "./campaign-detail.js";
+
+export { investorKycSchema, parseInvestorKyc } from "./investor-kyc.js";
+export type { InvestorKyc } from "./investor-kyc.js";
+
+export {
+  explorerUrlSchema,
+  parsePortfolioSummary,
+  portfolioContributionTransactionSchema,
+  portfolioDistributionSchema,
+  portfolioPositionSchema,
+  portfolioPositionStatusSchema,
+  portfolioSummarySchema,
+  portfolioTotalsSchema,
+  testnetTransactionHashSchema,
+  xlmAmountSchema
+} from "./portfolio.js";
+export type {
+  PortfolioContributionTransaction,
+  PortfolioDistribution,
+  PortfolioPosition,
+  PortfolioPositionStatus,
+  PortfolioSummary,
+  PortfolioTotals,
+  TestnetTransactionHash,
+  XlmAmount
+} from "./portfolio.js";
+
+export {
+  myCampaignDistributionSchema,
+  myCampaignDistributionStateSchema,
+  myCampaignSalesMonthSchema,
+  myCampaignSalesStatusSchema,
+  myCampaignSchema,
+  myCampaignsSchema,
+  myCampaignStateSchema,
+  parseMyCampaigns
+} from "./my-campaigns.js";
+export type {
+  MyCampaign,
+  MyCampaignDistribution,
+  MyCampaignDistributionState,
+  MyCampaignSalesMonth,
+  MyCampaignSalesStatus,
+  MyCampaigns,
+  MyCampaignState
+} from "./my-campaigns.js";
+
+export {
+  availableRangeSchema,
+  investorReportSchema,
+  parseInvestorReport,
+  parseReportSalesByPyme,
+  reportContributionTransactionSchema,
+  reportKpisSchema,
+  reportLatestDistributionSchema,
+  reportLatestDistributionStateSchema,
+  reportMonthlyPointSchema,
+  reportMonthlyPointStateSchema,
+  reportRangeSchema,
+  reportSalesByPymeEntrySchema,
+  reportSalesByPymeSchema,
+  reportSalesByPymeStatusSchema
+} from "./investor-report.js";
+export type {
+  AvailableRange,
+  InvestorReport,
+  ReportContributionTransaction,
+  ReportKpis,
+  ReportLatestDistribution,
+  ReportLatestDistributionState,
+  ReportMonthlyPoint,
+  ReportMonthlyPointState,
+  ReportRange,
+  ReportSalesByPyme,
+  ReportSalesByPymeEntry,
+  ReportSalesByPymeStatus
+} from "./investor-report.js";
+
+export {
   campaignSnapshotSchema,
   campaignStateSchema,
   contractInvocationSchema,
@@ -201,3 +333,25 @@ export type {
   StellarContractId,
   SubmitContractInvocationCommand
 } from "./campaign.js";
+
+export {
+  adminApplicationEvidenceSchema,
+  adminEvidenceContributionSchema,
+  adminEvidenceDecisionSchema,
+  adminEvidenceDeploymentSchema,
+  adminEvidenceDeploymentStateSchema,
+  adminEvidenceDistributionSchema,
+  adminEvidenceReconciliationSchema,
+  adminEvidenceVaultSchema,
+  parseAdminApplicationEvidence
+} from "./admin-application-evidence.js";
+export type {
+  AdminApplicationEvidence,
+  AdminEvidenceContribution,
+  AdminEvidenceDecision,
+  AdminEvidenceDeployment,
+  AdminEvidenceDeploymentState,
+  AdminEvidenceDistribution,
+  AdminEvidenceReconciliation,
+  AdminEvidenceVault
+} from "./admin-application-evidence.js";

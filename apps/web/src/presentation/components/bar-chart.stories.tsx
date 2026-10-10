@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { panaderiaHorizonte } from "@/application/fixtures/panaderia-horizonte";
 import { microcopy } from "@/application/trust/disclosures";
 import { BarChart, type BarChartPoint } from "./bar-chart";
 
@@ -11,14 +10,29 @@ const currencyFormatter = new Intl.NumberFormat("es-AR", {
 
 /**
  * BarChart: the "Ventas mensuales" chart from `Vaqcrow Sistema.dc.html`,
- * built from the frozen Panadería Horizonte SRL synthetic sales series
- * (Feature #17). April renders as an explicit "Sin dato" gap — never zero —
+ * built from an inline synthetic sales series for the fictional Panadería
+ * Horizonte SRL (the former journey fixture, retired with #438). April renders as an explicit "Sin dato" gap — never zero —
  * and June renders with its non-colour "Atípico" marker; both also carry
  * their formatted status text in the accessible table. `value`/`displayValue`
- * are computed once here from the fixture, matching the "presentational
+ * are computed once here from that series, matching the "presentational
  * only" rule — the component itself performs no currency formatting.
  */
-const salesSeries: readonly BarChartPoint[] = panaderiaHorizonte.sales.map((period) => ({
+const SYNTHETIC_SALES: ReadonlyArray<{
+  readonly label: string;
+  readonly amountArs: number | null;
+  readonly status: "reported" | "missing" | "anomalous";
+}> = [
+  { label: "Enero 2026", amountArs: 3_150_000, status: "reported" },
+  { label: "Febrero 2026", amountArs: 3_320_500, status: "reported" },
+  { label: "Marzo 2026", amountArs: 3_410_750, status: "reported" },
+  { label: "Abril 2026", amountArs: null, status: "missing" },
+  { label: "Mayo 2026", amountArs: 3_580_900, status: "reported" },
+  { label: "Junio 2026", amountArs: 6_240_000, status: "anomalous" },
+  { label: "Julio 2026", amountArs: 3_690_300, status: "reported" },
+  { label: "Agosto 2026", amountArs: 3_745_800, status: "reported" }
+];
+
+const salesSeries: readonly BarChartPoint[] = SYNTHETIC_SALES.map((period) => ({
   label: period.label,
   value: period.amountArs,
   displayValue: period.amountArs === null ? "Dato faltante" : currencyFormatter.format(period.amountArs),

@@ -334,7 +334,7 @@ function assessmentRecordError(
  * (`inputsPreserved: false`, `handoff: "absent"`). This state is reachable —
  * a row inserted directly in `human_review` (an operator or a test fixture)
  * reaches it, and so does any application whose assessment already succeeded.
- * The demo journey itself never starts there: `POST /sme-requests` creates the
+ * The PyME submission itself never starts there: `POST /sme-requests` creates the
  * application in `awaiting_assessment`.
  *
  * The state is read with `findById` rather than by widening the transition

@@ -22,6 +22,9 @@ import type { Page } from "@playwright/test";
  *   expects `{ networkDetails: { network, networkName, networkUrl, networkPassphrase, sorobanRpcUrl }, apiError? }`.
  * - `signTransaction()`: sends `SUBMIT_TRANSACTION`, expects
  *   `{ signedTransaction, signerAddress, apiError? }`.
+ * - `signMessage()`: first sends `REQUEST_ALLOWED_STATUS`, expects
+ *   `{ isAllowed }`; when allowed, sends `SUBMIT_BLOB`, expects
+ *   `{ signedBlob, signerAddress, apiError? }`.
  *
  * The emulator itself never calls `Date.now`/`Math.random`; only the
  * (unmodified, vendored) library's own `messageId` generation does.
@@ -37,6 +40,8 @@ export interface FreighterScenario {
   readonly onAccess?: "grant" | "reject";
   /** Default `"sign"`. */
   readonly onSign?: "sign" | "reject";
+  /** Default `"sign"`; the PyME wallet connection's SEP-53 message signature. */
+  readonly onSignMessage?: "sign" | "reject";
 }
 
 const STORAGE_KEY = "__vaqcrow_e2e_freighter_scenario__";
@@ -57,7 +62,13 @@ export async function installFreighterEmulator(page: Page): Promise<void> {
     ({ storageKey, rejectedApiError }) => {
       window.addEventListener("message", (event: MessageEvent) => {
         if (event.source !== window) return;
-        const data = event.data as { source?: unknown; messageId?: unknown; type?: unknown; transactionXdr?: unknown };
+        const data = event.data as {
+          source?: unknown;
+          messageId?: unknown;
+          type?: unknown;
+          transactionXdr?: unknown;
+          blob?: unknown;
+        };
         if (!data || data.source !== "FREIGHTER_EXTERNAL_MSG_REQUEST") return;
 
         let scenario: {
@@ -67,6 +78,7 @@ export async function installFreighterEmulator(page: Page): Promise<void> {
           network?: string;
           onAccess?: "grant" | "reject";
           onSign?: "sign" | "reject";
+          onSignMessage?: "sign" | "reject";
         } | null = null;
         try {
           const raw = window.sessionStorage.getItem(storageKey);
@@ -109,6 +121,23 @@ export async function installFreighterEmulator(page: Page): Promise<void> {
                 sorobanRpcUrl: "http://127.0.0.1:8000/soroban/rpc"
               }
             });
+            return;
+          case "REQUEST_ALLOWED_STATUS":
+            // `signMessage()` probes this first; answering "allowed" skips its
+            // internal `requestAccess()` and goes straight to `SUBMIT_BLOB`.
+            respond({ isAllowed: true });
+            return;
+          case "SUBMIT_BLOB":
+            if (scenario.onSignMessage === "reject") {
+              respond({ signedBlob: "", signerAddress: "", apiError: rejectedApiError });
+            } else {
+              // Deterministic fake SEP-53 signature: the stub API never verifies
+              // it, so no real key material is needed.
+              respond({
+                signedBlob: `EMULATED_SIGNED_MESSAGE(${String(data.blob ?? "")})`,
+                signerAddress: scenario.publicKey ?? ""
+              });
+            }
             return;
           case "SUBMIT_TRANSACTION":
             if (scenario.onSign === "reject") {

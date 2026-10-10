@@ -12,9 +12,14 @@ import type {
   CampaignVaultInvocationVerification,
   VerifyCampaignVaultInvocationInput
 } from "../../../application/ports/campaign-vault-invocation-port.js";
-import type { CampaignRecord, CampaignRepositoryPort } from "../../../application/ports/campaign-repository-port.js";
+import type {
+  CampaignContributionTransactionPort,
+  CampaignRecord,
+  CampaignRepositoryPort
+} from "../../../application/ports/campaign-repository-port.js";
+import type { RateSnapshot, RateTableRepositoryPort } from "../../../application/ports/rate-table-repository-port.js";
 import type { StellarAccountPort } from "../../../application/ports/stellar-account-port.js";
-import { buildApp } from "../build-app.js";
+import { buildAppAs } from "../test-support/auth.js";
 import type { CampaignRouteDependencies } from "./campaign.route.js";
 
 const APPLICATION_ID = "87654321-4321-4abc-8def-123456789abc";
@@ -55,6 +60,21 @@ const campaignRecord: CampaignRecord = {
   updatedAt: "2026-09-24T00:00:00.000Z"
 };
 
+const RATE: RateSnapshot = {
+  version: 5,
+  effectiveAt: "2026-10-05T00:00:00.000Z",
+  authorUserId: "44444444-4444-4444-8444-444444444444",
+  source: "manual",
+  usdToArs: 1_000_000_000n,
+  stroopsPerUsd: 10_000_000n
+};
+
+/** A campaign whose terms were validated against `RATE` (#410/T3a). */
+const campaignRecordWithRate: CampaignRecord = {
+  ...campaignRecord,
+  rateSnapshot: { version: RATE.version, usdToArs: RATE.usdToArs, stroopsPerUsd: RATE.stroopsPerUsd }
+};
+
 const fundingChainState: VaultChainState = {
   state: "funding",
   totalStroops: 0n,
@@ -88,6 +108,16 @@ function factoryDouble(): CampaignFactoryPort {
   };
 }
 
+function ratesDouble(
+  overrides: Partial<{ [K in keyof RateTableRepositoryPort]: RateTableRepositoryPort[K] }> = {}
+): RateTableRepositoryPort {
+  return {
+    create: vi.fn(),
+    findCurrent: vi.fn().mockResolvedValue({ ok: true, value: RATE }),
+    ...overrides
+  };
+}
+
 function campaignsDouble(
   overrides: Partial<{ [K in keyof CampaignRepositoryPort]: CampaignRepositoryPort[K] }> = {}
 ): CampaignRepositoryPort {
@@ -101,6 +131,16 @@ function campaignsDouble(
       value: { campaign: { ...campaignRecord, reconciliationStatus: "in_sync" }, applied: true }
     }),
     saveRefundContact: vi.fn(),
+    ...overrides
+  };
+}
+
+function contributionTransactionsDouble(
+  overrides: Partial<{ [K in keyof CampaignContributionTransactionPort]: CampaignContributionTransactionPort[K] }> = {}
+): CampaignContributionTransactionPort {
+  return {
+    recordContributionSubmission: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    confirmContributionTransaction: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     ...overrides
   };
 }
@@ -146,10 +186,12 @@ function deps(
   return {
     applicationReviews: applicationReviewsDouble(),
     campaigns: campaignsDouble(),
+    contributionTransactions: contributionTransactionsDouble(),
     accounts: accountsDouble(),
     factory: factoryDouble(),
     chain: chainDouble(),
     invocations: invocationsDouble(),
+    rates: ratesDouble(),
     network: "testnet",
     networkPassphrase: NETWORK_PASSPHRASE,
     tokenContractId: TOKEN_CONTRACT_ID,
@@ -182,7 +224,7 @@ describe("POST /campaigns", () => {
       findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }),
       create: vi.fn().mockResolvedValue({ ok: true, value: campaignRecord })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -195,7 +237,7 @@ describe("POST /campaigns", () => {
     const campaigns = campaignsDouble({
       findByApplicationId: vi.fn().mockResolvedValue({ ok: true, value: campaignRecord })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -205,7 +247,7 @@ describe("POST /campaigns", () => {
   it("returns 404 when the application does not exist", async () => {
     const applicationReviews = applicationReviewsDouble();
     vi.mocked(applicationReviews.findById).mockResolvedValue({ ok: false, error: { code: "not_found" } });
-    app = buildApp({ campaign: deps({ applicationReviews }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -219,7 +261,7 @@ describe("POST /campaigns", () => {
       ok: true,
       value: { applicationId: APPLICATION_ID, state: "in_review" } as never
     });
-    app = buildApp({ campaign: deps({ applicationReviews }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -241,7 +283,7 @@ describe("POST /campaigns", () => {
     const accounts = accountsDouble();
     vi.mocked(accounts.accountExists).mockResolvedValue({ ok: true, value: false });
     vi.mocked(accounts.createAccount).mockResolvedValue({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, accounts, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, accounts, chain }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -261,7 +303,7 @@ describe("POST /campaigns", () => {
         .mockResolvedValueOnce({ ok: false, error: { code: "not_found" } })
         .mockResolvedValue({ ok: true, value: { ...fundingChainState, goalStroops: 1n } })
     });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -280,7 +322,7 @@ describe("POST /campaigns", () => {
     });
     const factory = factoryDouble();
     vi.mocked(factory.deploy).mockResolvedValue({ ok: false, error: { code: "unavailable" } });
-    app = buildApp({ campaign: deps({ applicationReviews, campaigns, chain, factory }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, factory }) });
 
     const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
 
@@ -288,8 +330,50 @@ describe("POST /campaigns", () => {
     expect(response.json()).toEqual({ code: "unavailable" });
   });
 
+  it("returns 503 rate_unavailable when no current rate exists, without leaking provider text", async () => {
+    const applicationReviews = applicationReviewsDouble();
+    withApprovedApplication(applicationReviews);
+    const campaigns = campaignsDouble({
+      findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const rates = ratesDouble({ findCurrent: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, rates }) });
+
+    const response = await app.inject({ method: "POST", url: "/campaigns", payload: openBody });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "rate_unavailable" });
+  });
+
+  it("returns 422 goal_limit_exceeded when the goal is above USD 50,000 at the current rate", async () => {
+    const applicationReviews = applicationReviewsDouble();
+    withApprovedApplication(applicationReviews);
+    const campaigns = campaignsDouble({
+      findByApplicationId: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } })
+    });
+    const factory = factoryDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ applicationReviews, campaigns, chain, factory }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/campaigns",
+      // 50,001 USD at 10,000,000 stroops per USD, one stroop over the cap.
+      payload: { ...openBody, goalStroops: "500010000000000" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "goal_limit_exceeded" });
+    expect(factory.deploy).not.toHaveBeenCalled();
+  });
+
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -311,7 +395,7 @@ describe("GET /campaigns/:campaignId", () => {
   });
 
   it("reconciles the mirror against a fresh chain read and returns the snapshot", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -324,7 +408,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("includes the investor's own contribution when ?investor= is given", async () => {
     const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 2_500_000n }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({
       method: "GET",
@@ -338,7 +422,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("never serves the mirror as chain truth: 503 when the chain is unreachable", async () => {
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -348,7 +432,7 @@ describe("GET /campaigns/:campaignId", () => {
 
   it("returns 404 when the campaign is not mirrored", async () => {
     const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }) });
-    app = buildApp({ campaign: deps({ campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -374,7 +458,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("always prepares contribute with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -399,7 +483,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("always prepares withdraw with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -419,7 +503,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("prepares refund with the given source when one is provided", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -439,7 +523,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("prepares refund with the investor as source when none is given", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -462,7 +546,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
       readCampaign: vi.fn().mockResolvedValue({ ok: true, value: { ...fundingChainState, state: "settled" } })
     });
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ chain, invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain, invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -474,9 +558,93 @@ describe("POST /campaigns/:campaignId/invocations", () => {
     expect(invocations.prepare).not.toHaveBeenCalled();
   });
 
+  it("refuses a contribute that would exceed the per-investor cap before preparing (#410/T3a)", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 0n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "investor_limit_exceeded" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+    expect(chain.readContribution).toHaveBeenCalledWith(CONTRACT_ADDRESS, INVESTOR_ACCOUNT_ID);
+  });
+
+  it("counts the investor's existing contribution toward the cap", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    // 900,000 existing + 500,000 requested = 1,400,000, above the 1,000,000 cap.
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 900_000n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500000" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "investor_limit_exceeded" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+  });
+
+  it("prepares a contribute within the per-investor cap", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 0n }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500000" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(invocations.prepare).toHaveBeenCalled();
+  });
+
+  it("skips the per-investor preflight when the campaign has no rate snapshot (legacy campaign)", async () => {
+    const chain = chainDouble({ readContribution: vi.fn() });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(invocations.prepare).toHaveBeenCalled();
+    expect(chain.readContribution).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when the investor's existing contribution cannot be read for the preflight", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: contributeBody
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(invocations.prepare).not.toHaveBeenCalled();
+  });
+
   it("returns 503 when the chain is unreachable while checking contribute eligibility", async () => {
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
     const response = await app.inject({
       method: "POST",
@@ -491,7 +659,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
     const invocations = invocationsDouble({
       prepare: vi.fn().mockResolvedValue({ ok: false, error: { code: "invalid_input" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -504,7 +672,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
   });
 
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -518,7 +686,7 @@ describe("POST /campaigns/:campaignId/invocations", () => {
 
   it("returns 404 when the campaign is not mirrored", async () => {
     const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: false, error: { code: "not_found" } }) });
-    app = buildApp({ campaign: deps({ campaigns }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns }) });
 
     const response = await app.inject({
       method: "POST",
@@ -548,7 +716,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("always verifies contribute with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -565,7 +733,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("always verifies withdraw with sourceAccountId equal to the investor", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -585,7 +753,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
 
   it("omits sourceAccountId for refund so any self-signed source is accepted", async () => {
     const invocations = invocationsDouble();
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     await app.inject({
       method: "POST",
@@ -607,7 +775,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       verify: vi.fn().mockReturnValue({ ok: false, refusal: { code: "wrong_source", reason: "internal detail" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -625,7 +793,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       submit: vi.fn().mockResolvedValue({ ok: true, value: { hash: TRANSACTION_HASH, status: "rejected" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -640,7 +808,7 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     const invocations = invocationsDouble({
       submit: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({
       method: "POST",
@@ -651,8 +819,74 @@ describe("POST /campaigns/:campaignId/invocations/submission", () => {
     expect(response.statusCode).toBe(503);
   });
 
+  describe("recording the contribution transaction (#438/WU1)", () => {
+    it("records the verified contribute (hash, investor, amount) before submitting it", async () => {
+      const invocations = invocationsDouble();
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+        payload: contributeSubmission
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(contributionTransactions.recordContributionSubmission).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionHash: TRANSACTION_HASH,
+          campaignId: CAMPAIGN_ID,
+          investorAccountId: INVESTOR_ACCOUNT_ID,
+          amountStroops: 5_000_000n
+        })
+      );
+      const recordedAt = vi.mocked(contributionTransactions.recordContributionSubmission).mock.invocationCallOrder[0];
+      const submittedAt = vi.mocked(invocations.submit).mock.invocationCallOrder[0];
+      expect(recordedAt).toBeLessThan(submittedAt as number);
+    });
+
+    it("never submits a contribute whose record could not be written (503, safe to retry)", async () => {
+      const invocations = invocationsDouble();
+      const contributionTransactions = contributionTransactionsDouble({
+        recordContributionSubmission: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+        payload: contributeSubmission
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ code: "unavailable" });
+      expect(invocations.submit).not.toHaveBeenCalled();
+    });
+
+    it("records nothing for withdraw or refund (their amount is the contract's, not the envelope's)", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ contributionTransactions }) });
+
+      for (const operation of ["withdraw", "refund"] as const) {
+        await app.inject({
+          method: "POST",
+          url: `/campaigns/${CAMPAIGN_ID}/invocations/submission`,
+          payload: {
+            operation,
+            investorAccountId: INVESTOR_ACCOUNT_ID,
+            sourceAccountId: INVESTOR_ACCOUNT_ID,
+            amountStroops: null,
+            signedXdr: SIGNED_XDR
+          }
+        });
+      }
+
+      expect(contributionTransactions.recordContributionSubmission).not.toHaveBeenCalled();
+    });
+  });
+
   it("rejects an unknown field with 400 invalid_request", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({
       method: "POST",
@@ -674,7 +908,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
   });
 
   it("reports a pending transaction with no campaign snapshot", async () => {
-    app = buildApp({ campaign: deps() });
+    app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -686,7 +920,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     const invocations = invocationsDouble({
       findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } })
     });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -703,7 +937,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     it("reads the investor's on-chain contribution and reconciles it into the mirror on success", async () => {
       const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: true, value: 2_500_000n }) });
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       const response = await app.inject({
         method: "GET",
@@ -721,7 +955,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     it("records nothing when no investor is given, as before", async () => {
       const chain = chainDouble();
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -731,7 +965,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
     it("does not read the chain for a pending transaction", async () => {
       const chain = chainDouble();
-      app = buildApp({ campaign: deps({ chain }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ chain }) });
 
       const response = await app.inject({
         method: "GET",
@@ -744,7 +978,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
     it("rejects a malformed investor with 400 before looking the transaction up", async () => {
       const invocations = success();
-      app = buildApp({ campaign: deps({ invocations }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
       const response = await app.inject({
         method: "GET",
@@ -761,7 +995,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
         readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
       });
       const campaigns = campaignsDouble();
-      app = buildApp({ campaign: deps({ invocations: success(), chain, campaigns }) });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), chain, campaigns }) });
 
       const response = await app.inject({
         method: "GET",
@@ -773,12 +1007,78 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
     });
   });
 
+  describe("confirming the contribution transaction (#438/WU1)", () => {
+    const success = () =>
+      invocationsDouble({ findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } }) });
+
+    it("confirms the recorded contribution with the chain observation on success", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}?investor=${INVESTOR_ACCOUNT_ID}`
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(contributionTransactions.confirmContributionTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionHash: TRANSACTION_HASH,
+          campaignId: CAMPAIGN_ID,
+          observedAt: fundingChainState.observedAt.toISOString()
+        })
+      );
+    });
+
+    it("answers a replayed poll identically, delegating idempotency to the conditional confirm", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+      const url = `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}`;
+
+      const first = await app.inject({ method: "GET", url });
+      const replay = await app.inject({ method: "GET", url });
+
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json()).toEqual(first.json());
+      expect(contributionTransactions.recordContributionSubmission).not.toHaveBeenCalled();
+    });
+
+    it("never confirms a pending or failed transaction", async () => {
+      const contributionTransactions = contributionTransactionsDouble();
+      const invocations = invocationsDouble({
+        findResult: vi
+          .fn()
+          .mockResolvedValueOnce({ ok: true, value: { status: "pending" } })
+          .mockResolvedValueOnce({ ok: true, value: { status: "failed" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations, contributionTransactions }) });
+      const url = `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}`;
+
+      await app.inject({ method: "GET", url });
+      await app.inject({ method: "GET", url });
+
+      expect(contributionTransactions.confirmContributionTransaction).not.toHaveBeenCalled();
+    });
+
+    it("returns 503 when the confirmation cannot be written, so the poll is retried", async () => {
+      const contributionTransactions = contributionTransactionsDouble({
+        confirmContributionTransaction: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } })
+      });
+      app = buildAppAs("ADMIN", { campaign: deps({ invocations: success(), contributionTransactions }) });
+
+      const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ code: "unavailable" });
+    });
+  });
+
   it("returns 503 when the post-success chain read is unreachable", async () => {
     const invocations = invocationsDouble({
       findResult: vi.fn().mockResolvedValue({ ok: true, value: { status: "success" } })
     });
     const chain = chainDouble({ readCampaign: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ invocations, chain }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations, chain }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -787,7 +1087,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
   it("returns 503 when the transaction lookup is unavailable", async () => {
     const invocations = invocationsDouble({ findResult: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });
-    app = buildApp({ campaign: deps({ invocations }) });
+    app = buildAppAs("ADMIN", { campaign: deps({ invocations }) });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}/transactions/${TRANSACTION_HASH}` });
 
@@ -797,7 +1097,7 @@ describe("GET /campaigns/:campaignId/transactions/:hash", () => {
 
 describe("campaign route registration", () => {
   it("is absent when the campaign dependency group is not supplied", async () => {
-    const app = buildApp();
+    const app = buildAppAs("ADMIN");
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 
@@ -806,7 +1106,7 @@ describe("campaign route registration", () => {
   });
 
   it("sets the correlation ID header", async () => {
-    const app = buildApp({ campaign: deps() });
+    const app = buildAppAs("ADMIN", { campaign: deps() });
 
     const response = await app.inject({ method: "GET", url: `/campaigns/${CAMPAIGN_ID}` });
 

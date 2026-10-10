@@ -8,18 +8,18 @@ import { DemoNavbar, type DemoNavItem } from "./demo-navbar";
  * component doc). The labels below are synthetic navigation, never trust copy.
  */
 const ITEMS: readonly DemoNavItem[] = [
-  { label: "Registro de PyME", href: "/request", current: true },
-  { label: "Mi campaña", href: "/portfolio" },
+  { label: "Explorar PyMEs", href: "/explore", current: true },
+  { label: "Mi campaña", href: "/company" },
   { label: "Cómo funciona", href: "/#como-funciona" }
 ];
 
 const LONG_ITEMS: readonly DemoNavItem[] = [
-  { label: "Registro de PyME", href: "/request", current: true },
-  { label: "Evaluación asistida por IA", href: "/ai-assessment" },
-  { label: "Aprobación humana de la campaña", href: "/approval" },
-  { label: "Fondeo de la bóveda en Testnet", href: "/funding" },
-  { label: "Distribución por contrato", href: "/distribution" },
-  { label: "Evidencia y hash verificable", href: "/evidence" }
+  { label: "Explorar PyMEs", href: "/explore", current: true },
+  { label: "Mi portafolio", href: "/portfolio" },
+  { label: "Informes", href: "/reports" },
+  { label: "Mi campaña", href: "/company" },
+  { label: "Consola de administración", href: "/admin" },
+  { label: "Cómo funciona", href: "/#como-funciona" }
 ];
 
 const actionButton: ReactNode = (

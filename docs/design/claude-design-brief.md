@@ -7,6 +7,9 @@
 > - **Gloss decorativo:** el brief §3.4 prohíbe «gradientes intensos», «sombras pesadas» y «monedas flotantes»; el template usa **esferas 3D moradas con degradados radiales y sombras apiladas** (`Vaqcrow Acerca de.dc.html`). Las reglas de confianza de §6 siguen prevaleciendo sobre el template.
 > El detalle acotado y la reconciliación por regla están en [[docs/design/demo-ui.md|demo-ui.md]].
 
+> [!info] 2026-10-10 — #438 retiró las rutas del recorrido de seis pasos
+> Este brief es histórico. Las rutas «heredadas» que menciona (`/request`, `/ai-assessment`, `/approval`, `/funding`, `/distribution`, `/evidence`) se retiraron en la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) (apilada, todavía no en `main`) y responden 404. Las pantallas viven en las rutas en inglés por rol (`/company`, `/portfolio`, `/reports`, `/explore`, `/campaigns/[id]`, `/admin`); ver [[docs/design/demo-ui.md|demo-ui.md]] §4. El texto de abajo no se modifica.
+
 > **Qué es este documento.** El brief autocontenido para generar un **template nuevo** de Vaqcrow con
 > estética fintech moderna, consumible por Claude Design (o cualquier herramienta de diseño asistido).
 > Deriva de [`demo-ui.md`](./demo-ui.md), que documenta el sistema actual y conserva el registro
@@ -62,7 +65,7 @@ aprobación es humana y siempre atribuida.
 Vaqcrow es hoy una **demo de dos semanas** construida como Trabajo Fin de Máster. El template debe
 hacer legible, no solo posible, esta lista de límites:
 
-- Identidad, KYC/KYB, ventas y conversión ARS/activo Stellar son **sintéticos**.
+- KYC/KYB, historial de ventas y conversión ARS/activo Stellar son **simulados**; las cuentas son reales (Supabase Auth, #369/#378).
 - Todo ocurre en **Stellar Testnet** con activos **sin valor económico**.
 - La firma es **no custodial** (Freighter); Vaqcrow nunca recibe seeds.
 - La IA es **advisory** y bajo supervisión humana.
@@ -266,7 +269,7 @@ detallada en [`demo-ui.md` §8](./demo-ui.md).
 - **Actor:** persona nueva. **Propósito:** entender la propuesta y crear/activar la cuenta.
 - **Contenido clave:** hero corto; los 4 pasos del modelo (PyME → evaluación → bóveda → distribución); trust strip; CTA primario.
 - **Estados:** nuevo · validación en curso · cuenta creada · error de red.
-- **Límite:** sin autenticación real; Auth.js de producción está fuera de alcance.
+- **Límite:** la autenticación es real con Supabase Auth (#369); Auth.js v5 (#134) quedó superseded. El alta y el ingreso desde la web llegan con #378.
 
 #### 2 · Onboarding PyME: KYC — `/onboarding/pyme/kyc`
 - **Actor:** PyME. **Propósito:** completar KYC/KYB **simulado** para poder registrar la PyME.
@@ -394,7 +397,7 @@ detallada en [`demo-ui.md` §8](./demo-ui.md).
 
 Estos seis textos se muestran **verbatim**, sin abreviar, en la aplicación:
 
-> **Demostración con datos simulados.** La identidad, el KYC/KYB, las ventas y la conversión ARS/activo Stellar de este caso son sintéticos. No representan verificaciones ni movimientos de dinero real.
+> **Demostración con datos simulados.** El KYC/KYB, el historial de ventas y la conversión ARS/activo Stellar son simulados. Las cuentas son reales, pero no representan una verificación de identidad ni movimientos de dinero real.
 
 > **Stellar Testnet.** Las transacciones mostradas usan activos sin valor económico en Stellar Testnet. Un hash de Testnet demuestra ejecución técnica, no una inversión real ni disponibilidad en producción.
 

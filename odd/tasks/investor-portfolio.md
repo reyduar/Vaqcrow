@@ -1,0 +1,112 @@
+# Bitácora — Feature #426: Portafolio del inversor (Mi portafolio)
+
+Rama: `Vaqcrow#426_Feat_Deliver_the_investor_portfolio`, creada desde la punta de #422.
+
+## Objetivo
+
+Entregar la vista del inversor **«Mi portafolio»** (template `Vaqcrow Portafolio.dc.html`, modo inversor): tarjeta de wallet no custodial, totales, «Mis aportes en PyMEs» con estados y orden, «Aportes por sector» y «Distribuciones». Sólo con sesión de rol `INVERSOR`.
+
+## Problema y por qué
+
+`/portfolio` es hoy un esqueleto (`PageHeading`). El inversor que aportó no ve sus posiciones, sus distribuciones recibidas ni puede retirar/reembolsar desde un solo lugar. La Feature #426 cierra el lado inversor y desbloquea #430 (Informes).
+
+## Decisiones del owner (2026-10-08)
+
+| # | Pregunta del issue | Resolución |
+|---|---|---|
+| D1 | Acción «Reembolsar» y estado «Reembolso disponible». | **Acción en la tarjeta de posición**, reusando el motor `refund` y la regla ya existente de `campaign-workspace` (bóveda en `refunding`, o `funding` vencido bajo la meta). |
+| D2 | Confirmación del retiro / portafolio vacío / sin wallet o desconectada. | Reusar `TransactionReviewModal` para el retiro; **estado vacío propio + CTA «Explorar PyMEs»**; mostrar la **`WalletCard` en modo conectar** cuando no hay wallet. |
+| D3 | Errores de Freighter y fondos de Testnet. | Reusar **tal cual** `WALLET_KIND_COPY` + `WALLET_CONNECTION_COPY` (no-instalada, rechazada, red equivocada) y un texto corto con **friendbot de Testnet + Stellar Laboratory**. |
+| D4 | Historial por transacción y destino del explorador. | Por tarjeta de campaña con el **último estado de la tx** (`TransactionStatusList`); el historial completo por-transacción se difiere a **#430**. «Explorador» de la wallet → `stellar.expert/explorer/testnet/account/<clave>`; «Ver campaña» → la ruta de #422. |
+
+## Alcance autorizado
+
+- **Endpoints nuevos de lectura del portafolio** (hoy no existen): los aportes de un inversor entre campañas + totales, y sus distribuciones recibidas. Contrato en `packages/contracts`, port + adaptador (vista SQL `service_role`) + caso de uso + ruta **AUTHENTICATED/INVERSOR** + política.
+- **Vista `/portfolio`** con las secciones del template, estados (vacío, sin wallet, carga/error) y las acciones de retiro/reembolso.
+- Tests, evidencia y bitácora en el mismo work unit.
+
+## Restricciones
+
+- Estado **derivado de datos confirmados por el ledger**, nunca de supuestos del cliente.
+- Nunca prometer retorno; `SIMULADO`/`DEMO`/`TESTNET`; riesgo texto + ícono; «Sin dato / faltante» nunca es cero.
+- `packages/contracts` portable; `apps/web` consume sólo contratos; `presentation/` no importa contratos salvo type-only; `application/` (web) sin React.
+- No custodial: Vaqcrow nunca firma por el inversor; el retiro/reembolso los firma Freighter.
+- No inventar copy que el template no diseñe; lo no diseñado lo decide el owner (ya decidido, D1–D4).
+
+## Tareas
+
+- [x] **WU1 — Modelo de lectura del portafolio (backend).** Contratos + vista SQL + port/adaptador + casos de uso + rutas AUTHENTICATED/INVERSOR + política. Aportes del inversor entre campañas + totales; distribuciones recibidas. Sin `apps/web`.
+- [x] **WU2 — Vista `/portfolio` (web).** Tarjeta de wallet, totales, posiciones con estados y orden, barras por sector, y la lista de distribuciones.
+- [x] **WU3 — Retiro y reembolso.** «Retirar mi aporte» (bóveda abierta) y «Reembolsar» (D1), reusando el motor de bóveda.
+- [x] **WU4 — Estados y guía.** Vacío, sin wallet/desconectada, errores de Freighter y fondos de Testnet (D2/D3). **Incluye habilitar que un `INVERSOR` persista su clave Stellar**: hoy `POST /profile/wallet` es `only("PYME")`, así que el portafolio queda vacío para un inversor real hasta que exista ese camino (hallazgo confirmado en WU1).
+- [x] **WU5 — Verificación y evidencia.** Suites, `verify`, y `docs/planning/investor-portfolio-evidence.md`.
+
+Forecast: Feature grande. Entrega **feature-branch-chain**: cada work unit commitea en esta rama.
+
+## Checks aplicables
+
+- `pnpm --filter @vaqcrow/contracts test`, `pnpm --filter @vaqcrow/api test`, `pnpm --filter @vaqcrow/web exec vitest run --maxWorkers=4`
+- `pnpm run typecheck`, `pnpm run lint`, `pnpm run build`, `pnpm run boundaries`, `pnpm run test:boundaries`
+- `pnpm run test:db` si el work unit toca el esquema o una vista.
+- `pnpm run verify` al cierre de cada work unit.
+
+## Progreso
+
+### WU1 — Modelo de lectura del portafolio (commit `83b7fc6`)
+
+Ruta: **delegado** (un writer; contrato + port + caso de uso + adaptador + ruta + política + 2 vistas SQL + pgTAP, 2+ archivos no triviales). Sin `apps/web`.
+
+- **Diseño.** Endpoint `GET /portfolio` (**AUTHENTICATED → only("INVERSOR")**) que devuelve los aportes del inversor entre campañas, sus distribuciones y los totales. Contrato estricto y portable (`portfolio.ts`; XLM como string de 7 decimales; `xlmAmountSchema`). Dos vistas nuevas `security_invoker` sólo `service_role`: `investor_portfolio_position` (incluye campañas **liquidadas/reembolsables**: **no** filtra `state='open'`) e `investor_portfolio_distribution`. La **identidad se resuelve server-side** desde el principal verificado (clave Stellar del perfil); un `?investor=` de query se ignora (hay test). `totalDistributionsXlm` suma **sólo** distribuciones `confirmed` y es `null` (nunca `0.0000000`) si no hay ninguna; `raisedArs` nulo sin snapshot. Fallos saneados (`503`). Migración `20261009120000`.
+- **RED/GREEN observado.** RED: contrato ausente; caso de uso ausente. GREEN: contracts **584** (21 archivos), api **2408** (113), `test:db` **21 archivos / 716 tests PASS** (`portfolio.sql` 48 aserciones); `typecheck` 8/8; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1062 módulos, 3481 dependencias); `test:boundaries` 164.
+- **Verificación independiente (RDD off).** Un verifier read-only: **sin bloqueantes**. Confirmó identidad sólo del principal (`?investor=` ignorado), scoping por cuenta, vistas sólo `service_role`, incluir posiciones liquidadas, total confirmado-only con `null`, errores saneados y límites.
+- **Hallazgo material (gestionado en WU4).** El único escritor de `public.profile.stellar_public_key` es `POST /profile/wallet`, hoy `only("PYME")`. Por eso un `INVERSOR` real obtiene un portafolio **vacío** hasta que exista un camino de conexión de wallet del inversor → se agrega a WU4.
+- **Migración remota.** `20261009120000_create_investor_portfolio_views.sql` probada en local y luego, con **autorización explícita del owner**, **aplicada al proyecto remoto** (2026-10-09) vía MCP, con el `version` del historial **alineado al repositorio** (`20261009120000`). Verificado en el remoto: ambas vistas con `security_invoker=true` (**17** y **8** columnas), `SELECT` sólo `service_role` y **cero** grants a `anon`/`authenticated`; advisors sin clase nueva.
+- **Límite explícito.** Sin `apps/web` (la vista `/portfolio` es WU2).
+
+- **Work-unit commit.** `83b7fc6 feat(api): add the investor portfolio read model (#426)`.
+
+### WU2 — Vista `/portfolio` (web) (commit `d02a8f5`)
+
+Ruta: **delegado** (un writer; port + gateway + factory + null object + hook SWR + helpers puros + componentes presentacionales + vista + container + página, 2+ archivos no triviales). Sin backend.
+
+- **Diseño.** Vista **read-only**. `PortfolioPort.get()` → `GET /portfolio` con `Authorization: Bearer`; errores saneados (`unauthenticated` en 401/403, `unavailable` en otro no-200 o cuerpo inválido, `network` en fallo de transporte); `imageUrl` (relativa al API) → `imageSrc` absoluta (relativa nula queda nula, irresoluble → nula). Hook SWR `["portfolio"]` (`shouldRetryOnError:false`, `revalidateOnFocus:false`). Helpers puros: `status` (etiquetas que espejan `campaign-detail-view.tsx:69-71`: `funding`/`settled`/`refunding` → «Fondeo abierto»/«Meta alcanzada»/«Reembolso disponible»; sólo el cuerpo de `funding` con la `closeDate` real en `dd/mm/aaaa`), `sort` (`recent` = orden del API; `state` = rank estable `funding→settled→refunding`, empates conservan el orden del API), `sectors` (**BigInt** sobre XLM canónico, porcentaje entero, descendente, total cero → `[]`), `format` (es-AR, 7 decimales), `distribution-state`. Componentes: totales (`totalDistributionsXlm` nulo → «Sin dato», nunca `0`), tarjeta de posición (imagen, nombre, meta, `SIMULADO`, «Mi aporte», «% de la meta» + barra, bloque de estado, «Ver campaña»), barras de sector, lista de distribuciones. La wallet card se monta **sólo con clave** (la tarjeta lee `WalletConnectionPort` + `WalletBalancePort`, espejando `company-workspace`); la ruta ya está gateada `INVERSOR` por `(app)/layout.tsx` + `RouteGate`.
+- **RED/GREEN observado.** RED: módulos puros e infra ausentes antes de implementar. GREEN: contracts build OK; web enfocado **56/56** (12 archivos: puros 16, infra 13, estado 5, presentación 22); `tsc --noEmit` limpio; `lint` sin errores (1 warning preexistente ajeno); `boundaries` sin violaciones (1098 módulos / 3582 deps); `test:boundaries` 164/164. Excepción honesta: la capa presentacional se escribió contra el markup del template y sus tests son GREEN, sin RED capturado.
+- **Verificación independiente (RDD off).** Un verifier read-only: **8/8 PASS**, sin bloqueantes; re-corrió las suites anteriores.
+- **Advisories / owner-pending.** (a) los cuerpos de `settled`/`refunding` del template dependen de un número de ledger que **no existe** en los datos → se renderiza sólo la etiqueta (nada fabricado), copy owner-pending; (b) «Recientes» = orden del API porque el read model no trae fecha de aporte (un `contributedAt` real es candidato para #430); (c) el copy de distribución `failed` reusa «Fallida» de la evidencia, owner-pending; (d) el `Desconectar` de la wallet card en WU2 es un despido local — el desconectado real (persistido) y los estados vacío/sin-wallet/errores Freighter/fondos Testnet son WU4.
+- **Límite explícito.** Sin retiro/reembolso (WU3) ni estados de vacío/sin-wallet/errores/carga de fondos (WU4).
+
+- **Work-unit commit.** `d02a8f5 feat(web): add the investor portfolio view (#426)`.
+
+### WU3 — Retiro y reembolso (commit `b90a96c`)
+
+Ruta: **delegado** (un writer; acción + helpers puros + composición en la vista/container + tests) **más una corrección acotada**.
+
+- **Diseño.** Un único componente `PortfolioPositionAction`, parametrizado por la operación derivada del **`status` del portafolio** (`positionActionFor`: `funding`→retirar, `refunding`→reembolsar, `settled`→ninguna). Reusa el motor `useCampaignVault` (`withdraw`/`refund`, sin monto), `TransactionReviewModal` y `TransactionStatusList` (D4: último estado de la tx por tarjeta; el historial completo queda para #430). La regla de reembolso (D1) es `status === "refunding"` — el API ya pliega «funding vencido bajo la meta» ahí (`get-investor-portfolio.ts:102-108`). **No** se bifurcó `campaign-withdraw.tsx`.
+- **RED/GREEN observado.** RED: `actions.ts` y `portfolio-position-action.tsx` inexistentes. GREEN: contracts build OK; web enfocado **65/65** (11 archivos); `tsc --noEmit` limpio; `lint` 1 warning preexistente ajeno; `boundaries` sin violaciones (1103 módulos / 3613 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **8/8 PASS**, sin bloqueantes; re-corrió las suites. Dos advisories reales accionados en la corrección.
+- **Corrección acotada (post-verificación).** (1) **Honestidad**: un resultado post-firma **inconcluso** (timeout del polling → `unavailable`, `network`, `unknown`) ya **no** se rotula «Fallida»; sólo un fallo definido (`refused`/`not_funding`) es «Fallida`, el resto queda «Enviada · pendiente de confirmación». Test de agotamiento del poll agregado. (2) **Layering**: se eliminó el único import `application/ → presentation/` del repo (era type-only) moviendo `positionActionDescriptionRows`/`positionActionStatusItems` a presentation; `actions.ts` sólo importa `@vaqcrow/contracts`. Re-corrido: **65/65**, `tsc` limpio, `boundaries` verde.
+- **Advisories / owner-pending.** (a) tras un envío (incluído un timeout) la tarjeta **oculta** la acción — el modelo shipped muestra «Retirar de nuevo»; se mantiene oculto (el template no diseña acción en la tarjeta enviada) y se revisita en WU4/#430; (b) el modal, ante un error inconcluso post-envío, puede mostrar un copy de error contradictorio — es **preexistente y sistémico** en `campaign-withdraw` (no de WU3), se registra como follow-up.
+- **Límite explícito.** Sin estados vacío/sin-wallet/errores Freighter/fondos Testnet (WU4).
+
+- **Work-unit commit.** `b90a96c feat(web): add the portfolio withdraw and refund actions (#426)`.
+
+### WU4 — Estados y wallet del inversor (commit `84fd356`)
+
+Ruta: **delegado** (un writer; API + web) **más dos correcciones acotadas**.
+
+- **Diseño — API.** Se abrieron las tres rutas de wallet a `only("PYME", "INVERSOR")` (`POST /profile/wallet/challenge`, `POST /profile/wallet`, `GET /profile/wallet`); **sin `ADMIN`**. Las rutas y casos de uso ya eran role-agnósticos (resuelven el dueño del principal verificado) y `isFrozen` es `false` sin `sme_request`, así que un INVERSOR persiste su propia clave sin efecto privilegiado. Se actualizó la **MATRIX** de `authorization.test.ts` (exact-match contra `ROUTE_POLICY_KEYS`) y el bloque de `wallet.route.test.ts` que exigía 403 para no-PYME → ahora INVERSOR permitido, ADMIN 403.
+- **Diseño — web.** Reusa `connectAndStoreWallet` + `WALLET_KIND_COPY`/`WALLET_CONNECTION_COPY` (sin duplicar copy) y el `WalletCard` conectado; construye una **tarjeta modo conectar** (nueva) con la guía de fondos de Testnet (Friendbot + Stellar Laboratory). Estado vacío con CTA «Explorar PyMEs» → `/explore`. `Desconectar` sigue siendo local (persistirlo requiere una ruta nueva, fuera de alcance).
+- **RED/GREEN observado.** RED: MATRIX 3 fallos tras editar la política; web: módulos nuevos ausentes + 4 casos del container. GREEN: API **366/366** (authorization 351 + wallet.route 15); web **85/85** (13 archivos); `tsc` limpio; `lint` 1 warning preexistente ajeno; `boundaries` verde (1108 módulos / 3636 deps).
+- **Verificación independiente (RDD off).** Un verifier read-only: **7/8 PASS**, 1 **FAIL** real accionado en corrección.
+- **Correcciones acotadas.** (1) **Honestidad del estado vacío**: `GET /portfolio` devuelve 200 con portafolio vacío sintético cuando no hay clave persistida, así que «Todavía no aportaste» se mostraba **sin wallet** (afirmación no respaldada). Se gatea el `EmptyState` a `wallet !== null && contributions.length === 0`; se corrigen los tests que codificaban el bug y se endurece el assert del body `GET /profile/wallet` del inversor (`{ publicKey: null, frozen: false }`). (2) **Superficie completa**: sin wallet ya no se muestran totales en cero ni secciones vacías — sólo la tarjeta de conexión. Re-corrido: web **85/85**, API **366/366**, `tsc` limpio, `boundaries` verde.
+- **Advisories / owner-pending.** (a) copy del estado vacío y de la tarjeta de conexión/guía de fondos: redacción owner-pending (voseo neutro, sin promesa de retorno); (b) `Desconectar` local (oculta la tarjeta → modo conectar), el desconectado persistido necesita ruta nueva; (c) el modal, ante un error inconcluso post-envío (WU3), puede mostrar copy contradictorio — preexistente y sistémico en `campaign-withdraw`.
+
+- **Work-unit commit.** `84fd356 feat: enable the investor wallet and add the portfolio states (#426)`.
+
+### WU5 — Verificación y evidencia
+
+- **Cierre de la Feature.** `pnpm run verify` → **exit 0** tras el **único retry documentado** (el flake conocido de timeout de 5 s de la suite web bajo la carga de turbo, archivo ajeno al cambio). `pnpm run boundaries` sin violaciones; `pnpm run test:boundaries` **164/164**; `lint` sin errores (1 warning preexistente ajeno).
+- **Fix de tipos.** El test de la ruta de wallet introducido en WU4 no compilaba bajo `tsc` (sí bajo vitest): `payload?: unknown` en el arreglo de requests → se tipó a `typeof connectBody`. Commit `f477d77`.
+- **Evidencia.** `docs/planning/investor-portfolio-evidence.md` (español, estructura de hermano `campaign-detail-and-contributions-evidence.md`): mapea los **7 criterios de aceptación de #426 citados textualmente** a su evidencia, con commits, comandos y verificación independiente; registra límites, advisories y copy owner-pending; deja explícito que **nada está en `main`** (Opción A con #438) y que la migración remota quedó aplicada con autorización del owner.
+
+- **Work-unit commit.** `docs(evidence): close Feature #426 with the investor portfolio evidence (#429)`.

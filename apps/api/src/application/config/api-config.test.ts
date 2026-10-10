@@ -9,6 +9,11 @@ import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import { parseCampaignVaultConfig } from "./campaign-vault-config.js";
 import { LOCAL_DEFAULT_CORS_ALLOWED_ORIGINS } from "./cors-config.js";
+import {
+  DEFAULT_APP_BASE_URL,
+  DEFAULT_EMAIL_FROM,
+  parseEmailConfig
+} from "./email-config.js";
 import type { EnvSource } from "./env-source.js";
 import {
   parseStellarConfig,
@@ -27,6 +32,7 @@ const VALID_ENV: EnvSource = {
   STELLAR_NETWORK: "testnet",
   LLM_PROVIDER: "opencode-go",
   LLM_MODEL: "deepseek-v4-pro",
+  LLM_VISION_MODEL: "deepseek-v4-flash-vision-exp",
   LLM_API_KEY: "llm-key-fixture"
 };
 
@@ -60,6 +66,15 @@ describe("parseApiConfig — accepted configuration", () => {
     expect(config.stellar.network).toBe("testnet");
     expect(config.stellar.horizonUrl).toBe("https://horizon-testnet.stellar.org");
     expect(config.stellar.networkPassphrase).toBe(STELLAR_TESTNET_NETWORK_PASSPHRASE);
+    // The LLM slice requires both models, with no fallback between them.
+    expect(config.llm.model).toBe("deepseek-v4-pro");
+    expect(config.llm.visionModel).toBe("deepseek-v4-flash-vision-exp");
+    // The email slice is optional: absent a Resend key it is disabled, but its
+    // sender and deep-link base still resolve to their documented defaults.
+    expect(config.email.enabled).toBe(false);
+    expect(config.email.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.email.appBaseUrl).toBe(DEFAULT_APP_BASE_URL);
+    expect(Object.isFrozen(config.email)).toBe(true);
   });
 
   it("defaults the explorer URL to the canonical Testnet explorer", () => {
@@ -123,6 +138,23 @@ describe("parseApiConfig — accepted configuration", () => {
 
     expect(config.cors.allowedOrigins).toEqual(["https://vaqcrow-web.example.com"]);
   });
+
+  it("enables the email slice only when a Resend key is set, wrapping it as a secret", () => {
+    const config = parseApiConfig({
+      ...VALID_ENV,
+      RESEND_API_KEY: "resend-key-fixture",
+      EMAIL_FROM: "Vaqcrow <hola@vaqcrow.com>",
+      APP_BASE_URL: "https://web.example.test/"
+    });
+
+    expect(config.email.enabled).toBe(true);
+    if (config.email.enabled) {
+      expect(config.email.apiKey.reveal()).toBe("resend-key-fixture");
+    }
+    expect(config.email.from).toBe("Vaqcrow <hola@vaqcrow.com>");
+    // Normalised here rather than at every use: the renderer appends the path.
+    expect(config.email.appBaseUrl).toBe("https://web.example.test");
+  });
 });
 
 describe("parseApiConfig — missing configuration fails clearly", () => {
@@ -147,11 +179,14 @@ describe("parseApiConfig — missing configuration fails clearly", () => {
         "SUPABASE_URL",
         "LLM_API_KEY",
         "LLM_MODEL",
+        "LLM_VISION_MODEL",
         "LLM_PROVIDER"
       ].sort()
     );
     expect(issues.every((issue) => issue.code === "missing")).toBe(true);
-    expect((error as ConfigurationError).message).toContain("Invalid API configuration (7 issues)");
+    // Email is an optional slice: an absent Resend key must not be a boot failure.
+    expect(issues.map((issue) => issue.key)).not.toContain("RESEND_API_KEY");
+    expect((error as ConfigurationError).message).toContain("Invalid API configuration (8 issues)");
   });
 
   it("treats a blank value as absent", () => {
@@ -218,6 +253,41 @@ describe("parseApiConfig — out-of-scope environments are rejected", () => {
     expect(issueFor({ ...VALID_ENV, CORS_ALLOWED_ORIGINS: "*" }, "CORS_ALLOWED_ORIGINS")?.code).toBe(
       "invalid"
     );
+  });
+
+  it("rejects a non-absolute APP_BASE_URL once email is enabled", () => {
+    expect(
+      issueFor(
+        { ...VALID_ENV, RESEND_API_KEY: "resend-key-fixture", APP_BASE_URL: "web.example.test" },
+        "APP_BASE_URL"
+      )?.code
+    ).toBe("invalid");
+  });
+
+  it("rejects a malformed EMAIL_FROM once email is enabled", () => {
+    expect(
+      issueFor(
+        { ...VALID_ENV, RESEND_API_KEY: "resend-key-fixture", EMAIL_FROM: "not an address" },
+        "EMAIL_FROM"
+      )?.code
+    ).toBe("invalid");
+  });
+
+  it("fails closed outside local: an enabled slice without APP_BASE_URL is missing it", () => {
+    const issue = issueFor(
+      { ...VALID_ENV, APP_ENV: "demo", RESEND_API_KEY: "resend-key-fixture" },
+      "APP_BASE_URL"
+    );
+
+    expect(issue?.code).toBe("missing");
+  });
+
+  it("tolerates a malformed sender and base while email is disabled", () => {
+    const config = parseApiConfig({ ...VALID_ENV, EMAIL_FROM: "not an address", APP_BASE_URL: "not a url" });
+
+    expect(config.email.enabled).toBe(false);
+    expect(config.email.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.email.appBaseUrl).toBe(DEFAULT_APP_BASE_URL);
   });
 });
 
@@ -356,5 +426,15 @@ describe("parseCampaignVaultConfig — slice independence (U1)", () => {
 
     expect(issue?.key).toBe("STELLAR_PLATFORM_SECRET_KEY");
     expect(issue?.code).toBe("missing");
+  });
+});
+
+describe("parseEmailConfig — slice independence", () => {
+  it("resolves the sender and base even while disabled", () => {
+    const config = parseEmailConfig({ APP_BASE_URL: "https://web.example.test" });
+
+    expect(config.enabled).toBe(false);
+    expect(config.from).toBe(DEFAULT_EMAIL_FROM);
+    expect(config.appBaseUrl).toBe("https://web.example.test");
   });
 });

@@ -2,6 +2,7 @@ import {
   getNetwork as freighterGetNetwork,
   isConnected as freighterIsConnected,
   requestAccess as freighterRequestAccess,
+  signMessage as freighterSignMessage,
   signTransaction as freighterSignTransaction
 } from "@stellar/freighter-api";
 import { WalletError } from "@/application/ports/wallet-port";
@@ -35,12 +36,27 @@ export interface FreighterApi {
     xdr: string,
     opts?: { networkPassphrase?: string }
   ): Promise<{ signedTxXdr: string; signerAddress: string; error?: FreighterApiError }>;
+  /**
+   * SEP-53 message signing. `@stellar/freighter-api@6.0.1` resolves
+   * `signedMessage` as base64 (or `null` on failure) and never throws.
+   */
+  signMessage(
+    message: string
+  ): Promise<{ signedMessage: string | null; signerAddress?: string; error?: FreighterApiError }>;
 }
 
 /** Messages documented by Freighter, verified against `@stellar/freighter-api@6.0.1`. */
 const REJECTED_MESSAGE = "The user rejected this request.";
 const NODE_ENVIRONMENT_MESSAGE = "Node environment is not supported";
 const INTERNAL_ERROR_PREFIX = "The wallet encountered an internal error";
+
+/**
+ * The only network this demo links accounts on. SEP-53 message signing does
+ * not itself depend on a network, so the check is an explicit account-linking
+ * rule (`#406` owner decision 1: wrong network asks for Testnet) rather than a
+ * protocol requirement.
+ */
+const TESTNET_NETWORK_NAME = "TESTNET";
 
 /**
  * Maps a wallet failure onto the port's kind. Only the outcomes a person can act
@@ -63,7 +79,12 @@ const realFreighterApi: FreighterApi = {
   isConnected: freighterIsConnected,
   requestAccess: freighterRequestAccess,
   getNetwork: freighterGetNetwork,
-  signTransaction: freighterSignTransaction
+  signTransaction: freighterSignTransaction,
+  // The installed package types `signMessage` as `SignMessageV3Response |
+  // SignMessageV4Response`; the V3 arm still models the legacy `Buffer`
+  // signature, while the shipped browser path resolves the base64 string the
+  // adapter's slice declares. The cast drops only that dead V3 arm.
+  signMessage: freighterSignMessage as FreighterApi["signMessage"]
 };
 
 /**
@@ -149,5 +170,42 @@ export class FreighterWallet implements WalletPort {
     }
 
     return signedTxXdr;
+  }
+
+  /**
+   * Signs a UTF-8 message with SEP-53 and resolves the base64 signature.
+   *
+   * The wallet's network is checked first (the demo links accounts on Testnet
+   * only) so a wallet pointed elsewhere is refused before the person is asked
+   * to approve anything. The message is the single-use challenge the API
+   * issued; this adapter never invents or reuses one.
+   */
+  async signMessage(message: string): Promise<string> {
+    if (!message) {
+      throw new WalletError("unknown", "A message is required to request a signature");
+    }
+
+    const walletNetwork = await this.api.getNetwork();
+    if (walletNetwork.error) {
+      throw classify(walletNetwork.error);
+    }
+
+    if (walletNetwork.network !== TESTNET_NETWORK_NAME) {
+      throw new WalletError(
+        "network_mismatch",
+        `Freighter is on "${walletNetwork.network}", not Stellar Testnet`
+      );
+    }
+
+    const { signedMessage, error } = await this.api.signMessage(message);
+    if (error) {
+      throw classify(error);
+    }
+
+    if (!signedMessage) {
+      throw new WalletError("unknown", "Freighter reported success without returning a signed message");
+    }
+
+    return signedMessage;
   }
 }

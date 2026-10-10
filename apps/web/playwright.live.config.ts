@@ -1,9 +1,20 @@
 import { defineConfig } from "@playwright/test";
+import { readDockerEnvOptional } from "./e2e-live/support/docker-env";
 import { LIVE_API_BASE_URL, LIVE_APP_BASE_URL, LIVE_APP_PORT } from "./e2e-live/support/live-targets";
 
 /**
- * Opt-in live journey for the campaign vault (Task #248, T4). Drives the
- * real funding page against the docker-profile API (`STELLAR_NETWORK=local`)
+ * The browser-side Supabase pair (`docs/architecture/environments.md` §13.4)
+ * of the docker profile, read from `.env.docker` by name only — never the
+ * service-role key, and never printed. Since #379 the web opens a real
+ * Supabase Auth session, so the role-based admin-review rehearsal
+ * (`e2e-live/admin-review.live.spec.ts`, #410 U9) needs both.
+ */
+const browserSupabase = readDockerEnvOptional(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]);
+
+/**
+ * Opt-in live suite (Task #248, T4; since #438 the role-based admin-review
+ * rehearsal only — the funding-page journey was retired). Drives the real
+ * web app against the docker-profile API (`STELLAR_NETWORK=local`)
  * and the Stellar Quickstart local network — real Horizon, real Soroban RPC,
  * real Supabase-local rows, no stub and no fixtures. This is the deliberate
  * opt-in counterpart to `playwright.config.ts`'s deterministic, stub-backed
@@ -41,12 +52,12 @@ export default defineConfig({
   webServer: {
     name: "next-live",
     command: `next dev --hostname 127.0.0.1 --port ${LIVE_APP_PORT}`,
-    url: `${LIVE_APP_BASE_URL}/funding`,
+    url: `${LIVE_APP_BASE_URL}/login`,
     timeout: 120_000,
     // Always reuse: this suite never runs in CI, and a dev already running
     // this same server (e.g. `pnpm dev:web:docker`) should not be killed and
     // restarted by a test run.
     reuseExistingServer: true,
-    env: { NEXT_PUBLIC_API_BASE_URL: LIVE_API_BASE_URL }
+    env: { NEXT_PUBLIC_API_BASE_URL: LIVE_API_BASE_URL, ...browserSupabase }
   }
 });

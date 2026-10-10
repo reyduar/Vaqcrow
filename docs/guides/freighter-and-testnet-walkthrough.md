@@ -1,21 +1,36 @@
 ---
-title: Freighter y Testnet — recorrido completo de la demo
+title: Freighter y Testnet — recorrido completo de la demo por roles
 tags:
   - demo
   - stellar
   - freighter
   - testnet
   - guide
-date: 2026-09-25
+date: 2026-10-10
 status: draft
 ---
 
-# Preparación de Freighter y recorrido completo de la demo
+# Preparación de Freighter y recorrido completo de la demo por roles
 
 > [!info] Para qué sirve este documento
-> Es la guía operativa para **probar la demo de Vaqcrow en Stellar Testnet**, paso a paso. Sirve tanto para el equipo como para quien recibe el acceso: crea las **dos cuentas** que hacen falta —una para la PyME y una para el inversor—, las fondea con XLM de prueba, y recorre el journey completo.
+> Es la guía operativa para **probar la demo de Vaqcrow en Stellar Testnet** con la app por roles: **PyME**, **ADMIN** e **INVERSOR**. Prepara Freighter y las cuentas, y recorre el flujo de punta a punta: la PyME se registra y envía su solicitud, una persona administradora la aprueba y la bóveda se despliega, el inversor aporta, la PyME distribuye y cada rol encuentra su evidencia.
 >
-> No explica la arquitectura. Dice qué hacer, en qué orden, y **qué deberías ver** en cada pantalla. Para el *por qué* de las cuentas y las claves, ver [[docs/architecture/stellar-accounts-and-keys|Cuentas, claves y fondeo en Stellar]].
+> No explica la arquitectura. Dice qué hacer, en qué orden, y **qué deberías ver** en cada pantalla. Para el *por qué* de las cuentas y las claves, ver [[docs/architecture/stellar-accounts-and-keys|Cuentas, claves y fondeo en Stellar]]. Para dejar listo el entorno antes de una corrida, ver [[docs/planning/demo-run-preflight|el preflight de la demo]].
+
+> [!info] 2026-10-10 — #438: qué cambió
+> Esta guía describía antes un recorrido guiado de seis pasos con rutas propias (`/request`, `/ai-assessment`, `/approval`, `/funding`, `/distribution`, `/evidence`). La Feature [#438](https://github.com/reyduar/Vaqcrow/issues/438) retiró esas seis rutas: ahora **responden 404**, sin redirección. El flujo vive en la app por roles y la evidencia Testnet se reparte por rol (§13).
+>
+> La rama de #438 está apilada sobre las Features por rol y **todavía no está en `main`**. Esta guía describe esa rama.
+
+## Ruta rápida
+
+1. Instalá Freighter, ponelo en **Testnet** y creá dos cuentas: PyME e inversor (§3–§5).
+2. Fondeá las dos con XLM de prueba (§6).
+3. **PyME:** creá la cuenta, registrá la PyME con el wizard, conectá Freighter y enviá a revisión (§9).
+4. **ADMIN:** ingresá en `/admin`, revisá la solicitud y aprobala; la bóveda se despliega en Testnet (§10).
+5. **INVERSOR:** explorá, abrí la campaña y aportá firmando en Freighter (§11).
+6. **PyME:** con la meta alcanzada, declará ventas y firmá la distribución (§12).
+7. Juntá la evidencia de cada rol (§13).
 
 ## 1. Lo que necesitás
 
@@ -23,28 +38,29 @@ status: draft
 |---|---|
 | Navegador de escritorio | Chrome, Brave o Firefox |
 | La extensión Freighter | Ver §3 para los enlaces oficiales |
-| Una cuenta de Testnet fondeada | Ver §5 y §6 |
+| Dos cuentas de Testnet fondeadas | Una para la PyME y otra para el inversor (§4–§6) |
+| Tres cuentas de Vaqcrow | Una PyME y una inversora, que creás vos (§9, §11); y el acceso ADMIN que te da quien opera la demo (§10) |
+| El entorno de la demo andando | Quien opera la demo lo comprueba con `pnpm demo:preflight` antes de empezar (ver [[docs/planning/demo-run-preflight|preflight]] §2) |
 
-Nada más. **No se instala software, no se compila nada y no hay que pedirle ninguna clave a Vaqcrow.**
+**No se instala software, no se compila nada y no hay que pedirle ninguna clave de Stellar a Vaqcrow.**
 
-### Las dos cuentas
+### Los tres roles
 
-La demo tiene dos roles y **cada uno usa su propia cuenta**:
+| Rol | Cuenta de Vaqcrow | Cuenta de Freighter | Qué firma en Freighter |
+|---|---|---|---|
+| **PyME** | Alta en `/signup` con «Soy PyME» | Cuenta 1 | Un **mensaje** para verificar que la wallet es suya (no es una transacción) y, más adelante, **la distribución** a los inversores |
+| **ADMIN** | La entrega quien opera la demo; no tiene alta pública | Ninguna | **Nada.** Aprueba en la consola; el despliegue de la bóveda lo firma la plataforma |
+| **Inversor** | Alta en `/signup` con «Soy inversor» | Cuenta 2 | Un **mensaje** para verificar su wallet, su **aporte** y, si corresponde, su **retiro** o **reembolso** |
 
-| Rol | Cuenta | Qué hace con Freighter |
-|---|---|---|
-| **PyME** | Cuenta 1 | Conecta la billetera al abrir la bóveda. **No firma nada** en ese paso: sólo comparte su dirección pública |
-| **Inversor** | Cuenta 2 | Firma su aporte, su retiro y —si corresponde— el reembolso |
-
-> [!tip] Por qué dos cuentas separadas
-> Además de reflejar el caso real, separarlas hace visible **quién autoriza cada operación** y evita un error de guion muy común: firmar como PyME algo que la PyME no debería firmar. Como el reembolso es sin permisos, una sola cuenta alcanzaría técnicamente para todo, pero el recorrido se entiende mucho mejor con dos.
+> [!tip] Por qué dos cuentas de Freighter separadas
+> Además de reflejar el caso real, separarlas hace visible **quién autoriza cada operación** y evita firmar como PyME algo que la PyME no debería firmar. La bóveda tiene como destino inmutable la cuenta de la PyME: si la PyME y el inversor usaran la misma, el recorrido dejaría de mostrar algo.
 
 ## 2. El principio que no se negocia
 
 > [!warning] Vaqcrow nunca pide tu seed
 > Vaqcrow solicita y muestra **únicamente direcciones públicas** (las que empiezan con `G`). Nunca pide, recibe, guarda ni muestra la frase de recuperación ni la clave secreta.
 >
-> Freighter es una billetera y una interfaz de firma, **no un custodio**: vos conservás tus claves, Vaqcrow arma y verifica la transacción, y vos la revisás y la firmás dentro de Freighter.
+> Vaqcrow es **no custodio**: nunca tiene tus claves ni recibe o mueve tu dinero. Freighter es una billetera y una interfaz de firma, **no un custodio**: vos conservás tus claves, Vaqcrow arma y verifica la transacción, y vos la revisás y la firmás dentro de Freighter. Los aportes los custodia **el contrato de la bóveda**, no una persona.
 >
 > **Si algo te pide la frase de recuperación para esta demo, está mal. Frená y avisá.**
 
@@ -84,7 +100,7 @@ Vas a alternar entre estas dos cuentas durante la demo. Ver §8.
 > [!tip] Si querés dos identidades independientes de verdad
 > Hay dos caminos soportados por Freighter:
 >
-> - **Un perfil de navegador distinto.** La extensión guarda su estado por perfil del navegador, así que un segundo perfil te da una billetera con su **propia frase de recuperación**, aislada de la primera.
+> - **Un perfil de navegador distinto.** La extensión guarda su estado por perfil del navegador, así que un segundo perfil te da una billetera con su **propia frase de recuperación**, aislada de la primera. De paso, cada perfil conserva su propia sesión de Vaqcrow, lo que simplifica el cambio de rol (§8).
 > - **Agregar una cuenta por clave secreta.** Freighter permite sumar una cuenta pegando la clave secreta de una identidad generada fuera de la extensión.
 >
 > Para esta demo alcanza con las dos cuentas derivadas de la misma frase que describe esta sección. Lo importante es el **efecto**: dos direcciones públicas distintas, una por rol.
@@ -108,12 +124,13 @@ https://friendbot.stellar.org?addr=TU_DIRECCION_PUBLICA_G...
 > [!important] Friendbot quiere una dirección pública, y lo dice él mismo
 > Pedirle a `https://friendbot.stellar.org` sin `addr` devuelve `400` con el detalle `invalid address: must be a valid G or C address`. El propio servicio exige una dirección **G** (pública) o **C** (contrato). No existe ningún camino en el que una seed haga falta acá.
 
-> [!note] La PyME no necesita fondos para abrir la bóveda
-> Cuando la PyME abre la bóveda, **Vaqcrow crea y fondea su cuenta** en la cadena con 2 XLM, firmando con su propia clave de plataforma. Ese monto no es el dinero de la campaña: es sólo el costo de alta de la cuenta en el ledger.
+> [!note] Las dos cuentas necesitan XLM propio
+> - **El inversor** paga su aporte y las comisiones.
+> - **La PyME** no paga el despliegue de la bóveda: lo firma y lo paga la plataforma. Si su cuenta todavía no existe en el ledger, Vaqcrow **la crea y la fondea** con 2 XLM al desplegar la bóveda; ese monto no es dinero de la campaña, es sólo el costo de alta de la cuenta. Pero la PyME **sí paga la distribución** a los inversores (§12), así que necesita saldo propio.
 >
-> La cuenta del inversor **sí** necesita XLM propio para aportar. Fondeá las dos igual: no cuesta nada y evita un paso trabado a mitad de la demo.
+> El preflight sugiere pisos de 10 XLM para la PyME y 20 XLM para el inversor ([[docs/planning/demo-run-preflight|preflight]] §2.1). Friendbot alcanza para los dos.
 
-Comprobá que llegó el saldo: la cuenta debería mostrar XLM en Freighter y existir en el explorador.
+Comprobá que llegó el saldo: la cuenta debería mostrar XLM en Freighter y existir en el explorador. El inversor también ve su saldo en `/portfolio` una vez conectada la wallet, con una guía de fondeo de Testnet si la cuenta es nueva.
 
 ## 7. Verificar la red antes de cada firma
 
@@ -130,168 +147,195 @@ Antes de firmar cualquier cosa, confirmá que lo que ves en Freighter coincide c
 
 ## 8. Cambiar de rol durante la demo
 
-Todo el recorrido ocurre en la misma pestaña del navegador. El rol lo determina **qué cuenta está activa en Freighter** en ese momento:
+El rol lo deciden **dos cosas a la vez**, y las dos tienen que coincidir:
 
-1. Abrí el popup de Freighter.
-2. Cambiá la cuenta activa (PyME o inversor).
+| Qué | Dónde se cambia |
+|---|---|
+| La **cuenta de Vaqcrow** con la que ingresaste | Cerrá sesión e ingresá con la otra cuenta. El ADMIN ingresa siempre por `/admin`, nunca por `/login` |
+| La **cuenta activa de Freighter** | Popup de Freighter → selector de cuenta |
+
+1. Cerrá sesión en Vaqcrow e ingresá con la cuenta del rol que sigue.
+2. Abrí el popup de Freighter y elegí la cuenta de ese rol.
 3. Volvé a la página de la demo.
 
 > [!tip] Mirá la cuenta activa antes de cada firma
-> El popup de Freighter te muestra **desde qué cuenta** vas a firmar. Revisalo siempre antes de aceptar: es la última barrera y la más barata.
+> El popup de Freighter te muestra **desde qué cuenta** vas a firmar. Revisalo siempre antes de aceptar: es la última barrera y la más barata. La wallet que Vaqcrow guarda para cada cuenta es la que verificó con la firma del mensaje; firmar desde otra cuenta de Freighter no la reemplaza.
 
-## 9. El recorrido, paso a paso
+> [!tip] El atajo: un perfil de navegador por rol
+> Con un perfil para la PyME, otro para el inversor y una ventana privada para el ADMIN no hace falta cerrar sesión ni cambiar de cuenta en Freighter entre pasos.
 
-La demo tiene **6 pasos**. Se navega con la barra de arriba o avanzando con el botón al pie de cada pantalla.
+## 9. PyME — alta, registro y envío a revisión
 
-| Paso | Ruta | Rol protagonista |
+### 9.1 Crear la cuenta e ingresar
+
+1. Abrí `/signup`, elegí **«Soy PyME»** y completá «Nombre o Razón Social», correo y contraseña.
+2. Confirmá el correo con el enlace que te llega. Sin confirmar no podés ingresar.
+3. Ingresá en `/login` con **«Soy PyME»** seleccionado. Vaqcrow te lleva a `/company` («Mi campaña»).
+
+> [!important] El selector de rol tiene que coincidir con la cuenta
+> El rol lo decide la cuenta, no el selector, pero el selector debe coincidir: una cuenta PyME que ingresa con «Soy inversor» se rechaza con «Esta cuenta es de PyME. Elegí «Soy PyME» para ingresar.», y no queda ninguna sesión abierta.
+
+### 9.2 «Registrar mi PyME»: el wizard
+
+En `/company`, presioná **«Registrar mi PyME»**. Se abre un único wizard con cuatro pasos en la misma pantalla, sin rutas propias: **KYC → Registro PyME → Evaluación AI → Revisión humana**.
+
+| Paso | Qué hacés | Qué deberías ver |
 |---|---|---|
-| 1. Solicitud | `/request` | PyME |
-| 2. Evaluación con IA | `/ai-assessment` | — |
-| 3. Aprobación humana | `/approval` | Persona que decide |
-| 4. Fondeo | `/funding` | PyME → Inversor |
-| 5. Distribución | `/distribution` | — |
-| 6. Evidencia | `/evidence` | — |
+| 1. KYC | «Iniciar verificación simulada» (o «Usar archivo de prueba») | «KYC aprobado · SIMULADO». Es simulado: no se procesa ningún documento real. Seguí con «Siguiente paso» |
+| 2. Registro PyME | Completá «Datos de la empresa», las ventas mensuales y los **tres documentos obligatorios** y entre una y cuatro fotos. «Completar con datos de ejemplo» llena el formulario con datos sintéticos. Enviá con «Enviar a evaluación AI» | Un mes vacío se marca «Faltante», nunca cero. Los documentos y las fotos **se suben de verdad** a un almacenamiento privado |
+| 3. Evaluación AI | Leé la evaluación y seguí con «Continuar» (o «Corregir datos») | Faltantes, anomalías y una «Banda de riesgo propuesta», «Sujeta a revisión humana». **La IA sólo asesora**: no aprueba ni rechaza |
+| 4. Revisión humana | Presioná «Conectar Freighter» con la **cuenta 1** activa y firmá el mensaje de verificación. Después, «Enviar a revisión» | «Solicitud enviada · en revisión.» y el ítem «Revisión humana» en «En proceso» |
 
-### Paso 1 — Solicitud (`/request`)
+> [!warning] Datos sintéticos, aunque los archivos se suban de verdad
+> El propio wizard lo dice: «Demo: usá datos sintéticos. No cargues información real de tu empresa.» No subas documentos reales.
 
-Vas a ver a la PyME del caso, **Panadería Horizonte SRL**, con su KYC y sus ventas mensuales.
+> [!important] Freighter es obligatorio para enviar
+> Sin wallet conectada, el ítem «Conectar Freighter» pasa a «Obligatorio» y el envío se bloquea. La clave pública que conectás viaja con la solicitud: es el **destino inmutable** de los fondos de la bóveda. Conectar firma **un mensaje**, no una transacción: no se mueve dinero.
 
-Prestá atención a la serie de ventas: **falta abril** y **junio está marcado para revisión**. No son errores de carga: son parte del caso, puestos a propósito para que la evaluación tenga algo real que señalar.
+> [!note] Una evaluación incompleta avisa pero no bloquea
+> Si el chequeo de completitud encuentra un faltante, lo marca, pero podés enviar igual: la decisión es de una persona. «Revisar lo cargado» vuelve al paso 2 sólo antes de enviar; el wizard guarda su estado en memoria, así que no hay borrador para retomar más tarde.
 
-> [!note] Este paso es demostrativo
-> La identidad, el KYC/KYB, las ventas y la conversión ARS/activo de este caso son **sintéticos por diseño**, y así está declarado en pantalla. El caso ya viene cargado para que el recorrido arranque en la evaluación.
+Al enviar, la persona administradora recibe un aviso por correo y en la campana de la app.
 
-### Paso 2 — Evaluación con IA (`/ai-assessment`)
+## 10. ADMIN — revisión, aprobación y despliegue de la bóveda
 
-La IA ordena la evidencia, identifica anomalías y propone una evaluación explicable. **Sólo asesora**: no inventa datos, no decide y no transfiere fondos. Vas a ver una recomendación con un nivel de riesgo y una confianza.
+1. Abrí `/admin` e ingresá con el correo y la contraseña de ADMIN. Ninguna página pública enlaza a `/admin`, y un ADMIN nunca ingresa por `/login`.
+2. Llegás a la cola de PyMEs (`/admin/pymes`). La solicitud nueva figura como «Pendiente de revisión». Presioná **«Revisar solicitud»**.
+3. Recorré la revisión en orden:
 
-### Paso 3 — Aprobación humana (`/approval`)
+| Sección | Qué mirar |
+|---|---|
+| 1 · KYC/KYB | El resultado simulado de la PyME |
+| 2 · Recomendación de IA | Banda de riesgo, faltantes y anomalías. Dice «Consultiva · no aprueba» |
+| 3 · Decisión humana | Elegí «Aprobar con límite», escribí la **Razón** (obligatoria) y presioná «Registrar decisión» → «Confirmar» |
+| Despliegue de la bóveda | El estado del despliegue en Testnet, después de aprobar |
 
-Acá decide **una persona**. Completá:
+> [!important] La IA recomienda; una persona decide
+> La recomendación de la IA no aprueba nada por sí sola. El límite aprobado es la meta que declaró la PyME y no se edita; quien decide queda registrado con su nombre, desde la sesión verificada.
 
-1. **Decisión**: elegí *Aprobar*.
-2. **Quién decide**: tu nombre o el del rol.
-3. **Razón de la decisión**: una línea con el motivo.
-4. Presioná **Registrar decisión**.
-
-El límite aprobado lo fija la persona, no la IA. La recomendación de la IA no aprueba nada por sí sola.
-
-### Paso 4 — Fondeo (`/funding`)
-
-Es el paso central. Se hace en dos momentos y con **dos cuentas distintas**.
-
-**4.a — La PyME abre la bóveda**
-
-1. Con la **cuenta de la PyME activa**, presioná conectar billetera.
-2. Vaqcrow lee tu **dirección pública**. En este paso **no vas a firmar nada**: la bóveda la despliega Vaqcrow firmando con su propia clave de plataforma.
-3. Completá el **monto objetivo** y la **fecha límite**.
-4. Presioná **Abrir bóveda**.
-
-> [!important] Elegí una fecha límite futura
-> El formulario interpreta la fecha a las **00:00 UTC** de ese día, y el contrato exige que el vencimiento sea posterior al momento actual. Si elegís "hoy", el vencimiento ya pasó y la apertura falla. Elegí **pasado mañana o más**.
+Aprobar dispara el despliegue de la bóveda. El panel recorre «Pendiente de confirmación» → «Desplegando bóveda» → **«Bóveda confirmada / PyME publicada»**. Si todavía no aparece un despliegue, presioná «Actualizar»; si no hay ninguno registrado, «Desplegar»; si falló, «Despliegue fallido» con «Reintentar».
 
 Detrás de escena pasan tres cosas que conviene saber al mostrar la demo:
 
 - Si la cuenta de la PyME todavía no existe en el ledger, Vaqcrow **la crea y la fondea** con 2 XLM.
-- Vaqcrow **despliega la bóveda** en la fábrica de contratos, firmando como dueña de esa fábrica.
-- Vaqcrow **lee el estado desde la cadena** y recién después lo refleja en la interfaz. La cadena es la autoridad del dinero, no la base de datos.
+- Vaqcrow **despliega la bóveda** en la fábrica de contratos, firmando con su propia clave de plataforma. La PyME no firma nada en este paso.
+- La bóveda queda con la cuenta de la PyME como **destino inmutable** de los fondos, y la campaña se publica en el marketplace.
 
-**4.b — El inversor aporta**
+> [!note] Si el despliegue falla por el tope
+> «El objetivo convertido supera el tope vigente por campaña» significa que la meta declarada, convertida, supera el tope configurado. Registrá una solicitud nueva con una meta más chica; el preflight recomienda una meta de demo chica ([[docs/planning/demo-run-preflight|preflight]] §2.1).
 
-1. Cambiá la **cuenta activa a la del inversor** (ver §8).
-2. Escribí el monto y presioná **Aportar**.
-3. **Firmá en Freighter.** Antes de aceptar, revisá en el popup: **red, destino, activo y monto**.
+## 11. INVERSOR — explorar, abrir la campaña y aportar
 
-Después de firmar, el total de la campaña se actualiza y tu aporte queda registrado. Vas a poder ver el **hash de la transacción** y abrirlo en el explorador.
+1. Abrí `/signup`, elegí **«Soy inversor»** y completá «Nombre completo», correo y contraseña. Confirmá el correo e ingresá en `/login` con «Soy inversor». Vaqcrow te lleva a `/portfolio` («Mi portafolio»).
+2. En `/portfolio`, con la **cuenta 2** activa en Freighter, presioná «Conectar Freighter» y firmá el mensaje de verificación.
+3. Abrí `/explore` («Explorar PyMEs»): la campaña aprobada aparece en el marketplace. Presioná «Ver evidencia y riesgo» para abrir su detalle en `/campaigns/[id]`. El detalle exige una cuenta: sin sesión vas a ver «Ingresá para ver esta campaña».
+4. En el detalle, escribí el monto y presioná **«Aportar a la campaña»**.
+5. La primera vez aparece la verificación de identidad del inversor: es **simulada** y se aprueba al continuar con «Aprobar y continuar»[^owner-pending]. No vuelve a pedirse.
+6. Se abre la revisión antes de firmar: contrato de la bóveda, función `contribute`, custodia («El contrato de la bóveda, no una persona») y monto. Presioná **«Firmar en Freighter»** y revisá en el popup: **red, cuenta activa, contrato y monto**.
 
-### Paso 5 — Distribución (`/distribution`)
+Después de firmar, el aporte muestra **«Enviada · pendiente de confirmación»** hasta que la cadena lo confirma. Enviada no es confirmada: no lo des por hecho antes.
 
-> [!todo] Todavía es un placeholder
-> Esta pantalla muestra un aviso de contenido pendiente. La distribución de retornos es la Feature #28 y aún no está implementada.
+> [!note] Sin wallet conectada
+> Si la cuenta no tiene wallet conectada, «Aportar a la campaña» te manda a `/portfolio` para conectarla o crearla.
 
-> **Nota (post-#28):** este aviso quedó superado. La Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) entregó la distribución de retornos en `/distribution` (PRs [#345](https://github.com/reyduar/Vaqcrow/pull/345)–[#347](https://github.com/reyduar/Vaqcrow/pull/347)), y la página además escribe `?distribution=<id>` en la URL. El aviso se conserva como registro del estado previo.
+### 11.1 Los tres estados de la campaña
 
-### Paso 6 — Evidencia (`/evidence`)
-
-> [!todo] Todavía es un placeholder
-> Igual que el paso anterior: muestra un aviso de contenido pendiente. Corresponde a la Feature #29.
-
-> **Nota (post-#29):** este aviso también quedó superado. Las Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93) entregaron el dashboard de evidencia en `/evidence` (PRs [#349](https://github.com/reyduar/Vaqcrow/pull/349) y [#350](https://github.com/reyduar/Vaqcrow/pull/350)).
-
-## 10. Los tres estados de la campaña
-
-La interfaz muestra el estado que lee **de la cadena**, no de un estado local. Los ves en la pantalla de Fondeo:
+La interfaz muestra el estado que lee **de la cadena**, no de un estado local:
 
 | En pantalla | Estado | Qué significa |
 |---|---|---|
-| **Fondeo abierto** | `funding` | Se puede aportar. El plazo no venció y no se alcanzó la meta |
+| **Fondeo abierto** | `funding` | Se puede aportar. El plazo no venció y no se alcanzó la meta. Desde `/portfolio` el inversor puede «Retirar mi aporte» |
 | **Meta alcanzada** | `settled` | Se alcanzó el objetivo. Los fondos se transfirieron a la PyME en la misma transacción que cruzó la meta |
-| **Reembolso disponible** | `refunding` | Venció el plazo sin alcanzar la meta. Los aportes se pueden retirar |
+| **Reembolso disponible** | `refunding` | Venció el plazo sin alcanzar la meta. Desde `/portfolio` el inversor puede «Reembolsar» |
 
 > [!important] Cuando se alcanza la meta, los aportes se cierran de verdad
-> Al llegar a **Meta alcanzada**, la interfaz deja de ofrecer el botón de aportar. Y no es sólo cosmético: si alguien intentara aportar igual, **el contrato lo rechaza**. La regla vive en el contrato, no en la pantalla.
+> Al llegar a **Meta alcanzada**, la interfaz deja de ofrecer el aporte. Y no es sólo cosmético: si alguien intentara aportar igual, **el contrato lo rechaza**. La regla vive en el contrato, no en la pantalla.
 
-## 11. El camino de reembolso
+> [!important] El reembolso es sin permisos, y eso es una propiedad del contrato
+> Si vence el plazo sin alcanzar la meta, cualquiera puede disparar el reembolso, y el dinero vuelve siempre a la dirección registrada del aportante: el contrato fija el destino y no se puede redirigir. Pero **no se dispara solo**: alguien tiene que enviar la transacción, firmando con su propia billetera.
 
-Si vence el plazo **sin** alcanzar la meta, la campaña pasa a **Reembolso disponible** y cada inversor puede recuperar su aporte.
+## 12. PyME — declarar ventas y distribuir
 
-> [!important] Es sin permisos, y eso es una propiedad del contrato
-> El reembolso lo puede disparar **cualquier persona**: la propia PyME, otro inversor, o cualquiera con una billetera. No hay riesgo de que eso desvíe fondos, porque **el destino lo fija el contrato**: el dinero vuelve siempre a la dirección registrada del aportante, y no se puede redirigir.
->
-> En la práctica, una persona distinta del inversor puede presionar **Reembolsar** en su nombre y el aporte igual llega a la dirección correcta.
+Con la campaña en **Meta alcanzada**, la PyME distribuye a los inversores la parte de sus ventas que se comprometió a compartir.
 
-> [!warning] El reembolso necesita que alguien envíe una transacción
-> No se dispara solo. El contrato habilita el derecho cuando vence el plazo, pero **alguien tiene que enviar la transacción** para que el dinero vuelva. En Testnet eso lo hace cualquiera desde la interfaz, firmando con su propia billetera.
+1. Ingresá como PyME (con la **cuenta 1** activa en Freighter) y abrí `/company`. En «Bóveda y distribuciones» está tu campaña.
+2. Presioná **«Declarar ventas»**[^owner-pending], cargá las ventas de cada mes (un mes vacío queda «Sin dato», nunca cero; «Completar con datos de ejemplo» llena valores simulados) y presioná «Enviar declaración».
+3. Presioná **«Revisar y firmar»**[^owner-pending]. El servicio calcula de forma determinística la obligación del período, sus destinatarios y montos; **la IA no calcula esta obligación**.
+4. Revisá el resumen y firmá en Freighter. Verificá en el popup: **red, cuenta activa, destinatarios y montos**.
 
-## 12. Qué NO hacer
+El estado avanza de firmada a «Enviada · pendiente de confirmación» y recién después a confirmada. «Consultar estado» vuelve a leerlo, y «Ver la transacción en el explorador» abre el hash.
 
-- **No pegues una seed ni la frase de recuperación** en ningún formulario, chat, issue, PR ni archivo. Ni siquiera "para probar".
-- **No importes una billetera con fondos reales.** Creá una nueva.
-- **No uses Mainnet ni otra red.** La demo liquida sólo en Testnet y el código rechaza cualquier otra red por construcción.
-- **No dejes la frase de recuperación en el portapapeles** más tiempo del necesario; limpialo después.
-- **No compartas capturas** que muestren la frase de recuperación, aunque el resto de la pantalla sea inocuo.
+## 13. La evidencia de cada rol
 
-## 13. Límites honestos de esta demo
+No hay una página pública de evidencia: cada rol ve **sus propias** pruebas en Testnet, y el ADMIN ve la cadena completa por solicitud.
 
-Los dejamos por escrito para que nadie los confunda con una falla, ni con una promesa:
+| Rol | Dónde | Qué prueba |
+|---|---|---|
+| Inversor | `/portfolio` | Por posición: la bóveda con su link al explorador y «Tus transacciones de aporte»[^owner-pending] con el hash de cada aporte. En «Distribuciones», el hash de cada distribución recibida |
+| Inversor | `/reports` | «Últimas distribuciones» con su transacción, y «Aportes en el período»[^owner-pending] con hash y bóveda. El CSV exportado incluye los hashes y los links |
+| PyME | `/company` | La bóveda con «Ver bóveda en el explorador»[^owner-pending] y, en «Distribuciones», el hash de cada distribución |
+| Cualquier cuenta | `/campaigns/[id]` | La fila «Bóveda» del detalle, con su link al explorador |
+| ADMIN | `/admin/pymes/[applicationId]/evidence` | La cadena completa: «1 · Solicitud» → «2 · Decisión humana» → «3 · Despliegue de la bóveda» (hash de despliegue y bóveda) → «4 · Aportes» → «5 · Distribuciones» → «6 · Reconciliación» (el último estado guardado; esta vista no consulta la red)[^owner-pending] |
 
-- **Es Testnet.** Los activos no tienen valor económico. Un hash de Testnet demuestra ejecución técnica, **no** una inversión real ni disponibilidad en producción.
-- **La identidad, el KYC/KYB, las ventas y la conversión ARS/activo son simulados.** Está declarado en pantalla y es parte del alcance del demo.
-- **Los pasos 5 y 6 todavía son placeholders** (Features #28 y #29).
-- **El reembolso requiere enviar una transacción.** Es sin permisos, pero no se dispara solo.
-- **La meta la impone el contrato, no la interfaz.** La interfaz sólo deja de ofrecer lo que el contrato ya rechazaría.
-- **Una bóveda por solicitud.** La campaña queda ligada a la solicitud que la originó.
+El ADMIN llega a la cadena desde «Evidencia» en la fila de la cola o desde «Ver evidencia Testnet» en la revisión[^owner-pending].
 
-> **Nota (post-#28/#29):** el punto sobre los pasos 5 y 6 quedó superado: `/distribution` (Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28)) y `/evidence` (Tasks [#92](https://github.com/reyduar/Vaqcrow/issues/92)/[#93](https://github.com/reyduar/Vaqcrow/issues/93)) ya tienen contenido. Los demás límites de esta sección siguen vigentes.
+> [!note] «Sin dato» no es cero
+> Los aportes y despliegues **anteriores a #438** no guardaron su hash: se muestran «Sin dato», nunca un cero ni un valor inventado. Si una posición mezcla aportes con y sin hash, se avisa con una línea de «aportes anteriores sin hash registrado».
 
-## 14. Qué registrar como evidencia
+> [!note] Los links al explorador los arma la API
+> La web no conoce la red: renderiza el link que le manda la API. En el perfil `local` la API no tiene explorador configurado, así que vas a ver el hash **sin** link. En el entorno hosteado de Testnet los links abren <https://stellar.expert/explorer/testnet>.
 
 Al terminar una ejecución, guardá:
 
 | Qué | Dónde mirarlo |
 |---|---|
 | Dirección pública y rol de cada cuenta usada | Freighter |
-| Hash de cada transacción | La interfaz, y el explorador: <https://stellar.expert/explorer/testnet> |
+| Hash de despliegue, de cada aporte y de cada distribución | La cadena admin y las vistas de cada rol (tabla de arriba), y el explorador |
 | Estado final de cada transacción | El explorador |
-| Estado de la campaña al cerrar la demo | Pantalla de Fondeo |
+| Estado de la campaña al cerrar la demo | Detalle de la campaña o `/company` |
 | Capturas de cada firma en Freighter | Evidencia de la demo |
 
-> [!tip] Las direcciones son descartables
-> Las cuentas de Testnet no se reutilizan entre demos sin un reinicio explícito. Después de cada ejecución, creá cuentas nuevas y fondealas con Friendbot.
+> [!tip] Cada ensayo empieza de cero, sin reiniciar la base
+> No se reinicia la base entre ensayos: cada uno crea una solicitud y una campaña nuevas, y la evidencia se lee por esos identificadores. Las cuentas de Testnet son descartables: si querés empezar limpio, creá cuentas nuevas y fondealas con Friendbot.
 
-## 15. Referencias
+## 14. Qué NO hacer
+
+- **No pegues una seed ni la frase de recuperación** en ningún formulario, chat, issue, PR ni archivo. Ni siquiera "para probar".
+- **No importes una billetera con fondos reales.** Creá una nueva.
+- **No uses Mainnet ni otra red.** La demo liquida sólo en Testnet y el código rechaza cualquier otra red por construcción.
+- **No subas documentos ni datos reales** de una empresa en el wizard: usá datos sintéticos.
+- **No dejes la frase de recuperación en el portapapeles** más tiempo del necesario; limpialo después.
+- **No compartas capturas** que muestren la frase de recuperación, aunque el resto de la pantalla sea inocuo.
+
+## 15. Límites honestos de esta demo
+
+Los dejamos por escrito para que nadie los confunda con una falla, ni con una promesa:
+
+- **Es Testnet.** Los activos no tienen valor económico. Un hash de Testnet demuestra ejecución técnica, **no** una inversión real ni disponibilidad en producción.
+- **El KYC/KYB de la PyME, la verificación del inversor, el historial de ventas y la conversión ARS/activo son simulados.** Está declarado en pantalla. Las cuentas, los roles y los documentos subidos sí son reales.
+- **La IA sólo asesora.** No aprueba, no calcula la obligación de distribución y no mueve fondos.
+- **El reembolso requiere enviar una transacción.** Es sin permisos, pero no se dispara solo.
+- **La meta la impone el contrato, no la interfaz.** La interfaz sólo deja de ofrecer lo que el contrato ya rechazaría.
+- **Una bóveda por solicitud.** La campaña queda ligada a la solicitud que la originó.
+- **Lo anterior a #438 queda «Sin dato».** Los hashes de despliegue y de aporte empezaron a guardarse con #438.
+- **No está en `main`.** El flujo por roles y el retiro de las seis rutas viven en ramas apiladas hasta que la pila se integre.
+
+## 16. Referencias
 
 - [Connect to the Testnet — Stellar Docs](https://developers.stellar.org/docs/build/guides/freighter/connect-testnet) — guía oficial de instalación de Freighter y conexión a Testnet.
 - [Freighter](https://www.freighter.app) y su [documentación de la API](https://docs.freighter.app/extension-freighter-api/installation.md).
 - [Stellar Lab — fondeo de cuentas](https://lab.stellar.org/account/fund) y [creación de cuenta](https://lab.stellar.org/account/create).
 - [Stellar Expert — explorador de Testnet](https://stellar.expert/explorer/testnet).
 - [Redes de Stellar](https://developers.stellar.org/docs/networks) — Testnet, passphrase y XLM sin valor real.
+- [[docs/planning/demo-run-preflight|Preflight de la demo]] — prerrequisitos del operador, variables y pisos de saldo.
 - `docs/planning/freighter-and-testnet-account-setup.md` — runbook interno de preparación y lista de seguridad.
-- `docs/architecture/stellar-accounts-and-keys.md` — por qué existen dos pares de claves y por qué la cuenta de la PyME se crea al abrir la bóveda.
+- `docs/architecture/stellar-accounts-and-keys.md` — por qué existen dos pares de claves y por qué la cuenta de la PyME se crea al desplegar la bóveda.
+
+[^owner-pending]: Copy sin diseño en el template, pendiente de aprobación del owner: puede cambiar. Incluye «Aprobar y continuar» (verificación del inversor), «Declarar ventas», «Revisar y firmar», «Tus transacciones de aporte», «Aportes en el período», «Ver bóveda en el explorador», «Evidencia», «Ver evidencia Testnet» y los títulos de la cadena admin. Lista completa en `odd/tasks/retire-scripted-journey.md` (WU4, WU5, WU5b y WU7b).
 
 > [!question] Verificación de este documento
-> Los enlaces de instalación de Freighter, el comportamiento de Friendbot (exige una dirección `G` o `C`) y la disponibilidad de Stellar Lab y de Horizon se verificaron en vivo el **2026-09-20**. Las etiquetas de estado (`Fondeo abierto`, `Meta alcanzada`, `Reembolso disponible`) y los nombres de los botones (`Aportar`, `Retirar mi aporte`, `Reembolsar`) provienen del código de `apps/web/src/presentation/components/campaign-workspace.tsx`. Las rutas de los seis pasos provienen del árbol de rutas de `apps/web/src/app`. La passphrase de red está fijada en `apps/api/src/application/config/stellar-config.ts` y afirmada por un test.
+> Los enlaces de instalación de Freighter, el comportamiento de Friendbot (exige una dirección `G` o `C`) y la disponibilidad de Stellar Lab y de Horizon se verificaron en vivo el **2026-09-20**. La passphrase de red está fijada en `apps/api/src/application/config/stellar-config.ts` y afirmada por un test.
 >
-> La fecha límite del formulario y su conversión a las 00:00 UTC provienen de `campaign-workspace.tsx`; el requisito de vencimiento futuro, de `contracts/campaign-vault/src/lib.rs`.
+> **Reescrita el 2026-10-10 (#438, WU7b)** para el flujo por roles. Las rutas salen del árbol de `apps/web/src/app` en la rama de #438; las etiquetas, del código: selector y redirección por rol (`application/auth/auth-form.ts`), wizard (`application/pyme-onboarding/{kyc,registration,ai,review}-step.ts`), conexión de wallet por mensaje firmado (`application/pyme-onboarding/wallet-connection.ts`), consola admin (`application/admin/{admin-guard,queue,kyc,assessment,decision,deployment,evidence}.ts`), detalle y aporte (`presentation/components/campaign-detail/`), retiro y reembolso (`application/portfolio/actions.ts`), estados de la campaña (`application/company/campaign-state.ts`), PyME (`application/company/copy.ts`, `presentation/components/company/`). El despliegue disparado por la aprobación sale de `apps/api/src/application/use-cases/record-human-decision.ts`, y el alta de la cuenta de la PyME con 2 XLM, de `open-campaign.ts`. Ningún paso se ejecutó en vivo para esta reescritura.
 >
 > **Corregido el 2026-09-25:** una versión anterior de §5 decía que la segunda cuenta tenía su propia frase de recuperación. Es incorrecto. Freighter no genera una frase nueva al agregar una cuenta: la deriva de la frase existente mediante otro índice de derivación, cosa que está confirmada por el comportamiento de la extensión y por el propio código de Freighter, que ancla el cálculo del índice a la mnemónica (`stellar/freighter-mobile#874`) y ofrece agregar cuentas por clave secreta (`stellar/freighter#2208`). El punto se detectó al ejecutar la guía, no al escribirla.

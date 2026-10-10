@@ -45,6 +45,14 @@ export async function installLiveFreighterEmulator(page: Page): Promise<void> {
     }
   );
 
+  // SEP-53 message signing (the PyME wallet link, #406): `signMessage()`
+  // sends `REQUEST_ALLOWED_STATUS` then `SUBMIT_BLOB` (see the deterministic
+  // emulator's doc comment). The live API verifies the signature with
+  // `Keypair.verifyMessage`, so this signs for real, in this Node process.
+  await page.exposeFunction("vaqcrowLiveSignMessage", async (message: string, publicKey: string): Promise<string> => {
+    return Buffer.from(keypairFor(publicKey).signMessage(message)).toString("base64");
+  });
+
   await page.addInitScript(
     ({ storageKey, rejectedApiError }) => {
       window.addEventListener("message", (event: MessageEvent) => {
@@ -89,6 +97,25 @@ export async function installLiveFreighterEmulator(page: Page): Promise<void> {
               }
             });
             return;
+          case "REQUEST_ALLOWED_STATUS":
+            respond({ isAllowed: true });
+            return;
+          case "SUBMIT_BLOB": {
+            const signMessage = (
+              window as unknown as {
+                vaqcrowLiveSignMessage: (message: string, publicKey: string) => Promise<string>;
+              }
+            ).vaqcrowLiveSignMessage;
+
+            signMessage(String((data as { blob?: unknown }).blob ?? ""), scenario.publicKey ?? "")
+              .then((signedBlob: string) => {
+                respond({ signedBlob, signerAddress: scenario?.publicKey ?? "" });
+              })
+              .catch(() => {
+                respond({ signedBlob: "", signerAddress: "", apiError: rejectedApiError });
+              });
+            return;
+          }
           case "SUBMIT_TRANSACTION": {
             const xdr = String(data.transactionXdr ?? "");
             const sign = (

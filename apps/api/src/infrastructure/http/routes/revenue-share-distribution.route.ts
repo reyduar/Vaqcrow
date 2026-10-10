@@ -1,4 +1,5 @@
 import {
+  parseApplicationId,
   parseCorrelationId,
   parsePrepareRevenueShareDistributionCommand,
   parseRevenueShareDistributionId,
@@ -14,6 +15,7 @@ import type {
 import type { FastifyInstance } from "fastify";
 import type { LedgerPort } from "../../../application/ports/ledger-port.js";
 import type { RevenueShareDistributionRepositoryPort } from "../../../application/ports/revenue-share-distribution-repository-port.js";
+import type { SmeRequestRepositoryPort } from "../../../application/ports/sme-request-repository-port.js";
 import type { RevenueShareDistributionXdrPort } from "../../../application/ports/revenue-share-distribution-xdr-port.js";
 import type {
   DeriveRevenueShareDistributionErrorCode,
@@ -69,6 +71,57 @@ export interface RevenueShareDistributionRouteDependencies {
     readonly sourceAccountId: string;
     readonly correlationId: CorrelationId;
   }) => Promise<DeriveRevenueShareDistributionResult>;
+  /**
+   * The owner of the application a distribution is derived from (R1-002). A
+   * `PYME` may only prepare, submit or read a distribution whose application it
+   * owns; `ADMIN` keeps the existing unrestricted access.
+   */
+  readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
+}
+
+interface OwnershipDenial {
+  readonly status: 401 | 404 | 503;
+  readonly body: { readonly code: "unauthenticated" | "not_found" | "unavailable" };
+}
+
+/**
+ * Returns `undefined` when the caller may act on the application, or the
+ * sanitized denial when it may not. `ADMIN` is never scoped; a missing
+ * principal is `401`; an unowned, missing or unattributable application is
+ * `404`; an unavailable ownership read is `503`.
+ */
+async function applicationOwnershipDenial(
+  smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">,
+  principal: { readonly userId: string; readonly role: string } | undefined,
+  applicationId: string | undefined
+): Promise<OwnershipDenial | undefined> {
+  if (principal === undefined) {
+    return { status: 401, body: { code: "unauthenticated" } };
+  }
+  if (principal.role !== "PYME") {
+    return undefined;
+  }
+  if (applicationId === undefined) {
+    return { status: 404, body: { code: "not_found" } };
+  }
+
+  let parsed;
+  try {
+    parsed = parseApplicationId(applicationId);
+  } catch {
+    return { status: 404, body: { code: "not_found" } };
+  }
+
+  const found = await smeRequests.findByApplicationId(parsed);
+  if (!found.ok) {
+    return found.error.code === "not_found"
+      ? { status: 404, body: { code: "not_found" } }
+      : { status: 503, body: { code: "unavailable" } };
+  }
+
+  return found.value.ownerUserId === principal.userId
+    ? undefined
+    : { status: 404, body: { code: "not_found" } };
 }
 
 /**
@@ -146,6 +199,15 @@ export function registerRevenueShareDistributionRoute(
       return reply.code(400).send({ code: "invalid_request" });
     }
 
+    const denial = await applicationOwnershipDenial(
+      dependencies.smeRequests,
+      request.principal,
+      command.applicationId
+    );
+    if (denial !== undefined) {
+      return reply.code(denial.status).send(denial.body);
+    }
+
     const result = await prepareRevenueShareDistribution(dependencies, {
       command,
       correlationId: parseCorrelationId(request.id)
@@ -194,6 +256,15 @@ export function registerRevenueShareDistributionRoute(
         });
       } catch {
         return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      const denial = await applicationOwnershipDenial(
+        dependencies.smeRequests,
+        request.principal,
+        command.applicationId
+      );
+      if (denial !== undefined) {
+        return reply.code(denial.status).send(denial.body);
       }
 
       const result = await submitRevenueShareDistribution(dependencies, {
@@ -254,6 +325,10 @@ export function registerRevenueShareDistributionRoute(
         return reply.code(400).send({ code: "invalid_request" });
       }
 
+      // R1-002: a `PYME` must read only a distribution whose application it
+      // owns. The snapshot carries the application, so the ownership is checked
+      // on the result before anything is returned — nothing is sent for a row
+      // the caller does not own. `ADMIN` keeps its existing unrestricted access.
       const result = await getRevenueShareDistribution(
         {
           repository: dependencies.repository,
@@ -263,6 +338,15 @@ export function registerRevenueShareDistributionRoute(
       );
 
       if (result.ok) {
+        const denial = await applicationOwnershipDenial(
+          dependencies.smeRequests,
+          request.principal,
+          result.value.applicationId ?? undefined
+        );
+        if (denial !== undefined) {
+          return reply.code(denial.status).send(denial.body);
+        }
+
         return reply
           .code(200)
           .send({ distribution: toWire<RevenueShareDistributionSnapshot>(result.value) });

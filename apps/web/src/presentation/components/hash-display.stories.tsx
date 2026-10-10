@@ -35,6 +35,16 @@ export const WithExplorerLink: Story = {
   }
 };
 
+/** Two links in one section stay distinguishable: `proofLabel` names what each one proves. */
+export const WithProofLabel: Story = {
+  args: {
+    label: "Contrato",
+    value: SYNTHETIC_CONTRACT_ID,
+    proofLabel: "Contrato de la bóveda",
+    explorerUrl: `https://stellar.expert/explorer/testnet/contract/${SYNTHETIC_CONTRACT_ID}`
+  }
+};
+
 /** A value short enough that middle-truncation would not help renders in full. */
 export const ShortValue: Story = {
   args: { label: "Contrato", value: "CDLZ7Q4K" }

@@ -90,6 +90,44 @@ describe("HashDisplay", () => {
     expect(link).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
   });
 
+  it("names the explorer link after what it proves and gives it the shared focus ring (#438/WU5)", () => {
+    render(
+      <HashDisplay label="Hash de transacción" value={FULL_HASH} explorerUrl="https://explorer.example/tx/abc" />
+    );
+
+    const link = screen.getByRole("link", {
+      name: "Ver en el explorador: hash de transacción (abre en una pestaña nueva)"
+    });
+    expect(link).toHaveTextContent("Ver en el explorador");
+    expect(link.className).toContain("focus-visible:outline-focus-ring");
+  });
+
+  it("makes two explorer links in one section distinguishable through proofLabel", () => {
+    render(
+      <>
+        <HashDisplay
+          label="Contrato"
+          value="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC7Q4K"
+          explorerUrl="https://explorer.example/contract/abc"
+          proofLabel="Contrato de la bóveda"
+        />
+        <HashDisplay
+          label="Hash"
+          value={FULL_HASH}
+          explorerUrl="https://explorer.example/tx/abc"
+          proofLabel="Transacción de despliegue"
+        />
+      </>
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Ver en el explorador: contrato de la bóveda (abre en una pestaña nueva)" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Ver en el explorador: transacción de despliegue (abre en una pestaña nueva)" })
+    ).toBeInTheDocument();
+  });
+
   it("renders no explorer link when explorerUrl is not provided", () => {
     render(<HashDisplay label="Hash de transacción" value={FULL_HASH} />);
 

@@ -95,4 +95,122 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("button", { name: /Lucía Fernández/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+
+  describe("avatar variant (role-aware header)", () => {
+    const roleItems: readonly AccountMenuItem[] = [
+      { label: "Mi portafolio", href: "/portfolio" },
+      { label: "Cerrar sesión", onSelect: vi.fn(), separatorBefore: true }
+    ];
+
+    function renderAvatarMenu() {
+      render(
+        <AccountMenu
+          variant="avatar"
+          name="Lucía Fernández"
+          avatarSrc="/avatar-inversor.png"
+          triggerLabel="Menú de cuenta de Lucía Fernández"
+          roleChip={{ label: "INVERSOR" }}
+          items={roleItems}
+        />
+      );
+      return screen.getByRole("button", { name: "Menú de cuenta de Lucía Fernández" });
+    }
+
+    it("shows only the avatar and a chevron in the trigger", () => {
+      const trigger = renderAvatarMenu();
+      expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+      expect(within(trigger).queryByText("Lucía Fernández")).not.toBeInTheDocument();
+      expect(screen.queryByText("INVERSOR")).not.toBeInTheDocument();
+    });
+
+    it("opens a header with the name and the role chip, and a separator before sign-out", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      const menu = screen.getByRole("menu");
+      expect(within(menu).getByText("Lucía Fernández")).toBeInTheDocument();
+      expect(within(menu).getByText("INVERSOR")).toBeInTheDocument();
+      expect(within(menu).queryByText("Sesión de demostración")).not.toBeInTheDocument();
+      expect(within(menu).getByRole("separator")).toBeInTheDocument();
+      expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+        "Mi portafolio",
+        "Cerrar sesión"
+      ]);
+    });
+
+    it("closes on Escape and on an outside pointer interaction", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+
+      fireEvent.click(trigger);
+      fireEvent.pointerDown(document.body);
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    });
+
+    it("moves focus to the first item when it opens", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      expect(screen.getByRole("menuitem", { name: "Mi portafolio" })).toHaveFocus();
+    });
+
+    it("returns focus to the trigger on Escape pressed from inside the menu", () => {
+      const trigger = renderAvatarMenu();
+      fireEvent.click(trigger);
+      const item = screen.getByRole("menuitem", { name: "Cerrar sesión" });
+      item.focus();
+      fireEvent.keyDown(item, { key: "Escape" });
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+
+    it("moves between items with the arrow keys, Home and End, wrapping around", () => {
+      fireEvent.click(renderAvatarMenu());
+      const menu = screen.getByRole("menu");
+      const first = screen.getByRole("menuitem", { name: "Mi portafolio" });
+      const last = screen.getByRole("menuitem", { name: "Cerrar sesión" });
+
+      fireEvent.keyDown(menu, { key: "ArrowDown" });
+      expect(last).toHaveFocus();
+      fireEvent.keyDown(menu, { key: "ArrowDown" });
+      expect(first).toHaveFocus();
+      fireEvent.keyDown(menu, { key: "ArrowUp" });
+      expect(last).toHaveFocus();
+      fireEvent.keyDown(menu, { key: "Home" });
+      expect(first).toHaveFocus();
+      fireEvent.keyDown(menu, { key: "End" });
+      expect(last).toHaveFocus();
+    });
+
+    it("closes when focus leaves it (Tab) without pulling focus back to the trigger", () => {
+      render(
+        <>
+          <AccountMenu
+            variant="avatar"
+            name="Lucía Fernández"
+            triggerLabel="Menú de cuenta de Lucía Fernández"
+            items={roleItems}
+          />
+          <button type="button">Después</button>
+        </>
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Menú de cuenta de Lucía Fernández" }));
+      const item = screen.getByRole("menuitem", { name: "Cerrar sesión" });
+      const after = screen.getByRole("button", { name: "Después" });
+
+      fireEvent.focusOut(item, { relatedTarget: after });
+
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Menú de cuenta de Lucía Fernández" })).not.toHaveFocus();
+    });
+
+    it("stays open while focus moves between its own items", () => {
+      fireEvent.click(renderAvatarMenu());
+      const first = screen.getByRole("menuitem", { name: "Mi portafolio" });
+      const last = screen.getByRole("menuitem", { name: "Cerrar sesión" });
+      fireEvent.focusOut(first, { relatedTarget: last });
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+  });
 });

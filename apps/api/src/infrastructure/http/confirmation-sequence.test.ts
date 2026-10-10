@@ -26,7 +26,7 @@ import { SupabaseFundingIntentRepository } from "../adapters/supabase-funding-in
 import { STELLAR_TESTNET_NETWORK_PASSPHRASE } from "../../application/config/stellar-config.js";
 import type { StellarConfig } from "../../application/config/stellar-config.js";
 import { ConfirmationScheduler } from "../scheduling/confirmation-scheduler.js";
-import { buildApp } from "./build-app.js";
+import { buildAppAs } from "./test-support/auth.js";
 
 /**
  * The confirmation capability observed end to end, with a double only at each
@@ -344,7 +344,7 @@ async function harness(options: {
     }
   );
 
-  const app = buildApp({
+  const app = buildAppAs("ADMIN", {
     fundingIntent: {
       // Only the status read is exercised here, so the ledger and the XDR port are
       // inert: reaching them would mean this suite had drifted into another path.

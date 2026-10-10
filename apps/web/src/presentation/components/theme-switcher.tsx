@@ -1,7 +1,8 @@
 "use client";
 
-import { Radio, RadioGroup } from "@heroui/react";
 import { useEffect, useSyncExternalStore } from "react";
+import type { IconType } from "react-icons";
+import { IoDesktopOutline, IoMoonOutline, IoSunnyOutline } from "react-icons/io5";
 
 /**
  * Theme choice persisted for the demo, per `demo-ui.md` §5.8: `Claro`, `Oscuro`
@@ -19,10 +20,11 @@ export const THEME_STORAGE_KEY = "vaqcrow-theme";
 
 export type ThemeChoice = "light" | "dark" | "system";
 
-const CHOICES: readonly { readonly value: ThemeChoice; readonly label: string }[] = [
-  { value: "light", label: "Claro" },
-  { value: "dark", label: "Oscuro" },
-  { value: "system", label: "Sistema" }
+/** The template's `themeOptions` (`Vaqcrow Landing.dc.html`): label and icon per choice. */
+const CHOICES: readonly { readonly value: ThemeChoice; readonly label: string; readonly icon: IconType }[] = [
+  { value: "light", label: "Tema claro", icon: IoSunnyOutline },
+  { value: "dark", label: "Tema oscuro", icon: IoMoonOutline },
+  { value: "system", label: "Tema del sistema", icon: IoDesktopOutline }
 ];
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -103,34 +105,36 @@ export function ThemeSwitcher() {
   }, [choice, systemTheme]);
 
   return (
-    // Container from `Vaqcrow Sistema.dc.html` line 47: 3 px padding, 2 px
-    // gap, a 1 px `--border` at the control radius over `--surface`.
-    //
-    // Deviation, recorded: the template draws the three choices as pressed
-    // buttons; the app keeps a real `radiogroup` (its selected state is a
-    // shape, not only a fill) because `demo-ui.md` §5.8 requires the selected
-    // state to be perceivable without colour and this control is already
-    // specified and tested as a radiogroup. Only the shell is restyled here.
-    <div className="inline-flex rounded-control border border-border bg-page-surface p-[3px]">
-      <RadioGroup
-        aria-label="Tema"
-        name={THEME_STORAGE_KEY}
-        orientation="horizontal"
-        value={choice}
-        onChange={(next) => writeChoice(next as ThemeChoice)}
-        className="gap-1 text-[13px]"
-      >
-        {CHOICES.map((option) => (
-          <Radio key={option.value} value={option.value}>
-            <Radio.Content>
-              <Radio.Control>
-                <Radio.Indicator />
-              </Radio.Control>
-              {option.label}
-            </Radio.Content>
-          </Radio>
-        ))}
-      </RadioGroup>
+    // The template's control (`Vaqcrow Landing.dc.html` header): a `Tema`
+    // group of three icon buttons with `aria-pressed`, over a 1 px `--border`
+    // at the control radius on `--surface` (2 px padding and no gap instead of
+    // the template's 3 px and 2 px, to absorb part of the larger targets). The
+    // pressed choice gets the `--control` border on `--canvas`: a shape cue,
+    // not only colour (`demo-ui.md` §5.8). Deviation, recorded: 44 px buttons
+    // instead of the template's 36 px, for the minimum touch target.
+    <div
+      role="group"
+      aria-label="Tema"
+      className="inline-flex rounded-control border border-border bg-page-surface p-0.5"
+    >
+      {CHOICES.map(({ value, label, icon: Icon }) => {
+        const pressed = choice === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={pressed}
+            aria-label={label}
+            title={label}
+            onClick={() => writeChoice(value)}
+            className={`grid size-11 cursor-pointer place-items-center rounded-[7px] border text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${
+              pressed ? "border-control bg-canvas" : "border-transparent bg-transparent hover:bg-canvas"
+            }`}
+          >
+            <Icon aria-hidden="true" focusable="false" className="text-base" />
+          </button>
+        );
+      })}
     </div>
   );
 }

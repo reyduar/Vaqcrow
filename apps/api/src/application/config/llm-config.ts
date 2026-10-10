@@ -9,9 +9,10 @@ import { Secret } from "./secret.js";
  *
  * The demo runs against exactly one provider, so the provider is a closed set of
  * one and an unknown value is rejected by construction rather than by
- * convention — the same reasoning as `STELLAR_NETWORK`. The model, by contrast,
- * is deliberately **required with no default**: choosing which model underwrites
- * a loan application is a decision, and a silent fallback would hide it.
+ * convention — the same reasoning as `STELLAR_NETWORK`. The models (text and
+ * vision), by contrast, are deliberately **required with no default**: choosing
+ * which model underwrites a loan application is a decision, and a silent
+ * fallback would hide it.
  *
  * Nothing here reaches a provider. This module only decides whether the process
  * is configured to talk to one at all.
@@ -57,6 +58,13 @@ export type LlmConfig = {
   readonly baseUrl: string;
   readonly model: string;
   /**
+   * The vision model, kept separate from the text model on purpose: vision
+   * needs a multimodal model, and silently reusing the text one would either
+   * fail at the provider or produce a nonsense verdict. Also **required with no
+   * default**, for the same reason `model` is.
+   */
+  readonly visionModel: string;
+  /**
    * Wrapped, so the credential cannot reach a log line or a serialised
    * response through ordinary formatting. `reveal()` is the only way out and it
    * is greppable in review.
@@ -81,7 +89,8 @@ export function parseLlmConfigResult(env: EnvSource): ParseResult<LlmConfig> {
   // Called for its issues. The closed set has exactly one member, so the value
   // below can name it directly without a narrowing cast.
   parseProvider(env, issues);
-  const model = parseModel(env, issues);
+  const model = parseModel(env, issues, "LLM_MODEL");
+  const visionModel = parseModel(env, issues, "LLM_VISION_MODEL");
   const apiKey = readPresent(env, "LLM_API_KEY");
   if (apiKey === undefined) {
     issues.push(missingIssue("LLM_API_KEY"));
@@ -100,6 +109,7 @@ export function parseLlmConfigResult(env: EnvSource): ParseResult<LlmConfig> {
       provider: SUPPORTED_LLM_PROVIDER,
       baseUrl,
       model: model as string,
+      visionModel: visionModel as string,
       apiKey: new Secret(apiKey as string),
       timeoutMs
     })
@@ -132,23 +142,30 @@ function parseProvider(env: EnvSource, issues: ConfigIssue[]): LlmProvider | und
   return undefined;
 }
 
+/** The two model variables share one validation; only the key name differs. */
+type ModelKey = "LLM_MODEL" | "LLM_VISION_MODEL";
+
 /**
- * The model has no default on purpose. The `opencode-go/` prefix gets its own
- * message because it is the single most likely mistake: that form belongs to
- * OpenCode's TUI config, while the API wants the bare id from `/v1/models`.
+ * A model has no default on purpose, for the text and vision variables alike:
+ * choosing which model underwrites a loan application, or judges whether a
+ * document is relevant, is a decision, and a silent fallback would hide it.
+ *
+ * The `opencode-go/` prefix gets its own message because it is the single most
+ * likely mistake: that form belongs to OpenCode's TUI config, while the API
+ * wants the bare id from `/v1/models`.
  */
-function parseModel(env: EnvSource, issues: ConfigIssue[]): string | undefined {
-  const value = readPresent(env, "LLM_MODEL");
+function parseModel(env: EnvSource, issues: ConfigIssue[], key: ModelKey): string | undefined {
+  const value = readPresent(env, key);
 
   if (value === undefined) {
-    issues.push(missingIssue("LLM_MODEL"));
+    issues.push(missingIssue(key));
     return undefined;
   }
 
   if (value.startsWith(OPENCODE_CONFIG_PREFIX)) {
     issues.push(
       invalidIssue(
-        "LLM_MODEL",
+        key,
         `must be the bare model id, not the "${OPENCODE_CONFIG_PREFIX}" form used by OpenCode's own config`
       )
     );
@@ -156,7 +173,7 @@ function parseModel(env: EnvSource, issues: ConfigIssue[]): string | undefined {
   }
 
   if (!MODEL_ID_PATTERN.test(value)) {
-    issues.push(invalidIssue("LLM_MODEL", "must be a lowercase model id such as \"deepseek-v4-pro\""));
+    issues.push(invalidIssue(key, "must be a lowercase model id such as \"deepseek-v4-pro\""));
     return undefined;
   }
 

@@ -15,11 +15,11 @@ status: draft
 > Dejar listo, y poder comprobar antes de empezar, el entorno de una corrida del recorrido completo de la demo (solicitud → evaluación de IA → aprobación humana → fondeo en la bóveda → ventas mensuales → obligación determinística → distribución en Testnet → evidencia) sin objetivo de duración (el objetivo de tiempo que tenía este runbook se retiró el 2026-10-01 porque el owner nunca lo propuso). Es la Task T6 de [#95](https://github.com/reyduar/Vaqcrow/issues/95) (Feature #30). No reemplaza a [[docs/guides/freighter-and-testnet-walkthrough|la guía de Freighter y Testnet]], que explica el recorrido paso a paso.
 
 > [!warning] Sólo Testnet, sólo simulación
-> Identidad, KYC/KYB, historial de ventas y conversión ARS ↔ activo son **simulados**; Stellar corre en **Testnet** y el XLM no tiene valor económico; la IA es solo asesora. Nada de esto describe un producto en producción.
+> La verificación de identidad (KYC/KYB), el historial de ventas y la conversión ARS ↔ activo son **simulados** (las cuentas de Supabase Auth son reales, en la rama de la Feature #369, aún no en `main`); Stellar corre en **Testnet** y el XLM no tiene valor económico; la IA es solo asesora. Nada de esto describe un producto en producción.
 
 ## 1. Decisión: no hay reset de base de datos
 
-Opción A (decidida el 2026-09-30): **no se reinicia la base entre ensayos**. Cada ensayo crea una solicitud (`POST /sme-requests`) y una campaña nuevas; la página de evidencia filtra por los identificadores del recorrido en curso, así que las filas de ensayos anteriores no interfieren. El estado de la cadena tampoco se puede reiniciar. Por eso `supabase/seed/demo-application.sql` se eliminó: el recorrido ya no depende de ninguna fila sembrada.
+Opción A (decidida el 2026-09-30): **no se reinicia la base entre ensayos**. Cada ensayo crea una solicitud (`POST /sme-requests`) y una campaña nuevas; la evidencia se acota a los identificadores del ensayo en curso, así que las filas de ensayos anteriores no interfieren. En la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438), que retira la página `/evidence` del recorrido guiado, la cadena completa se lee por solicitud en `/admin/pymes/[applicationId]/evidence` y cada rol ve sólo sus propios hashes. El estado de la cadena tampoco se puede reiniciar. Por eso `supabase/seed/demo-application.sql` se eliminó: el recorrido ya no depende de ninguna fila sembrada.
 
 ## 2. Prerrequisitos
 
@@ -39,9 +39,9 @@ El perfil que corre la demo real es `.env.cloud` (API en Railway, web en Vercel;
 
 | Grupo | Nombres | Dónde vive |
 |---|---|---|
-| Perfil local (`.env.cloud`) | `APP_ENV`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `STELLAR_NETWORK` | En el archivo local del repositorio (valores no secretos) |
+| Perfil local (`.env.cloud`) | `APP_ENV`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_VISION_MODEL`, `LLM_API_KEY`, `STELLAR_NETWORK` | En el archivo local del repositorio (valores no secretos) |
 | Servicio hosteado de la API (Railway) | `STELLAR_CAMPAIGN_FACTORY_ID` + `STELLAR_PLATFORM_SECRET_KEY` (estas dos **como par**: sin ambas no se registran las rutas de campaña) y `CORS_ALLOWED_ORIGINS` (debe incluir el origen de Vercel) | Variables del servicio en Railway; el repositorio nunca guarda el secreto |
-| Host de la web (Vercel) | `NEXT_PUBLIC_API_BASE_URL` | Variable del proyecto en Vercel (sólo `production`, por decisión §5.2 de la evidencia) |
+| Host de la web (Vercel) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (las dos de Supabase sostienen la sesión real de la web desde la Task #379; la clave es la publicable, nunca la `service_role`) | Variables del proyecto en Vercel (sólo `production`, por decisión §5.2 de la evidencia). El chequeo `env-web` exige las tres |
 | **Opcionales** con default canónico | `STELLAR_HORIZON_URL` y `STELLAR_RPC_URL` | Si faltan, tanto la API como el preflight usan los endpoints canónicos de Testnet (`https://horizon-testnet.stellar.org` y `https://soroban-testnet.stellar.org`) |
 
 - **Cuentas del ensayo** (opcionales, alternativa a los flags): `DEMO_SME_PUBLIC_KEY` y `DEMO_INVESTOR_PUBLIC_KEYS` (claves públicas separadas por coma). Son solo direcciones públicas.
@@ -51,6 +51,9 @@ El perfil que corre la demo real es `.env.cloud` (API en Railway, web en Vercel;
 
 > [!tip] Horizon y RPC no son obligatorios
 > `STELLAR_HORIZON_URL` y `STELLAR_RPC_URL` **no** son variables requeridas: cuando faltan, el preflight sondea los endpoints canónicos de Testnet y lo indica en el resultado. La API hace lo mismo al arrancar (ver `apps/api/src/application/config/stellar-config.ts`).
+
+> [!important] `LLM_VISION_MODEL` es obligatoria y sin default
+> El chequeo de contenido (relevancia por visión, Feature #402) necesita su propio modelo multimodal en `LLM_VISION_MODEL`. Es **requerido sin default**, como `LLM_MODEL` (`apps/api/src/application/config/llm-config.ts`), y su ausencia **detiene el arranque de la API**: no hay fallback silencioso. Debe estar en `.env.cloud`/`.env.docker` **y** en las variables del servicio en Railway. El chequeo `env-api` del preflight ya lo exige (`REQUIRED_API_ENV`). Si la API no arranca en la corrida, revisar esta variable primero.
 
 ### 2.3 Fábrica desplegada y migraciones
 
@@ -74,7 +77,7 @@ pnpm demo:preflight --help
 ```
 
 > [!warning] Un `--env-file .env.cloud` a solas no cubre toda la corrida
-> El archivo local sólo contiene el subconjunto del perfil local (§2.2). Las variables que viven en Railway (el par de la campaña y `CORS_ALLOWED_ORIGINS`) y en Vercel (`NEXT_PUBLIC_API_BASE_URL`) **no están** en ese archivo. Una corrida con sólo `--env-file .env.cloud` va a marcar en rojo `env-api`, `env-web` y `api-health`, y también las cuentas si no se pasaron los flags. **No es un defecto del entorno**: es la señal correcta de que faltan los valores hosteados. Los chequeos de Horizon y de RPC, en cambio, sí corren: usan los endpoints canónicos de Testnet cuando las variables no están.
+> El archivo local sólo contiene el subconjunto del perfil local (§2.2). Las variables que viven en Railway (el par de la campaña y `CORS_ALLOWED_ORIGINS`) y en Vercel (`NEXT_PUBLIC_API_BASE_URL`) **no están** en ese archivo; las dos `NEXT_PUBLIC_SUPABASE_*` viven en Vercel y también pueden estar en `.env.cloud` para correr la web local contra el proyecto remoto (`pnpm run dev:web:cloud`), pero `env-web` sigue en rojo mientras falte `NEXT_PUBLIC_API_BASE_URL`. Una corrida con sólo `--env-file .env.cloud` va a marcar en rojo `env-api`, `env-web` y `api-health`, y también las cuentas si no se pasaron los flags. **No es un defecto del entorno**: es la señal correcta de que faltan los valores hosteados. Los chequeos de Horizon y de RPC, en cambio, sí corren: usan los endpoints canónicos de Testnet cuando las variables no están.
 
 Cómo aportar los valores hosteados, en orden de preferencia:
 
@@ -92,7 +95,8 @@ Chequea, cada uno con ✔/✖ y un motivo corto:
 4. Soroban RPC sano (`getHealth`) y con la passphrase de Testnet (`getNetwork`).
 5. La instancia del contrato de la fábrica existe (`getLedgerEntries`).
 6. Cuenta de plataforma (clave pública derivada localmente de `STELLAR_PLATFORM_SECRET_KEY`, o `--platform G…`), cuenta de la PyME y cuentas de inversores: existen en Horizon y superan el piso de XLM.
-7. El esquema remoto tiene las tablas del recorrido (`application_review`, `sme_request`, `application_assessment`, `human_decision`, `campaign`, `campaign_contribution`, `revenue_share_distribution`) y que `revenue_share_distribution` expone `campaign_id` y `period`.
+7. El esquema remoto tiene las tablas del recorrido (`application_review`, `sme_request`, `application_assessment`, `human_decision`, `campaign`, `campaign_contribution`, `revenue_share_distribution`, más `profile` y `audit_log` de la identidad) y que `revenue_share_distribution` expone `campaign_id` y `period`.
+8. Existe un perfil `ADMIN` activo (sembrado con `pnpm --filter @vaqcrow/api seed:superadmin:cloud`; ver `docs/architecture/environments.md` §13). El preflight no lee ni exige `VAQCROW_SUPERADMIN_PASSWORD`.
 
 > [!tip] Cuándo correrlo
 > Una vez al preparar el ensayo y otra vez justo antes de la corrida cronometrada, con la API ya caliente (ver §4).
