@@ -42,7 +42,7 @@ Porción B — transparencia (web)
 - [x] **WU5** Inversor, PyME y detalle de campaña: `HashDisplay` con link al explorador en aportes, distribuciones y bóveda; «Sin dato» para lo histórico.
 
 Porción C — retiro
-- [ ] **WU6** RED: test de que las seis rutas no se sirven y nada las enlaza. GREEN: borrar `(demo)/`, código muerto (inventario del mapeo), e2e del recorrido, `campaign-vault.live.spec.ts` y sus soportes, handlers del stub; readiness de Playwright a rutas vivas.
+- [x] **WU6** RED: test de que las seis rutas no se sirven y nada las enlaza. GREEN: borrar `(demo)/`, código muerto (inventario del mapeo), e2e del recorrido, `campaign-vault.live.spec.ts` y sus soportes, handlers del stub; readiness de Playwright a rutas vivas.
 - [ ] **WU7** Docs: README, `DEMO.md`, `docs/architecture/*`, `demo-tasks-list.md`, `odd/tasks/*` vigentes y los gemelos `AGENTS.md`/`CLAUDE.md`. Las `*-evidence.md` no se reescriben.
 
 Porción D — cierre
@@ -348,3 +348,70 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - `pnpm run verify`: exit 0 en la primera corrida tras el cambio autorizado (contracts 661, domain 120, ai 143, api 2617, web 2518; «no dependency violations found (1283 modules, 4276 dependencies cruised)»; `test:boundaries` 164/164). Una corrida anterior, con la aserción fuera de superficie aún sin actualizar, falló sólo en ese test.
 
 **Verificación independiente de WU5b** (RDD apagado): PASS con notas. Recorrió `81751f2..26d2625`: la guarda pasa por todas las celdas (`csvRow`), la matemática en stroops `bigint` es exacta, y todos los `ExplorerProof` arman el nombre desde el texto visible. Re-ejecutó web test (268 / 2518), typecheck, lint y `boundaries`. Nota baja, cerrada en el commit `4bbe99c` (inline, RED→GREEN: un test nuevo falló y luego 47/47 en `application/reports`): el prefijo de fórmula ahora también se detecta detrás de espacios o saltos de línea iniciales, en sus variantes de ancho completo (＝＋－＠) y con el pipe DDE `|`. Notas informativas sin cambio: si los aportes con hash suman más que el total de la posición, la línea de «sin hash» no aparece (nunca inventa un número); `xlmToStroops` rechaza cero.
+
+### WU6 — Retiro de las seis rutas, su engine y el código muerto
+
+- **Commit:** `709fc28` — `feat(web)!: retire the scripted six-step demo journey routes (#438)`. `feat!` y no `refactor`: las seis URL dejan de servirse y eso es un contrato visible para el usuario (`BREAKING CHANGE` en el cuerpo).
+- **Ruta:** delegada (writer único; borrado de 170+ archivos y poda en `src/`, `e2e/`, `e2e-live/` y `tests/`).
+- **404, no redirección:** las seis rutas simplemente no existen y Next responde 404; no se decidió ninguna redirección y no se agregó.
+- **Superficie ampliada (autorización explícita del owner):** `tests/monthly-sales-feed-parity.ts` y `.test.ts` (borrados), `tests/testing-and-ci-gates.test.ts` y `tests/web-holds-no-network-passphrase.test.ts`. El writer se detuvo sin commitear cuando `verify` falló en `typecheck:tests`; el owner autorizó estos cuatro archivos tal como se propusieron.
+
+**RED → GREEN**
+
+- RED: `apps/web/src/app/retired-journey-routes.test.ts` (3 tests): (a) ningún `page.*` resuelve a una de las seis rutas (se descartan los grupos `(…)`); (b) ningún archivo de `apps/web/src` contiene una de las seis rutas como literal exacto (seguido de comilla, `?` o `#`); (c) el propio matcher no confunde `/sme-requests`, `` `/application-reviews/${id}/evidence` `` ni `` `/admin/pymes/${id}/evidence` ``. Antes del borrado: 2 fallando, ~50 archivos ofensores.
+- GREEN: 3/3 tras el borrado. Ajustes de tests vivos: `demo-navbar` (test e historias) y `trust-banner.test.tsx` apuntan a rutas por rol (`/explore`, `/company`, `/portfolio`, `/reports`, `/admin`); `route-gate.test.ts` usa `/help` como ruta neutra (`/login` no sirve: redirige al usuario con sesión).
+
+**Inventario borrado** (cada módulo verificado con un recorrido del grafo de imports desde todas las rutas vivas y `proxy.ts`)
+
+| Área | Archivos | Líneas (+/−) |
+|---|---|---|
+| `app/(demo)/` | 22 | +0 / −1126 |
+| `presentation/` | 83 | +55 / −7375 |
+| `state/` | 25 | +9 / −2145 |
+| `application/` | 39 | +9 / −2796 |
+| `infrastructure/` | 18 | +14 / −1007 |
+| `src/test/route-harness.tsx` | 1 | −68 |
+| `e2e/` | 10 | +11 / −1191 |
+| `e2e-live/` | 5 | −491 |
+| `tests/` (raíz) | 4 | +8 / −58 |
+| Total (`git diff --stat 3ca174c 709fc28`) | 212 | +190 / −16265 |
+
+- Componentes: los 25 del recorrido (shell, progreso, navegación de pasos, workspaces de solicitud/IA/decisión/campaña/distribución/evidencia, paneles y formularios) con sus tests e historias, más `text-area` (sin importador restante).
+- Estado: `demo-journey`, `journey-url-sync`, `use-demo-step`, `use-assessment`, `use-persisted-assessment`, `use-human-decision`, `use-manual-review-context`, `journey-store`, `journey-store-provider`. `use-sme-request.ts` queda sólo con `useSmeRequestState`.
+- Aplicación: `assessment/assessment-view`, `decision/*`, `distribution/derivation-format`, `evidence/{evidence-review,evidence-timeline,review-mapper}`, `fixtures/*` (las historias de `bar-chart` y `campaign-card` llevan los datos inline), `navigation/{demo-steps,journey-params}`, `trust/step-disclosures`, `ports/{assessment,human-decision,manual-review}-gateway`.
+- Infraestructura: `assessment/`, `decision/`, `manual-review/`.
+- Podas parciales: `review-view-model.ts` sin `EvidenceReviewItem`/`ReviewItemKind`/`ReviewEvidence`; `infrastructure/sme/default-gateway.ts` sin la rama sin token (`accessToken` obligatorio; el único llamador, el gateway del navegador, siempre lo pasa).
+
+**Código muerto desde antes de #438** (mismo recorrido sobre un `git archive` de `3ca174c` contando `(demo)` como vivo: ya inalcanzables, 13 módulos, borrados con sus tests e historias): `funding-workspace`, `use-funding-intent`, `infrastructure/funding/{default-gateway,http-funding-intent-gateway}`, `funding-intent-errors`, `ports/funding-intent-gateway`, `workspace-status`, `workspace-view-model`, `custody-note`, `timeline`, `chip-toggle-group`, `combo-box`, `infrastructure/http/fetch-http-client`.
+
+**Se conserva, con quién lo importa**
+
+- `application/distribution/derivation-failure-copy.ts` ← `company/distribution-signing.ts`.
+- `application/funding/failure-reason-copy.ts` ← `company-sign-distribution.tsx`, `admin/evidence.ts`; `application/funding/xlm-amount.ts` ← `campaign/campaign-contribution.ts`, `portfolio/proofs.ts`.
+- `application/evidence/submit-sme-request.ts` y `review-view-model.ts` ← `pyme-onboarding/review-step` (componente y aplicación); `sme-request-errors.ts` ← `submit-sme-request.ts`.
+- `demo-navbar.tsx` conserva `singleLineNav`/`testnetLabel`: sus tests afirman ambos modos; sólo se quitaron los comentarios del recorrido.
+- `e2e/support/stub-campaign-routes.mjs` y `stub-distribution-routes.mjs`: ningún spec vivo los ejercita, pero reflejan endpoints que usan funciones vivas (aporte/retiro de campaña, firma de distribución).
+- Comentarios: ~15 archivos que nombraban módulos borrados se reescribieron (sólo comentarios), incluidos dos de `apps/api` (`submit-sme-request.ts`, `route-application-assessment.ts`).
+
+**e2e**
+
+- Stub: borrados `guided-journey`, `full-journey`, `human-decision`, `distribution-step`, `evidence-dashboard` y `campaign-vault`. `stub-api-server.mjs` sin `/__seed-assessment`, assessment POST/GET, decision POST/GET ni la exención sin Bearer para `sme:SYN-`; `stub-admin-review-routes.mjs` toma todas las decisiones (aplicación desconocida → 404 veraz); `targets.ts` sin `DEMO_APPLICATION_ID`; readiness de `playwright.config.ts` → `/login`.
+- Live: borrados `campaign-vault.live.spec.ts`, `support/ui-actions.ts`, `support/campaign-api.ts`, `seedApprovedApplication`/`runPsql` (`support/db.ts`) y `DEMO_APPLICATION_ID`/`xlmToStroops` (`support/live-targets.ts`); `admin-review.live.spec.ts` no usa ninguno. Readiness de `playwright.live.config.ts` → `/login`. El aporte vía UI queda sin e2e live (hueco ya registrado).
+
+**Guardas de la raíz (`tests/`)**
+
+- `monthly-sales-feed-parity.*`: borrado; comparaba la copia web de las ventas sintéticas con la de la API y la copia web ya no existe.
+- `testing-and-ci-gates.test.ts`: fija `APPLICATION_ID` (lo afirma `pyme-onboarding.spec.ts`) y `BUSINESS_CREATED_AT` en vez de `DECIDED_AT`/`CORRELATION_ID`; el recorrido de fuentes e2e espera `admin-review.spec.ts` y `pyme-onboarding.spec.ts`.
+- `web-holds-no-network-passphrase.test.ts`: espera `campaign-contribution.tsx`, `use-campaign-vault.ts` y `use-company-distribution-signing.ts`, los flujos de firma que reciben el passphrase en la respuesta de la API. Ajuste sobre la propuesta: `company-sign-distribution.tsx` y `http-campaign-gateway.ts` existen pero no manejan el passphrase; el hook que lo maneja sí.
+
+**Seguimiento del owner:** `derivation-failure-copy.ts` (vivo en la firma de distribución de la PyME) sigue diciendo «Retome el recorrido…» en tres mensajes. Cambiarlo es un cambio de copy visible y queda pendiente del owner. Siguen sin llamador web las rutas ADMIN ya registradas.
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/web test`: «Test Files 194 passed (194) · Tests 1964 passed (1964)».
+- `pnpm --filter @vaqcrow/web typecheck`: sin errores (tras `next build`, que regenera `.next/types` con referencias viejas a `(demo)`).
+- `pnpm --filter @vaqcrow/web lint`: sin errores ni advertencias.
+- `pnpm --filter @vaqcrow/web build`: ok; rutas `/`, `/_not-found`, `/admin`, `/admin/pymes`, `/admin/pymes/[applicationId]`, `/admin/pymes/[applicationId]/evidence`, `/campaigns/[id]`, `/company`, `/explore`, `/login`, `/portfolio`, `/reports`, `/signup`. Ninguna de las seis.
+- `pnpm run verify`: la primera corrida falló en `typecheck:tests` (la guarda de paridad importaba el fixture borrado). Después de la autorización: exit 0 sin reintentos (contracts 661, domain 120, ai 143, api 2617, web 1964; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
+- `pnpm --filter @vaqcrow/web exec playwright test` (stub): 14 passed, 0 failed.
