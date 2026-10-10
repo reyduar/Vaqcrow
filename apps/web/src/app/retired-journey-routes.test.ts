@@ -33,10 +33,10 @@ function routeOf(pageFile: string): string {
  * An exact path literal (`"/request"`, `'/funding?x=1'`, `` `/evidence#a` ``).
  * API paths (`/sme-requests`, `` `/application-reviews/${id}/evidence` ``) and
  * nested app paths (`/admin/pymes/.../evidence`) never match: the retired path
- * must start right after the opening quote and end at the closing one, a `?` or a `#`.
+ * must start right after the opening quote and end at the closing one, a `?`, a `#` or a sub-path `/`.
  */
 const RETIRED_LITERAL = new RegExp(
-  `["'\`](${RETIRED_ROUTES.map((route) => route.replace("/", "\\/")).join("|")})(?:[?#][^"'\`]*)?["'\`]`,
+  `["'\`](${RETIRED_ROUTES.map((route) => route.replace("/", "\\/")).join("|")})(?:[?#/][^"'\`]*)?["'\`]`,
   "g"
 );
 
@@ -72,5 +72,7 @@ describe("retired scripted journey routes (#438)", () => {
     expect(matches("`/application-reviews/${id}/evidence`")).toEqual([]);
     expect(matches("`/admin/pymes/${id}/evidence`")).toEqual([]);
     expect(matches(`"/requests"`)).toEqual([]);
+    expect(matches("`/funding/${campaignId}`")).toEqual(["/funding"]);
+    expect(matches(`"/evidence/vault"`)).toEqual(["/evidence"]);
   });
 });
