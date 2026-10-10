@@ -43,7 +43,7 @@ Porción B — transparencia (web)
 
 Porción C — retiro
 - [x] **WU6** RED: test de que las seis rutas no se sirven y nada las enlaza. GREEN: borrar `(demo)/`, código muerto (inventario del mapeo), e2e del recorrido, `campaign-vault.live.spec.ts` y sus soportes, handlers del stub; readiness de Playwright a rutas vivas.
-- [ ] **WU7** Docs: README, `DEMO.md`, `docs/architecture/*`, `demo-tasks-list.md`, `odd/tasks/*` vigentes y los gemelos `AGENTS.md`/`CLAUDE.md`. Las `*-evidence.md` no se reescriben.
+- [x] **WU7** Docs: README, `DEMO.md`, `docs/architecture/*`, `demo-tasks-list.md`, `odd/tasks/*` vigentes y los gemelos `AGENTS.md`/`CLAUDE.md`. Las `*-evidence.md` no se reescriben.
 
 Porción D — cierre
 - [ ] **WU8** Evidencia `docs/planning/retire-scripted-journey-evidence.md` (#441, en español) y PR de la pila a `main` (decisión del owner).
@@ -61,9 +61,14 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 
 ## Pendientes del owner
 
-- Copy de la vista de evidencia admin y de los estados «Sin dato» (owner-pending, diseñado con el template).
+- Copy de la vista de evidencia admin y de los estados «Sin dato» (owner-pending, diseñado con el template). Listas completas: WU4 («Copy pendiente del owner»), WU5 y WU5b.
 - Tras el merge a `main`: re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` en Railway a `CCDNM6W4…SV7J` (`application-review-and-vault-deployment-evidence.md:308`).
-- Seguimiento: rutas ADMIN sin llamador web; e2e live del aporte vía UI.
+- Seguimiento: rutas ADMIN sin llamador web (`POST /assessments`, `…/assessment`, `…/manual-review`, `…/decisions`); #438 no las borra.
+- Seguimiento: el aporte, retiro y reembolso vía UI quedan sin e2e live (se borró `campaign-vault.live.spec.ts`; U9 aporta por API).
+- Copy: `application/distribution/derivation-failure-copy.ts` (vivo en la firma de distribución de la PyME) dice «Retome el recorrido…» en tres mensajes.
+- El dataset simulado de ventas de la API ya no tiene gemelo web: la guarda `tests/monthly-sales-feed-parity*` se borró en WU6 y nada compara las dos copias.
+- Opcional: `CHECK (^[0-9a-f]{64}$)` en `revenue_share_distribution.transaction_hash`, como ya tienen los hashes de despliegue y de aporte (WU2/WU3: hoy no hay filas mal formadas).
+- Docs fuera de las superficies de WU7 que todavía describen las seis rutas como vigentes: `docs/guides/freighter-and-testnet-walkthrough.md` (guía viva, 15 menciones, tabla y pasos por ruta) y `docs/design/demo-ui.md` (tabla pantalla → ruta, ya superada por la regla de rutas en inglés). `docs/design/claude-design-brief.md` y `claude-design-continuation-pack.md` son briefs históricos.
 
 ## Progreso
 
@@ -417,3 +422,35 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - `pnpm --filter @vaqcrow/web exec playwright test` (stub): 14 passed, 0 failed.
 
 **Verificación independiente de WU6** (RDD apagado): PASS con notas. Recorrió `3ca174c..8c17f55`: sólo quedan las 12 páginas por rol (`next build` no lista ninguna de las seis rutas); ningún literal de las seis rutas en `apps/web/src`, `e2e`, `e2e-live` ni en las configs de Playwright; los módulos podados no afectan a sus llamadores vivos; confirmó 3 de los 13 módulos muertos antes de #438; `apps/api` sólo cambió comentarios; ningún doc ni `*-evidence.md` tocado. Confirmó que `campaign-contribution.tsx`, `use-campaign-vault.ts` y `use-company-distribution-signing.ts` son los que manejan la passphrase (el guard real es el escaneo AST de toda la web, sin cambios). Re-ejecutó typecheck, web test (194 / 1964), lint, `boundaries`, `test:boundaries` (163) y `next build`. Notas: (1) el matcher no detectaba subrutas (`/funding/${id}`): cerrado en `3213933` (RED: 1 test falló; GREEN: 3/3); (2) el guard sólo escanea `apps/web/src`, no `next.config` (hoy sin redirects); (3) al borrar `tests/monthly-sales-feed-parity*`, el dataset simulado de ventas de la API queda sin gemelo web: se registra en WU7.
+
+### WU7 — Alinear la documentación con el recorrido retirado
+
+- **Commit:** `14f0735` — `docs: align the docs with the retired scripted journey (#438)`.
+- **Ruta:** delegada (writer único; trigger de escritura: 2+ archivos no triviales). Sin RED: cambio sólo de documentación; el chequeo es estructural (`cmp`, barrido `rg`) más `pnpm run verify`.
+
+**Qué se tocó y por qué**
+
+| Archivo | Cambio |
+|---|---|
+| `README.md` | «Recorrido vertical completo», «Límites actuales», «Diseño», la hoja de ruta y Playwright: en `main` sigue el recorrido; la rama de #438 lo retira (404, sin redirección), la evidencia queda por rol y la cadena admin en `/admin/pymes/[applicationId]/evidence`; los specs e2e vivos son por rol. |
+| `AGENTS.md` / `CLAUDE.md` | Estado de los módulos por rol (ramas apiladas, no «not implemented»); la nota de Zustand apunta al patrón sobreviviente `session-store.ts`/`session-store-provider.tsx` (el `journey-store` se borró); Opción A habla de evidencia acotada al ensayo; decisión asentada nueva de #438 (D1, D2/D3, hashes persistidos, migraciones `20261009150000`/`20261009160000`, «Sin dato», rama fuera de `main`). Gemelos idénticos. |
+| `docs/planning/DEMO.md` | Las tres menciones del recorrido «en `main`» aclaran que la rama de #438 ya lo retiró y dónde vive la evidencia; D1 registrado. |
+| `docs/planning/demo-tasks-list.md` | #418: la pregunta del bloque de la landing queda resuelta por D1. #438: preguntas resueltas (D1, D2/D3, 2026-10-09), «Rama e implementación» con los work units y sus commits; #439/#440 explican que se entregaron como WU de la rama de #438; #441 pendiente (WU8). Las entradas históricas de #5/#16 no se tocaron. |
+| `docs/planning/demo-run-preflight.md` | Opción A: la «página de evidencia» pasa a evidencia acotada al ensayo, y la cadena admin por solicitud. |
+| `docs/architecture/environments.md` | §12: el ensayo en vivo es U9 (`admin-review.live.spec.ts`); se quitó la tabla y la advertencia sobre `(demo)/funding/page.tsx` y `campaign-vault.live.spec.ts`, con un aviso del hueco del aporte vía UI; sin el conteo «17 tests». §13: las páginas sin sesión, ya no «las rutas del recorrido». |
+| `docs/architecture/identity-and-rls-boundaries.md` | §9: la ruptura de los gateways sin token ya se cerró en la rama de #438. |
+| `docs/architecture/deploy-planning.md` | Nota fechada sobre la estructura e2e planificada (anterior a #438) con los specs reales. |
+| `odd/tasks/application-review-and-vault-deployment.md` | Dos notas fechadas «2026-10-10 — #438», sin borrar texto: el spec live que bloqueaba la fábrica con tope se retiró, y la exención `sme:SYN-` del stub ya no existe. |
+
+**Dejados como historia, sin cambios**
+
+- `docs/planning/*-evidence.md`: nunca se editan.
+- `odd/tasks/*.md` restantes (28 archivos con menciones a las seis rutas, `(demo)`, `full-journey` o «seis pasos»): son registros de cómo se hizo el trabajo. Sólo `application-review-and-vault-deployment.md` tenía afirmaciones vigentes que #438 cambió. `supabase-auth-roles-rls.md` («la demo desplegada (recorrido de seis pasos) sigue funcionando») sigue siendo cierto mientras `main` no reciba la pila.
+- `demo-tasks-list.md` #5 y #16 (Epics/Features cerradas del recorrido) y `docs/architecture/monorepo.md` («journey crítico» genérico).
+- Fuera de las superficies (registrados en «Pendientes del owner»): `docs/guides/freighter-and-testnet-walkthrough.md`, `docs/design/demo-ui.md`, `docs/design/claude-design-brief.md`, `docs/design/claude-design-continuation-pack.md`.
+
+**Verificación**
+
+- `cmp AGENTS.md CLAUDE.md`: sin diferencias.
+- Barrido `rg` (seis rutas, `(demo)`, `journey-store`, `full-journey`, `campaign-vault.live`, `evidence-workspace`) en Markdown fuera de `*-evidence.md` y `odd/`: las menciones que quedan en README, gemelos, `DEMO.md`, `demo-run-preflight.md`, `environments.md` y `demo-tasks-list.md` describen `main` o el retiro; las restantes están en los cuatro archivos fuera de superficie listados arriba.
+- `pnpm run verify`: exit 0 en la primera corrida (contracts 661, domain 120, ai 143, api 2617, web 1964; «no dependency violations found (1073 modules, 3602 dependencies cruised)»; `test:boundaries` 163/163).
