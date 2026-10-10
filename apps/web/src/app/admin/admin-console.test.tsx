@@ -287,6 +287,18 @@ describe("PyMEs queue", () => {
     expect(screen.getByRole("link", { name: "Ver detalle" })).toHaveAttribute("href", "/admin/pymes/VQ-0002");
   });
 
+  it("links every row to that application's Testnet evidence (#438)", async () => {
+    renderQueue(pageOf([PENDING, CHANGES]));
+
+    await screen.findByRole("link", { name: "Revisar solicitud" });
+    const evidence = screen.getAllByRole("link", { name: /^Evidencia de / });
+    expect(evidence.map((link) => link.getAttribute("href"))).toEqual([
+      "/admin/pymes/VQ-0001/evidence",
+      "/admin/pymes/VQ-0002/evidence"
+    ]);
+    expect(evidence.every((link) => link.textContent === "Evidencia")).toBe(true);
+  });
+
   it("drives the KPI numbers from the global server counts, not the loaded page", async () => {
     renderQueue(pageOf([PENDING], { counts: { pending: 7, changes: 3, approved: 5, rejected: 2 } }));
 

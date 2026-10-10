@@ -102,6 +102,22 @@ describe("admin review view", () => {
     expect(port.calls).toEqual([APPLICATION_ID]);
   });
 
+  it("links the loaded review to its Testnet evidence (#438)", async () => {
+    renderView(new FakeAdminReviewPort(() => ({ ok: true, context: CONTEXT })));
+
+    expect(await screen.findByRole("link", { name: "Ver evidencia Testnet" })).toHaveAttribute(
+      "href",
+      `/admin/pymes/${APPLICATION_ID}/evidence`
+    );
+  });
+
+  it("offers no evidence link while the review cannot be read", async () => {
+    renderView(new FakeAdminReviewPort(() => ({ ok: false, code: "not_found" })));
+
+    expect(await screen.findByText("No encontramos esta solicitud.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ver evidencia Testnet" })).not.toBeInTheDocument();
+  });
+
   it("renders the honest 'Sin dato' for an application without a company", async () => {
     renderView(new FakeAdminReviewPort(() => ({ ok: true, context: { ...CONTEXT, company: null, state: "rejected" } })));
 

@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 import {
+  adminApplicationEvidenceSchema,
   applicationAssessmentReadSchema,
   applicationIdSchema,
   applicationReviewSnapshotSchema,
@@ -13,6 +14,7 @@ import {
 } from "@vaqcrow/contracts";
 import type {
   AdminDeployment,
+  AdminEvidencePort,
   AdminReviewCompany,
   AdminReviewContext,
   AdminReviewDocument,
@@ -23,6 +25,7 @@ import type {
   DeployFailureCode,
   DeployResult,
   GetDeploymentResult,
+  GetEvidenceResult,
   RecordDecisionRequest,
   RecordDecisionResult,
   SetDocumentVerdictResult
@@ -54,6 +57,10 @@ import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-clien
  * U6 adds the vault-deployment read (`GET …/deployment`) and the deploy/retry
  * write (`POST …/deployment`, empty body). Both bodies are `{ deployment }` and
  * are validated field by field; a 422/503 keeps only a code the API documents.
+ *
+ * #438 WU4 adds the Testnet evidence read (`GET …/evidence`), parsed with the
+ * shared `AdminApplicationEvidence` contract (strict: an extra or malformed
+ * field is `unavailable`, never half a chain) and bound to the requested id.
  */
 
 /** RFC 6750 `b64token` characters: anything else (spaces, CR/LF) is never put in a header. */
@@ -257,7 +264,7 @@ function deploymentPath(applicationId: string): string {
   return `/application-reviews/${encodeURIComponent(applicationId)}/deployment`;
 }
 
-export class HttpAdminReviewGateway implements AdminReviewPort {
+export class HttpAdminReviewGateway implements AdminReviewPort, AdminEvidencePort {
   constructor(
     private readonly client: AxiosInstance,
     private readonly accessToken?: AccessTokenProvider
@@ -367,6 +374,25 @@ export class HttpAdminReviewGateway implements AdminReviewPort {
       if (response.status !== 200) return { ok: false, code: deployFailure(response.status, response.data) };
       const deployment = parseDeployment(response.data, applicationId);
       return deployment ? { ok: true, deployment } : { ok: false, code: "unavailable" };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }
+
+  async getEvidence(applicationId: string): Promise<GetEvidenceResult> {
+    if (!applicationIdSchema.safeParse(applicationId).success) return { ok: false, code: "not_found" };
+    const headers = await headersFor(this.accessToken);
+    try {
+      const response = await this.client.get(`/application-reviews/${encodeURIComponent(applicationId)}/evidence`, {
+        ...(headers ? { headers } : {}),
+        validateStatus: () => true
+      });
+      if (response.status === 404) return { ok: false, code: "not_found" };
+      if (response.status !== 200) return { ok: false, code: "unavailable" };
+      const parsed = adminApplicationEvidenceSchema.safeParse(response.data);
+      return parsed.success && parsed.data.applicationId === applicationId
+        ? { ok: true, evidence: parsed.data }
+        : { ok: false, code: "unavailable" };
     } catch {
       return { ok: false, code: "network" };
     }

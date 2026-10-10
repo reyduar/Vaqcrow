@@ -17,7 +17,8 @@ import {
   queueTotalPages,
   type QueueFilterState
 } from "@/application/admin/queue";
-import { adminReviewPath } from "@/application/admin/review";
+import { EVIDENCE_COPY } from "@/application/admin/evidence";
+import { adminEvidencePath, adminReviewPath } from "@/application/admin/review";
 import type {
   AdminQueueCounts,
   AdminQueuePort,
@@ -217,16 +218,25 @@ export function PymesQueue({ port }: PymesQueueProps) {
                       </td>
                       <td className="px-4 py-3.5 text-text-secondary">{formatQueueUpdatedAt(item.updatedAt)}</td>
                       <td className="px-4 py-3.5 text-right">
-                        <Link
-                          href={adminReviewPath(item.applicationId)}
-                          className={`inline-flex h-[38px] items-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap no-underline ${FOCUS_RING} ${
-                            action.primary
-                              ? "bg-brand-accent text-on-accent hover:bg-brand-accent-hover"
-                              : "border border-control bg-transparent text-text-primary hover:bg-page-surface"
-                          }`}
-                        >
-                          {action.label}
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={adminEvidencePath(item.applicationId)}
+                            aria-label={`${EVIDENCE_COPY.linkLabel} de ${nameOrMissing(item.name)}`}
+                            className={`inline-flex h-[38px] items-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap text-text-primary no-underline hover:bg-page-surface ${FOCUS_RING}`}
+                          >
+                            {EVIDENCE_COPY.linkLabel}
+                          </Link>
+                          <Link
+                            href={adminReviewPath(item.applicationId)}
+                            className={`inline-flex h-[38px] items-center rounded-control px-3.5 text-[13px] font-semibold whitespace-nowrap no-underline ${FOCUS_RING} ${
+                              action.primary
+                                ? "bg-brand-accent text-on-accent hover:bg-brand-accent-hover"
+                                : "border border-control bg-transparent text-text-primary hover:bg-page-surface"
+                            }`}
+                          >
+                            {action.label}
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -1,4 +1,5 @@
 import type {
+  AdminApplicationEvidence,
   ApplicationAssessmentRead,
   ApplicationReviewState,
   DocumentVerdictRecord,
@@ -181,4 +182,26 @@ export interface AdminReviewPort {
   recordDecision(applicationId: string, request: RecordDecisionRequest): Promise<RecordDecisionResult>;
   getDeployment(applicationId: string): Promise<GetDeploymentResult>;
   deploy(applicationId: string): Promise<DeployResult>;
+}
+
+/**
+ * The per-application Testnet evidence chain (Feature #438, WU4), read from
+ * `GET /application-reviews/:applicationId/evidence` (ADMIN-only) and parsed
+ * with the shared `AdminApplicationEvidence` contract. `not_found` is a 404
+ * (or an id the API would never accept), `unavailable` any other non-200 or a
+ * body that breaks the contract, `network` a transport failure.
+ */
+export type AdminEvidenceErrorCode = "not_found" | "unavailable" | "network";
+
+export type GetEvidenceResult =
+  | { readonly ok: true; readonly evidence: AdminApplicationEvidence }
+  | { readonly ok: false; readonly code: AdminEvidenceErrorCode };
+
+/**
+ * Kept apart from `AdminReviewPort` (the WU1/WU2 lesson): the review's
+ * hand-written test doubles stay valid, while the HTTP gateway and the null
+ * object implement both.
+ */
+export interface AdminEvidencePort {
+  getEvidence(applicationId: string): Promise<GetEvidenceResult>;
 }

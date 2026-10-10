@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { ADMIN_PYMES_PATH, reviewHeaderFor } from "@/application/admin/review";
+import { IoGitNetworkOutline } from "react-icons/io5";
+import { EVIDENCE_COPY } from "@/application/admin/evidence";
+import { ADMIN_PYMES_PATH, adminEvidencePath, reviewHeaderFor } from "@/application/admin/review";
 import type { AdminReviewContext, AdminReviewPort } from "@/application/ports/admin-review-port";
 import { createBrowserAdminReviewPort } from "@/infrastructure/admin/create-admin-review-port";
 import { useAdminReview } from "@/state/use-admin-review";
@@ -66,7 +68,16 @@ export function ReviewView({ applicationId, port, slots = {} }: ReviewViewProps)
             </h1>
             <p className="mt-1.5 mb-0 text-text-secondary">{header.subline}</p>
           </div>
-          <AdminStatePill copy={header.state} size="md" />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href={adminEvidencePath(context.applicationId)}
+              className={`inline-flex h-11 items-center gap-2 rounded-control border border-control px-4 text-sm font-semibold text-text-primary no-underline hover:bg-page-surface ${FOCUS_RING}`}
+            >
+              <IoGitNetworkOutline aria-hidden="true" focusable="false" className="text-base text-brand-accent-text" />
+              {EVIDENCE_COPY.reviewLinkLabel}
+            </Link>
+            <AdminStatePill copy={header.state} size="md" />
+          </div>
         </div>
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-5">

@@ -219,6 +219,37 @@ const CONTEXT_PATH = /^\/application-reviews\/([^/]+)\/context$/;
 const VERDICT_PATH = /^\/application-reviews\/([^/]+)\/documents\/([^/]+)\/verdict$/;
 const DECISION_PATH = /^\/application-reviews\/([^/]+)\/decisions$/;
 const DEPLOYMENT_PATH = /^\/application-reviews\/([^/]+)\/deployment$/;
+const EVIDENCE_PATH = /^\/application-reviews\/([^/]+)\/evidence$/;
+
+/**
+ * `GET /application-reviews/:id/evidence` (#438 WU4): the chain as this double
+ * knows it — the review state, the recorded decision and deployment, and no
+ * vault, contributions, distributions or reconciliation (the double never
+ * mirrors a vault). Explorer links stay out of it: the web never builds one.
+ */
+function evidenceBody() {
+  return {
+    applicationId: REVIEW_APPLICATION_ID,
+    applicationState: state,
+    smeReference: SME_REQUEST.request.smeReference,
+    companyName: COMPANY.name,
+    decision:
+      latestDecision === null
+        ? null
+        : {
+            actor: latestDecision.actor,
+            outcome: latestDecision.outcome,
+            reason: latestDecision.reason,
+            approvedLimitArs: latestDecision.approvedLimitArs,
+            decidedAt: latestDecision.decidedAt
+          },
+    deployment: deployment === null ? null : { state: deployment.state, campaignId: deployment.campaignId ?? null },
+    vault: null,
+    contributions: [],
+    distributions: [],
+    reconciliation: null
+  };
+}
 
 /**
  * Handles the admin review routes; returns `false` for anything else so the
@@ -262,7 +293,10 @@ export async function tryHandleAdminReviewRequest(request, response, method, pat
   const decisionMatch =
     rawDecisionMatch && decodeURIComponent(rawDecisionMatch[1]) === REVIEW_APPLICATION_ID ? rawDecisionMatch : null;
   const deploymentMatch = DEPLOYMENT_PATH.exec(pathname);
-  if (!isQueue && !isStorageRead && !contextMatch && !verdictMatch && !decisionMatch && !deploymentMatch) return false;
+  const evidenceMatch = method === "GET" ? EVIDENCE_PATH.exec(pathname) : null;
+  if (!isQueue && !isStorageRead && !contextMatch && !verdictMatch && !decisionMatch && !deploymentMatch && !evidenceMatch) {
+    return false;
+  }
 
   // Every admin route requires a bearer token; the real API also verifies the ADMIN role.
   if (!hasBearer(request)) {
@@ -309,12 +343,20 @@ export async function tryHandleAdminReviewRequest(request, response, method, pat
     return true;
   }
 
-  const applicationId = decodeURIComponent((contextMatch ?? verdictMatch ?? decisionMatch ?? deploymentMatch)[1]);
+  const applicationId = decodeURIComponent(
+    (contextMatch ?? verdictMatch ?? decisionMatch ?? deploymentMatch ?? evidenceMatch)[1]
+  );
   if (!UUID_V4.test(applicationId)) {
     sendJson(response, 400, { code: "invalid_request" });
     return true;
   }
   const known = applicationId === REVIEW_APPLICATION_ID;
+
+  if (evidenceMatch) {
+    if (!known) sendJson(response, 404, { code: "not_found" });
+    else sendJson(response, 200, evidenceBody());
+    return true;
+  }
 
   if (contextMatch) {
     if (method !== "GET") return false;

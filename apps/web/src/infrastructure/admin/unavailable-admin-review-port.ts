@@ -1,9 +1,11 @@
 import type {
   AdminDocumentFileResult,
+  AdminEvidencePort,
   AdminReviewPort,
   AdminReviewResult,
   DeployResult,
   GetDeploymentResult,
+  GetEvidenceResult,
   RecordDecisionResult,
   SetDocumentVerdictResult
 } from "@/application/ports/admin-review-port";
@@ -11,10 +13,10 @@ import type {
 /**
  * Null-object admin review used when no backend base URL is configured: every
  * read and write is the sanitized `unavailable`, so the review shows its error
- * state instead of an invented application, and no verdict, decision or
- * deployment is ever claimed.
+ * state instead of an invented application, and no verdict, decision,
+ * deployment or Testnet evidence is ever claimed.
  */
-export const UNAVAILABLE_ADMIN_REVIEW_PORT: AdminReviewPort = Object.freeze({
+export const UNAVAILABLE_ADMIN_REVIEW_PORT: AdminReviewPort & AdminEvidencePort = Object.freeze({
   async getContext(): Promise<AdminReviewResult> {
     return { ok: false, code: "unavailable" };
   },
@@ -31,6 +33,9 @@ export const UNAVAILABLE_ADMIN_REVIEW_PORT: AdminReviewPort = Object.freeze({
     return { ok: false, code: "unavailable" };
   },
   async deploy(): Promise<DeployResult> {
+    return { ok: false, code: "unavailable" };
+  },
+  async getEvidence(): Promise<GetEvidenceResult> {
     return { ok: false, code: "unavailable" };
   }
 });

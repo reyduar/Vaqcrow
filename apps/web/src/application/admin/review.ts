@@ -23,6 +23,11 @@ export function adminReviewPath(applicationId: string): string {
   return `${ADMIN_PYMES_PATH}/${encodeURIComponent(applicationId)}`;
 }
 
+/** The English console route for one application's Testnet evidence chain (#438). */
+export function adminEvidencePath(applicationId: string): string {
+  return `${adminReviewPath(applicationId)}/evidence`;
+}
+
 export interface ReviewHeaderInput {
   readonly applicationId: string;
   readonly state: ApplicationReviewState;

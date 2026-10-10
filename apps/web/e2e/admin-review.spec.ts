@@ -190,3 +190,32 @@ test("an approval with no recorded deployment offers Desplegar, which confirms t
   await expect(page.getByText("Bóveda confirmada / PyME publicada", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Desplegar" })).toHaveCount(0);
 });
+
+test("an admin opens the Testnet evidence chain from the queue and from the review (#438)", async ({ page, request }) => {
+  await request.post(`${STUB_API_BASE_URL}/__admin-review/seed`, { data: { state: "approved" } });
+  await signInAsAdmin(page);
+
+  const row = page.getByRole("row", { name: /Panadería Horizonte SRL/ });
+  await row.getByRole("link", { name: "Evidencia de Panadería Horizonte SRL" }).click();
+  // `next dev` compiles the evidence route on its first visit; a cold run needs more than the default wait.
+  await expect(page).toHaveURL(new RegExp(`${REVIEW_PATH}/evidence$`), { timeout: 30_000 });
+
+  await expect(page.getByRole("heading", { level: 1, name: "Evidencia: Panadería Horizonte SRL" })).toBeVisible();
+  const chain = page.getByRole("list", { name: "Cadena de evidencia" });
+  await expect(chain.getByRole("heading", { level: 2 })).toHaveText([
+    "1 · Solicitud",
+    "2 · Decisión humana",
+    "3 · Despliegue de la bóveda",
+    "4 · Aportes",
+    "5 · Distribuciones",
+    "6 · Reconciliación"
+  ]);
+  await expect(chain.getByText("Admin Vaqcrow", { exact: true })).toBeVisible();
+  await expect(chain.getByText("Despliegue fallido", { exact: true })).toBeVisible();
+  await expect(chain.getByText("Todavía no hay aportes confirmados")).toBeVisible();
+
+  await page.getByRole("navigation", { name: "Ruta" }).getByRole("link", { name: "Revisión" }).click();
+  await expect(page).toHaveURL(new RegExp(`${REVIEW_PATH}$`));
+  await page.getByRole("link", { name: "Ver evidencia Testnet" }).click();
+  await expect(page).toHaveURL(new RegExp(`${REVIEW_PATH}/evidence$`));
+});
