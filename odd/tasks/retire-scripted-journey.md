@@ -39,7 +39,7 @@ Porción A — transparencia (backend)
 
 Porción B — transparencia (web)
 - [x] **WU4** Vista admin `/admin/pymes/[applicationId]/evidence`: línea de tiempo de la cadena completa (reusa `EvidenceTimeline`, builder por arrays sin la entrada «Caso simulado»), link «Evidencia» desde la fila de la cola y desde la revisión.
-- [ ] **WU5** Inversor, PyME y detalle de campaña: `HashDisplay` con link al explorador en aportes, distribuciones y bóveda; «Sin dato» para lo histórico.
+- [x] **WU5** Inversor, PyME y detalle de campaña: `HashDisplay` con link al explorador en aportes, distribuciones y bóveda; «Sin dato» para lo histórico.
 
 Porción C — retiro
 - [ ] **WU6** RED: test de que las seis rutas no se sirven y nada las enlaza. GREEN: borrar `(demo)/`, código muerto (inventario del mapeo), e2e del recorrido, `campaign-vault.live.spec.ts` y sus soportes, handlers del stub; readiness de Playwright a rutas vivas.
@@ -264,3 +264,55 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 
 
 **Verificación independiente** (RDD apagado): PASS con notas. Recorrió `1b092ee..8f33da7`: ningún import de módulos que borra WU6; contratos sólo type-only en `presentation/`; todas las clases de color resuelven a tokens `--color-*` de `globals.css` (sin hex ni paleta de Tailwind); «Sin dato» nunca como cero; estados con texto + ícono; links externos con `target=_blank`, `rel`, `aria-label` y foco; la página vive bajo `(console)` (`AdminConsoleGate`); el gateway mapea `not_found`/`unavailable`/`network` sin filtrar texto. Re-ejecutó web test (261 / 2474), typecheck, lint (0 errores), `boundaries` y `test:boundaries` (164). Nota baja, código previo: `HashDisplay` no tiene `FOCUS_RING` en su link y su nombre accesible es genérico, así que en «Despliegue» hay dos links con el mismo nombre. Se corrige en WU5, que usa `HashDisplay` en todas las vistas por rol.
+
+### WU5 — Hashes de Testnet y links al explorador en las vistas por rol
+
+- **Commit:** `4a5db4e` — `feat(web): show Testnet hashes and explorer links to investors, PyMEs and campaign visitors (#438)`.
+- **Ruta:** delegada (writer único; trigger de escritura: 2+ archivos no triviales — puertos, gateways, selectores, componentes de portafolio, informes, PyME y detalle).
+- **Superficies ampliadas (decisión del owner: opción A).** El brief suponía que los gateways web ya entregaban los campos de WU3: los **parseaban** con el contrato, pero los mappers (`toPosition`, `toCampaign`, `toDetail` y el armado del informe) copian campo por campo y los puertos web no los declaraban, así que nada llegaba a `presentation/`. El writer se detuvo sin escribir y el owner eligió la opción A: campos **requeridos** en los cuatro puertos web (un gateway que olvide mapear un campo falla en typecheck en vez de mostrar «Sin dato» en silencio). Se agregaron a las superficies los cuatro puertos (`application/ports/{portfolio,report,my-campaigns,campaign-detail}-port.ts`), los cuatro gateways y sus tests, y ediciones sólo de fixtures en `state/use-{portfolio,investor-report,my-campaigns,campaign-detail,company-distribution-signing}.test.*`, `pyme-onboarding/company-workspace.test.tsx` y `application/campaign/campaign-{contribution,withdraw}.test.ts` (estos dos últimos no necesitaron cambios). El typecheck no pidió ningún otro archivo.
+
+**Qué entrega**
+
+- **Puertos y gateways:** `PortfolioPosition.vaultExplorerUrl` + `transactions[]`; `PortfolioDistribution`, `ReportLatestDistribution` y `MyCampaignDistribution` con `transactionHash` + `explorerUrl`; `InvestorReport.contributionTransactions[]`; `MyCampaign.vaultExplorerUrl`; `CampaignDetail.vaultExplorerUrl`. Los gateways los pasan tal cual llegan; la web sigue sin armar URLs de explorador.
+- **`ExplorerProof`** (`presentation/components/explorer-proof.tsx`, nuevo): la fila compacta «CDLZ…7Q4K Explorador» que WU4 usaba sólo en la cadena admin (`InlineProof`), extraída y compartida. Valor truncado visible (o `displayValue` del llamador), valor completo en `title` y en `sr-only`; link sólo si la API mandó URL, con `target=_blank`, `rel="noreferrer noopener"`, anillo de foco compartido y `aria-label` «Ver {qué prueba} {valor completo} en el explorador (abre en una pestaña nueva)» (formato que ya fijaba el test de la cadena admin y que usa el template en el diálogo «Revisión antes de firmar»); valor `null` → «Sin dato» o el nodo `missing` del llamador (la cadena admin conserva su badge «Evidencia faltante»). `evidence-chain.tsx` ahora usa `ExplorerProof`.
+- **`HashDisplay` (nota del verificador de WU4):** el link lleva `FOCUS_RING` y un nombre accesible que dice qué prueba: prop opcional `proofLabel` (por defecto el `label`), nombre «Ver en el explorador: {qué prueba} (abre en una pestaña nueva)». En «3 · Despliegue de la bóveda» los dos links se distinguen: «contrato de la bóveda» vs «transacción de despliegue de la bóveda». Story `WithProofLabel`.
+- **Inversor `/portfolio`:** cada posición cierra con una fila de prueba a todo el ancho de la tarjeta: «Bóveda» + dirección corta + «Ver en el explorador» (nombre «Ver bóveda de {PyME} …»), y «Tus transacciones de aporte»: monto propio, día (UTC) y hash + link de cada aporte observado, de la más vieja a la más nueva. Sin transacciones (aporte anterior a WU1) → «Hash del aporte: Sin dato», nunca cero. Nota `microcopy.hashTechnicalOnly` una vez bajo «Mis aportes en PyMEs». «Distribuciones»: hash + link por fila y la nota canónica una vez.
+- **Inversor `/reports`:** «Últimas distribuciones» suma la columna «Transacción» (hash + link). Sección nueva «Aportes en el período» (fecha, PyME, monto, transacción, bóveda con link, badge TESTNET, nota canónica una vez, vacío «Sin aportes confirmados en el período.»), con los datos ya filtrados por la API para el período elegido. El CSV suma «Hash de la transacción» y «Explorador» a las distribuciones y una sección «Aportes confirmados» (fecha, PyME, monto XLM canónico, hash, explorador, bóveda, explorador de la bóveda); URL `null` → celda vacía.
+- **PyME `/company`:** en «Bóveda y distribuciones», la línea «Bóveda CDLZ…7Q4K» del template ahora es una `ExplorerProof` con «Ver bóveda en el explorador» (nombre «Ver bóveda de {campaña} …»). En «Distribuciones», hash + link por fila y la nota canónica una vez. `company-sign-distribution` no cambió (sigue mostrando la recién firmada).
+- **Detalle de campaña:** en el `dl` de términos del aside, fila «Bóveda» con la dirección corta y «Ver bóveda en el explorador» si `vaultExplorerUrl` no es `null`; sin bóveda → «Sin dato». Los badges TESTNET/SIMULADO no cambiaron.
+
+**RED → GREEN**
+
+- Gateways: 4 tests nuevos fallando con las fuentes revertidas («Tests 4 failed | 40 passed (44)») → 44/44.
+- Typecheck tras volver requeridos los campos: errores sólo en fixtures dentro de las superficies; corregidos, `tsc --noEmit` limpio y suite web 261/2478 verde antes de tocar la UI.
+- `ExplorerProof`: RED (módulo inexistente) → 6/6; `displayValue`: 1 fallando → 7/7.
+- `HashDisplay` + cadena admin: 3 fallando → 24/24.
+- Selectores (`portfolio/proofs`, `reports/contribution-transactions`, filas de distribución de informes y PyME, columnas del CSV): RED (2 módulos inexistentes + 5 tests) → 748/748 en `application/`; un test de igualdad exacta de la fila PyME se actualizó con los dos campos nuevos.
+- Componentes (tarjeta de posición, distribuciones de portafolio, lista de bóvedas y distribuciones PyME, últimas distribuciones, aportes del período, aside del detalle): 9 fallando + 1 archivo sin módulo → verdes. `company-dashboard.test.tsx` se ajustó: «Bóveda CDLZ…N4B2» ahora es etiqueta y valor en nodos separados.
+- Después de ajustar `HashDisplay`, `evidence-timeline.test.tsx` (fuera de superficie, se borra en WU6) falló: buscaba `/Ver en el explorador/`. Se cambió el nombre accesible para que **empiece por el texto visible** («Ver en el explorador: …», WCAG 2.5.3) en vez de tocar ese test; pasa sin cambios.
+
+**Decisiones de diseño**
+
+1. **Una fila de prueba compartida.** El template no dibuja hashes en Portafolio, Informes ni Detalle; la única forma compacta que dibuja es la fila de contrato del diálogo «Revisión antes de firmar» (`Vaqcrow Sistema.dc.html`: mono truncado + «Explorador» con `open-outline` y `aria-label` con el valor completo), que WU4 ya había adoptado. Se reusa en todas las vistas; `HashDisplay` (caja con copiar) queda para las pruebas de paso del admin.
+2. **Direcciones de bóveda 4…4, hashes 10…8.** El template escribe la bóveda como «CDLZ…7Q4K» (`Vaqcrow Portafolio.dc.html`, modo PyME; `Sistema`, diálogo) y el hash con `slice(0, 10)…slice(-8)` (`Sistema`, «Hash y copia»). `ExplorerProof` acepta `displayValue` y las vistas pasan `formatShortAddress` para la bóveda.
+3. **Nota canónica una vez por sección.** `microcopy.hashTechnicalOnly` bajo «Mis aportes en PyMEs», en «Distribuciones» (inversor y PyME) y en «Aportes en el período», sólo cuando hay filas. En «Últimas distribuciones» se conserva el pie del template (`Vaqcrow Informes.dc.html:190`, «Un hash de Testnet demuestra ejecución técnica, no una inversión real.»), que ya dice lo mismo: el template prevalece.
+4. **Nombres accesibles distinguibles.** En una lista cada link incluye su hash o la PyME/campaña («Ver bóveda de {nombre} …»), así dos links de la misma sección nunca comparten nombre.
+5. **Fechas en UTC** (`formatDate` nuevo en `application/portfolio/format.ts`, mismo criterio que el informe) para que el día observado se lea igual en cualquier entorno.
+6. **Distribuciones anidadas en «Bóveda y distribuciones» sin hash:** la prueba vive en la sección agregada «Distribuciones», como pedía el brief, para no duplicar el mismo hash en la pantalla.
+7. **Fronteras:** `application/` sigue sin React; `presentation/` no importa contratos (sólo puertos); ningún literal de passphrase ni URL armada en la web (los tests usan `https://explorer.example/...`); sólo tokens de `globals.css`.
+
+**Copy pendiente del owner** (el template no la dibuja): «Tus transacciones de aporte», «Hash del aporte», «Hash» (distribuciones del inversor y de la PyME), «Bóveda» como etiqueta en tarjeta y aside, «Ver bóveda en el explorador» (PyME y detalle), columna «Transacción» en «Últimas distribuciones», sección «Aportes en el período» con sus columnas «Fecha / PyME / Monto / Transacción / Bóveda» y su vacío «Sin aportes confirmados en el período.», encabezados del CSV («Hash de la transacción», «Explorador», «Aportes confirmados», «Monto (XLM)», «Bóveda», «Explorador de la bóveda») y el nombre accesible de `HashDisplay` («Ver en el explorador: {qué prueba} (abre en una pestaña nueva)»).
+
+**Verificación**
+
+- `pnpm --filter @vaqcrow/contracts build`: ok.
+- `pnpm --filter @vaqcrow/web test`: primera corrida «1 failed | 2509 passed» (`evidence-timeline.test.tsx`, ver arriba); tras el ajuste «Test Files 268 passed (268) · Tests 2510 passed (2510)».
+- `pnpm --filter @vaqcrow/web typecheck`: sin errores.
+- `pnpm --filter @vaqcrow/web lint`: 0 errores; sólo la advertencia preexistente `_request` de `fetch-http-client.ts`.
+- `pnpm run verify`: exit 0 en la primera corrida («no dependency violations found (1283 modules, 4275 dependencies cruised)»; `test:boundaries` 164/164; web 2510, api 2617, contracts 661).
+
+**Advertencias**
+
+- Los aportes anteriores a WU1 no tienen fila: la posición muestra «Sin dato» para el hash y el informe no los lista.
+- Sin e2e nuevo: la cobertura es de componente y de gateway; `e2e/evidence-dashboard.spec.ts` (se borra en WU6) sigue buscando `/Ver en el explorador/`, compatible con el nuevo nombre de `HashDisplay`.
+
