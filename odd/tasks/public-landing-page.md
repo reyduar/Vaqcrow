@@ -42,7 +42,7 @@ Memoria Engram: `decision/418-featured-campaign`, `decision/418-help-assistant`,
 
 - [x] **WU1 — Shell full-bleed + ancla + secciones estáticas.** Variante full-bleed de `AppShell`; ancla `/#como-funciona` en `shell-nav.ts` (+ sus tests); reescribir `page.tsx` con hero (badges, h1, copy, CTAs por rol, «Leer los límites»), franja de garantías, «Cómo funciona» (4 pasos, ancla `#como-funciona`) y «Qué es real y qué es simulado» (ancla `#limites`, disclosure canónico). Reescribir `page.test.tsx`. — **Commit `d60d3ef`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU2 — Datos públicos + destacada + grilla.** Selección derivada de la destacada (mayor `fundedPercentBps`, preferir foto, desempate cierre); card de ejemplo simulada; «PyMEs en campaña» (destacada excluida, 3 por cierre, vacío/error con copy de `/explore`); estados de carga/error sanitizados. — **Commit `84ebf4b`.** Verificado (tier high, verificador independiente PASS tras una corrección).
-- [ ] **WU3 — Footer rico de la landing.** Footer del template de la landing (columnas Plataforma / Aprender / Proyecto + disclosure canónico + fila legal), links reales donde existan y 404-aceptado para el resto; sin tocar el footer de las demás páginas.
+- [x] **WU3 — Footer rico de la landing.** Footer del template de la landing (columnas Plataforma / Aprender / Proyecto + disclosure canónico + fila legal), links reales donde existan y 404-aceptado para el resto; sin tocar el footer de las demás páginas. — **Commit `8f2bfa8`.** Verificado (tier high, verificador independiente PASS).
 - [ ] **WU4 — Asistente flotante «Ayuda».** Botón flotante + panel del template (saludo, 3 links rápidos, input deshabilitado, «Ir al centro de ayuda»); accesible (dialog, `aria-expanded`, cierre con Escape); links al centro de ayuda (#394).
 - [ ] **WU5 — Evidencia + cierre.** `docs/planning/public-landing-page-evidence.md` (español, criterios citados) + alineación de docs (`demo-tasks-list.md`, `README.md`, `DEMO.md`, `CLAUDE.md`/`AGENTS.md` si aplica) y cierre de esta bitácora.
 
@@ -70,3 +70,10 @@ Por WU: `pnpm --filter @vaqcrow/web test` (+ `pnpm --filter @vaqcrow/web typeche
 - RED→GREEN: 7 fallando / 12 pasando → 19 pasando; suite web: 197 archivos / 1994 tests.
 - **Corrección (una):** la 1.ª entrega puso la destacada como sección aparte (mi instrucción al writer decía «después del hero»); el verificador confirmó que el template la define como **2.ª columna del hero** (misma fila, centrada). Se reestructuró: `LandingHero` recibe la destacada como prop (elemento client dentro de un server component) y la grilla pasó a isla propia. Además, el vacío de la grilla cambiado al copy neutro de landing (decisión owner (a): «Todavía no hay campañas publicadas»), sin el copy de filtros de `/explore`. Re-verificado: **PASS**.
 - Avisos: la suite `@vaqcrow/web` es sensible a carga (un timeout ajeno en `company-dashboard.test.tsx` en la 1.ª corrida, verde al reintentar — no es regresión). La destacada real lleva el badge `SIMULADO` por consistencia con `/explore`.
+
+### WU3 — Footer rico de la landing · commit `8f2bfa8`
+
+- Código: `landing/landing-footer.tsx` (marca + columnas Plataforma/Aprender/Proyecto + `CanonicalDisclosure id="no-production"` + fila legal con `microcopy.testnetBadge`); `app-shell.tsx` gana `footer?: ReactNode` (default `SiteFooter` intacto); `page.tsx` pasa `<LandingFooter/>`.
+- Tests: `landing-footer.test.tsx` (4), `app-shell.test.tsx` (2, bidireccional default/override), `page.test.tsx` (+1).
+- RED→GREEN: 1 fallando / 11 pasando → 18 pasando. Suite web: 199 archivos / 2001 tests.
+- Verificación independiente (tier `high`): **PASS**. Cosmético: títulos de columna en `font-semibold` (600) vs 650 del template (sin impacto). Rutas no construidas (`/help`, `/about`, `/entrepreneur-guide`, `/investor-guide`) quedan 404-aceptadas; `Contacto` sigue `#` (pregunta abierta de #394).
