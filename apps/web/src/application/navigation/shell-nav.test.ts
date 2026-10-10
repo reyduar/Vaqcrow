@@ -15,7 +15,7 @@ describe("shellViewFor (owner decision D9)", () => {
     const view = shellViewFor(null);
     expect(pairs(view.nav)).toEqual([
       ["Explorar PyMEs", "/explore"],
-      ["Cómo funciona", "/#how-it-works"],
+      ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
       ["Acerca de", "/about"]
     ]);
@@ -44,7 +44,7 @@ describe("shellViewFor (owner decision D9)", () => {
     const view = shellViewFor("PYME");
     expect(pairs(view.nav)).toEqual([
       ["Mi campaña", "/company"],
-      ["Cómo funciona", "/#how-it-works"],
+      ["Cómo funciona", "/#como-funciona"],
       ["Acerca de", "/about"]
     ]);
     expect(pairs(view.menu)).toEqual([
@@ -83,7 +83,7 @@ describe("isCurrentPath", () => {
     ["/portfolio", "/portfolio/", true],
     ["/portfolio", "/company", false],
     ["/explore", "/", false],
-    ["/#how-it-works", "/", false]
+    ["/#como-funciona", "/", false]
   ] as const)("%s on %s → %s", (href, pathname, expected) => {
     expect(isCurrentPath(href, pathname)).toBe(expected);
   });
