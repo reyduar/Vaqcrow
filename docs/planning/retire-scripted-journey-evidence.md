@@ -3,7 +3,7 @@
 > Documento de cierre de Feature. Consolida la evidencia de las Tasks [#439](https://github.com/reyduar/Vaqcrow/issues/439) (implementación), [#440](https://github.com/reyduar/Vaqcrow/issues/440) (pruebas) y [#441](https://github.com/reyduar/Vaqcrow/issues/441) (evidencia) de la Feature [#438](https://github.com/reyduar/Vaqcrow/issues/438) ("Feature: Retire the scripted six-step demo journey routes"), mapea cada criterio de aceptación de la Feature y de sus Tasks, **citado textualmente**, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/retire-scripted-journey|Bitácora: retiro del recorrido de seis pasos]].
 
 > [!warning] Estado de entrega: nada de #438 está en `main`
-> El trabajo vive en la rama `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes`, creada desde la punta de #434 (`fda3a27`) y apilada sobre toda la pila por roles: #369 / #378 / #398 / #399 / #402 / #406 / #410 / #414 / #422 / #426 / #430 / #434. Con autorización del owner (Opción A: la pila llega a `main` junta con este retiro) **se abre una PR hacia `main`**; este documento **no** reporta un estado mergeado ni un resultado de CI. En `main` sigue el recorrido de seis pasos hasta que esa PR se mergee. Las dos migraciones de #438 ya están **aplicadas en el proyecto remoto** con autorización del owner (§3.7).
+> El trabajo vive en la rama `Vaqcrow#438_Feat_Retire_the_scripted_six_step_demo_journey_routes`, creada desde la punta de #434 (`fda3a27`) y apilada sobre toda la pila por roles: #369 / #378 / #398 / #399 / #402 / #406 / #410 / #414 / #422 / #426 / #430 / #434. Con autorización del owner (Opción A: la pila llega a `main` junta con este retiro) **se abrió la PR [#466](https://github.com/reyduar/Vaqcrow/pull/466) hacia `main`**; este documento **no** reporta un estado mergeado ni un resultado de CI. En `main` sigue el recorrido de seis pasos hasta que esa PR se mergee. Las dos migraciones de #438 ya están **aplicadas en el proyecto remoto** con autorización del owner (§3.7).
 
 > [!info] Nombre del archivo
 > El issue #441 pide `retire-scripted-demo-journey-evidence.md`; la hoja de ruta (`demo-tasks-list.md`, entrada #441) y la bitácora fijaron `retire-scripted-journey-evidence.md`, el nombre que lleva este documento. La diferencia se registra en §7.4.
@@ -228,7 +228,7 @@ Leyenda: ✅ cumplido · ⚠️ cumplido con salvedad declarada · ❌ no cumpli
 
 ## 8. Estado de entrega y próximos pasos
 
-- **Nada de #438 está en `main`.** Todo vive en la rama de #438, apilada sobre #434 y el resto de la pila por roles. Con autorización del owner se abre una PR hacia `main`; el merge lo decide el owner.
+- **Nada de #438 está en `main`.** Todo vive en la rama de #438, apilada sobre #434 y el resto de la pila por roles. Con autorización del owner se abrió la PR [#466](https://github.com/reyduar/Vaqcrow/pull/466) hacia `main`; el merge lo decide el owner.
 - **En el remoto ya están** las migraciones `20261009150000` y `20261009160000` (2026-10-09).
 - **Después del merge:** re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` en Railway (§5) y decidir los pendientes de copy y de seguimiento.
 - El cierre de la Feature #438 y de las Tasks #439/#440/#441 lo decide el owner.

@@ -48,7 +48,7 @@ Porción C — retiro
 Porción D — cierre
 - [ ] **WU8** Evidencia `docs/planning/retire-scripted-journey-evidence.md` (#441, en español) y PR de la pila a `main` (decisión del owner).
   - [x] Documento de evidencia (`890e2d8`).
-  - [ ] PR de la pila a `main`: abierta por el orquestador (número pendiente).
+  - [x] PR de la pila a `main`: [#466](https://github.com/reyduar/Vaqcrow/pull/466), abierta el 2026-10-10 con autorización del owner (push de la rama incluido). El merge lo decide el owner.
 
 ## Pronóstico de entrega
 
