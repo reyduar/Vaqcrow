@@ -146,3 +146,5 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 
 - La ruta no tiene llamador web todavía: la vista admin llega en WU4.
 - Los aportes y despliegues anteriores a WU1 se ven como `null`/lista vacía («Sin dato»).
+
+**Verificación independiente** (RDD apagado): PASS con notas. Recorrió el diff `71cb45f..3c8a7a1` y re-ejecutó `@vaqcrow/contracts test` (24 archivos / 646 tests), `@vaqcrow/api test` (124 / 2588), `boundaries` (sin violaciones, 1256 módulos) y `lint` (5/5). Confirmó `only("ADMIN")` con fila en la MATRIX (401/403), que no hay llamada a la cadena, el filtro `observed_at IS NOT NULL`, el alcance por campaña y la sanitización de errores. Notas de baja severidad: `campaign.application_id` no es único, y con dos campañas `maybeSingle()` responde 503 (falla cerrado, comportamiento previo); la ruta no re-parsea su salida con el contrato en runtime; `companyName` asume una empresa por PyME.
