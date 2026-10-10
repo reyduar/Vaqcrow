@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import { disclosures, microcopy } from "@/application/trust/disclosures";
@@ -124,6 +124,17 @@ describe("Home landing (Feature #418)", () => {
 
     const nav = within(screen.getByRole("navigation", { name: "Principal" }));
     expect(nav.getByRole("link", { name: "Cómo funciona" })).toHaveAttribute("href", "/#como-funciona");
+  });
+
+  it("mounts the floating help assistant, whose toggle opens its panel", async () => {
+    await renderHome(null);
+
+    const toggle = screen.getByRole("button", { name: "Abrir ayuda" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("dialog", { name: "Asistente de ayuda" })).toBeInTheDocument();
   });
 
   it("renders the canonical simulation disclosure instead of retyped copy", async () => {

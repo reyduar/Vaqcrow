@@ -1,5 +1,6 @@
 import { AppShell } from "@/presentation/components/app-shell";
 import { FeaturedCampaign } from "@/presentation/components/landing/featured-campaign";
+import { HelpAssistant } from "@/presentation/components/landing/help-assistant";
 import { HowItWorks } from "@/presentation/components/landing/how-it-works";
 import { LandingFooter } from "@/presentation/components/landing/landing-footer";
 import { LandingHero } from "@/presentation/components/landing/landing-hero";
@@ -17,7 +18,8 @@ import { TrustStrip } from "@/presentation/components/landing/trust-strip";
  * `LandingHero`, so it renders as the hero grid's second column; the grid is its
  * own client island. Both derive from the public `GET /marketplace/campaigns`
  * list and share one SWR key, so the request is deduped. The landing mounts its
- * rich `LandingFooter`; the floating assistant arrives with WU4.
+ * rich `LandingFooter` and the floating `HelpAssistant` (a client island that
+ * owns its open/closed state).
  */
 export default function Home() {
   return (
@@ -27,6 +29,7 @@ export default function Home() {
       <PymesEnCampana />
       <HowItWorks />
       <RealVsSimulated />
+      <HelpAssistant />
     </AppShell>
   );
 }
