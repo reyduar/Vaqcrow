@@ -178,6 +178,21 @@ describe("buildReportCsv", () => {
     expect(csv).toContain("'=1+1,'@cmd,agosto 2026,3902100,Declarada en término");
   });
 
+  it("also neutralizes a formula hidden behind leading whitespace, a full-width sign or a DDE pipe", () => {
+    const base = report();
+    const names = [" =1+1", "\n=1+1", "＝1+1", "|cmd"];
+    const csv = buildReportCsv(
+      report({
+        latestDistributions: names.map((pyme) => ({ ...base.latestDistributions[1]!, pyme }))
+      })
+    );
+
+    expect(csv).toContain("20/08/2026,' =1+1,,,Fallida");
+    expect(csv).toContain('20/08/2026,"\'\n=1+1",,,Fallida');
+    expect(csv).toContain("20/08/2026,'＝1+1,,,Fallida");
+    expect(csv).toContain("20/08/2026,'|cmd,,,Fallida");
+  });
+
   it("leaves plain values and a plain negative number unchanged", () => {
     const base = report();
     const csv = buildReportCsv(

@@ -39,8 +39,12 @@ const MONTHLY_STATE_COPY: Readonly<Record<ReportMonthlyPointState, string>> = {
   none: "Sin distribución"
 };
 
-/** A spreadsheet reads a cell starting with one of these as a formula (OWASP CSV injection). */
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+/**
+ * A spreadsheet reads a cell starting with one of these as a formula (OWASP CSV
+ * injection): a leading TAB/CR, or a formula sign — ASCII or full-width — or a
+ * DDE pipe, even behind leading whitespace.
+ */
+const FORMULA_PREFIX = /^(?:[\t\r]|\s*[=+\-@|＝＋－＠])/;
 /** A plain negative decimal is a number, not a formula, so it stays usable. */
 const PLAIN_NEGATIVE_NUMBER = /^-\d+(?:\.\d+)?$/;
 
