@@ -12,6 +12,9 @@
 > pack es el camino verificable: es texto, se puede chequear contra el brief y contra las piezas reales,
 > y vuelve directo a la herramienta que las creó.
 
+> [!info] 2026-10-10 — #438 retiró las rutas del recorrido de seis pasos
+> Este pack es histórico. Las rutas implementadas que cita (`/request`, `/funding` y las demás del recorrido guiado) se retiraron en la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) (apilada, todavía no en `main`) y responden 404. El registro de la PyME es un wizard dentro de `/company` y la billetera vive en `/portfolio` (inversor) y en el paso 4 del wizard (PyME); ver [[docs/design/demo-ui.md|demo-ui.md]] §4. El texto de abajo no se modifica.
+
 ---
 
 ## 1. Qué existe hoy

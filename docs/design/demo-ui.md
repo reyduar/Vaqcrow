@@ -160,6 +160,9 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 
 ### Mapa completo (19 flujos reales, agrupados por área)
 
+> [!info] 2026-10-10 — #438 retiró las seis rutas del recorrido guiado
+> En la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) (apilada, todavía no en `main`) las seis rutas del recorrido guiado (`/request`, `/ai-assessment`, `/approval`, `/funding`, `/distribution`, `/evidence`) ya no existen y responden 404, sin redirección. Las menciones de este documento a «las seis rutas heredadas» (secciones 4 y 8) quedan como registro histórico. Para las pantallas vale la regla de rutas en inglés por rol de la nota siguiente; la evidencia Testnet se reparte por rol, y la cadena completa por solicitud vive en `/admin/pymes/[applicationId]/evidence`. El recorrido operativo actualizado está en [[docs/guides/freighter-and-testnet-walkthrough|la guía de Freighter y Testnet]].
+
 > [!important] Rutas en inglés (decisión del owner, 2026-10-02)
 > Las rutas del producto por roles son siempre en inglés. Las rutas en español que esta tabla proponía antes (`/onboarding`, `/marketplace`, `/portafolio`, `/billetera`, `/informes`, `/ayuda`, `/guias/*`, `/acerca-de`, `/admin/pymes`, …) quedan **reemplazadas**; la decisión está en `CLAUDE.md` («The PyME flow is a dashboard plus one wizard») y en la bitácora de #379 (D1, D9). Los pasos del alta de la PyME no tienen ruta propia: viven en un único wizard. «Estado» describe las ramas apiladas: la de [#378](https://github.com/reyduar/Vaqcrow/issues/378) tras la Task [#379](https://github.com/reyduar/Vaqcrow/issues/379) y, encima, la de [#398](https://github.com/reyduar/Vaqcrow/issues/398)/[#399](https://github.com/reyduar/Vaqcrow/issues/399) para el wizard de la PyME; nada de esto está todavía en `main`. Los links del header a rutas que todavía no existen se muestran igual (404 aceptado hasta que su issue las construya).
 

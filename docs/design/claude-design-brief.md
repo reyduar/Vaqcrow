@@ -7,6 +7,9 @@
 > - **Gloss decorativo:** el brief §3.4 prohíbe «gradientes intensos», «sombras pesadas» y «monedas flotantes»; el template usa **esferas 3D moradas con degradados radiales y sombras apiladas** (`Vaqcrow Acerca de.dc.html`). Las reglas de confianza de §6 siguen prevaleciendo sobre el template.
 > El detalle acotado y la reconciliación por regla están en [[docs/design/demo-ui.md|demo-ui.md]].
 
+> [!info] 2026-10-10 — #438 retiró las rutas del recorrido de seis pasos
+> Este brief es histórico. Las rutas «heredadas» que menciona (`/request`, `/ai-assessment`, `/approval`, `/funding`, `/distribution`, `/evidence`) se retiraron en la rama de [#438](https://github.com/reyduar/Vaqcrow/issues/438) (apilada, todavía no en `main`) y responden 404. Las pantallas viven en las rutas en inglés por rol (`/company`, `/portfolio`, `/reports`, `/explore`, `/campaigns/[id]`, `/admin`); ver [[docs/design/demo-ui.md|demo-ui.md]] §4. El texto de abajo no se modifica.
+
 > **Qué es este documento.** El brief autocontenido para generar un **template nuevo** de Vaqcrow con
 > estética fintech moderna, consumible por Claude Design (o cualquier herramienta de diseño asistido).
 > Deriva de [`demo-ui.md`](./demo-ui.md), que documenta el sistema actual y conserva el registro
