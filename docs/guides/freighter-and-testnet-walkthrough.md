@@ -318,7 +318,7 @@ Los dejamos por escrito para que nadie los confunda con una falla, ni con una pr
 - **La meta la impone el contrato, no la interfaz.** La interfaz sólo deja de ofrecer lo que el contrato ya rechazaría.
 - **Una bóveda por solicitud.** La campaña queda ligada a la solicitud que la originó.
 - **Lo anterior a #438 queda «Sin dato».** Los hashes de despliegue y de aporte empezaron a guardarse con #438.
-- **Mergeado no es desplegado.** El flujo por roles y el retiro de las seis rutas están en `main` desde #466 (2026-10-10); falta que el owner reapunte `STELLAR_CAMPAIGN_FACTORY_ID` en Railway a la fábrica nueva con tope (`CCDNM6W4…SV7J`).
+- **Mergeado no es verificado de punta a punta.** El flujo por roles y el retiro de las seis rutas están en `main` desde #466 (2026-10-10); ese día se verificó que Railway ya usa la fábrica nueva con tope (`CCDNM6W4…SV7J`; despliegue `3539d681` en `SUCCESS` desde `2b7e0d5`). Falta el smoke test de despliegue de bóveda contra la API hosteada con esa fábrica.
 
 ## 16. Referencias
 

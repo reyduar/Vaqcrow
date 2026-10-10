@@ -64,7 +64,8 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 ## Pendientes del owner
 
 - Copy de la vista de evidencia admin y de los estados «Sin dato» (owner-pending, diseñado con el template). Listas completas: WU4 («Copy pendiente del owner»), WU5 y WU5b.
-- Re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` en Railway a `CCDNM6W4…SV7J` (`application-review-and-vault-deployment-evidence.md:308`); el merge a `main` ya ocurrió (ver «Cierre — merge a main»).
+- Smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva (`CCDNM6W4…SV7J`). El re-apunte de `STELLAR_CAMPAIGN_FACTORY_ID` en Railway ya está hecho y verificado el 2026-10-10 (ver «Cierre — merge a main»).
+- Migrar `railway.json`/`railway.toml` (Config as Code, deprecado) a IaC (`.railway/railway.ts`) antes del 2026-12-01: Railway mantiene los archivos existentes sólo hasta esa fecha (anterior al reset de Testnet del 2026-12-16).
 - Seguimiento: rutas ADMIN sin llamador web (`POST /assessments`, `…/assessment`, `…/manual-review`, `…/decisions`); #438 no las borra.
 - Seguimiento: el aporte, retiro y reembolso vía UI quedan sin e2e live (se borró `campaign-vault.live.spec.ts`; U9 aporta por API).
 - Copy: `application/distribution/derivation-failure-copy.ts` (vivo en la firma de distribución de la PyME) dice «Retome el recorrido…» en tres mensajes.
@@ -514,4 +515,5 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - **Alcance en `main`:** la pila por roles (#369, #378, #382, #386, #398, #399, #402, #406, #410, #414, #422, #426, #430, #434) y #438.
 - **Issues cerrados:** #438, #439, #440 y #441 (por `Closes` en la PR).
 - **Docs alineados después del merge:** rama `docs/align-docs-after-466-merge`, commit `e0df7ab` (estado «en `main`» en los docs vivos; callout fechado en los documentos de evidencia, sin reescribir su texto).
-- **Mergeado no es desplegado:** no se verificó el estado de Railway ni de Vercel. Sigue pendiente del owner re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` (ver «Pendientes del owner»).
+- **Railway verificado (2026-10-10, Railway CLI sólo lectura, autorizado por el owner):** en `vaqcrow-api` / `production` / servicio `api`, `STELLAR_CAMPAIGN_FACTORY_ID` = `CCDNM6W4UHEYL27Y2YLDVINPV2DKXBE5FVZD6HSEFK2K7LF5V6WMSV7J` (fábrica con tope `goal/10`); el despliegue activo `3539d681` (creado 2026-10-10 14:37:21 UTC) está en `SUCCESS`, construido desde `2b7e0d5`, sin errores en los logs de arranque. Los logs avisan que Config as Code (`railway.json`/`railway.toml`) está deprecado en favor de IaC (`.railway/railway.ts`) y que los archivos existentes funcionan hasta el 2026-12-01.
+- **Mergeado no es verificado de punta a punta:** no corrió ningún smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva, y el despliegue web de Vercel no se verificó (ver «Pendientes del owner»).
