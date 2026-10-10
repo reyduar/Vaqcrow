@@ -15,6 +15,8 @@ import { deriveCampaignDetailStatus, getCampaignDetail } from "./get-campaign-de
  */
 const CAMPAIGN_ID = "123e4567-e89b-42d3-a456-426614174000";
 const NOW = new Date("2026-10-08T12:00:00.000Z");
+const EXPLORER = "https://stellar.expert/explorer/testnet";
+const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
 
 // 1000.000000 ARS per USD (scaled 1e6) and 1 USD = 1 XLM = 10_000_000 stroops:
 // 2_500_000 stroops = 0.25 USD = 250 ARS.
@@ -82,7 +84,7 @@ function fakeRepository(
 
 describe("getCampaignDetail", () => {
   it("shapes the persisted facts, converts stroops through the snapshot and derives the status", async () => {
-    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: record() }) }, CAMPAIGN_ID, NOW);
+    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: record() }), explorerBaseUrl: EXPLORER }, CAMPAIGN_ID, NOW);
 
     expect(result).toEqual({
       ok: true,
@@ -104,6 +106,7 @@ describe("getCampaignDetail", () => {
         status: "funding",
         backers: 12,
         vaultAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+        vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`,
         assessment: {
           riskBand: "medium",
           confidence: 0.72,
@@ -141,7 +144,7 @@ describe("getCampaignDetail", () => {
       },
       null
     );
-    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: bare }) }, CAMPAIGN_ID, NOW);
+    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: bare }), explorerBaseUrl: EXPLORER }, CAMPAIGN_ID, NOW);
 
     expect(result.ok && result.value.raisedArs).toBeNull();
     expect(result.ok && result.value.riskBand).toBeNull();
@@ -149,6 +152,8 @@ describe("getCampaignDetail", () => {
     expect(result.ok && result.value.assessment).toBeNull();
     expect(result.ok && result.value.decision).toBeNull();
     expect(result.ok && result.value.vaultAddress).toBeNull();
+    // No vault means no link, even with an explorer base configured.
+    expect(result.ok && result.value.vaultExplorerUrl).toBeNull();
     expect(result.ok && result.value.imageUrl).toBeNull();
   });
 
@@ -156,7 +161,7 @@ describe("getCampaignDetail", () => {
     const recordWithoutSales = { ...record() };
     delete recordWithoutSales.salesEvidence;
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: true, value: recordWithoutSales }) },
+      { repository: fakeRepository({ ok: true, value: recordWithoutSales }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -166,7 +171,7 @@ describe("getCampaignDetail", () => {
 
   it("reports null salesEvidence for an empty month array", async () => {
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: { months: [] } }) }) },
+      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: { months: [] } }) }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -182,7 +187,7 @@ describe("getCampaignDetail", () => {
       ]
     };
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: allMissing }) }) },
+      { repository: fakeRepository({ ok: true, value: record({ salesEvidence: allMissing }) }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -200,7 +205,7 @@ describe("getCampaignDetail", () => {
 
   it("points imageUrl at the API image path when the campaign has a photo", async () => {
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: true, value: record({ hasImage: true }) }) },
+      { repository: fakeRepository({ ok: true, value: record({ hasImage: true }) }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -210,7 +215,7 @@ describe("getCampaignDetail", () => {
 
   it("answers not_found for an unknown or unpublished campaign, without a half-built detail", async () => {
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: true, value: undefined }) },
+      { repository: fakeRepository({ ok: true, value: undefined }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -220,7 +225,7 @@ describe("getCampaignDetail", () => {
 
   it("maps a repository failure to unavailable, never a fabricated detail", async () => {
     const result = await getCampaignDetail(
-      { repository: fakeRepository({ ok: false, error: { code: "unavailable" } }) },
+      { repository: fakeRepository({ ok: false, error: { code: "unavailable" } }), explorerBaseUrl: EXPLORER },
       CAMPAIGN_ID,
       NOW
     );
@@ -238,9 +243,26 @@ describe("getCampaignDetail", () => {
         generatedAt: "2026-09-30T12:00:00.000Z"
       }
     });
-    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: malformed }) }, CAMPAIGN_ID, NOW);
+    const result = await getCampaignDetail({ repository: fakeRepository({ ok: true, value: malformed }), explorerBaseUrl: EXPLORER }, CAMPAIGN_ID, NOW);
 
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+
+  it("links the vault to the explorer only when a base is configured (#438/WU3)", async () => {
+    const linked = await getCampaignDetail(
+      { repository: fakeRepository({ ok: true, value: record() }), explorerBaseUrl: EXPLORER },
+      CAMPAIGN_ID,
+      NOW
+    );
+    const local = await getCampaignDetail(
+      { repository: fakeRepository({ ok: true, value: record() }), explorerBaseUrl: undefined },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(linked.ok && linked.value.vaultExplorerUrl).toBe(`${EXPLORER}/contract/${VAULT}`);
+    expect(local.ok && local.value.vaultExplorerUrl).toBeNull();
+    expect(local.ok && local.value.vaultAddress).toBe(VAULT);
   });
 });
 

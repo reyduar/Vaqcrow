@@ -67,6 +67,8 @@ export interface MyCampaignDistributionRecord {
   /** The distribution's total allocation, in stroops (always > 0). */
   readonly amountStroops: bigint;
   readonly state: MyCampaignDistributionState;
+  /** The distribution's Testnet hash (#438/WU3); the persisted column is `not null`. */
+  readonly transactionHash: string;
 }
 
 export type MyCampaignSalesStatus = "reported" | "missing" | "anomalous";

@@ -2,8 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   parsePortfolioSummary,
   portfolioSummarySchema,
+  testnetTransactionHashSchema,
   xlmAmountSchema
 } from "./portfolio.js";
+
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
 
 /**
  * The investor portfolio read model (`GET /portfolio`, Feature #426, WU1).
@@ -18,6 +25,9 @@ const CAMPAIGN_ID = "123e4567-e89b-42d3-a456-426614174000";
 const SECOND_CAMPAIGN_ID = "223e4567-e89b-42d3-a456-426614174000";
 const DISTRIBUTION_ID = "323e4567-e89b-42d3-a456-426614174000";
 const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+const HASH = "a".repeat(64);
+const SECOND_HASH = "b".repeat(64);
+const EXPLORER = "https://stellar.expert/explorer/testnet";
 
 const position = {
   campaignId: CAMPAIGN_ID,
@@ -31,7 +41,16 @@ const position = {
   fundedPercentBps: 2500,
   status: "funding",
   closeDate: "2026-12-01T00:00:00.000Z",
-  vaultAddress: VAULT
+  vaultAddress: VAULT,
+  vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`,
+  transactions: [
+    {
+      transactionHash: HASH,
+      amountXlm: "150.0000000",
+      observedAt: "2026-03-15T00:00:00.000Z",
+      explorerUrl: `${EXPLORER}/tx/${HASH}`
+    }
+  ]
 };
 
 const distribution = {
@@ -40,7 +59,9 @@ const distribution = {
   campaignName: "Panadería Sol",
   period: "2026-06",
   amountXlm: "12.5000000",
-  status: "confirmed"
+  status: "confirmed",
+  transactionHash: SECOND_HASH,
+  explorerUrl: `${EXPLORER}/tx/${SECOND_HASH}`
 };
 
 const summary = {
@@ -136,5 +157,67 @@ describe("parsePortfolioSummary", () => {
     };
 
     expect(portfolioSummarySchema.parse(two).contributions).toHaveLength(2);
+  });
+});
+
+describe("portfolio Testnet transparency (#438/WU3)", () => {
+  it("accepts null explorer links when the API has no explorer base (local network)", () => {
+    const local = {
+      ...summary,
+      contributions: [
+        {
+          ...position,
+          vaultExplorerUrl: null,
+          transactions: [{ ...position.transactions[0], explorerUrl: null }]
+        }
+      ],
+      distributions: [{ ...distribution, explorerUrl: null }]
+    };
+
+    const parsed = portfolioSummarySchema.parse(local);
+    expect(parsed.contributions[0]?.vaultExplorerUrl).toBeNull();
+    expect(parsed.contributions[0]?.transactions[0]?.explorerUrl).toBeNull();
+    expect(parsed.distributions[0]?.explorerUrl).toBeNull();
+  });
+
+  it("accepts a position with no recorded contribute transaction (pre-WU1 contribution, sin dato)", () => {
+    const legacy = { ...summary, contributions: [{ ...position, transactions: [] }] };
+    expect(portfolioSummarySchema.parse(legacy).contributions[0]?.transactions).toEqual([]);
+  });
+
+  it("requires the new transparency fields (required-but-nullable, never omitted)", () => {
+    const withoutVaultLink = without(position, "vaultExplorerUrl");
+    const withoutTransactions = without(position, "transactions");
+    const withoutHash = without(distribution, "transactionHash");
+    const withoutLink = without(distribution, "explorerUrl");
+
+    expect(portfolioSummarySchema.safeParse({ ...summary, contributions: [withoutVaultLink] }).success).toBe(false);
+    expect(portfolioSummarySchema.safeParse({ ...summary, contributions: [withoutTransactions] }).success).toBe(false);
+    expect(portfolioSummarySchema.safeParse({ ...summary, distributions: [withoutHash] }).success).toBe(false);
+    expect(portfolioSummarySchema.safeParse({ ...summary, distributions: [withoutLink] }).success).toBe(false);
+  });
+
+  it("refuses a distribution without a hash, since the persisted column is not null", () => {
+    expect(
+      portfolioSummarySchema.safeParse({ ...summary, distributions: [{ ...distribution, transactionHash: null }] }).success
+    ).toBe(false);
+  });
+
+  it("refuses a hash that is not 64 lowercase hex characters", () => {
+    for (const hash of ["A".repeat(64), "a".repeat(63), "g".repeat(64), "hash-confirmed-1"]) {
+      expect(testnetTransactionHashSchema.safeParse(hash).success, hash).toBe(false);
+    }
+    expect(testnetTransactionHashSchema.safeParse(HASH).success).toBe(true);
+  });
+
+  it("refuses an explorer link that is not a URL and an extra key on a transaction", () => {
+    const badLink = { ...summary, distributions: [{ ...distribution, explorerUrl: "not a url" }] };
+    const extra = {
+      ...summary,
+      contributions: [{ ...position, transactions: [{ ...position.transactions[0], investor: "leak" }] }]
+    };
+
+    expect(portfolioSummarySchema.safeParse(badLink).success).toBe(false);
+    expect(portfolioSummarySchema.safeParse(extra).success).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type {
   PortfolioCampaignState,
+  PortfolioContributionTransactionRecord,
   PortfolioDistributionRecord,
   PortfolioPositionRecord,
   PortfolioRateSnapshot,
@@ -14,7 +15,8 @@ import type {
  * Reads the two service_role-only, `security_invoker` views:
  * `investor_portfolio_position` (one row per contribution to a deployed
  * campaign) and `investor_portfolio_distribution` (one row per distribution
- * recipient). The caller's `investorAccountId` comes from the verified
+ * recipient), plus `investor_contribution_transaction` (#438/WU3: one row per
+ * observed contribute transaction). The caller's `investorAccountId` comes from the verified
  * principal — the adapter only ever filters by it, so it can never read another
  * account's rows.
  *
@@ -24,6 +26,7 @@ import type {
 
 const POSITION_VIEW = "investor_portfolio_position";
 const DISTRIBUTION_VIEW = "investor_portfolio_distribution";
+const CONTRIBUTION_TRANSACTION_VIEW = "investor_contribution_transaction";
 const CAMPAIGN_STATES: readonly PortfolioCampaignState[] = ["open", "settled", "refundable"];
 const DISTRIBUTION_STATES: readonly PortfolioDistributionRecord["state"][] = ["submitted", "confirmed", "failed"];
 /** The only content types the view exposes as an image (#414/WU3 predicate). */
@@ -70,6 +73,39 @@ export class SupabasePortfolioRepository implements PortfolioRepositoryPort {
     }
   }
 
+  async listContributionTransactions(
+    investorAccountId: string
+  ): Promise<PortfolioRepositoryResult<readonly PortfolioContributionTransactionRecord[]>> {
+    try {
+      const { data, error } = await this.client
+        .from(CONTRIBUTION_TRANSACTION_VIEW)
+        .select("*")
+        .eq("investor_account_id", investorAccountId)
+        .order("observed_at", { ascending: true });
+
+      if (error) return { ok: false, error: this.toError(error) };
+      if (!Array.isArray(data)) throw new Error("Malformed portfolio read");
+
+      return { ok: true, value: data.map((row) => this.toContributionTransaction(row)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * The view only exposes observed transactions, so a NULL `observed_at` is a
+   * malformed row (throws) rather than an unconfirmed submission to list.
+   */
+  private toContributionTransaction(row: unknown): PortfolioContributionTransactionRecord {
+    const value = this.asRecord(row);
+    return {
+      transactionHash: this.text(value["transaction_hash"]),
+      campaignId: this.text(value["campaign_id"]),
+      amountStroops: this.bigint(value["amount_stroops"]),
+      observedAt: this.text(value["observed_at"])
+    };
+  }
+
   private toPosition(row: unknown): PortfolioPositionRecord {
     const value = this.asRecord(row);
     const rateSnapshot = this.toRateSnapshot(value);
@@ -98,7 +134,8 @@ export class SupabasePortfolioRepository implements PortfolioRepositoryPort {
       campaignName: this.optionalText(value["campaign_name"]),
       period: this.optionalText(value["period"]),
       amountStroops: this.bigint(value["amount_stroops"]),
-      state: this.distributionState(value["state"])
+      state: this.distributionState(value["state"]),
+      transactionHash: this.text(value["transaction_hash"])
     };
   }
 

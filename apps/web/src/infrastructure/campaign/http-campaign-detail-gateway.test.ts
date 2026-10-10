@@ -24,6 +24,7 @@ const WIRE_DETAIL = {
   status: "funding",
   backers: 12,
   vaultAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+  vaultExplorerUrl: null,
   assessment: {
     riskBand: "low",
     confidence: 0.72,

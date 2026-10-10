@@ -24,6 +24,8 @@ const C1 = "123e4567-e89b-42d3-a456-426614174000";
 const C2 = "223e4567-e89b-42d3-a456-426614174000";
 
 const NOW = () => new Date("2026-10-09T00:00:00.000Z");
+const EXPLORER = "https://stellar.expert/explorer/testnet";
+const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
 
 const CONTRIBUTIONS: readonly ReportContributionRecord[] = [
   { campaignId: C1, contributionStroops: 1_500_000n, observedAt: "2026-03-01T00:00:00+00:00" },
@@ -41,7 +43,8 @@ const DISTRIBUTIONS: readonly ReportDistributionRecord[] = [
     state: "confirmed",
     confirmedAt: "2026-07-01T00:00:00+00:00",
     recordedAt: "2026-06-30T00:00:00+00:00",
-    declaredSalesArs: 9_000_000n
+    declaredSalesArs: 9_000_000n,
+    transactionHash: "1".repeat(64)
   },
   {
     distributionId: "d2000000-0000-4000-8000-000000000002",
@@ -52,7 +55,8 @@ const DISTRIBUTIONS: readonly ReportDistributionRecord[] = [
     state: "submitted",
     confirmedAt: null,
     recordedAt: "2026-05-10T00:00:00+00:00",
-    declaredSalesArs: null
+    declaredSalesArs: null,
+    transactionHash: "2".repeat(64)
   },
   {
     distributionId: "d3000000-0000-4000-8000-000000000003",
@@ -63,7 +67,8 @@ const DISTRIBUTIONS: readonly ReportDistributionRecord[] = [
     state: "failed",
     confirmedAt: null,
     recordedAt: "2026-04-01T00:00:00+00:00",
-    declaredSalesArs: null
+    declaredSalesArs: null,
+    transactionHash: "3".repeat(64)
   },
   {
     distributionId: "d4000000-0000-4000-8000-000000000004",
@@ -74,7 +79,8 @@ const DISTRIBUTIONS: readonly ReportDistributionRecord[] = [
     state: "confirmed",
     confirmedAt: "2026-02-01T00:00:00+00:00",
     recordedAt: "2026-02-01T00:00:00+00:00",
-    declaredSalesArs: null
+    declaredSalesArs: null,
+    transactionHash: "4".repeat(64)
   },
   {
     distributionId: "d5000000-0000-4000-8000-000000000005",
@@ -85,7 +91,8 @@ const DISTRIBUTIONS: readonly ReportDistributionRecord[] = [
     state: "confirmed",
     confirmedAt: "2025-12-01T00:00:00+00:00",
     recordedAt: "2025-11-30T00:00:00+00:00",
-    declaredSalesArs: null
+    declaredSalesArs: null,
+    transactionHash: "5".repeat(64)
   }
 ];
 
@@ -100,6 +107,7 @@ function fakeReports(overrides: Partial<ReportsRepositoryPort> = {}): ReportsRep
     listContributions: async () => ({ ok: true as const, value: CONTRIBUTIONS }),
     listDistributions: async () => ({ ok: true as const, value: DISTRIBUTIONS }),
     listSalesByPyme: async () => ({ ok: true as const, value: [] }),
+    listContributionTransactions: async () => ({ ok: true as const, value: [] }),
     ...overrides
   };
 }
@@ -112,7 +120,8 @@ describe("getInvestorReport", () => {
       {
         wallets: fakeWallet(null),
         reports: fakeReports({ listContributions, listDistributions }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID }
     );
@@ -131,7 +140,8 @@ describe("getInvestorReport", () => {
           campaignsCount: 0
         },
         monthlySeries: [],
-        latestDistributions: []
+        latestDistributions: [],
+        contributionTransactions: []
       }
     });
     expect(listContributions).not.toHaveBeenCalled();
@@ -143,7 +153,7 @@ describe("getInvestorReport", () => {
     const listDistributions = vi.fn(async () => ({ ok: true as const, value: [] }));
 
     await getInvestorReport(
-      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributions, listDistributions }), now: NOW },
+      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributions, listDistributions }), now: NOW, explorerBaseUrl: EXPLORER },
       { userId: USER_ID }
     );
 
@@ -153,7 +163,7 @@ describe("getInvestorReport", () => {
 
   it("aggregates the in-range KPIs, monthly series and latest distributions", async () => {
     const result = await getInvestorReport(
-      { wallets: fakeWallet(ACCOUNT), reports: fakeReports(), now: NOW },
+      { wallets: fakeWallet(ACCOUNT), reports: fakeReports(), now: NOW, explorerBaseUrl: EXPLORER },
       { userId: USER_ID, from: "2026-01", to: "2026-06" }
     );
 
@@ -178,9 +188,9 @@ describe("getInvestorReport", () => {
       { period: "2026-06", amountXlm: "1.2500000", state: "confirmed" }
     ]);
     expect(result.value.latestDistributions).toEqual([
-      { date: "2026-07-01T00:00:00+00:00", pyme: "Panadería Sol", declaredSalesArs: 9_000_000, shareXlm: "1.2500000", state: "confirmed" },
-      { date: "2026-05-10T00:00:00+00:00", pyme: "PyME", declaredSalesArs: null, shareXlm: "0.4000000", state: "submitted" },
-      { date: "2026-04-01T00:00:00+00:00", pyme: "Panadería Norte", declaredSalesArs: null, shareXlm: "0.1000000", state: "failed" }
+      { date: "2026-07-01T00:00:00+00:00", pyme: "Panadería Sol", declaredSalesArs: 9_000_000, shareXlm: "1.2500000", state: "confirmed", transactionHash: "1".repeat(64), explorerUrl: `${EXPLORER}/tx/${"1".repeat(64)}` },
+      { date: "2026-05-10T00:00:00+00:00", pyme: "PyME", declaredSalesArs: null, shareXlm: "0.4000000", state: "submitted", transactionHash: "2".repeat(64), explorerUrl: `${EXPLORER}/tx/${"2".repeat(64)}` },
+      { date: "2026-04-01T00:00:00+00:00", pyme: "Panadería Norte", declaredSalesArs: null, shareXlm: "0.1000000", state: "failed", transactionHash: "3".repeat(64), explorerUrl: `${EXPLORER}/tx/${"3".repeat(64)}` }
     ]);
   });
 
@@ -198,7 +208,8 @@ describe("getInvestorReport", () => {
           listContributions: async () => ({ ok: true as const, value: contributions }),
           listDistributions: async () => ({ ok: true as const, value: distributions })
         }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID }
     );
@@ -222,7 +233,8 @@ describe("getInvestorReport", () => {
       state: "confirmed" as const,
       confirmedAt: `2026-0${index + 2}-01T00:00:00+00:00`,
       recordedAt: `2026-0${index + 2}-01T00:00:00+00:00`,
-      declaredSalesArs: null
+      declaredSalesArs: null,
+      transactionHash: String(index).repeat(64)
     }));
     const result = await getInvestorReport(
       {
@@ -231,7 +243,8 @@ describe("getInvestorReport", () => {
           listContributions: async () => ({ ok: true as const, value: [] }),
           listDistributions: async () => ({ ok: true as const, value: [...many, DISTRIBUTIONS[3]!] })
         }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID, from: "2026-01", to: "2026-08" }
     );
@@ -259,7 +272,8 @@ describe("getInvestorReport", () => {
             value: [{ ...DISTRIBUTIONS[0]!, period: "2026-03" }]
           })
         }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID, from: "2026-01", to: "2026-06" }
     );
@@ -285,7 +299,7 @@ describe("getInvestorReport", () => {
 
     for (const input of invalid) {
       const result = await getInvestorReport(
-        { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributions }), now: NOW },
+        { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributions }), now: NOW, explorerBaseUrl: EXPLORER },
         { userId: USER_ID, ...input }
       );
       expect(result).toEqual({ ok: false, error: { code: "invalid_request" } });
@@ -295,7 +309,7 @@ describe("getInvestorReport", () => {
 
   it("reports unavailable when the wallet key cannot be resolved", async () => {
     const result = await getInvestorReport(
-      { wallets: fakeWallet(null, false), reports: fakeReports(), now: NOW },
+      { wallets: fakeWallet(null, false), reports: fakeReports(), now: NOW, explorerBaseUrl: EXPLORER },
       { userId: USER_ID }
     );
 
@@ -307,7 +321,8 @@ describe("getInvestorReport", () => {
       {
         wallets: fakeWallet(ACCOUNT),
         reports: fakeReports({ listDistributions: async () => ({ ok: false as const, error: { code: "unavailable" } }) }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID }
     );
@@ -327,7 +342,7 @@ describe("getInvestorReportSalesByPyme", () => {
   it("returns an empty block without a repository read when no wallet key is stored", async () => {
     const listSalesByPyme = vi.fn();
     const result = await getInvestorReportSalesByPyme(
-      { wallets: fakeWallet(null), reports: fakeReports({ listSalesByPyme }), now: NOW },
+      { wallets: fakeWallet(null), reports: fakeReports({ listSalesByPyme }), now: NOW, explorerBaseUrl: EXPLORER },
       { userId: USER_ID }
     );
 
@@ -340,7 +355,8 @@ describe("getInvestorReportSalesByPyme", () => {
       {
         wallets: fakeWallet(ACCOUNT),
         reports: fakeReports({ listSalesByPyme: async () => ({ ok: true as const, value: SALES }) }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID, from: "2026-01", to: "2026-06" }
     );
@@ -375,7 +391,8 @@ describe("getInvestorReportSalesByPyme", () => {
       {
         wallets: fakeWallet(ACCOUNT),
         reports: fakeReports({ listSalesByPyme: async () => ({ ok: true as const, value: SALES }) }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID }
     );
@@ -389,7 +406,7 @@ describe("getInvestorReportSalesByPyme", () => {
   it("rejects a malformed or inverted range before reading the repository", async () => {
     const listSalesByPyme = vi.fn(async () => ({ ok: true as const, value: [] }));
     const result = await getInvestorReportSalesByPyme(
-      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listSalesByPyme }), now: NOW },
+      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listSalesByPyme }), now: NOW, explorerBaseUrl: EXPLORER },
       { userId: USER_ID, from: "2026-06", to: "2026-01" }
     );
 
@@ -402,7 +419,120 @@ describe("getInvestorReportSalesByPyme", () => {
       {
         wallets: fakeWallet(ACCOUNT),
         reports: fakeReports({ listSalesByPyme: async () => ({ ok: false as const, error: { code: "unavailable" } }) }),
-        now: NOW
+        now: NOW,
+        explorerBaseUrl: EXPLORER
+      },
+      { userId: USER_ID }
+    );
+
+    expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+});
+
+describe("getInvestorReport Testnet transparency (#438/WU3)", () => {
+  const OWN = [
+    { transactionHash: "a".repeat(64), campaignId: C1, campaignName: "Panadería Sol", vaultAddress: VAULT, amountStroops: 1_500_000n, observedAt: "2026-03-15T00:00:00+00:00" },
+    { transactionHash: "b".repeat(64), campaignId: C2, campaignName: null, vaultAddress: VAULT, amountStroops: 3_000_000n, observedAt: "2026-05-02T00:00:00+00:00" },
+    { transactionHash: "c".repeat(64), campaignId: C1, campaignName: "Panadería Sol", vaultAddress: VAULT, amountStroops: 2_000_000n, observedAt: "2025-12-01T00:00:00+00:00" }
+  ];
+
+  it("lists the observed contribute transactions in the range, newest first, with explorer links", async () => {
+    const listContributionTransactions = vi.fn(async () => ({ ok: true as const, value: OWN }));
+    const result = await getInvestorReport(
+      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributionTransactions }), now: NOW, explorerBaseUrl: EXPLORER },
+      { userId: USER_ID, from: "2026-01", to: "2026-06" }
+    );
+
+    expect(listContributionTransactions).toHaveBeenCalledWith(ACCOUNT);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.contributionTransactions).toEqual([
+      {
+        date: "2026-05-02T00:00:00+00:00",
+        pyme: "PyME",
+        amountXlm: "0.3000000",
+        transactionHash: "b".repeat(64),
+        explorerUrl: `${EXPLORER}/tx/${"b".repeat(64)}`,
+        vaultAddress: VAULT,
+        vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`
+      },
+      {
+        date: "2026-03-15T00:00:00+00:00",
+        pyme: "Panadería Sol",
+        amountXlm: "0.1500000",
+        transactionHash: "a".repeat(64),
+        explorerUrl: `${EXPLORER}/tx/${"a".repeat(64)}`,
+        vaultAddress: VAULT,
+        vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`
+      }
+    ]);
+  });
+
+  it("returns the hashes with null links when no explorer base is configured", async () => {
+    const result = await getInvestorReport(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        reports: fakeReports({ listContributionTransactions: async () => ({ ok: true as const, value: OWN }) }),
+        now: NOW,
+        explorerBaseUrl: undefined
+      },
+      { userId: USER_ID, from: "2026-01", to: "2026-06" }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.latestDistributions[0]).toMatchObject({ transactionHash: "1".repeat(64), explorerUrl: null });
+    expect(result.value.contributionTransactions[0]).toMatchObject({
+      transactionHash: "b".repeat(64),
+      explorerUrl: null,
+      vaultExplorerUrl: null
+    });
+  });
+
+  it("does not read contribute transactions without a stored key, nor for the sales block", async () => {
+    const listContributionTransactions = vi.fn();
+    await getInvestorReport(
+      { wallets: fakeWallet(null), reports: fakeReports({ listContributionTransactions }), now: NOW, explorerBaseUrl: EXPLORER },
+      { userId: USER_ID }
+    );
+    await getInvestorReportSalesByPyme(
+      { wallets: fakeWallet(ACCOUNT), reports: fakeReports({ listContributionTransactions }), now: NOW, explorerBaseUrl: EXPLORER },
+      { userId: USER_ID }
+    );
+
+    expect(listContributionTransactions).not.toHaveBeenCalled();
+  });
+
+  it("is not empty when the range only holds an observed contribute transaction", async () => {
+    const result = await getInvestorReport(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        reports: fakeReports({
+          listContributions: async () => ({ ok: true as const, value: [] }),
+          listDistributions: async () => ({ ok: true as const, value: [] }),
+          listContributionTransactions: async () => ({ ok: true as const, value: [OWN[0]!] })
+        }),
+        now: NOW,
+        explorerBaseUrl: EXPLORER
+      },
+      { userId: USER_ID, from: "2026-03", to: "2026-03" }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.isEmpty).toBe(false);
+    expect(result.value.contributionTransactions).toHaveLength(1);
+  });
+
+  it("reports unavailable when the contribute transaction read fails", async () => {
+    const result = await getInvestorReport(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        reports: fakeReports({
+          listContributionTransactions: async () => ({ ok: false as const, error: { code: "unavailable" as const } })
+        }),
+        now: NOW,
+        explorerBaseUrl: EXPLORER
       },
       { userId: USER_ID }
     );

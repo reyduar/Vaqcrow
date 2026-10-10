@@ -68,6 +68,22 @@ export interface PortfolioDistributionRecord {
   readonly amountStroops: bigint;
   /** The persisted distribution's own state machine. */
   readonly state: "submitted" | "confirmed" | "failed";
+  /** The distribution's Testnet hash (#438/WU3); the persisted column is `not null`. */
+  readonly transactionHash: string;
+}
+
+/**
+ * One **observed** contribute transaction of the investor (#438/WU3), read from
+ * `investor_contribution_transaction` (`observed_at IS NOT NULL` only). A
+ * contribution sent before the hashes were persisted has no record.
+ */
+export interface PortfolioContributionTransactionRecord {
+  readonly transactionHash: string;
+  readonly campaignId: string;
+  /** This transaction's own amount, in stroops. */
+  readonly amountStroops: bigint;
+  /** When the chain read confirmed it, as an ISO datetime. */
+  readonly observedAt: string;
 }
 
 export type PortfolioRepositoryError = { readonly code: "unavailable" };
@@ -86,4 +102,9 @@ export interface PortfolioRepositoryPort {
   listDistributions(
     investorAccountId: string
   ): Promise<PortfolioRepositoryResult<readonly PortfolioDistributionRecord[]>>;
+
+  /** Every observed contribute transaction the investor's account sent (#438/WU3). */
+  listContributionTransactions(
+    investorAccountId: string
+  ): Promise<PortfolioRepositoryResult<readonly PortfolioContributionTransactionRecord[]>>;
 }

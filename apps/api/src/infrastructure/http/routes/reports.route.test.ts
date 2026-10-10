@@ -15,6 +15,17 @@ import type { ReportsRouteDependencies } from "./reports.route.js";
 const USER_ID = principalFor("INVERSOR").userId;
 const ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const OTHER = "GINVESTORBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+const EXPLORER = "https://stellar.expert/explorer/testnet";
+const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+const OWN_HASH = "a".repeat(64);
+const OWN_TRANSACTION = {
+  transactionHash: OWN_HASH,
+  campaignId: "123e4567-e89b-42d3-a456-426614174000",
+  campaignName: "Panadería Sol",
+  vaultAddress: VAULT,
+  amountStroops: 1_500_000n,
+  observedAt: "2026-03-15T00:00:00+00:00"
+};
 
 function deps(overrides: {
   readonly key?: string | null;
@@ -22,6 +33,8 @@ function deps(overrides: {
   readonly contributions?: ReportsRepositoryPort["listContributions"];
   readonly distributions?: ReportsRepositoryPort["listDistributions"];
   readonly sales?: ReportsRepositoryPort["listSalesByPyme"];
+  readonly transactions?: ReportsRepositoryPort["listContributionTransactions"];
+  readonly explorerBaseUrl?: string | undefined;
 } = {}): ReportsRouteDependencies {
   const wallets: Pick<WalletRepositoryPort, "readPublicKey"> = {
     readPublicKey: async () =>
@@ -34,9 +47,11 @@ function deps(overrides: {
     reports: {
       listContributions: overrides.contributions ?? (async () => ({ ok: true as const, value: [] })),
       listDistributions: overrides.distributions ?? (async () => ({ ok: true as const, value: [] })),
-      listSalesByPyme: overrides.sales ?? (async () => ({ ok: true as const, value: [] }))
+      listSalesByPyme: overrides.sales ?? (async () => ({ ok: true as const, value: [] })),
+      listContributionTransactions: overrides.transactions ?? (async () => ({ ok: true as const, value: [] }))
     },
-    now: () => new Date("2026-10-09T00:00:00.000Z")
+    now: () => new Date("2026-10-09T00:00:00.000Z"),
+    explorerBaseUrl: "explorerBaseUrl" in overrides ? overrides.explorerBaseUrl : EXPLORER
   };
 }
 
@@ -77,7 +92,7 @@ describe("GET /reports", () => {
     const readPublicKey = vi.fn(async () => ({ ok: true as const, value: ACCOUNT }));
     const listContributions = vi.fn(async () => ({ ok: true as const, value: [] }));
     app = buildAppAs("INVERSOR", {
-      reports: { ...deps(), wallets: { readPublicKey }, reports: { listContributions, listDistributions: async () => ({ ok: true as const, value: [] }), listSalesByPyme: async () => ({ ok: true as const, value: [] }) } }
+      reports: { ...deps(), wallets: { readPublicKey }, reports: { ...deps().reports, listContributions } }
     });
 
     const response = await app.inject({ method: "GET", url: `/reports?investor=${OTHER}` });
@@ -167,5 +182,97 @@ describe("GET /reports/sales-by-pyme", () => {
     const failing = await app.inject({ method: "GET", url: "/reports/sales-by-pyme" });
     expect(failing.statusCode).toBe(503);
     expect(failing.json()).toEqual({ code: "unavailable" });
+  });
+});
+
+describe("GET /reports Testnet transparency (#438/WU3)", () => {
+  it("serves distribution and contribution hashes with explorer links from the configured base", async () => {
+    app = buildAppAs("INVERSOR", {
+      reports: deps({
+        distributions: async () => ({
+          ok: true as const,
+          value: [
+            {
+              distributionId: "d1000000-0000-4000-8000-000000000001",
+              campaignId: "123e4567-e89b-42d3-a456-426614174000",
+              campaignName: "Panadería Sol",
+              period: "2026-06",
+              amountStroops: 1n,
+              state: "confirmed" as const,
+              confirmedAt: "2026-07-01T00:00:00+00:00",
+              recordedAt: "2026-06-30T00:00:00+00:00",
+              declaredSalesArs: null,
+              transactionHash: "d".repeat(64)
+            }
+          ]
+        }),
+        transactions: async () => ({ ok: true as const, value: [OWN_TRANSACTION] })
+      })
+    });
+
+    const response = await app.inject({ method: "GET", url: "/reports?from=2026-01&to=2026-06" });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      latestDistributions: Array<{ transactionHash: string; explorerUrl: string | null }>;
+      contributionTransactions: Array<Record<string, unknown>>;
+    };
+    expect(body.latestDistributions[0]).toMatchObject({
+      transactionHash: "d".repeat(64),
+      explorerUrl: `${EXPLORER}/tx/${"d".repeat(64)}`
+    });
+    expect(body.contributionTransactions).toEqual([
+      {
+        date: "2026-03-15T00:00:00+00:00",
+        pyme: "Panadería Sol",
+        amountXlm: "0.1500000",
+        transactionHash: OWN_HASH,
+        explorerUrl: `${EXPLORER}/tx/${OWN_HASH}`,
+        vaultAddress: VAULT,
+        vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`
+      }
+    ]);
+  });
+
+  it("serves null links when no explorer base is configured and respects the range", async () => {
+    app = buildAppAs("INVERSOR", {
+      reports: deps({ explorerBaseUrl: undefined, transactions: async () => ({ ok: true as const, value: [OWN_TRANSACTION] }) })
+    });
+
+    const inRange = await app.inject({ method: "GET", url: "/reports?from=2026-03&to=2026-03" });
+    const outOfRange = await app.inject({ method: "GET", url: "/reports?from=2026-04&to=2026-06" });
+
+    expect(inRange.statusCode).toBe(200);
+    expect((inRange.json() as { contributionTransactions: unknown[] }).contributionTransactions).toEqual([
+      expect.objectContaining({ transactionHash: OWN_HASH, explorerUrl: null, vaultExplorerUrl: null })
+    ]);
+    expect((outOfRange.json() as { contributionTransactions: unknown[] }).contributionTransactions).toEqual([]);
+  });
+
+  it("reads contribution hashes only for the principal's own account, never a query-supplied one", async () => {
+    const listContributionTransactions = vi.fn(async (account: string) => ({
+      ok: true as const,
+      value: account === ACCOUNT ? [OWN_TRANSACTION] : [{ ...OWN_TRANSACTION, transactionHash: "b".repeat(64) }]
+    }));
+    app = buildAppAs("INVERSOR", { reports: { ...deps(), reports: { ...deps().reports, listContributionTransactions } } });
+
+    const response = await app.inject({ method: "GET", url: `/reports?from=2026-01&to=2026-06&account=${OTHER}` });
+
+    expect(response.statusCode).toBe(200);
+    expect(listContributionTransactions).toHaveBeenCalledTimes(1);
+    expect(listContributionTransactions).toHaveBeenCalledWith(ACCOUNT);
+    expect(response.body).toContain(OWN_HASH);
+    expect(response.body).not.toContain("b".repeat(64));
+  });
+
+  it("answers a sanitized 503 when the contribute transaction read fails", async () => {
+    app = buildAppAs("INVERSOR", {
+      reports: deps({ transactions: async () => ({ ok: false as const, error: { code: "unavailable" as const } }) })
+    });
+
+    const response = await app.inject({ method: "GET", url: "/reports" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
   });
 });

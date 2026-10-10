@@ -1,6 +1,6 @@
 begin;
 
-select plan(52);
+select plan(54);
 
 -- Investor report read model (Feature #430, WU1).
 --
@@ -51,6 +51,7 @@ select has_column('public', 'investor_report_distribution', 'state', 'distributi
 select has_column('public', 'investor_report_distribution', 'confirmed_at', 'distribution carries the confirmation time');
 select has_column('public', 'investor_report_distribution', 'recorded_at', 'distribution carries the recorded time');
 select has_column('public', 'investor_report_distribution', 'declared_sales_ars', 'distribution carries the declared sale for its period');
+select has_column('public', 'investor_report_distribution', 'transaction_hash', 'distribution carries its Testnet transaction hash (#438/WU3)');
 
 select has_column('public', 'investor_report_sales_by_pyme', 'investor_account_id', 'sales row carries the investor account');
 select has_column('public', 'investor_report_sales_by_pyme', 'campaign_id', 'sales row carries the campaign id');
@@ -269,6 +270,11 @@ select is(
   (select count(*)::int from public.investor_report_distribution where investor_account_id = 'GINVESTORAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' and state = 'submitted'),
   1,
   'the pending distribution count counts only submitted rows'
+);
+select is(
+  (select transaction_hash from public.investor_report_distribution where distribution_id = 'd1111111-1111-4111-8111-111111111101' and investor_account_id = 'GINVESTORAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'),
+  'hash-ir-confirmed',
+  'the distribution exposes its own Testnet transaction hash (#438/WU3)'
 );
 
 reset role;

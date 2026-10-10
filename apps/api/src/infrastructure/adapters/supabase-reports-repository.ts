@@ -1,6 +1,7 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type {
   ReportContributionRecord,
+  ReportContributionTransactionRecord,
   ReportDistributionRecord,
   ReportsRepositoryPort,
   ReportsRepositoryResult,
@@ -21,6 +22,8 @@ import type {
  *     for that period.
  *   * `investor_report_sales_by_pyme` — one row per declared-sales month of a
  *     PyME the investor holds a position in.
+ *   * `investor_contribution_transaction` (#438/WU3) — one row per **observed**
+ *     contribute transaction, with its hash, amount, PyME name and vault.
  *
  * A malformed row or a provider error is `unavailable`; PostgREST's
  * message/details/hint never cross this boundary.
@@ -29,6 +32,7 @@ import type {
 const CONTRIBUTION_VIEW = "investor_report_contribution";
 const DISTRIBUTION_VIEW = "investor_report_distribution";
 const SALES_VIEW = "investor_report_sales_by_pyme";
+const CONTRIBUTION_TRANSACTION_VIEW = "investor_contribution_transaction";
 
 const DISTRIBUTION_STATES: readonly ReportDistributionRecord["state"][] = ["submitted", "confirmed", "failed"];
 const SALES_STATUSES: readonly ReportSalesStatus[] = ["reported", "missing", "anomalous"];
@@ -94,6 +98,41 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
     }
   }
 
+  async listContributionTransactions(
+    investorAccountId: string
+  ): Promise<ReportsRepositoryResult<readonly ReportContributionTransactionRecord[]>> {
+    try {
+      const { data, error } = await this.client
+        .from(CONTRIBUTION_TRANSACTION_VIEW)
+        .select("*")
+        .eq("investor_account_id", investorAccountId)
+        .order("observed_at", { ascending: false });
+
+      if (error) return { ok: false, error: this.toError(error) };
+      if (!Array.isArray(data)) throw new Error("Malformed reports read");
+
+      return { ok: true, value: data.map((row) => this.toContributionTransaction(row)) };
+    } catch {
+      return { ok: false, error: { code: "unavailable" } };
+    }
+  }
+
+  /**
+   * The view only exposes observed transactions, so a NULL `observed_at` is a
+   * malformed row (throws) rather than an unconfirmed submission to list.
+   */
+  private toContributionTransaction(row: unknown): ReportContributionTransactionRecord {
+    const value = this.asRecord(row);
+    return {
+      transactionHash: this.text(value["transaction_hash"]),
+      campaignId: this.text(value["campaign_id"]),
+      campaignName: this.optionalText(value["campaign_name"]),
+      vaultAddress: this.text(value["vault_address"]),
+      amountStroops: this.bigint(value["amount_stroops"]),
+      observedAt: this.text(value["observed_at"])
+    };
+  }
+
   private toContribution(row: unknown): ReportContributionRecord {
     const value = this.asRecord(row);
     return {
@@ -114,7 +153,8 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
       state: this.distributionState(value["state"]),
       confirmedAt: this.optionalText(value["confirmed_at"]),
       recordedAt: this.text(value["recorded_at"]),
-      declaredSalesArs: this.optionalBigint(value["declared_sales_ars"])
+      declaredSalesArs: this.optionalBigint(value["declared_sales_ars"]),
+      transactionHash: this.text(value["transaction_hash"])
     };
   }
 

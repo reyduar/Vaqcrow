@@ -1,5 +1,6 @@
 import { campaignDetailSchema } from "@vaqcrow/contracts";
 import type { CampaignDetail, CampaignDetailSalesEvidence, CampaignDetailStatus } from "@vaqcrow/contracts";
+import { contractExplorerUrl } from "../explorer-url.js";
 import type {
   CampaignDetailRecord,
   CampaignDetailRepositoryPort,
@@ -25,6 +26,11 @@ import { toFundedPercentBps, toRaisedArs } from "./list-marketplace-campaigns.js
 
 export interface GetCampaignDetailDependencies {
   readonly repository: Pick<CampaignDetailRepositoryPort, "findPublished">;
+  /**
+   * `StellarConfig.explorerUrl` (#438/WU3); `undefined` on the `local` network,
+   * which turns the vault link into `null`. The vault address is still returned.
+   */
+  readonly explorerBaseUrl: string | undefined;
 }
 
 export type GetCampaignDetailResult =
@@ -93,7 +99,7 @@ export function toCampaignDetailSalesEvidence(
   };
 }
 
-function toCampaignDetail(record: CampaignDetailRecord, now: Date): CampaignDetail {
+function toCampaignDetail(record: CampaignDetailRecord, explorerBaseUrl: string | undefined, now: Date): CampaignDetail {
   const assessment = record.assessment;
   return campaignDetailSchema.parse({
     campaignId: record.campaignId,
@@ -116,6 +122,11 @@ function toCampaignDetail(record: CampaignDetailRecord, now: Date): CampaignDeta
     status: deriveCampaignDetailStatus(record, now),
     backers: record.backers,
     vaultAddress: record.vaultAddress,
+    // No vault (or no explorer base) means no link — never a fabricated one.
+    vaultExplorerUrl:
+      record.vaultAddress === null || explorerBaseUrl === undefined
+        ? null
+        : contractExplorerUrl(explorerBaseUrl, record.vaultAddress),
     assessment:
       assessment === null
         ? null
@@ -154,7 +165,7 @@ export async function getCampaignDetail(
   }
 
   try {
-    return { ok: true, value: toCampaignDetail(found.value, now) };
+    return { ok: true, value: toCampaignDetail(found.value, dependencies.explorerBaseUrl, now) };
   } catch {
     return { ok: false, error: { code: "unavailable" } };
   }

@@ -43,6 +43,28 @@ export interface ReportDistributionRecord {
   readonly recordedAt: string;
   /** The PyME's declared sale for this distribution's period, or `null`. */
   readonly declaredSalesArs: bigint | null;
+  /** The distribution's Testnet hash (#438/WU3); the persisted column is `not null`. */
+  readonly transactionHash: string;
+}
+
+/**
+ * One **observed** contribute transaction of the investor (#438/WU3), read from
+ * `investor_contribution_transaction` (`observed_at IS NOT NULL` only). Unlike
+ * the cumulative `ReportContributionRecord`, it carries its own hash, amount and
+ * observation time. A contribution sent before the hashes were persisted has no
+ * record.
+ */
+export interface ReportContributionTransactionRecord {
+  readonly transactionHash: string;
+  readonly campaignId: string;
+  /** The PyME's name, or `null` when the company cannot be resolved. */
+  readonly campaignName: string | null;
+  /** The campaign's vault contract id (`campaign.contract_address`). */
+  readonly vaultAddress: string;
+  /** This transaction's own amount, in stroops. */
+  readonly amountStroops: bigint;
+  /** When the chain read confirmed it, as an ISO datetime. */
+  readonly observedAt: string;
 }
 
 export type ReportSalesStatus = "reported" | "missing" | "anomalous";
@@ -82,4 +104,9 @@ export interface ReportsRepositoryPort {
   listSalesByPyme(
     investorAccountId: string
   ): Promise<ReportsRepositoryResult<readonly ReportSalesByPymeRecord[]>>;
+
+  /** Every observed contribute transaction the investor's account sent (#438/WU3). */
+  listContributionTransactions(
+    investorAccountId: string
+  ): Promise<ReportsRepositoryResult<readonly ReportContributionTransactionRecord[]>>;
 }

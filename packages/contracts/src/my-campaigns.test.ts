@@ -5,6 +5,12 @@ import {
   parseMyCampaigns
 } from "./my-campaigns.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The PyME dashboard read model (`GET /my-campaigns`, Feature #434, WU1).
  *
@@ -19,6 +25,8 @@ const CAMPAIGN_ID = "123e4567-e89b-42d3-a456-426614174000";
 const SECOND_CAMPAIGN_ID = "223e4567-e89b-42d3-a456-426614174000";
 const DISTRIBUTION_ID = "323e4567-e89b-42d3-a456-426614174000";
 const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+const HASH = "a".repeat(64);
+const EXPLORER = "https://stellar.expert/explorer/testnet";
 
 const campaign = {
   campaignId: CAMPAIGN_ID,
@@ -27,6 +35,7 @@ const campaign = {
   city: "CABA",
   imageUrl: `/marketplace/campaigns/${CAMPAIGN_ID}/image`,
   vaultAddress: VAULT,
+  vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`,
   state: "funding",
   goalArs: 5000000,
   raisedArs: 2500000,
@@ -39,7 +48,9 @@ const campaign = {
       period: "2026-06",
       amountArs: 1250000,
       amountXlm: "12.5000000",
-      state: "confirmed"
+      state: "confirmed",
+      transactionHash: HASH,
+      explorerUrl: `${EXPLORER}/tx/${HASH}`
     }
   ],
   sales: [
@@ -78,7 +89,15 @@ describe("parseMyCampaigns", () => {
         {
           ...campaign,
           distributions: [
-            { distributionId: DISTRIBUTION_ID, period: null, amountArs: null, amountXlm: null, state: "failed" }
+            {
+              distributionId: DISTRIBUTION_ID,
+              period: null,
+              amountArs: null,
+              amountXlm: null,
+              state: "failed",
+              transactionHash: HASH,
+              explorerUrl: null
+            }
           ],
           sales: [{ period: "2026-08", salesArs: null, status: "missing" }]
         }
@@ -143,5 +162,41 @@ describe("parseMyCampaigns", () => {
   it("keeps two campaigns for the same PyME", () => {
     const two = { campaigns: [campaign, { ...campaign, campaignId: SECOND_CAMPAIGN_ID, name: "Panadería Norte" }] };
     expect(myCampaignsSchema.parse(two).campaigns).toHaveLength(2);
+  });
+});
+
+describe("my campaigns Testnet transparency (#438/WU3)", () => {
+  const distribution = campaign.distributions[0]!;
+
+  it("accepts null explorer links when the API has no explorer base (local network)", () => {
+    const local = {
+      ...campaign,
+      vaultExplorerUrl: null,
+      distributions: [{ ...distribution, explorerUrl: null }]
+    };
+
+    const parsed = myCampaignSchema.parse(local);
+    expect(parsed.vaultExplorerUrl).toBeNull();
+    expect(parsed.distributions[0]?.explorerUrl).toBeNull();
+  });
+
+  it("requires the vault link, the distribution hash and its link (required-but-nullable)", () => {
+    const withoutVaultLink = without(campaign, "vaultExplorerUrl");
+    const withoutHash = without(distribution, "transactionHash");
+    const withoutLink = without(distribution, "explorerUrl");
+
+    expect(myCampaignSchema.safeParse(withoutVaultLink).success).toBe(false);
+    expect(myCampaignSchema.safeParse({ ...campaign, distributions: [withoutHash] }).success).toBe(false);
+    expect(myCampaignSchema.safeParse({ ...campaign, distributions: [withoutLink] }).success).toBe(false);
+  });
+
+  it("refuses a null or malformed distribution hash and a non-URL link", () => {
+    for (const transactionHash of [null, "hash-mc-confirmed", "A".repeat(64)]) {
+      expect(
+        myCampaignSchema.safeParse({ ...campaign, distributions: [{ ...distribution, transactionHash }] }).success,
+        String(transactionHash)
+      ).toBe(false);
+    }
+    expect(myCampaignSchema.safeParse({ ...campaign, vaultExplorerUrl: "nope" }).success).toBe(false);
   });
 });

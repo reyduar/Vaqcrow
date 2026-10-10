@@ -1,5 +1,6 @@
 import { myCampaignDistributionSchema, myCampaignsSchema } from "@vaqcrow/contracts";
 import type { MyCampaign, MyCampaigns } from "@vaqcrow/contracts";
+import { contractExplorerUrl, transactionExplorerUrl } from "../explorer-url.js";
 import type {
   MyCampaignDistributionRecord,
   MyCampaignRateSnapshot,
@@ -32,6 +33,11 @@ export interface GetMyCampaignsDependencies {
   readonly myCampaigns: Pick<MyCampaignsRepositoryPort, "listCampaigns" | "listDistributions" | "listSales">;
   /** Injected for deterministic state derivation; `index.ts` passes `() => new Date()`. */
   readonly now: () => Date;
+  /**
+   * `StellarConfig.explorerUrl` (#438/WU3); `undefined` on the `local` network,
+   * which turns every explorer link into `null`. The hashes are still returned.
+   */
+  readonly explorerBaseUrl: string | undefined;
 }
 
 export type GetMyCampaignsResult =
@@ -56,7 +62,7 @@ export async function getMyCampaigns(
     return {
       ok: true,
       value: myCampaignsSchema.parse(
-        toDashboard(campaigns.value, distributions.value, sales.value, dependencies.now())
+        toDashboard(campaigns.value, distributions.value, sales.value, dependencies.explorerBaseUrl, dependencies.now())
       )
     };
   } catch {
@@ -101,14 +107,17 @@ function deriveState(record: MyCampaignRecord, now: Date): MyCampaign["state"] {
 
 function toDistribution(
   record: MyCampaignDistributionRecord,
-  snapshot: MyCampaignRateSnapshot | undefined
+  snapshot: MyCampaignRateSnapshot | undefined,
+  explorerBaseUrl: string | undefined
 ): MyCampaign["distributions"][number] {
   return myCampaignDistributionSchema.parse({
     distributionId: record.distributionId,
     period: record.period,
     amountArs: toArs(record.amountStroops, snapshot),
     amountXlm: toXlm(record.amountStroops),
-    state: record.state
+    state: record.state,
+    transactionHash: record.transactionHash,
+    explorerUrl: explorerBaseUrl === undefined ? null : transactionExplorerUrl(explorerBaseUrl, record.transactionHash)
   });
 }
 
@@ -116,6 +125,7 @@ function toCampaign(
   record: MyCampaignRecord,
   distributions: readonly MyCampaignDistributionRecord[],
   sales: readonly MyCampaignSalesRecord[],
+  explorerBaseUrl: string | undefined,
   now: Date
 ): MyCampaign {
   return {
@@ -125,6 +135,7 @@ function toCampaign(
     city: record.city,
     imageUrl: record.hasImage ? `/marketplace/campaigns/${record.campaignId}/image` : null,
     vaultAddress: record.vaultAddress,
+    vaultExplorerUrl: explorerBaseUrl === undefined ? null : contractExplorerUrl(explorerBaseUrl, record.vaultAddress),
     state: deriveState(record, now),
     goalArs: Number(record.goalArs),
     raisedArs: toArs(record.totalStroops, record.rateSnapshot),
@@ -133,7 +144,7 @@ function toCampaign(
     contributorsCount: record.contributorsCount,
     distributions: [...distributions]
       .sort(compareDistributions)
-      .map((entry) => toDistribution(entry, record.rateSnapshot)),
+      .map((entry) => toDistribution(entry, record.rateSnapshot, explorerBaseUrl)),
     sales: [...sales]
       .sort((a, b) => (a.period < b.period ? -1 : a.period > b.period ? 1 : 0))
       .map((entry) => ({
@@ -166,6 +177,7 @@ function toDashboard(
   campaigns: readonly MyCampaignRecord[],
   distributions: readonly MyCampaignDistributionRecord[],
   sales: readonly MyCampaignSalesRecord[],
+  explorerBaseUrl: string | undefined,
   now: Date
 ): MyCampaigns {
   const distributionsByCampaign = new Map<string, MyCampaignDistributionRecord[]>();
@@ -188,6 +200,7 @@ function toDashboard(
         record,
         distributionsByCampaign.get(record.campaignId) ?? [],
         salesByCampaign.get(record.campaignId) ?? [],
+        explorerBaseUrl,
         now
       )
     )

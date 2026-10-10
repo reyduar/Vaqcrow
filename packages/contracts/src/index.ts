@@ -217,20 +217,25 @@ export { investorKycSchema, parseInvestorKyc } from "./investor-kyc.js";
 export type { InvestorKyc } from "./investor-kyc.js";
 
 export {
+  explorerUrlSchema,
   parsePortfolioSummary,
+  portfolioContributionTransactionSchema,
   portfolioDistributionSchema,
   portfolioPositionSchema,
   portfolioPositionStatusSchema,
   portfolioSummarySchema,
   portfolioTotalsSchema,
+  testnetTransactionHashSchema,
   xlmAmountSchema
 } from "./portfolio.js";
 export type {
+  PortfolioContributionTransaction,
   PortfolioDistribution,
   PortfolioPosition,
   PortfolioPositionStatus,
   PortfolioSummary,
   PortfolioTotals,
+  TestnetTransactionHash,
   XlmAmount
 } from "./portfolio.js";
 
@@ -259,6 +264,7 @@ export {
   investorReportSchema,
   parseInvestorReport,
   parseReportSalesByPyme,
+  reportContributionTransactionSchema,
   reportKpisSchema,
   reportLatestDistributionSchema,
   reportLatestDistributionStateSchema,
@@ -272,6 +278,7 @@ export {
 export type {
   AvailableRange,
   InvestorReport,
+  ReportContributionTransaction,
   ReportKpis,
   ReportLatestDistribution,
   ReportLatestDistributionState,

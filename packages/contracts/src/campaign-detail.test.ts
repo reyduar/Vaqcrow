@@ -6,6 +6,12 @@ import {
   parseCampaignDetail
 } from "./index.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The account-gated campaign detail (`GET /marketplace/campaigns/:campaignId`).
  * These tests fix the wire shape: only persisted facts travel, every
@@ -33,6 +39,8 @@ const DETAIL = {
   status: "funding",
   backers: 12,
   vaultAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+  vaultExplorerUrl:
+    "https://stellar.expert/explorer/testnet/contract/CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
   assessment: {
     riskBand: "medium",
     confidence: 0.72,
@@ -71,6 +79,7 @@ describe("campaign detail contract", () => {
       riskConfidence: null,
       imageUrl: null,
       vaultAddress: null,
+      vaultExplorerUrl: null,
       assessment: null,
       decision: null
     };
@@ -192,5 +201,21 @@ describe("campaign detail sales evidence", () => {
     expect(campaignDetailSchema.safeParse({ ...DETAIL, salesEvidence: { ...DETAIL.salesEvidence, total: 3 } }).success).toBe(
       false
     );
+  });
+});
+
+describe("campaign detail Testnet transparency (#438/WU3)", () => {
+  it("accepts a null vault link when the API has no explorer base (local network)", () => {
+    expect(campaignDetailSchema.parse({ ...DETAIL, vaultExplorerUrl: null }).vaultExplorerUrl).toBeNull();
+  });
+
+  it("requires the vault link field (required-but-nullable)", () => {
+    const withoutLink = without(DETAIL, "vaultExplorerUrl");
+    expect(campaignDetailSchema.safeParse(withoutLink).success).toBe(false);
+  });
+
+  it("refuses a vault link without a vault address and a non-URL link", () => {
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, vaultAddress: null }).success).toBe(false);
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, vaultExplorerUrl: "nope" }).success).toBe(false);
   });
 });

@@ -241,6 +241,9 @@ drop view if exists public.investor_report_sales_by_pyme;
 drop view if exists public.my_campaign_summary;
 drop view if exists public.my_campaign_distribution;
 drop view if exists public.my_campaign_sales;
+-- Feature #438/WU3 adds a view over campaign_contribution_transaction, campaign,
+-- sme_request and businesses, so it is reversed before the mirrors it depends on.
+drop view if exists public.investor_contribution_transaction;
 -- The #422/WU2b sales-period table backs that detail view (and references
 -- businesses); reverse it here too, after the view that depends on it.
 drop table if exists public.business_sales_period;

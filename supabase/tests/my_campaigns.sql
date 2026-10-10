@@ -1,6 +1,6 @@
 begin;
 
-select plan(60);
+select plan(62);
 
 -- PyME "Mi campaña" dashboard read model (Feature #434, WU1).
 --
@@ -60,6 +60,7 @@ select has_column('public', 'my_campaign_distribution', 'distribution_id', 'dist
 select has_column('public', 'my_campaign_distribution', 'period', 'distribution carries the period');
 select has_column('public', 'my_campaign_distribution', 'state', 'distribution carries the persisted state');
 select has_column('public', 'my_campaign_distribution', 'amount_stroops', 'distribution carries the summed allocation');
+select has_column('public', 'my_campaign_distribution', 'transaction_hash', 'distribution carries its Testnet transaction hash (#438/WU3)');
 
 select has_column('public', 'my_campaign_sales', 'owner_user_id', 'sales row carries the owner');
 select has_column('public', 'my_campaign_sales', 'campaign_id', 'sales row carries the campaign id');
@@ -250,6 +251,11 @@ select is(
   (select count(*)::int from public.my_campaign_distribution where owner_user_id = 'a2222222-2222-4222-8222-222222222222'),
   0,
   'owner B sees no distributions of owner A'
+);
+select is(
+  (select transaction_hash from public.my_campaign_distribution where distribution_id = 'd1111111-1111-4111-8111-111111111101'),
+  'hash-mc-confirmed',
+  'the aggregated distribution keeps its own Testnet transaction hash (#438/WU3)'
 );
 
 reset role;

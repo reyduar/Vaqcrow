@@ -9,6 +9,12 @@ import {
   reportSalesByPymeSchema
 } from "./investor-report.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The investor report read model (`GET /reports`, Feature #430, WU1).
  *
@@ -19,6 +25,10 @@ import {
  */
 const CAMPAIGN_ID = "123e4567-e89b-42d3-a456-426614174000";
 const IMAGE_URL = `/marketplace/campaigns/${CAMPAIGN_ID}/image`;
+const HASH = "a".repeat(64);
+const SECOND_HASH = "b".repeat(64);
+const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+const EXPLORER = "https://stellar.expert/explorer/testnet";
 
 const report = {
   range: { from: "2026-01", to: "2026-06" },
@@ -41,7 +51,20 @@ const report = {
       pyme: "Panadería Sol",
       declaredSalesArs: 9000000,
       shareXlm: "12.5000000",
-      state: "confirmed"
+      state: "confirmed",
+      transactionHash: HASH,
+      explorerUrl: `${EXPLORER}/tx/${HASH}`
+    }
+  ],
+  contributionTransactions: [
+    {
+      date: "2026-03-15T00:00:00.000Z",
+      pyme: "Panadería Sol",
+      amountXlm: "150.0000000",
+      transactionHash: SECOND_HASH,
+      explorerUrl: `${EXPLORER}/tx/${SECOND_HASH}`,
+      vaultAddress: VAULT,
+      vaultExplorerUrl: `${EXPLORER}/contract/${VAULT}`
     }
   ]
 };
@@ -85,7 +108,8 @@ describe("investorReportSchema", () => {
         campaignsCount: 0
       },
       monthlySeries: [],
-      latestDistributions: []
+      latestDistributions: [],
+      contributionTransactions: []
     };
 
     expect(parseInvestorReport(empty)).toEqual(empty);
@@ -106,7 +130,15 @@ describe("investorReportSchema", () => {
     const bare = {
       ...report,
       latestDistributions: [
-        { date: "2026-07-01T00:00:00.000Z", pyme: "PyME", declaredSalesArs: null, shareXlm: null, state: "submitted" }
+        {
+          date: "2026-07-01T00:00:00.000Z",
+          pyme: "PyME",
+          declaredSalesArs: null,
+          shareXlm: null,
+          state: "submitted",
+          transactionHash: HASH,
+          explorerUrl: null
+        }
       ]
     };
 
@@ -202,5 +234,43 @@ describe("reportSalesByPymeSchema", () => {
 
   it("refuses an extra key (strict wire shape)", () => {
     expect(reportSalesByPymeSchema.safeParse({ ...salesByPyme, leaked: true }).success).toBe(false);
+  });
+});
+
+describe("investor report Testnet transparency (#438/WU3)", () => {
+  const distribution = report.latestDistributions[0]!;
+  const contribution = report.contributionTransactions[0]!;
+
+  it("accepts null explorer links when the API has no explorer base (local network)", () => {
+    const local = {
+      ...report,
+      latestDistributions: [{ ...distribution, explorerUrl: null }],
+      contributionTransactions: [{ ...contribution, explorerUrl: null, vaultExplorerUrl: null }]
+    };
+
+    const parsed = investorReportSchema.parse(local);
+    expect(parsed.latestDistributions[0]?.explorerUrl).toBeNull();
+    expect(parsed.contributionTransactions[0]?.explorerUrl).toBeNull();
+    expect(parsed.contributionTransactions[0]?.vaultExplorerUrl).toBeNull();
+  });
+
+  it("requires the hash and link on every latest distribution and the contribution list on the report", () => {
+    const withoutHash = without(distribution, "transactionHash");
+    const withoutLink = without(distribution, "explorerUrl");
+    const withoutList = without(report, "contributionTransactions");
+
+    expect(investorReportSchema.safeParse({ ...report, latestDistributions: [withoutHash] }).success).toBe(false);
+    expect(investorReportSchema.safeParse({ ...report, latestDistributions: [withoutLink] }).success).toBe(false);
+    expect(investorReportSchema.safeParse(withoutList).success).toBe(false);
+  });
+
+  it("refuses a malformed hash, a malformed vault and an extra key on a contribution transaction", () => {
+    const badHash = { ...report, contributionTransactions: [{ ...contribution, transactionHash: "hash" }] };
+    const badVault = { ...report, contributionTransactions: [{ ...contribution, vaultAddress: "GABC" }] };
+    const extra = { ...report, contributionTransactions: [{ ...contribution, investorAccountId: "leak" }] };
+
+    expect(investorReportSchema.safeParse(badHash).success).toBe(false);
+    expect(investorReportSchema.safeParse(badVault).success).toBe(false);
+    expect(investorReportSchema.safeParse(extra).success).toBe(false);
   });
 });

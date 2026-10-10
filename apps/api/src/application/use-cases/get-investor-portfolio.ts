@@ -1,6 +1,8 @@
 import { portfolioDistributionSchema, portfolioSummarySchema } from "@vaqcrow/contracts";
 import type { PortfolioDistribution, PortfolioPosition, PortfolioSummary } from "@vaqcrow/contracts";
+import { contractExplorerUrl, transactionExplorerUrl } from "../explorer-url.js";
 import type {
+  PortfolioContributionTransactionRecord,
   PortfolioDistributionRecord,
   PortfolioPositionRecord,
   PortfolioRepositoryPort
@@ -31,9 +33,14 @@ const STROOPS_PER_XLM = 10_000_000n;
 export interface GetInvestorPortfolioDependencies {
   /** Resolves the verified principal's stored Stellar key (its profile column). */
   readonly wallets: Pick<WalletRepositoryPort, "readPublicKey">;
-  readonly portfolio: Pick<PortfolioRepositoryPort, "listPositions" | "listDistributions">;
+  readonly portfolio: Pick<PortfolioRepositoryPort, "listPositions" | "listDistributions" | "listContributionTransactions">;
   /** Injected for deterministic status derivation; `index.ts` passes `() => new Date()`. */
   readonly now: () => Date;
+  /**
+   * `StellarConfig.explorerUrl` (#438/WU3); `undefined` on the `local` network,
+   * which turns every explorer link into `null`. The hashes are still returned.
+   */
+  readonly explorerBaseUrl: string | undefined;
 }
 
 export type GetInvestorPortfolioResult =
@@ -53,20 +60,38 @@ export async function getInvestorPortfolio(
   }
 
   const account = key.value;
-  const [positions, distributions] = await Promise.all([
+  const [positions, distributions, transactions] = await Promise.all([
     dependencies.portfolio.listPositions(account),
-    dependencies.portfolio.listDistributions(account)
+    dependencies.portfolio.listDistributions(account),
+    dependencies.portfolio.listContributionTransactions(account)
   ]);
 
-  if (!positions.ok || !distributions.ok) {
+  if (!positions.ok || !distributions.ok || !transactions.ok) {
     return { ok: false, error: { code: "unavailable" } };
   }
 
   try {
-    return { ok: true, value: toSummary(positions.value, distributions.value, dependencies.now()) };
+    const links = explorerLinks(dependencies.explorerBaseUrl);
+    return {
+      ok: true,
+      value: toSummary(positions.value, distributions.value, transactions.value, links, dependencies.now())
+    };
   } catch {
     return { ok: false, error: { code: "unavailable" } };
   }
+}
+
+interface ExplorerLinks {
+  readonly transaction: (hash: string) => string | null;
+  readonly contract: (address: string) => string | null;
+}
+
+/** Explorer links from the configured base; every link is `null` without one. */
+function explorerLinks(base: string | undefined): ExplorerLinks {
+  return {
+    transaction: (hash) => (base === undefined ? null : transactionExplorerUrl(base, hash)),
+    contract: (address) => (base === undefined ? null : contractExplorerUrl(base, address))
+  };
 }
 
 /** Canonical XLM: exactly seven decimals, `bigint` math, never a float. */
@@ -107,7 +132,12 @@ function deriveStatus(record: PortfolioPositionRecord, now: Date): PortfolioPosi
   return "funding";
 }
 
-function toPosition(record: PortfolioPositionRecord, now: Date): PortfolioPosition {
+function toPosition(
+  record: PortfolioPositionRecord,
+  transactions: readonly PortfolioContributionTransactionRecord[],
+  links: ExplorerLinks,
+  now: Date
+): PortfolioPosition {
   return {
     campaignId: record.campaignId,
     name: record.name,
@@ -120,18 +150,39 @@ function toPosition(record: PortfolioPositionRecord, now: Date): PortfolioPositi
     fundedPercentBps: toFundedPercentBps(record.totalStroops, record.goalStroops),
     status: deriveStatus(record, now),
     closeDate: record.closeDate,
-    vaultAddress: record.vaultAddress
+    vaultAddress: record.vaultAddress,
+    vaultExplorerUrl: links.contract(record.vaultAddress),
+    transactions: [...transactions]
+      .sort(compareTransactions)
+      .map((transaction) => ({
+        transactionHash: transaction.transactionHash,
+        amountXlm: toXlm(transaction.amountStroops),
+        observedAt: transaction.observedAt,
+        explorerUrl: links.transaction(transaction.transactionHash)
+      }))
   };
 }
 
-function toDistribution(record: PortfolioDistributionRecord): PortfolioDistribution {
+/** Oldest observation first; the hash breaks ties so the order is stable. */
+function compareTransactions(
+  a: PortfolioContributionTransactionRecord,
+  b: PortfolioContributionTransactionRecord
+): number {
+  const byTime = Date.parse(a.observedAt) - Date.parse(b.observedAt);
+  if (byTime !== 0 && !Number.isNaN(byTime)) return byTime;
+  return a.transactionHash < b.transactionHash ? -1 : a.transactionHash > b.transactionHash ? 1 : 0;
+}
+
+function toDistribution(record: PortfolioDistributionRecord, links: ExplorerLinks): PortfolioDistribution {
   return portfolioDistributionSchema.parse({
     distributionId: record.distributionId,
     campaignId: record.campaignId,
     campaignName: record.campaignName,
     period: record.period,
     amountXlm: toXlm(record.amountStroops),
-    status: record.state
+    status: record.state,
+    transactionHash: record.transactionHash,
+    explorerUrl: links.transaction(record.transactionHash)
   });
 }
 
@@ -144,8 +195,19 @@ function toDistribution(record: PortfolioDistributionRecord): PortfolioDistribut
 function toSummary(
   positions: readonly PortfolioPositionRecord[],
   distributions: readonly PortfolioDistributionRecord[],
+  transactions: readonly PortfolioContributionTransactionRecord[],
+  links: ExplorerLinks,
   now: Date
 ): PortfolioSummary {
+  // Each observed transaction is attached to its own campaign's position; one
+  // whose campaign is not a position (not a deployed campaign) is dropped.
+  const transactionsByCampaign = new Map<string, PortfolioContributionTransactionRecord[]>();
+  for (const transaction of transactions) {
+    const bucket = transactionsByCampaign.get(transaction.campaignId) ?? [];
+    bucket.push(transaction);
+    transactionsByCampaign.set(transaction.campaignId, bucket);
+  }
+
   let contributedStroops = 0n;
   for (const position of positions) contributedStroops += position.contributionStroops;
 
@@ -159,8 +221,10 @@ function toSummary(
   }
 
   return portfolioSummarySchema.parse({
-    contributions: positions.map((position) => toPosition(position, now)),
-    distributions: distributions.map(toDistribution),
+    contributions: positions.map((position) =>
+      toPosition(position, transactionsByCampaign.get(position.campaignId) ?? [], links, now)
+    ),
+    distributions: distributions.map((distribution) => toDistribution(distribution, links)),
     totals: {
       totalContributedXlm: toXlm(contributedStroops),
       totalDistributionsXlm: confirmedCount === 0 ? null : toXlm(confirmedStroops),

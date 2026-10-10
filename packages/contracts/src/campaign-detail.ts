@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { campaignIdSchema } from "./campaign.js";
 import { marketplaceCampaignImageUrlSchema, riskBandSchema } from "./marketplace.js";
+import { explorerUrlSchema } from "./portfolio.js";
 import { periodSchema, salesPeriodStatusSchema } from "./sme-evidence.js";
 
 /**
@@ -96,7 +97,8 @@ export const campaignDetailSalesEvidenceSchema = z.strictObject({
 
 export type CampaignDetailSalesEvidence = z.infer<typeof campaignDetailSalesEvidenceSchema>;
 
-export const campaignDetailSchema = z.strictObject({
+export const campaignDetailSchema = z
+  .strictObject({
   campaignId: campaignIdSchema,
   name: z.string().trim().min(1),
   sector: z.string().trim().min(1),
@@ -123,6 +125,12 @@ export const campaignDetailSchema = z.strictObject({
    * the campaign carries none — never a fabricated value.
    */
   vaultAddress: z.string().trim().min(1).nullable(),
+  /**
+   * The vault's explorer link (#438/WU3), built by the API from its explorer
+   * base. `null` when there is no base (the `local` network) or no vault; a link
+   * without a vault address is refused.
+   */
+  vaultExplorerUrl: explorerUrlSchema,
   assessment: campaignDetailAssessmentSchema.nullable(),
   decision: campaignDetailDecisionSchema.nullable(),
   /**
@@ -131,7 +139,11 @@ export const campaignDetailSchema = z.strictObject({
    * invented series.
    */
   salesEvidence: campaignDetailSalesEvidenceSchema.nullable()
-});
+  })
+  .refine((detail) => detail.vaultExplorerUrl === null || detail.vaultAddress !== null, {
+    message: "A vault explorer link requires the vault address",
+    path: ["vaultExplorerUrl"]
+  });
 
 export type CampaignDetail = z.infer<typeof campaignDetailSchema>;
 

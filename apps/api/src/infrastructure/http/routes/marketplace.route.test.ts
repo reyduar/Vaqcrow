@@ -75,12 +75,15 @@ const DETAIL_RECORD: CampaignDetailRecord = {
   }
 };
 
+const EXPLORER = "https://stellar.expert/explorer/testnet";
+
 function marketplace(
   options: {
     listed?: Awaited<ReturnType<MarketplaceCampaignRepositoryPort["listPublished"]>>;
     image?: Awaited<ReturnType<MarketplaceCampaignRepositoryPort["findPublishedImage"]>>;
     download?: Awaited<ReturnType<StoragePort["downloadObject"]>>;
     detail?: Awaited<ReturnType<CampaignDetailRepositoryPort["findPublished"]>>;
+    explorerBaseUrl?: string | undefined;
   } = {}
 ): MarketplaceRouteDependencies {
   return {
@@ -94,7 +97,8 @@ function marketplace(
     },
     detail: {
       findPublished: async () => options.detail ?? { ok: true as const, value: undefined }
-    }
+    },
+    explorerBaseUrl: "explorerBaseUrl" in options ? options.explorerBaseUrl : EXPLORER
   };
 }
 
@@ -256,6 +260,27 @@ describe("GET /marketplace/campaigns/:campaignId/image", () => {
 
 describe("GET /marketplace/campaigns/:campaignId", () => {
   const url = `/marketplace/campaigns/${RECORD.campaignId}`;
+
+  it("links the vault to the explorer from the configured base, or null without one (#438/WU3)", async () => {
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: true, value: DETAIL_RECORD } })
+    });
+    const linked = parseCampaignDetail(
+      (await app.inject({ method: "GET", url, headers: bearer("INVERSOR") })).json()
+    );
+    await app.close();
+
+    app = buildApp({
+      auth: { port: fakeAuthPort() },
+      marketplace: marketplace({ detail: { ok: true, value: DETAIL_RECORD }, explorerBaseUrl: undefined })
+    });
+    const local = parseCampaignDetail((await app.inject({ method: "GET", url, headers: bearer("PYME") })).json());
+
+    expect(linked.vaultExplorerUrl).toBe(`${EXPLORER}/contract/${DETAIL_RECORD.vaultAddress}`);
+    expect(local.vaultExplorerUrl).toBeNull();
+    expect(local.vaultAddress).toBe(DETAIL_RECORD.vaultAddress);
+  });
 
   it("requires a session and serves the published campaign detail to any signed-in role", async () => {
     app = buildApp({

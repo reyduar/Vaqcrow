@@ -34,6 +34,11 @@ export interface MarketplaceRouteDependencies {
   readonly storage: Pick<StoragePort, "downloadObject">;
   /** The account-gated campaign detail read model (#422/WU1). Omitted when unwired. */
   readonly detail?: Pick<CampaignDetailRepositoryPort, "findPublished"> | undefined;
+  /**
+   * `StellarConfig.explorerUrl`, used by the detail to link the vault
+   * (#438/WU3); `undefined` on the `local` network, which makes the link `null`.
+   */
+  readonly explorerBaseUrl: string | undefined;
 }
 
 /** Short, revalidating window: the listing is public but changes as campaigns fund. */
@@ -97,7 +102,10 @@ export function registerMarketplaceRoute(app: FastifyInstance, dependencies: Mar
         return reply.code(400).send({ code: "invalid_request" });
       }
 
-      const result = await getCampaignDetail({ repository: detail }, parsed.data);
+      const result = await getCampaignDetail(
+        { repository: detail, explorerBaseUrl: dependencies.explorerBaseUrl },
+        parsed.data
+      );
       if (!result.ok) {
         return result.error.code === "not_found"
           ? reply.code(404).send({ code: "not_found" })

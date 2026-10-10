@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(67);
 
 -- Investor portfolio read model (Feature #426, WU1).
 --
@@ -54,6 +54,25 @@ select has_column('public', 'investor_portfolio_distribution', 'period', 'distri
 select has_column('public', 'investor_portfolio_distribution', 'amount_stroops', 'distribution carries the allocation');
 select has_column('public', 'investor_portfolio_distribution', 'state', 'distribution carries the persisted state');
 select has_column('public', 'investor_portfolio_distribution', 'recorded_at', 'distribution carries the recorded time');
+-- Feature #438/WU3 appends the distribution's own Testnet hash at the end.
+select has_column('public', 'investor_portfolio_distribution', 'transaction_hash', 'distribution carries its Testnet transaction hash (#438/WU3)');
+
+-- `public.investor_contribution_transaction` (#438/WU3): one row per
+-- **observed** contribute transaction, with its campaign name and vault, so the
+-- portfolio and the report can link each contribution to the explorer.
+select has_view('public', 'investor_contribution_transaction', 'investor_contribution_transaction view exists');
+select is(
+  (select (reloptions @> array['security_invoker=true']) from pg_class where oid = 'public.investor_contribution_transaction'::regclass),
+  true,
+  'investor_contribution_transaction runs with security_invoker (honors base-table privileges)'
+);
+select has_column('public', 'investor_contribution_transaction', 'investor_account_id', 'contribution transaction carries the investor account');
+select has_column('public', 'investor_contribution_transaction', 'transaction_hash', 'contribution transaction carries its hash');
+select has_column('public', 'investor_contribution_transaction', 'campaign_id', 'contribution transaction carries the campaign id');
+select has_column('public', 'investor_contribution_transaction', 'campaign_name', 'contribution transaction carries the PyME name');
+select has_column('public', 'investor_contribution_transaction', 'vault_address', 'contribution transaction carries the vault address');
+select has_column('public', 'investor_contribution_transaction', 'amount_stroops', 'contribution transaction carries its amount');
+select has_column('public', 'investor_contribution_transaction', 'observed_at', 'contribution transaction carries its observation time');
 
 -- Access control: nobody but service_role ------------------------------------
 
@@ -63,6 +82,9 @@ select is(has_table_privilege('service_role', 'public.investor_portfolio_positio
 select is(has_table_privilege('anon', 'public.investor_portfolio_distribution', 'select'), false, 'anon cannot read the distribution view');
 select is(has_table_privilege('authenticated', 'public.investor_portfolio_distribution', 'select'), false, 'authenticated cannot read the distribution view');
 select is(has_table_privilege('service_role', 'public.investor_portfolio_distribution', 'select'), true, 'service role can read the distribution view');
+select is(has_table_privilege('anon', 'public.investor_contribution_transaction', 'select'), false, 'anon cannot read the contribution transaction view');
+select is(has_table_privilege('authenticated', 'public.investor_contribution_transaction', 'select'), false, 'authenticated cannot read the contribution transaction view');
+select is(has_table_privilege('service_role', 'public.investor_contribution_transaction', 'select'), true, 'service role can read the contribution transaction view');
 
 -- Fixtures (as the test owner, bypassing RLS) ---------------------------------
 -- Two PyMEs with deployed campaigns: campaign C1 is open, campaign C2 is
@@ -157,6 +179,18 @@ values
   ('d1111111-1111-4111-8111-111111111101', 1, 'GINVESTORBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 5000000),
   ('d1111111-1111-4111-8111-111111111102', 0, 'GINVESTORAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 4000000);
 
+-- Contribute transactions (#438/WU1 table). The 54-character fixture accounts
+-- above predate its strict account check, so two valid accounts are used here:
+-- X has an observed transaction on each campaign plus one never observed; Y
+-- has one observed transaction on C1.
+insert into public.campaign_contribution_transaction (
+  transaction_hash, campaign_id, investor_account_id, amount_stroops, observed_at, last_correlation_id
+) values
+  (repeat('a', 64), '81111111-1111-4111-8111-111111111111', 'G' || repeat('X', 55), 1500000, timestamptz '2026-03-15 00:00:00+00', '11111111-1111-4111-8111-eeee00000001'),
+  (repeat('b', 64), '82222222-2222-4222-8222-222222222222', 'G' || repeat('X', 55), 3000000, timestamptz '2026-04-15 00:00:00+00', '11111111-1111-4111-8111-eeee00000002'),
+  (repeat('c', 64), '81111111-1111-4111-8111-111111111111', 'G' || repeat('X', 55), 700000, null, '11111111-1111-4111-8111-eeee00000003'),
+  (repeat('d', 64), '81111111-1111-4111-8111-111111111111', 'G' || repeat('Y', 55), 2000000, timestamptz '2026-03-20 00:00:00+00', '11111111-1111-4111-8111-eeee00000004');
+
 -- Behavior --------------------------------------------------------------------
 -- Exercised as service_role, the role the API connects as.
 
@@ -232,6 +266,38 @@ select is(
   (select sum(amount_stroops)::bigint from public.investor_portfolio_distribution where investor_account_id = 'GINVESTORAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' and campaign_id = '82222222-2222-4222-8222-222222222222'),
   null::bigint,
   'a contribution with no distribution aggregates to null, never zero'
+);
+
+select is(
+  (select transaction_hash from public.investor_portfolio_distribution where distribution_id = 'd1111111-1111-4111-8111-111111111101' and investor_account_id = 'GINVESTORAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'),
+  'hash-confirmed-1',
+  'the distribution exposes its own Testnet transaction hash (#438/WU3)'
+);
+
+select is(
+  (select count(*)::int from public.investor_contribution_transaction where investor_account_id = 'G' || repeat('X', 55)),
+  2,
+  'the investor scope keeps only that investor''s observed contribute transactions'
+);
+select is(
+  (select count(*)::int from public.investor_contribution_transaction where investor_account_id = 'G' || repeat('X', 55) and transaction_hash = repeat('d', 64)),
+  0,
+  'another investor''s contribution hash never appears in the investor''s scope'
+);
+select is(
+  (select count(*)::int from public.investor_contribution_transaction where transaction_hash = repeat('c', 64)),
+  0,
+  'a submitted but never observed transaction is not evidence of a contribution'
+);
+select is(
+  (select campaign_name from public.investor_contribution_transaction where transaction_hash = repeat('a', 64)),
+  'Panadería Sol',
+  'the contribution transaction resolves its PyME name'
+);
+select is(
+  (select vault_address from public.investor_contribution_transaction where transaction_hash = repeat('a', 64)),
+  'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM',
+  'the contribution transaction carries its campaign''s vault address'
 );
 
 reset role;

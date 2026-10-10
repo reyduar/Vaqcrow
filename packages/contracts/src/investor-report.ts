@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { marketplaceCampaignImageUrlSchema } from "./marketplace.js";
-import { xlmAmountSchema } from "./portfolio.js";
+import { stellarContractIdSchema } from "./campaign.js";
+import { explorerUrlSchema, testnetTransactionHashSchema, xlmAmountSchema } from "./portfolio.js";
 import { periodSchema } from "./sme-evidence.js";
 
 /**
@@ -96,10 +97,33 @@ export const reportLatestDistributionSchema = z.strictObject({
   pyme: z.string().trim().min(1),
   declaredSalesArs: z.number().int().nonnegative().nullable(),
   shareXlm: xlmAmountSchema.nullable(),
-  state: reportLatestDistributionStateSchema
+  state: reportLatestDistributionStateSchema,
+  /** The distribution's Testnet hash (#438/WU3); the persisted column is `not null`. */
+  transactionHash: testnetTransactionHashSchema,
+  /** Its explorer link; `null` without an explorer base. */
+  explorerUrl: explorerUrlSchema
 });
 
 export type ReportLatestDistribution = z.infer<typeof reportLatestDistributionSchema>;
+
+/**
+ * One **observed** contribute transaction of the investor whose observation
+ * month falls in the selected range (#438/WU3), newest first. `date` is when the
+ * chain read confirmed it; `pyme` is the campaign's PyME (a neutral label when it
+ * cannot be resolved); the vault is the campaign's contract. A contribution made
+ * before the hashes were persisted is not listed — never an invented hash.
+ */
+export const reportContributionTransactionSchema = z.strictObject({
+  date: z.iso.datetime({ offset: true }),
+  pyme: z.string().trim().min(1),
+  amountXlm: xlmAmountSchema,
+  transactionHash: testnetTransactionHashSchema,
+  explorerUrl: explorerUrlSchema,
+  vaultAddress: stellarContractIdSchema,
+  vaultExplorerUrl: explorerUrlSchema
+});
+
+export type ReportContributionTransaction = z.infer<typeof reportContributionTransactionSchema>;
 
 export const investorReportSchema = z.strictObject({
   range: reportRangeSchema,
@@ -107,7 +131,8 @@ export const investorReportSchema = z.strictObject({
   isEmpty: z.boolean(),
   kpis: reportKpisSchema,
   monthlySeries: z.array(reportMonthlyPointSchema),
-  latestDistributions: z.array(reportLatestDistributionSchema)
+  latestDistributions: z.array(reportLatestDistributionSchema),
+  contributionTransactions: z.array(reportContributionTransactionSchema)
 });
 
 export type InvestorReport = z.infer<typeof investorReportSchema>;

@@ -35,6 +35,41 @@ export const xlmAmountSchema = z
 export type XlmAmount = z.infer<typeof xlmAmountSchema>;
 
 /**
+ * A Testnet transaction hash as the role read models carry it (#438/WU3): 64
+ * lowercase hex characters, the form the XDR hash and the persisted
+ * contribution/deploy hashes take.
+ */
+export const testnetTransactionHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, "must be a 64-character lowercase hex hash");
+
+export type TestnetTransactionHash = z.infer<typeof testnetTransactionHashSchema>;
+
+/**
+ * An explorer link built by the API from its own explorer base (#438/WU3). It
+ * is `null` when that base is undefined (the `local` network has no canonical
+ * explorer): the web never builds a link nor knows the network.
+ */
+export const explorerUrlSchema = z.url().nullable();
+
+/**
+ * One **observed** contribute transaction of the investor to this position's
+ * campaign (#438/WU3). A transaction that was submitted but never confirmed is
+ * not listed, and a contribution made before the hashes were persisted has no
+ * entry at all — the honest "sin dato", never an invented hash.
+ */
+export const portfolioContributionTransactionSchema = z.strictObject({
+  transactionHash: testnetTransactionHashSchema,
+  /** This transaction's own amount, canonical XLM (7 decimals). */
+  amountXlm: xlmAmountSchema,
+  /** When the chain read confirmed it (the API's observation, not the ledger close). */
+  observedAt: z.iso.datetime({ offset: true }),
+  explorerUrl: explorerUrlSchema
+});
+
+export type PortfolioContributionTransaction = z.infer<typeof portfolioContributionTransactionSchema>;
+
+/**
  * The position's lifecycle, reusing the detail's vocabulary
  * (`campaignDetailStatusSchema`): `funding` -> "Fondeo abierto", `settled` ->
  * "Meta alcanzada", `refunding` -> "Reembolso disponible". It is derived
@@ -64,7 +99,11 @@ export const portfolioPositionSchema = z.strictObject({
   fundedPercentBps: z.number().int().min(0).max(10_000),
   status: portfolioPositionStatusSchema,
   closeDate: z.iso.datetime({ offset: true }),
-  vaultAddress: stellarContractIdSchema
+  vaultAddress: stellarContractIdSchema,
+  /** The vault's explorer link; `null` without an explorer base. */
+  vaultExplorerUrl: explorerUrlSchema,
+  /** The investor's own observed contribute transactions to this campaign, oldest first. */
+  transactions: z.array(portfolioContributionTransactionSchema)
 });
 
 export type PortfolioPosition = z.infer<typeof portfolioPositionSchema>;
@@ -83,7 +122,10 @@ export const portfolioDistributionSchema = z.strictObject({
   period: periodSchema.nullable(),
   /** This recipient's allocation, canonical XLM (7 decimals). */
   amountXlm: xlmAmountSchema,
-  status: revenueShareDistributionStateSchema
+  status: revenueShareDistributionStateSchema,
+  /** The distribution's Testnet hash; the persisted column is `not null`. */
+  transactionHash: testnetTransactionHashSchema,
+  explorerUrl: explorerUrlSchema
 });
 
 export type PortfolioDistribution = z.infer<typeof portfolioDistributionSchema>;

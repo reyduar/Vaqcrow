@@ -6,6 +6,7 @@ import type {
 } from "../ports/my-campaigns-repository-port.js";
 import { getMyCampaigns, type GetMyCampaignsDependencies } from "./get-my-campaigns.js";
 
+
 /**
  * The PyME dashboard read model (#434, WU1).
  *
@@ -20,6 +21,8 @@ const CAMPAIGN_A = "123e4567-e89b-42d3-a456-426614174000";
 const CAMPAIGN_B = "223e4567-e89b-42d3-a456-426614174000";
 const DISTRIBUTION_A = "323e4567-e89b-42d3-a456-426614174000";
 const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+const EXPLORER = "https://stellar.expert/explorer/testnet";
+const HASH = "d".repeat(64);
 
 const SNAPSHOT = { usdToArs: 1_000_000_000n, stroopsPerUsd: 10_000_000n };
 
@@ -56,6 +59,7 @@ function dependencies(overrides: {
   readonly distributions?: readonly MyCampaignDistributionRecord[];
   readonly sales?: readonly MyCampaignSalesRecord[];
   readonly fail?: "campaigns" | "distributions" | "sales";
+  readonly explorerBaseUrl?: string | undefined;
 } = {}): GetMyCampaignsDependencies {
   const unavailable = { ok: false as const, error: { code: "unavailable" as const } };
   return {
@@ -69,7 +73,8 @@ function dependencies(overrides: {
       listSales: async () =>
         overrides.fail === "sales" ? unavailable : { ok: true as const, value: overrides.sales ?? [] }
     },
-    now: () => new Date("2026-10-09T00:00:00.000Z")
+    now: () => new Date("2026-10-09T00:00:00.000Z"),
+    explorerBaseUrl: "explorerBaseUrl" in overrides ? overrides.explorerBaseUrl : EXPLORER
   };
 }
 
@@ -85,7 +90,7 @@ describe("getMyCampaigns", () => {
       dependencies({
         campaigns: [campaign()],
         distributions: [
-          { campaignId: CAMPAIGN_A, distributionId: DISTRIBUTION_A, period: "2026-06", amountStroops: 12_500_000n, state: "confirmed" }
+          { campaignId: CAMPAIGN_A, distributionId: DISTRIBUTION_A, period: "2026-06", amountStroops: 12_500_000n, state: "confirmed", transactionHash: HASH }
         ],
         sales: [
           { campaignId: CAMPAIGN_A, period: "2026-07", salesArs: null, status: "missing" },
@@ -110,7 +115,15 @@ describe("getMyCampaigns", () => {
     });
     // 1.25 XLM * 1,000 ARS/XLM = 1,250 ARS.
     expect(entry?.distributions).toEqual([
-      { distributionId: DISTRIBUTION_A, period: "2026-06", amountArs: 1_250, amountXlm: "1.2500000", state: "confirmed" }
+      {
+        distributionId: DISTRIBUTION_A,
+        period: "2026-06",
+        amountArs: 1_250,
+        amountXlm: "1.2500000",
+        state: "confirmed",
+        transactionHash: HASH,
+        explorerUrl: `${EXPLORER}/tx/${HASH}`
+      }
     ]);
     expect(entry?.sales).toEqual([
       { period: "2026-06", salesArs: 9_000_000, status: "reported" },
@@ -126,7 +139,7 @@ describe("getMyCampaigns", () => {
           campaign({ campaignId: CAMPAIGN_B, name: "Panadería Norte", hasImage: false, contributorsCount: 0 })
         ],
         distributions: [
-          { campaignId: CAMPAIGN_B, distributionId: DISTRIBUTION_A, period: "2026-05", amountStroops: 1_000_000n, state: "submitted" }
+          { campaignId: CAMPAIGN_B, distributionId: DISTRIBUTION_A, period: "2026-05", amountStroops: 1_000_000n, state: "submitted", transactionHash: HASH }
         ],
         sales: []
       }),
@@ -139,7 +152,15 @@ describe("getMyCampaigns", () => {
     expect(result.value.campaigns[0]?.distributions).toEqual([]);
     expect(result.value.campaigns[1]?.imageUrl).toBeNull();
     expect(result.value.campaigns[1]?.distributions).toEqual([
-      { distributionId: DISTRIBUTION_A, period: "2026-05", amountArs: 100, amountXlm: "0.1000000", state: "submitted" }
+      {
+        distributionId: DISTRIBUTION_A,
+        period: "2026-05",
+        amountArs: 100,
+        amountXlm: "0.1000000",
+        state: "submitted",
+        transactionHash: HASH,
+        explorerUrl: `${EXPLORER}/tx/${HASH}`
+      }
     ]);
   });
 
@@ -148,7 +169,7 @@ describe("getMyCampaigns", () => {
       dependencies({
         campaigns: [campaign({ totalStroops: 0n }, { noSnapshot: true })],
         distributions: [
-          { campaignId: CAMPAIGN_A, distributionId: DISTRIBUTION_A, period: null, amountStroops: 7_000_000n, state: "failed" }
+          { campaignId: CAMPAIGN_A, distributionId: DISTRIBUTION_A, period: null, amountStroops: 7_000_000n, state: "failed", transactionHash: HASH }
         ],
         sales: []
       }),
@@ -164,7 +185,9 @@ describe("getMyCampaigns", () => {
       period: null,
       amountArs: null,
       amountXlm: "0.7000000",
-      state: "failed"
+      state: "failed",
+      transactionHash: HASH,
+      explorerUrl: `${EXPLORER}/tx/${HASH}`
     });
   });
 
@@ -226,7 +249,8 @@ describe("getMyCampaigns", () => {
           return { ok: true, value: [] };
         }
       },
-      now: () => new Date("2026-10-09T00:00:00.000Z")
+      now: () => new Date("2026-10-09T00:00:00.000Z"),
+      explorerBaseUrl: EXPLORER
     };
 
     await getMyCampaigns(deps, { userId: USER_ID });
@@ -236,5 +260,42 @@ describe("getMyCampaigns", () => {
       `distributions:${USER_ID}`,
       `sales:${USER_ID}`
     ]);
+  });
+});
+
+describe("getMyCampaigns Testnet transparency (#438/WU3)", () => {
+  const distribution: MyCampaignDistributionRecord = {
+    campaignId: CAMPAIGN_A,
+    distributionId: DISTRIBUTION_A,
+    period: "2026-06",
+    amountStroops: 1n,
+    state: "confirmed",
+    transactionHash: HASH
+  };
+
+  it("links the vault and each distribution to the explorer from the configured base", async () => {
+    const result = await getMyCampaigns(dependencies({ campaigns: [campaign()], distributions: [distribution] }), {
+      userId: USER_ID
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.campaigns[0]?.vaultExplorerUrl).toBe(`${EXPLORER}/contract/${VAULT}`);
+    expect(result.value.campaigns[0]?.distributions[0]).toMatchObject({
+      transactionHash: HASH,
+      explorerUrl: `${EXPLORER}/tx/${HASH}`
+    });
+  });
+
+  it("keeps the hashes but returns null links when no explorer base is configured", async () => {
+    const result = await getMyCampaigns(
+      dependencies({ campaigns: [campaign()], distributions: [distribution], explorerBaseUrl: undefined }),
+      { userId: USER_ID }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.campaigns[0]?.vaultExplorerUrl).toBeNull();
+    expect(result.value.campaigns[0]?.distributions[0]).toMatchObject({ transactionHash: HASH, explorerUrl: null });
   });
 });

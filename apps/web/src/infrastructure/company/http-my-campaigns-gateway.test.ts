@@ -18,6 +18,7 @@ const WIRE = {
       city: "Córdoba",
       imageUrl: IMAGE_URL,
       vaultAddress: VAULT,
+      vaultExplorerUrl: null,
       state: "funding",
       goalArs: 15_000_000,
       raisedArs: 9_450_000,
@@ -30,7 +31,9 @@ const WIRE = {
           period: "2026-08",
           amountArs: 168_561,
           amountXlm: "1.2500000",
-          state: "submitted"
+          state: "submitted",
+          transactionHash: "a".repeat(64),
+          explorerUrl: null
         }
       ],
       sales: [
@@ -87,7 +90,9 @@ describe("HttpMyCampaignsGateway.get", () => {
       period: "2026-08",
       amountArs: 168_561,
       amountXlm: "1.2500000",
-      state: "submitted"
+      state: "submitted",
+      transactionHash: "a".repeat(64),
+      explorerUrl: null
     });
     expect(campaign.sales).toEqual([
       { period: "2026-08", salesArs: 3_745_800, status: "reported" },

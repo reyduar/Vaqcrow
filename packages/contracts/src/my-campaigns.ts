@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { campaignIdSchema, stellarContractIdSchema } from "./campaign.js";
 import { marketplaceCampaignImageUrlSchema } from "./marketplace.js";
-import { xlmAmountSchema } from "./portfolio.js";
+import { explorerUrlSchema, testnetTransactionHashSchema, xlmAmountSchema } from "./portfolio.js";
 import { revenueShareDistributionIdSchema } from "./revenue-share-distribution-id.js";
 import { periodSchema } from "./sme-evidence.js";
 
@@ -61,7 +61,11 @@ export const myCampaignDistributionSchema = z.strictObject({
   period: periodSchema.nullable(),
   amountArs: z.number().int().nonnegative().nullable(),
   amountXlm: xlmAmountSchema.nullable(),
-  state: myCampaignDistributionStateSchema
+  state: myCampaignDistributionStateSchema,
+  /** The distribution's Testnet hash (#438/WU3); the persisted column is `not null`. */
+  transactionHash: testnetTransactionHashSchema,
+  /** Its explorer link; `null` without an explorer base. */
+  explorerUrl: explorerUrlSchema
 });
 
 export type MyCampaignDistribution = z.infer<typeof myCampaignDistributionSchema>;
@@ -86,6 +90,8 @@ export const myCampaignSchema = z.strictObject({
   city: z.string().trim().min(1),
   imageUrl: marketplaceCampaignImageUrlSchema.nullable(),
   vaultAddress: stellarContractIdSchema,
+  /** The vault's explorer link (#438/WU3); `null` without an explorer base. */
+  vaultExplorerUrl: explorerUrlSchema,
   state: myCampaignStateSchema,
   goalArs: z.number().int().nonnegative(),
   /** The raised total in ARS, or `null` when the campaign predates its snapshot. */

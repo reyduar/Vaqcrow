@@ -368,7 +368,13 @@ const app = buildApp({
   // The public marketplace listing (#414/WU1) and the real PyME photo it
   // serves (#414/WU3): published campaigns only. The image route reads the
   // bytes through the same storage adapter the upload/content checks use.
-  marketplace: { campaigns: marketplaceCampaignRepository, storage: storageAdapter, detail: campaignDetailRepository },
+  // The detail links the vault to the explorer (#438/WU3); `null` on `local`.
+  marketplace: {
+    campaigns: marketplaceCampaignRepository,
+    storage: storageAdapter,
+    detail: campaignDetailRepository,
+    explorerBaseUrl: config.stellar.explorerUrl
+  },
   // Per-account favorites (#414/WU2): the signed-in caller's own rows only.
   favorite: { favorites: favoriteRepository },
   // The investor's simulated KYC (#422/WU4): the signed-in caller's own state
@@ -376,14 +382,25 @@ const app = buildApp({
   investorKyc: { kyc: investorKycRepository },
   // The investor's portfolio (#426/WU1): the verified principal's Stellar key
   // resolves the account server-side, and only that account's own rows are read.
-  portfolio: { wallets: walletRepository, portfolio: portfolioRepository, now: () => new Date() },
+  // Explorer links (#438/WU3) come from the configured base; `null` on `local`.
+  portfolio: {
+    wallets: walletRepository,
+    portfolio: portfolioRepository,
+    now: () => new Date(),
+    explorerBaseUrl: config.stellar.explorerUrl
+  },
   // The investor report (#430/WU1): every authenticated role reads the report
   // and its independently fetched sales block, always scoped to the verified
   // principal's own stored Stellar key.
-  reports: { wallets: walletRepository, reports: reportsRepository, now: () => new Date() },
+  reports: {
+    wallets: walletRepository,
+    reports: reportsRepository,
+    now: () => new Date(),
+    explorerBaseUrl: config.stellar.explorerUrl
+  },
   // The PyME dashboard (#434/WU1): the verified principal's own user id is the
   // owner, and only that owner's campaigns are read.
-  myCampaigns: { myCampaigns: myCampaignsRepository, now: () => new Date() },
+  myCampaigns: { myCampaigns: myCampaignsRepository, now: () => new Date(), explorerBaseUrl: config.stellar.explorerUrl },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

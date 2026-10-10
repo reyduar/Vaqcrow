@@ -138,7 +138,8 @@ function buildFullApp(auth?: AuthDependency): {
       },
       // The account-gated detail route (#422/WU1) is registered so the matrix
       // exercises it; the probe answers before the handler runs.
-      detail: { findPublished: async () => ({ ok: true as const, value: undefined }) }
+      detail: { findPublished: async () => ({ ok: true as const, value: undefined }) },
+      explorerBaseUrl: undefined
     },
     favorite: stub,
     investorKyc: stub,

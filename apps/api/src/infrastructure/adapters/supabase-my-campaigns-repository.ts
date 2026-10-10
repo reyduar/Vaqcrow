@@ -123,7 +123,8 @@ export class SupabaseMyCampaignsRepository implements MyCampaignsRepositoryPort 
       distributionId: this.text(value["distribution_id"]),
       period: this.optionalText(value["period"]),
       amountStroops: this.bigint(value["amount_stroops"]),
-      state: this.distributionState(value["state"])
+      state: this.distributionState(value["state"]),
+      transactionHash: this.text(value["transaction_hash"])
     };
   }
 

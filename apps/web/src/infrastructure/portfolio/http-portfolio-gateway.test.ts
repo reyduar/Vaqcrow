@@ -23,7 +23,9 @@ const WIRE = {
       fundedPercentBps: 6_300,
       status: "funding",
       closeDate: "2026-11-30T12:00:00.000Z",
-      vaultAddress: VAULT
+      vaultAddress: VAULT,
+      vaultExplorerUrl: null,
+      transactions: []
     }
   ],
   distributions: [
@@ -33,7 +35,9 @@ const WIRE = {
       campaignName: "Panadería Horizonte SRL",
       period: "2026-08",
       amountXlm: "4.1200000",
-      status: "confirmed"
+      status: "confirmed",
+      transactionHash: "a".repeat(64),
+      explorerUrl: null
     }
   ],
   totals: {

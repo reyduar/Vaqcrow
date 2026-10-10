@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { SupabaseReportsRepository } from "./supabase-reports-repository.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The investor report read adapter (#430, WU1). It reads the three
  * service_role-only views, filters by the resolved investor account, and maps
@@ -29,7 +35,18 @@ const DISTRIBUTION_ROW = {
   state: "confirmed",
   confirmed_at: "2026-07-01T00:00:00+00:00",
   recorded_at: "2026-06-30T00:00:00+00:00",
-  declared_sales_ars: "9000000"
+  declared_sales_ars: "9000000",
+  transaction_hash: "d".repeat(64)
+};
+
+const TRANSACTION_ROW = {
+  investor_account_id: ACCOUNT,
+  transaction_hash: "a".repeat(64),
+  campaign_id: C1,
+  campaign_name: "Panadería Sol",
+  vault_address: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+  amount_stroops: "1500000",
+  observed_at: "2026-03-15T00:00:00+00:00"
 };
 
 const SALES_ROW = {
@@ -119,7 +136,8 @@ describe("SupabaseReportsRepository", () => {
           state: "confirmed",
           confirmedAt: "2026-07-01T00:00:00+00:00",
           recordedAt: "2026-06-30T00:00:00+00:00",
-          declaredSalesArs: 9_000_000n
+          declaredSalesArs: 9_000_000n,
+          transactionHash: "d".repeat(64)
         }
       ]
     });
@@ -148,7 +166,8 @@ describe("SupabaseReportsRepository", () => {
       state: "submitted",
       confirmedAt: null,
       recordedAt: "2026-06-30T00:00:00+00:00",
-      declaredSalesArs: null
+      declaredSalesArs: null,
+      transactionHash: "d".repeat(64)
     });
   });
 
@@ -215,5 +234,52 @@ describe("SupabaseReportsRepository", () => {
       ok: false,
       error: { code: "unavailable" }
     });
+  });
+
+  it("reads the observed contribute transactions scoped by the investor account (#438/WU3)", async () => {
+    const { client, from, eq, order } = fakeClient({ investor_contribution_transaction: { data: [TRANSACTION_ROW] } });
+
+    const result = await new SupabaseReportsRepository(client).listContributionTransactions(ACCOUNT);
+
+    expect(from).toEqual(["investor_contribution_transaction"]);
+    expect(eq).toEqual([["investor_account_id", ACCOUNT]]);
+    expect(order).toEqual([["observed_at", { ascending: false }]]);
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        {
+          transactionHash: "a".repeat(64),
+          campaignId: C1,
+          campaignName: "Panadería Sol",
+          vaultAddress: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+          amountStroops: 1_500_000n,
+          observedAt: "2026-03-15T00:00:00+00:00"
+        }
+      ]
+    });
+  });
+
+  it("maps an unresolved PyME to a null name and refuses a missing hash or observation", async () => {
+    const legacy = fakeClient({ investor_contribution_transaction: { data: [{ ...TRANSACTION_ROW, campaign_name: null }] } });
+    const unobserved = fakeClient({ investor_contribution_transaction: { data: [{ ...TRANSACTION_ROW, observed_at: null }] } });
+    const noHash = without(DISTRIBUTION_ROW, "transaction_hash");
+    const missingHash = fakeClient({ investor_report_distribution: { data: [noHash] } });
+    const failing = fakeClient({
+      investor_contribution_transaction: { error: { code: "PGRST500", message: "secret detail", details: "d", hint: "h" } }
+    });
+
+    const mapped = await new SupabaseReportsRepository(legacy.client).listContributionTransactions(ACCOUNT);
+    expect(mapped.ok && mapped.value[0]?.campaignName).toBeNull();
+    expect(await new SupabaseReportsRepository(unobserved.client).listContributionTransactions(ACCOUNT)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+    expect(await new SupabaseReportsRepository(missingHash.client).listDistributions(ACCOUNT)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+    const failed = await new SupabaseReportsRepository(failing.client).listContributionTransactions(ACCOUNT);
+    expect(failed).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(JSON.stringify(failed)).not.toContain("secret detail");
   });
 });

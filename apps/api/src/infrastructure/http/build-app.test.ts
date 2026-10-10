@@ -261,7 +261,11 @@ describe("buildApp", () => {
         findPublishedImage: async () => ({ ok: true as const, value: undefined })
       };
       app = buildApp({
-        marketplace: { campaigns, storage: { downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array(), contentType: "image/png" } }) } }
+        marketplace: {
+          campaigns,
+          storage: { downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array(), contentType: "image/png" } }) },
+          explorerBaseUrl: undefined
+        }
       });
 
       const response = await app.inject({ method: "GET", url: "/marketplace/campaigns" });
@@ -286,7 +290,8 @@ describe("buildApp", () => {
               ok: true as const,
               value: { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }
             })
-          }
+          },
+          explorerBaseUrl: undefined
         }
       });
 

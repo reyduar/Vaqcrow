@@ -26,9 +26,12 @@ const WIRE = {
       pyme: "Café Tostadero del Paraná",
       declaredSalesArs: null,
       shareXlm: "4.0850000",
-      state: "submitted"
+      state: "submitted",
+      transactionHash: "a".repeat(64),
+      explorerUrl: null
     }
-  ]
+  ],
+  contributionTransactions: []
 };
 
 type Result = { status: number; data: unknown } | Error;

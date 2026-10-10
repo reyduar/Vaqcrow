@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { SupabaseMyCampaignsRepository } from "./supabase-my-campaigns-repository.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The PyME dashboard read adapter (#434, WU1). It reads the three
  * service_role-only views, filters by the resolved owner user id, and maps
@@ -40,7 +46,8 @@ const DISTRIBUTION_ROW = {
   distribution_id: DISTRIBUTION_ID,
   period: "2026-06",
   state: "confirmed",
-  amount_stroops: "12500000"
+  amount_stroops: "12500000",
+  transaction_hash: "d".repeat(64)
 };
 
 const SALES_ROW = {
@@ -159,7 +166,8 @@ describe("SupabaseMyCampaignsRepository", () => {
           distributionId: DISTRIBUTION_ID,
           period: "2026-06",
           amountStroops: 12_500_000n,
-          state: "confirmed"
+          state: "confirmed",
+          transactionHash: "d".repeat(64)
         }
       ]
     });
@@ -220,6 +228,16 @@ describe("SupabaseMyCampaignsRepository", () => {
       error: { code: "unavailable" }
     });
     expect(await new SupabaseMyCampaignsRepository(notArray.client).listSales(OWNER)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+  });
+
+  it("reports unavailable for a distribution without its Testnet hash (#438/WU3)", async () => {
+    const noHash = without(DISTRIBUTION_ROW, "transaction_hash");
+    const missing = fakeClient({ my_campaign_distribution: { data: [noHash] } });
+
+    expect(await new SupabaseMyCampaignsRepository(missing.client).listDistributions(OWNER)).toEqual({
       ok: false,
       error: { code: "unavailable" }
     });

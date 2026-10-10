@@ -1,7 +1,9 @@
 import { investorReportSchema, reportSalesByPymeSchema } from "@vaqcrow/contracts";
 import type { AvailableRange, InvestorReport, ReportRange, ReportSalesByPyme } from "@vaqcrow/contracts";
+import { contractExplorerUrl, transactionExplorerUrl } from "../explorer-url.js";
 import type {
   ReportContributionRecord,
+  ReportContributionTransactionRecord,
   ReportDistributionRecord,
   ReportsRepositoryPort,
   ReportSalesByPymeRecord
@@ -23,6 +25,11 @@ import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
  * approximation, because a contribution is a cumulative per-account row with no
  * per-event date. A missing declared sale, pending total or distribution share
  * is `null` ("sin dato"), never a fabricated zero.
+ *
+ * Testnet transparency (#438/WU3): every latest distribution carries its hash,
+ * and the report lists the investor's **observed** contribute transactions whose
+ * observation month falls in the range, each with its hash, amount and vault.
+ * Explorer links are built from `explorerBaseUrl` and are `null` without one.
  */
 
 const STROOPS_PER_XLM = 10_000_000n;
@@ -37,9 +44,17 @@ const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 export interface GetInvestorReportDependencies {
   /** Resolves the verified principal's stored Stellar key (its profile column). */
   readonly wallets: Pick<WalletRepositoryPort, "readPublicKey">;
-  readonly reports: Pick<ReportsRepositoryPort, "listContributions" | "listDistributions" | "listSalesByPyme">;
+  readonly reports: Pick<
+    ReportsRepositoryPort,
+    "listContributions" | "listDistributions" | "listSalesByPyme" | "listContributionTransactions"
+  >;
   /** Injected for deterministic default ranges; `index.ts` passes `() => new Date()`. */
   readonly now: () => Date;
+  /**
+   * `StellarConfig.explorerUrl` (#438/WU3); `undefined` on the `local` network,
+   * which turns every explorer link into `null`. The hashes are still returned.
+   */
+  readonly explorerBaseUrl: string | undefined;
 }
 
 /** The optional `from`/`to` query input; both are `YYYY-MM` months. */
@@ -77,14 +92,17 @@ export async function getInvestorReport(
 
   if (key.value === null) {
     const range = resolved.kind === "explicit" ? resolved.range : defaultRange(EMPTY_AVAILABLE, dependencies.now());
-    return { ok: true, value: buildReport([], [], range) };
+    return { ok: true, value: buildReport([], [], [], range, dependencies.explorerBaseUrl) };
   }
 
-  const [contributions, distributions] = await Promise.all([
+  const [contributions, distributions, transactions] = await Promise.all([
     dependencies.reports.listContributions(key.value),
-    dependencies.reports.listDistributions(key.value)
+    dependencies.reports.listDistributions(key.value),
+    dependencies.reports.listContributionTransactions(key.value)
   ]);
-  if (!contributions.ok || !distributions.ok) return { ok: false, error: { code: "unavailable" } };
+  if (!contributions.ok || !distributions.ok || !transactions.ok) {
+    return { ok: false, error: { code: "unavailable" } };
+  }
 
   try {
     const range =
@@ -93,7 +111,7 @@ export async function getInvestorReport(
         : defaultRange(availableRangeOf(contributions.value, distributions.value), dependencies.now());
     return {
       ok: true,
-      value: buildReport(contributions.value, distributions.value, range)
+      value: buildReport(contributions.value, distributions.value, transactions.value, range, dependencies.explorerBaseUrl)
     };
   } catch {
     return { ok: false, error: { code: "unavailable" } };
@@ -231,10 +249,50 @@ function compareSales(a: ReportSalesByPymeRecord, b: ReportSalesByPymeRecord): n
   return 0;
 }
 
+function transactionLink(base: string | undefined, hash: string): string | null {
+  return base === undefined ? null : transactionExplorerUrl(base, hash);
+}
+
+function contractLink(base: string | undefined, address: string): string | null {
+  return base === undefined ? null : contractExplorerUrl(base, address);
+}
+
+/**
+ * The observed contribute transactions whose observation month is in the range,
+ * newest first (the hash breaks ties so the order is stable).
+ */
+function contributionTransactionsInRange(
+  transactions: readonly ReportContributionTransactionRecord[],
+  range: ReportRange,
+  explorerBaseUrl: string | undefined
+): InvestorReport["contributionTransactions"] {
+  return transactions
+    .filter((transaction) => {
+      const month = monthOf(transaction.observedAt);
+      return month !== undefined && range.from <= month && month <= range.to;
+    })
+    .sort(
+      (a, b) =>
+        toEpoch(b.observedAt) - toEpoch(a.observedAt) ||
+        (a.transactionHash < b.transactionHash ? -1 : a.transactionHash > b.transactionHash ? 1 : 0)
+    )
+    .map((transaction) => ({
+      date: transaction.observedAt,
+      pyme: transaction.campaignName ?? NEUTRAL_PYME_LABEL,
+      amountXlm: toXlm(transaction.amountStroops),
+      transactionHash: transaction.transactionHash,
+      explorerUrl: transactionLink(explorerBaseUrl, transaction.transactionHash),
+      vaultAddress: transaction.vaultAddress,
+      vaultExplorerUrl: contractLink(explorerBaseUrl, transaction.vaultAddress)
+    }));
+}
+
 function buildReport(
   contributions: readonly ReportContributionRecord[],
   distributions: readonly ReportDistributionRecord[],
-  range: ReportRange
+  transactions: readonly ReportContributionTransactionRecord[],
+  range: ReportRange,
+  explorerBaseUrl: string | undefined
 ): InvestorReport {
   const availableRange = availableRangeOf(contributions, distributions);
 
@@ -300,13 +358,19 @@ function buildReport(
       pyme: distribution.campaignName ?? NEUTRAL_PYME_LABEL,
       declaredSalesArs: distribution.declaredSalesArs === null ? null : Number(distribution.declaredSalesArs),
       shareXlm: toXlm(distribution.amountStroops),
-      state: distribution.state
+      state: distribution.state,
+      transactionHash: distribution.transactionHash,
+      explorerUrl: transactionLink(explorerBaseUrl, distribution.transactionHash)
     }));
+
+  const contributionTransactions = contributionTransactionsInRange(transactions, range, explorerBaseUrl);
 
   return investorReportSchema.parse({
     range,
     availableRange,
-    isEmpty: campaignIds.size === 0 && inRange.length === 0,
+    // An observed contribute transaction in the range is data too: its month can
+    // differ from the cumulative row's `coalesce(last_observed_at, created_at)`.
+    isEmpty: campaignIds.size === 0 && inRange.length === 0 && contributionTransactions.length === 0,
     kpis: {
       contributedXlm: toXlm(contributedStroops),
       confirmedDistributionsXlm: toXlm(confirmedStroops),
@@ -315,6 +379,7 @@ function buildReport(
       campaignsCount: campaignIds.size
     },
     monthlySeries,
-    latestDistributions
+    latestDistributions,
+    contributionTransactions
   });
 }

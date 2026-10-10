@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { SupabasePortfolioRepository } from "./supabase-portfolio-repository.js";
 
+function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+  const copy = { ...value };
+  Reflect.deleteProperty(copy, key);
+  return copy;
+}
+
 /**
  * The portfolio read adapter (#426, WU1). It reads the two service_role-only
  * views, filters by the resolved investor account, and maps PostgREST's
@@ -41,7 +47,18 @@ const DISTRIBUTION_ROW = {
   period: "2026-06",
   amount_stroops: "12500000",
   state: "confirmed",
-  recorded_at: "2026-07-01T00:00:00.000Z"
+  recorded_at: "2026-07-01T00:00:00.000Z",
+  transaction_hash: "d".repeat(64)
+};
+
+const TRANSACTION_ROW = {
+  investor_account_id: ACCOUNT,
+  transaction_hash: "a".repeat(64),
+  campaign_id: CAMPAIGN_ID,
+  campaign_name: "Panadería Sol",
+  vault_address: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+  amount_stroops: "1500000",
+  observed_at: "2026-03-15T00:00:00+00:00"
 };
 
 interface FakeStep {
@@ -144,7 +161,8 @@ describe("SupabasePortfolioRepository", () => {
           campaignName: "Panadería Sol",
           period: "2026-06",
           amountStroops: 12_500_000n,
-          state: "confirmed"
+          state: "confirmed",
+          transactionHash: "d".repeat(64)
         }
       ]
     });
@@ -182,5 +200,47 @@ describe("SupabasePortfolioRepository", () => {
       ok: false,
       error: { code: "unavailable" }
     });
+  });
+
+  it("reads the observed contribute transactions scoped by the investor account, oldest first (#438/WU3)", async () => {
+    const { client, from, eq, order } = fakeClient({ investor_contribution_transaction: { data: [TRANSACTION_ROW] } });
+
+    const result = await new SupabasePortfolioRepository(client).listContributionTransactions(ACCOUNT);
+
+    expect(from).toEqual(["investor_contribution_transaction"]);
+    expect(eq).toEqual([["investor_account_id", ACCOUNT]]);
+    expect(order).toEqual([["observed_at", { ascending: true }]]);
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        {
+          transactionHash: "a".repeat(64),
+          campaignId: CAMPAIGN_ID,
+          amountStroops: 1_500_000n,
+          observedAt: "2026-03-15T00:00:00+00:00"
+        }
+      ]
+    });
+  });
+
+  it("reports unavailable for a distribution without its hash or a transaction without an observation", async () => {
+    const noHash = without(DISTRIBUTION_ROW, "transaction_hash");
+    const missingHash = fakeClient({ investor_portfolio_distribution: { data: [noHash] } });
+    const unobserved = fakeClient({ investor_contribution_transaction: { data: [{ ...TRANSACTION_ROW, observed_at: null }] } });
+    const failing = fakeClient({
+      investor_contribution_transaction: { error: { code: "PGRST500", message: "secret detail", details: "d", hint: "h" } }
+    });
+
+    expect(await new SupabasePortfolioRepository(missingHash.client).listDistributions(ACCOUNT)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+    expect(await new SupabasePortfolioRepository(unobserved.client).listContributionTransactions(ACCOUNT)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+    const failed = await new SupabasePortfolioRepository(failing.client).listContributionTransactions(ACCOUNT);
+    expect(failed).toEqual({ ok: false, error: { code: "unavailable" } });
+    expect(JSON.stringify(failed)).not.toContain("secret detail");
   });
 });
