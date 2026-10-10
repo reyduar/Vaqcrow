@@ -80,6 +80,7 @@ function toDetail(wire: CampaignDetailWire, imageBaseUrl: string): CampaignDetai
     status: wire.status,
     backers: wire.backers,
     vaultAddress: wire.vaultAddress,
+    vaultExplorerUrl: wire.vaultExplorerUrl,
     assessment: wire.assessment,
     decision: wire.decision,
     // The persisted sales evidence passes straight through: the contract's own

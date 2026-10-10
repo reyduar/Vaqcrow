@@ -26,5 +26,11 @@ export const MY_CAMPAIGNS_COPY = Object.freeze({
   errorMessage: "El servicio no respondió. Ningún dato se modificó.",
   retryLabel: "Reintentar",
   /** Owner-pending: the template shows no empty-distributions copy for the PyME. */
-  noDistributions: "Todavía no hay distribuciones para tu campaña."
+  noDistributions: "Todavía no hay distribuciones para tu campaña.",
+  /** #438/WU5: the template's «Bóveda CDLZ…7Q4K» label. */
+  vaultLabel: "Bóveda",
+  /** #438/WU5, owner-pending: the template draws no vault explorer link for the PyME. */
+  vaultExplorerLink: "Ver bóveda en el explorador",
+  /** #438/WU5, owner-pending: the label of each distribution's Testnet hash. */
+  distributionHash: "Hash"
 });

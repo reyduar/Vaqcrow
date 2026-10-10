@@ -52,6 +52,7 @@ function toCampaign(wire: MyCampaignWire, imageBaseUrl: string): MyCampaign {
     city: wire.city,
     imageSrc: resolveImageSrc(wire.imageUrl, imageBaseUrl),
     vaultAddress: wire.vaultAddress,
+    vaultExplorerUrl: wire.vaultExplorerUrl,
     state: wire.state,
     goalArs: wire.goalArs,
     raisedArs: wire.raisedArs,

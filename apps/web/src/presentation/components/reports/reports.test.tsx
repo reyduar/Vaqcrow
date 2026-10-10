@@ -41,9 +41,12 @@ function report(overrides: Partial<InvestorReport> = {}): InvestorReport {
         pyme: "Café Tostadero del Paraná",
         declaredSalesArs: 3_870_000,
         shareXlm: "4.0850000",
-        state: "submitted"
+        state: "submitted",
+        transactionHash: "a".repeat(64),
+        explorerUrl: null
       }
     ],
+    contributionTransactions: [],
     ...overrides
   };
 }

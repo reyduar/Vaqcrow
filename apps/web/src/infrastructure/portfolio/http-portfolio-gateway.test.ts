@@ -145,6 +145,35 @@ describe("HttpPortfolioGateway.get", () => {
     expect(await gateway.get()).toEqual({ ok: false, code: "network" });
   });
 
+  it("passes the vault explorer link, the position's transactions and the distribution hash through (#438/WU5)", async () => {
+    const TX_HASH = "b".repeat(64);
+    const transaction = {
+      transactionHash: TX_HASH,
+      amountXlm: "100.0000000",
+      observedAt: "2026-10-08T10:05:00.000Z",
+      explorerUrl: `https://explorer.example/tx/${TX_HASH}`
+    };
+    const { client } = fakeClient({
+      status: 200,
+      data: {
+        ...WIRE,
+        contributions: [
+          { ...WIRE.contributions[0], vaultExplorerUrl: `https://explorer.example/contract/${VAULT}`, transactions: [transaction] }
+        ]
+      }
+    });
+    const gateway = new HttpPortfolioGateway(client, BASE, token);
+
+    const result = await gateway.get();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.summary.contributions[0]!.vaultExplorerUrl).toBe(`https://explorer.example/contract/${VAULT}`);
+    expect(result.summary.contributions[0]!.transactions).toEqual([transaction]);
+    expect(result.summary.distributions[0]!.transactionHash).toBe("a".repeat(64));
+    expect(result.summary.distributions[0]!.explorerUrl).toBeNull();
+  });
+
   it("rejects a malformed body instead of rendering it", async () => {
     const { client } = fakeClient({
       status: 200,

@@ -8,21 +8,27 @@ const DISTRIBUTIONS: readonly ReportLatestDistribution[] = [
     pyme: "Café Tostadero del Paraná",
     declaredSalesArs: 3_870_000,
     shareXlm: "4.0850000",
-    state: "submitted"
+    state: "submitted",
+    transactionHash: "a".repeat(64),
+    explorerUrl: null
   },
   {
     date: "2026-09-25T12:00:00.000Z",
     pyme: "Panadería Horizonte SRL",
     declaredSalesArs: null,
     shareXlm: null,
-    state: "confirmed"
+    state: "confirmed",
+    transactionHash: "b".repeat(64),
+    explorerUrl: null
   },
   {
     date: "2026-08-28T12:00:00.000Z",
     pyme: "Café Tostadero del Paraná",
     declaredSalesArs: 3_902_100,
     shareXlm: "4.1200000",
-    state: "failed"
+    state: "failed",
+    transactionHash: "c".repeat(64),
+    explorerUrl: null
   }
 ];
 
@@ -76,6 +82,19 @@ const PYMES: readonly ReportSalesByPymeEntry[] = [
     status: "anomalous"
   }
 ];
+
+describe("toDistributionRows proof (#438/WU5)", () => {
+  it("carries each distribution's hash and its API-built explorer link (null stays null)", () => {
+    const rows = toDistributionRows([
+      { ...DISTRIBUTIONS[0]!, explorerUrl: "https://explorer.example/tx/a" },
+      DISTRIBUTIONS[1]!
+    ]);
+
+    expect(rows[0]!.transactionHash).toBe(DISTRIBUTIONS[0]!.transactionHash);
+    expect(rows[0]!.explorerUrl).toBe("https://explorer.example/tx/a");
+    expect(rows[1]!.explorerUrl).toBeNull();
+  });
+});
 
 describe("toSalesRows", () => {
   it("formats the amount and the month label", () => {

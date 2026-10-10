@@ -95,6 +95,29 @@ describe("HttpReportGateway.get", () => {
     expect(await gateway.get(null, null)).toEqual({ ok: false, code: "network" });
   });
 
+  it("passes the distribution hash and the range's contribution transactions through (#438/WU5)", async () => {
+    const TX_HASH = "b".repeat(64);
+    const VAULT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2";
+    const transaction = {
+      date: "2026-09-02T10:05:00.000Z",
+      pyme: "Café Tostadero del Paraná",
+      amountXlm: "100.0000000",
+      transactionHash: TX_HASH,
+      explorerUrl: `https://explorer.example/tx/${TX_HASH}`,
+      vaultAddress: VAULT,
+      vaultExplorerUrl: null
+    };
+    const { client } = fakeClient({ status: 200, data: { ...WIRE, contributionTransactions: [transaction] } });
+    const gateway = new HttpReportGateway(client, token);
+
+    const result = await gateway.get("2026-04", "2026-09");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.report.contributionTransactions).toEqual([transaction]);
+    expect(result.report.latestDistributions[0]!.transactionHash).toBe("a".repeat(64));
+  });
+
   it("rejects a malformed body instead of rendering it", async () => {
     const gateway = new HttpReportGateway(
       fakeClient({ status: 200, data: { ...WIRE, kpis: { ...WIRE.kpis, contributedXlm: "850" } } }).client,

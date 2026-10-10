@@ -5,7 +5,6 @@ import {
   IoCloseCircleOutline,
   IoCreateOutline,
   IoHourglassOutline,
-  IoOpenOutline,
   IoRemoveCircleOutline,
   IoSyncOutline
 } from "react-icons/io5";
@@ -23,9 +22,8 @@ import {
 } from "@/application/admin/evidence";
 import { Badge } from "../badge";
 import { EmptyState } from "../empty-state";
+import { ExplorerProof } from "../explorer-proof";
 import { HashDisplay, truncateMiddle } from "../hash-display";
-
-const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
 
 export const EVIDENCE_ICONS: Readonly<Record<AdminEvidenceIcon, IconType>> = {
   check: IoCheckmarkCircleOutline,
@@ -95,6 +93,15 @@ function FactList({ facts }: { facts: readonly AdminEvidenceFact[] }) {
   );
 }
 
+/**
+ * What each step-level explorer link proves, for its accessible name (#438/WU5):
+ * the deploy step carries two links, and «Ver hash del despliegue» alone does
+ * not say it is a transaction. Unlisted labels name themselves.
+ */
+const STEP_PROOF_NAME: Readonly<Record<string, string>> = {
+  "Hash del despliegue": "Transacción de despliegue de la bóveda"
+};
+
 /** A step-level proof (vault contract, deploy hash) in the shared `HashDisplay`, or «Sin dato». */
 function StepProof({ proof }: { proof: AdminEvidenceProof }) {
   if (proof.value === null) {
@@ -109,6 +116,7 @@ function StepProof({ proof }: { proof: AdminEvidenceProof }) {
     <HashDisplay
       label={proof.label}
       value={proof.value}
+      proofLabel={STEP_PROOF_NAME[proof.label] ?? proof.label}
       {...(proof.explorerUrl === null ? {} : { explorerUrl: proof.explorerUrl })}
     />
   );
@@ -116,32 +124,18 @@ function StepProof({ proof }: { proof: AdminEvidenceProof }) {
 
 /**
  * A list row's proof: the template's compact contract row («CDLZ…7Q4K
- * Explorador», `Vaqcrow Sistema.dc.html`) — the truncated value with its full
- * text kept for assistive tech, and the explorer link only when the API sent one.
+ * Explorador», `Vaqcrow Sistema.dc.html`), shared with the role views through
+ * `ExplorerProof`; a missing value keeps the admin's «Evidencia faltante» badge.
  */
 function InlineProof({ proof }: { proof: AdminEvidenceProof }) {
-  if (proof.value === null) return <MissingEvidence />;
-  const short = truncateMiddle(proof.value);
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-sm text-text-secondary">{proof.label}</span>
-      <span title={proof.value} className="font-mono text-[13px] break-all">
-        <span aria-hidden="true">{short}</span>
-        <span className="sr-only">{proof.value}</span>
-      </span>
-      {proof.explorerUrl === null ? null : (
-        <a
-          href={proof.explorerUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={`Ver ${proof.label.charAt(0).toLowerCase()}${proof.label.slice(1)} ${proof.value} en el explorador (abre en una pestaña nueva)`}
-          className={`inline-flex items-center gap-1 rounded text-[13px] font-semibold text-brand-accent-text ${FOCUS_RING}`}
-        >
-          {EVIDENCE_COPY.explorer}
-          <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
-        </a>
-      )}
-    </div>
+    <ExplorerProof
+      label={proof.label}
+      value={proof.value}
+      explorerUrl={proof.explorerUrl}
+      linkText={EVIDENCE_COPY.explorer}
+      missing={<MissingEvidence />}
+    />
   );
 }
 

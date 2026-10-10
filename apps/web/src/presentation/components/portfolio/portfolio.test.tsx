@@ -34,6 +34,8 @@ function position(overrides: Partial<PortfolioSummary["contributions"][number]> 
     status: "funding" as const,
     closeDate: "2026-11-30T12:00:00.000Z",
     vaultAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2",
+    vaultExplorerUrl: null,
+    transactions: [],
     ...overrides
   };
 }

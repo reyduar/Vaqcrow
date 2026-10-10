@@ -1,13 +1,18 @@
 import { formatXlmAmount } from "@/application/portfolio/format";
 import { PORTFOLIO_DISTRIBUTION_STATE_COPY } from "@/application/portfolio/distribution-state";
+import { PORTFOLIO_PROOF_COPY } from "@/application/portfolio/proofs";
 import type { PortfolioDistribution } from "@/application/ports/portfolio-port";
+import { microcopy } from "@/application/trust/disclosures";
 import { Badge } from "../badge";
+import { ExplorerProof } from "../explorer-proof";
 
 /**
  * "Distribuciones" (`Vaqcrow Portafolio.dc.html:196-204`, Feature #426, WU2).
  * Presentational: `campaignName`/`period` are nullable for a legacy
  * distribution, so the `·` separator is skipped when either is absent and
- * nothing is invented.
+ * nothing is invented. Each row carries its Testnet hash and, when the API
+ * sent one, its explorer link (#438/WU5); the canonical hash note is stated
+ * once for the section.
  */
 
 export interface PortfolioDistributionsProps {
@@ -38,12 +43,19 @@ export function PortfolioDistributions({ distributions }: PortfolioDistributions
               <div className="min-w-0 flex-1">
                 <div className="text-[15px] font-bold">{formatXlmAmount(distribution.amountXlm)}</div>
                 {detail ? <div className="text-[13px] text-text-secondary">{detail}</div> : null}
+                <ExplorerProof
+                  label={PORTFOLIO_PROOF_COPY.distributionHash}
+                  value={distribution.transactionHash}
+                  explorerUrl={distribution.explorerUrl}
+                  className="mt-1"
+                />
               </div>
               <span className="text-xs font-[650]">{PORTFOLIO_DISTRIBUTION_STATE_COPY[distribution.status]}</span>
             </li>
           );
         })}
       </ul>
+      {distributions.length > 0 ? <p className="m-0 text-xs text-text-secondary">{microcopy.hashTechnicalOnly}</p> : null}
       <p className="m-0 text-xs text-text-secondary">Cálculo determinístico; la IA no calcula esta obligación.</p>
     </section>
   );

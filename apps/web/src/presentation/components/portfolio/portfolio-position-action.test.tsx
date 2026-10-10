@@ -43,6 +43,8 @@ function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition
     status: "funding",
     closeDate: "2026-11-30T12:00:00.000Z",
     vaultAddress: VAULT,
+    vaultExplorerUrl: null,
+    transactions: [],
     ...overrides
   };
 }

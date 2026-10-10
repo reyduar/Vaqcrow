@@ -111,6 +111,24 @@ describe("EvidenceChain", () => {
     expect(within(deployment).getByText("Evidencia faltante")).toBeTruthy();
   });
 
+  it("gives the vault and deploy explorer links distinct accessible names", () => {
+    const DEPLOY_HASH = "d".repeat(64);
+    const DEPLOY_URL = `https://stellar.expert/explorer/testnet/tx/${DEPLOY_HASH}`;
+    const withDeploy: AdminApplicationEvidence = {
+      ...FULL,
+      vault: { ...FULL.vault!, deployTransactionHash: DEPLOY_HASH, deployExplorerUrl: DEPLOY_URL }
+    };
+    render(<EvidenceChain chain={buildAdminEvidenceChain(withDeploy)} />);
+    const deployment = stepNamed("3 · Despliegue de la bóveda");
+    const names = within(deployment)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("aria-label"));
+    expect(names).toEqual([
+      "Ver en el explorador: contrato de la bóveda (abre en una pestaña nueva)",
+      "Ver en el explorador: transacción de despliegue de la bóveda (abre en una pestaña nueva)"
+    ]);
+  });
+
   it("lists contributions without a link when the explorer URL is null", () => {
     render(<EvidenceChain chain={buildAdminEvidenceChain(FULL)} />);
     const contributions = stepNamed("4 · Aportes");

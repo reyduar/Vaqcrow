@@ -1,7 +1,9 @@
 import { MY_CAMPAIGNS_COPY } from "@/application/company/copy";
 import { toAggregateDistributionRows, type DistributionTone } from "@/application/company/distributions";
 import type { MyCampaign } from "@/application/ports/my-campaigns-port";
+import { microcopy } from "@/application/trust/disclosures";
 import { Badge } from "../badge";
+import { ExplorerProof } from "../explorer-proof";
 
 /**
  * The aggregate «Distribuciones» section of the PyME dashboard (Feature #434,
@@ -14,7 +16,9 @@ import { Badge } from "../badge";
  * The `Revisar y firmar` affordance lives on the nested rows of «Bóveda y
  * distribuciones» (so a single distribution never offers two signing buttons);
  * this section is the read-only aggregate, closed by the deterministic-
- * calculation footnote.
+ * calculation footnote. Each row carries its Testnet hash and, when the API
+ * sent one, its explorer link (#438/WU5); the canonical hash note is stated
+ * once for the section.
  */
 
 const TONE_TEXT: Readonly<Record<DistributionTone, string>> = {
@@ -58,6 +62,12 @@ export function CompanyDistributions({ campaigns }: CompanyDistributionsProps) {
                   {row.amountXlm} · {row.campaignName}
                   {row.periodLabel === null ? "" : ` · ${row.periodLabel}`}
                 </div>
+                <ExplorerProof
+                  label={MY_CAMPAIGNS_COPY.distributionHash}
+                  value={row.transactionHash}
+                  explorerUrl={row.explorerUrl}
+                  className="mt-1"
+                />
               </div>
               <span className={`text-xs font-[650] ${TONE_TEXT[row.tone]}`}>{row.stateLabel}</span>
             </li>
@@ -65,6 +75,7 @@ export function CompanyDistributions({ campaigns }: CompanyDistributionsProps) {
         </ul>
       )}
 
+      {rows.length > 0 ? <p className="m-0 text-xs text-text-secondary">{microcopy.hashTechnicalOnly}</p> : null}
       <p className="m-0 text-xs text-text-secondary">{MY_CAMPAIGNS_COPY.footnote}</p>
     </section>
   );

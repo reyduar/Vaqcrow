@@ -183,6 +183,18 @@ describe("HttpCampaignDetailGateway.get", () => {
     expect(await gateway.get(CAMPAIGN_ID)).toEqual({ ok: false, code: "network" });
   });
 
+  it("passes the vault explorer link through (#438/WU5)", async () => {
+    const url = `https://explorer.example/contract/${WIRE_DETAIL.vaultAddress}`;
+    const { client } = fakeClient({ status: 200, data: { ...WIRE_DETAIL, vaultExplorerUrl: url } });
+    const gateway = new HttpCampaignDetailGateway(client, BASE);
+
+    const result = await gateway.get(CAMPAIGN_ID);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.detail.vaultExplorerUrl).toBe(url);
+  });
+
   it("rejects a malformed success body instead of rendering it", async () => {
     const { client } = fakeClient({ status: 200, data: { ...WIRE_DETAIL, fundedPercentBps: 20_000 } });
     const gateway = new HttpCampaignDetailGateway(client, BASE);

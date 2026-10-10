@@ -4,6 +4,9 @@ import type { PortfolioPosition } from "@/application/ports/portfolio-port";
 import { PortfolioPositionCard } from "./portfolio-position-card";
 
 const CAMPAIGN_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
+const VAULT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2";
+const HASH_A = "a".repeat(64);
+const HASH_B = "b".repeat(64);
 
 function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition {
   return {
@@ -19,6 +22,8 @@ function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition
     status: "funding",
     closeDate: "2026-11-30T12:00:00.000Z",
     vaultAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2",
+    vaultExplorerUrl: null,
+    transactions: [],
     ...overrides
   };
 }
@@ -79,6 +84,52 @@ describe("PortfolioPositionCard", () => {
     );
 
     expect(screen.getByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
+  });
+
+  it("shows the vault with its explorer link and each observed contribution with hash, amount and date (#438/WU5)", () => {
+    renderCard(
+      position({
+        vaultExplorerUrl: `https://explorer.example/contract/${VAULT}`,
+        transactions: [
+          { transactionHash: HASH_A, amountXlm: "150.0000000", observedAt: "2026-10-01T23:30:00.000Z", explorerUrl: null },
+          {
+            transactionHash: HASH_B,
+            amountXlm: "100.0000000",
+            observedAt: "2026-10-08T10:05:00.000Z",
+            explorerUrl: `https://explorer.example/tx/${HASH_B}`
+          }
+        ]
+      })
+    );
+
+    const vaultLink = screen.getByRole("link", {
+      name: `Ver bóveda de Panadería Horizonte SRL ${VAULT} en el explorador (abre en una pestaña nueva)`
+    });
+    expect(vaultLink).toHaveAttribute("href", `https://explorer.example/contract/${VAULT}`);
+    expect(vaultLink).toHaveAttribute("target", "_blank");
+    expect(vaultLink).toHaveAttribute("rel", "noreferrer noopener");
+
+    const list = screen.getByRole("list", { name: "Tus transacciones de aporte" });
+    expect(list).toHaveTextContent("150,0000000 XLM");
+    expect(list).toHaveTextContent("01/10/2026");
+    expect(screen.getByTitle(HASH_A)).toBeInTheDocument();
+    const txLink = screen.getByRole("link", {
+      name: `Ver hash del aporte ${HASH_B} en el explorador (abre en una pestaña nueva)`
+    });
+    expect(txLink).toHaveAttribute("href", `https://explorer.example/tx/${HASH_B}`);
+    // The first transaction has no explorer URL: its hash renders without a link.
+    expect(screen.queryByRole("link", { name: new RegExp(HASH_A) })).not.toBeInTheDocument();
+  });
+
+  it("shows «Sin dato» for the hash proof of a contribution made before hashes were persisted, never a zero", () => {
+    renderCard(position());
+
+    expect(screen.getByText("Hash del aporte")).toBeInTheDocument();
+    expect(screen.getByText("Sin dato")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Tus transacciones de aporte" })).not.toBeInTheDocument();
+    // No explorer base: the vault renders without a link, too.
+    expect(screen.queryByRole("link", { name: /bóveda/ })).not.toBeInTheDocument();
+    expect(screen.getByTitle(VAULT)).toBeInTheDocument();
   });
 
   it("renders no action slot by default", () => {

@@ -53,6 +53,10 @@ export interface DistributionRow {
   readonly amountXlm: string;
   readonly stateLabel: string;
   readonly tone: DistributionTone;
+  /** The distribution's Testnet hash (#438/WU5). */
+  readonly transactionHash: string;
+  /** API-built explorer link; `null` renders the hash without a link. */
+  readonly explorerUrl: string | null;
 }
 
 function toDistributionRow(distribution: MyCampaignDistribution): DistributionRow {
@@ -62,7 +66,9 @@ function toDistributionRow(distribution: MyCampaignDistribution): DistributionRo
     amountArs: distribution.amountArs === null ? SIN_DATO : formatArsAmount(distribution.amountArs),
     amountXlm: distribution.amountXlm === null ? SIN_DATO : formatApproxXlmAmount(distribution.amountXlm),
     stateLabel: MY_CAMPAIGN_DISTRIBUTION_STATE_COPY[distribution.state],
-    tone: MY_CAMPAIGN_DISTRIBUTION_STATE_TONE[distribution.state]
+    tone: MY_CAMPAIGN_DISTRIBUTION_STATE_TONE[distribution.state],
+    transactionHash: distribution.transactionHash,
+    explorerUrl: distribution.explorerUrl
   };
 }
 

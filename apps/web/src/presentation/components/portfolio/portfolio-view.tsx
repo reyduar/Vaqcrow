@@ -4,6 +4,7 @@ import { EMPTY_PORTFOLIO_COPY } from "@/application/portfolio/wallet-states";
 import type { PortfolioSummary } from "@/application/ports/portfolio-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
+import { microcopy } from "@/application/trust/disclosures";
 import { EmptyState } from "../empty-state";
 import { PortfolioDistributions } from "./portfolio-distributions";
 import { PortfolioPositionAction } from "./portfolio-position-action";
@@ -149,6 +150,8 @@ export function PortfolioView({
             action={{ label: EMPTY_PORTFOLIO_COPY.cta, onPress: onExplore }}
           />
         )}
+        {/* #438/WU5: the canonical hash note, once for every position's proof row. */}
+        {hasContributions ? <p className="m-0 text-xs text-text-secondary">{microcopy.hashTechnicalOnly}</p> : null}
       </section>
 
       <div

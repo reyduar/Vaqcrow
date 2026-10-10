@@ -17,6 +17,10 @@ import { formatPeriod, formatPeriodRange } from "./periods";
  *   spreadsheet never has to parse a thousands separator out of a CSV field.
  * - `null` is an **empty cell**, never `0` — a missing declared sale, a
  *   `none` month or no pending total is an absence, not a figure.
+ * - Testnet proof (#438/WU5): each distribution carries its hash and explorer
+ *   URL, and the period's observed contributions get their own section with
+ *   hash, vault and explorer URLs — the URLs are the API's own, a missing one
+ *   is an empty cell.
  * - Rows are CRLF-terminated and the file starts with a UTF-8 BOM so Excel
  *   opens the Spanish accents and the `·` correctly.
  */
@@ -72,14 +76,38 @@ export function buildReportCsv(report: InvestorReport, sales?: ReportSalesByPyme
     ),
     "",
     csvRow(["Últimas distribuciones"]),
-    csvRow(["Fecha", "PyME", "Ventas declaradas (ARS)", "Participación (XLM)", "Estado"]),
+    csvRow([
+      "Fecha",
+      "PyME",
+      "Ventas declaradas (ARS)",
+      "Participación (XLM)",
+      "Estado",
+      "Hash de la transacción",
+      "Explorador"
+    ]),
     ...report.latestDistributions.map((distribution) =>
       csvRow([
         formatDate(distribution.date),
         distribution.pyme,
         numberCell(distribution.declaredSalesArs),
         distribution.shareXlm ?? "",
-        REPORT_DISTRIBUTION_STATE_COPY[distribution.state]
+        REPORT_DISTRIBUTION_STATE_COPY[distribution.state],
+        distribution.transactionHash,
+        distribution.explorerUrl ?? ""
+      ])
+    ),
+    "",
+    csvRow(["Aportes confirmados"]),
+    csvRow(["Fecha", "PyME", "Monto (XLM)", "Hash de la transacción", "Explorador", "Bóveda", "Explorador de la bóveda"]),
+    ...report.contributionTransactions.map((transaction) =>
+      csvRow([
+        formatDate(transaction.date),
+        transaction.pyme,
+        transaction.amountXlm,
+        transaction.transactionHash,
+        transaction.explorerUrl ?? "",
+        transaction.vaultAddress,
+        transaction.vaultExplorerUrl ?? ""
       ])
     )
   ];

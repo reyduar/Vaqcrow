@@ -34,6 +34,10 @@ export interface MyCampaignDistribution {
   readonly amountArs: number | null;
   readonly amountXlm: string | null;
   readonly state: MyCampaignDistributionState;
+  /** The distribution's Testnet hash (#438/WU5); the persisted column is `not null`. */
+  readonly transactionHash: string;
+  /** API-built explorer link; `null` without an explorer base. */
+  readonly explorerUrl: string | null;
 }
 
 /** One declared-sales month of the campaign's PyME. */
@@ -53,6 +57,8 @@ export interface MyCampaign {
   /** Absolute image URL resolved by the adapter from the contract's API-relative `imageUrl`. */
   readonly imageSrc: string | null;
   readonly vaultAddress: string;
+  /** The vault's explorer link built by the API; `null` without an explorer base (#438/WU5). */
+  readonly vaultExplorerUrl: string | null;
   readonly state: MyCampaignState;
   readonly goalArs: number;
   /** The raised total in ARS, or `null` when the campaign predates its snapshot. */

@@ -42,6 +42,10 @@ export interface ReportDistributionRow {
   readonly share: string;
   readonly state: string;
   readonly tone: ReportTone;
+  /** The distribution's Testnet hash (#438/WU5). */
+  readonly transactionHash: string;
+  /** API-built explorer link; `null` renders the hash without a link. */
+  readonly explorerUrl: string | null;
 }
 
 export function toDistributionRows(
@@ -53,7 +57,9 @@ export function toDistributionRows(
     sales: distribution.declaredSalesArs === null ? "Sin dato" : formatArsAmount(distribution.declaredSalesArs),
     share: distribution.shareXlm === null ? "Sin distribución" : formatXlmAmount(distribution.shareXlm),
     state: REPORT_DISTRIBUTION_STATE_COPY[distribution.state],
-    tone: REPORT_DISTRIBUTION_STATE_TONE[distribution.state]
+    tone: REPORT_DISTRIBUTION_STATE_TONE[distribution.state],
+    transactionHash: distribution.transactionHash,
+    explorerUrl: distribution.explorerUrl
   }));
 }
 

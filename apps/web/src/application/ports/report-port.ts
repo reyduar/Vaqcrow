@@ -56,6 +56,26 @@ export interface ReportLatestDistribution {
   readonly declaredSalesArs: number | null;
   readonly shareXlm: string | null;
   readonly state: ReportLatestDistributionState;
+  /** The distribution's Testnet hash (#438/WU5); the persisted column is `not null`. */
+  readonly transactionHash: string;
+  /** API-built explorer link; `null` without an explorer base. */
+  readonly explorerUrl: string | null;
+}
+
+/**
+ * One observed contribute transaction of the investor in the selected range,
+ * newest first (#438/WU5). A contribution made before hashes were persisted is
+ * not listed — never an invented hash.
+ */
+export interface ReportContributionTransaction {
+  readonly date: string;
+  readonly pyme: string;
+  /** This transaction's own amount, canonical XLM (7 decimals). */
+  readonly amountXlm: string;
+  readonly transactionHash: string;
+  readonly explorerUrl: string | null;
+  readonly vaultAddress: string;
+  readonly vaultExplorerUrl: string | null;
 }
 
 export interface AvailableRange {
@@ -70,6 +90,7 @@ export interface InvestorReport {
   readonly kpis: ReportKpis;
   readonly monthlySeries: readonly ReportMonthlyPoint[];
   readonly latestDistributions: readonly ReportLatestDistribution[];
+  readonly contributionTransactions: readonly ReportContributionTransaction[];
 }
 
 /** One declared-sales row for a PyME the investor holds a position in. */

@@ -16,7 +16,8 @@ function report(overrides: Partial<InvestorReport["kpis"]> = {}, availableRange:
       ...overrides
     },
     monthlySeries: [],
-    latestDistributions: []
+    latestDistributions: [],
+    contributionTransactions: []
   };
 }
 

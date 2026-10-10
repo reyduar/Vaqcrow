@@ -51,6 +51,8 @@ export interface CampaignDetail {
   /** How many distinct investors have contributed. */
   readonly backers: number;
   readonly vaultAddress: string | null;
+  /** The vault's explorer link built by the API; `null` without a vault or an explorer base (#438/WU5). */
+  readonly vaultExplorerUrl: string | null;
   readonly assessment: CampaignDetailAssessment | null;
   readonly decision: CampaignDetailDecision | null;
   /**

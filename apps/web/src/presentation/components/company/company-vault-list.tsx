@@ -8,6 +8,7 @@ import type { MyCampaignSortMode } from "@/application/company/sort";
 import type { MyCampaign, MyCampaignDistribution } from "@/application/ports/my-campaigns-port";
 import { Badge } from "../badge";
 import { Button } from "../button";
+import { ExplorerProof } from "../explorer-proof";
 import { ProgressBar } from "../progress-bar";
 
 /**
@@ -89,9 +90,15 @@ function VaultRow({
           </div>
           <div className="min-w-0">
             <h3 className="m-0 text-[17px] leading-[1.3] font-bold">{campaign.name}</h3>
-            <div className="text-[13px] text-text-secondary">
-              Bóveda {formatShortAddress(campaign.vaultAddress)}
-            </div>
+            {/* #438/WU5: the template's «Bóveda CDLZ…7Q4K» line, now with the API-built explorer link. */}
+            <ExplorerProof
+              label={MY_CAMPAIGNS_COPY.vaultLabel}
+              value={campaign.vaultAddress}
+              displayValue={formatShortAddress(campaign.vaultAddress)}
+              explorerUrl={campaign.vaultExplorerUrl}
+              linkText={MY_CAMPAIGNS_COPY.vaultExplorerLink}
+              proofLabel={`${MY_CAMPAIGNS_COPY.vaultLabel} de ${campaign.name}`}
+            />
             <div className="text-[13px] text-text-secondary">
               {campaign.sector} · {campaign.city}
             </div>

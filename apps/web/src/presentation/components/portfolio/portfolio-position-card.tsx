@@ -1,9 +1,12 @@
 import { Link } from "@heroui/react";
 import type { ReactNode } from "react";
+import { formatShortAddress } from "@/application/company/format";
 import { formatXlmAmount } from "@/application/portfolio/format";
+import { PORTFOLIO_PROOF_COPY, toPositionTransactionRows } from "@/application/portfolio/proofs";
 import { PORTFOLIO_STATUS_COPY, positionStatusBody } from "@/application/portfolio/status";
 import type { PortfolioPosition } from "@/application/ports/portfolio-port";
 import { Badge } from "../badge";
+import { ExplorerProof } from "../explorer-proof";
 import { ProgressBar } from "../progress-bar";
 
 /**
@@ -13,7 +16,56 @@ import { ProgressBar } from "../progress-bar";
  * block renders the shared label plus, only for `funding`, the template's body
  * parameterized with the real close date; `settled`/`refunding` show the label
  * alone (their bodies reference facts the demo does not persist).
+ *
+ * The Testnet proof row (#438/WU5, owner decision D3) spans the card: the vault
+ * with its explorer link and the investor's own observed contribute
+ * transactions (amount, day, hash + link), in the template's compact contract
+ * row (`ExplorerProof`). A contribution made before hashes were persisted shows
+ * «Sin dato» for its hash, never a zero; a `null` explorer URL shows the value
+ * without a link.
  */
+
+function PositionProof({ position }: { readonly position: PortfolioPosition }) {
+  const rows = toPositionTransactionRows(position);
+  const listId = `position-transactions-${position.campaignId}`;
+  return (
+    <div className="flex min-w-0 flex-col gap-3 border-t border-border pt-4 sm:col-span-4">
+      <ExplorerProof
+        label={PORTFOLIO_PROOF_COPY.vault}
+        value={position.vaultAddress}
+        displayValue={formatShortAddress(position.vaultAddress)}
+        explorerUrl={position.vaultExplorerUrl}
+        proofLabel={`${PORTFOLIO_PROOF_COPY.vault} de ${position.name}`}
+      />
+      {rows.length === 0 ? (
+        <ExplorerProof label={PORTFOLIO_PROOF_COPY.transactionHash} value={null} explorerUrl={null} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <span id={listId} className="text-sm text-text-secondary">
+            {PORTFOLIO_PROOF_COPY.transactionsTitle}
+          </span>
+          <ul aria-labelledby={listId} className="m-0 flex list-none flex-col gap-2 p-0">
+            {rows.map((row) => (
+              <li
+                key={row.transactionHash}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-control bg-page-surface px-3.5 py-2.5 text-[13px]"
+              >
+                <span className="font-[650]">{row.amount}</span>
+                <span className="text-text-secondary">{row.date}</span>
+                <ExplorerProof
+                  label={PORTFOLIO_PROOF_COPY.transactionHash}
+                  hideLabel
+                  value={row.transactionHash}
+                  explorerUrl={row.explorerUrl}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_BLOCK_CLASS: Readonly<Record<PortfolioPosition["status"], string>> = {
   funding: "bg-trust-info-surface text-trust-info",
@@ -84,6 +136,8 @@ export function PortfolioPositionCard({ position, action }: PortfolioPositionCar
           Ver campaña
         </Link>
       </div>
+
+      <PositionProof position={position} />
     </li>
   );
 }

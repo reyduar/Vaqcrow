@@ -33,6 +33,7 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     status: "funding",
     backers: 12,
     vaultAddress: null,
+    vaultExplorerUrl: null,
     assessment: {
       riskBand: "medium",
       confidence: 0.72,
@@ -162,6 +163,43 @@ describe("CampaignDetail (detail sections)", () => {
     expect(
       within(aside).getByText("Podés retirar tu aporte mientras el fondeo siga abierto. Freighter firma; Vaqcrow nunca recibe tu seed.")
     ).toBeInTheDocument();
+  });
+
+  it("links the vault to the explorer in the aside when the API sends its URL (#438/WU5)", async () => {
+    const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+    const url = `https://explorer.example/contract/${VAULT}`;
+    renderDetail({
+      get: vi.fn().mockResolvedValue({ ok: true, detail: detail({ vaultAddress: VAULT, vaultExplorerUrl: url }) })
+    });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+    const aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+    const link = within(aside).getByRole("link", {
+      name: `Ver bóveda ${VAULT} en el explorador (abre en una pestaña nueva)`
+    });
+    expect(link).toHaveAttribute("href", url);
+    expect(link).toHaveTextContent("Ver bóveda en el explorador");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noreferrer noopener");
+  });
+
+  it("shows the vault without a link when there is no explorer URL, and «Sin dato» without a vault", async () => {
+    const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+    const port = { get: vi.fn().mockResolvedValue({ ok: true, detail: detail({ vaultAddress: VAULT }) }) };
+    const { unmount } = renderDetail(port);
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+    let aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+    expect(within(aside).getByText("Bóveda")).toBeInTheDocument();
+    expect(within(aside).getByTitle(VAULT)).toBeInTheDocument();
+    expect(within(aside).queryByRole("link", { name: /bóveda/ })).not.toBeInTheDocument();
+    unmount();
+
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail() }) });
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+    aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+    const term = within(aside).getByText("Bóveda");
+    expect(term.closest("div")).toHaveTextContent("Sin dato");
   });
 
   it("adapts the aside status badge per campaign status", async () => {

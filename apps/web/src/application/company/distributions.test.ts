@@ -15,6 +15,8 @@ function distribution(overrides: Partial<MyCampaignDistribution> = {}): MyCampai
     amountArs: 168_561,
     amountXlm: "1.2500000",
     state: "submitted",
+    transactionHash: "a".repeat(64),
+    explorerUrl: null,
     ...overrides
   };
 }
@@ -27,6 +29,7 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
     city: "Córdoba",
     imageSrc: null,
     vaultAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2",
+    vaultExplorerUrl: null,
     state: "funding",
     goalArs: 15_000_000,
     raisedArs: 9_450_000,
@@ -79,7 +82,9 @@ describe("toDistributionRows", () => {
       amountArs: "ARS 168.561",
       amountXlm: "≈ 1,2500000 XLM",
       stateLabel: "Enviada · pendiente de confirmación",
-      tone: "caution"
+      tone: "caution",
+      transactionHash: "a".repeat(64),
+      explorerUrl: null
     });
   });
 
@@ -88,6 +93,17 @@ describe("toDistributionRows", () => {
     expect(row!.amountArs).toBe("Sin dato");
     expect(row!.amountXlm).toBe("Sin dato");
     expect(row!.periodLabel).toBeNull();
+  });
+});
+
+describe("distribution proof (#438/WU5)", () => {
+  it("carries the hash and the API-built explorer link, keeping a null link null", () => {
+    const [withLink] = toDistributionRows([distribution({ explorerUrl: "https://explorer.example/tx/a" })]);
+    const [withoutLink] = toDistributionRows([distribution()]);
+
+    expect(withLink!.transactionHash).toBe("a".repeat(64));
+    expect(withLink!.explorerUrl).toBe("https://explorer.example/tx/a");
+    expect(withoutLink!.explorerUrl).toBeNull();
   });
 });
 

@@ -57,7 +57,9 @@ function toPosition(wire: PortfolioPositionWire, imageBaseUrl: string) {
     fundedPercentBps: wire.fundedPercentBps,
     status: wire.status,
     closeDate: wire.closeDate,
-    vaultAddress: wire.vaultAddress
+    vaultAddress: wire.vaultAddress,
+    vaultExplorerUrl: wire.vaultExplorerUrl,
+    transactions: wire.transactions
   } as const;
 }
 

@@ -22,6 +22,7 @@ function report(overrides: Partial<InvestorReport> = {}): InvestorReport {
     },
     monthlySeries: [],
     latestDistributions: [],
+    contributionTransactions: [],
     ...overrides
   };
 }

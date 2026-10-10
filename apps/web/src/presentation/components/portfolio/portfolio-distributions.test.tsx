@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PortfolioDistribution } from "@/application/ports/portfolio-port";
+import { microcopy } from "@/application/trust/disclosures";
 import { PortfolioDistributions } from "./portfolio-distributions";
 
 function distribution(overrides: Partial<PortfolioDistribution> = {}): PortfolioDistribution {
@@ -11,11 +12,32 @@ function distribution(overrides: Partial<PortfolioDistribution> = {}): Portfolio
     period: "2026-08",
     amountXlm: "4.1200000",
     status: "confirmed",
+    transactionHash: "a".repeat(64),
+    explorerUrl: null,
     ...overrides
   };
 }
 
 describe("PortfolioDistributions", () => {
+  it("shows each distribution's hash with its explorer link and the canonical hash note once (#438/WU5)", () => {
+    render(
+      <PortfolioDistributions
+        distributions={[
+          distribution({ explorerUrl: "https://explorer.example/tx/a" }),
+          distribution({ distributionId: "22222222-2222-4222-8222-222222222222", transactionHash: "b".repeat(64) })
+        ]}
+      />
+    );
+
+    const link = screen.getByRole("link", {
+      name: `Ver hash ${"a".repeat(64)} en el explorador (abre en una pestaña nueva)`
+    });
+    expect(link).toHaveAttribute("href", "https://explorer.example/tx/a");
+    expect(screen.getByTitle("b".repeat(64))).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getAllByText(microcopy.hashTechnicalOnly)).toHaveLength(1);
+  });
+
   it("renders the heading, the SIMULADO badge and the footer note", () => {
     render(<PortfolioDistributions distributions={[distribution()]} />);
 

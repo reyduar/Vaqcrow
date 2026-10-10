@@ -44,7 +44,8 @@ export class HttpReportGateway implements ReportPort {
             isEmpty: parsed.isEmpty,
             kpis: parsed.kpis,
             monthlySeries: parsed.monthlySeries,
-            latestDistributions: parsed.latestDistributions
+            latestDistributions: parsed.latestDistributions,
+            contributionTransactions: parsed.contributionTransactions
           }
         };
       } catch {

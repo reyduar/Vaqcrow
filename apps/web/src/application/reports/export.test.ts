@@ -25,16 +25,21 @@ function report(overrides: Partial<InvestorReport> = {}): InvestorReport {
         pyme: 'Café, "Tostadero"',
         declaredSalesArs: 3_870_000,
         shareXlm: "4.0850000",
-        state: "submitted"
+        state: "submitted",
+        transactionHash: "a".repeat(64),
+        explorerUrl: null
       },
       {
         date: "2026-08-20T12:00:00.000Z",
         pyme: "Panadería",
         declaredSalesArs: null,
         shareXlm: null,
-        state: "failed"
+        state: "failed",
+        transactionHash: "b".repeat(64),
+        explorerUrl: null
       }
     ],
+    contributionTransactions: [],
     ...overrides
   };
 }
@@ -99,6 +104,59 @@ describe("buildReportCsv", () => {
     expect(csv).toContain("Fecha,PyME,Ventas declaradas (ARS),Participación (XLM),Estado");
     expect(csv).toContain("20/08/2026,Panadería,,,Fallida");
     expect(csv).toContain('26/09/2026,"Café, ""Tostadero""",3870000,4.0850000,Enviada · pendiente');
+  });
+
+  it("adds the hash and explorer URL columns to the distributions, null URL as an empty cell (#438/WU5)", () => {
+    const base = report();
+    const csv = buildReportCsv(
+      report({
+        latestDistributions: [
+          { ...base.latestDistributions[0]!, explorerUrl: `https://explorer.example/tx/${"a".repeat(64)}` },
+          base.latestDistributions[1]!
+        ]
+      })
+    );
+
+    expect(csv).toContain(
+      "Fecha,PyME,Ventas declaradas (ARS),Participación (XLM),Estado,Hash de la transacción,Explorador"
+    );
+    expect(csv).toContain(`Enviada · pendiente,${"a".repeat(64)},https://explorer.example/tx/${"a".repeat(64)}\r\n`);
+    expect(csv).toContain(`Fallida,${"b".repeat(64)},\r\n`);
+  });
+
+  it("lists the period's contribution transactions with hash, vault and explorer URLs", () => {
+    const VAULT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2";
+    const csv = buildReportCsv(
+      report({
+        contributionTransactions: [
+          {
+            date: "2026-09-02T10:05:00.000Z",
+            pyme: "Panadería",
+            amountXlm: "100.0000000",
+            transactionHash: "c".repeat(64),
+            explorerUrl: null,
+            vaultAddress: VAULT,
+            vaultExplorerUrl: `https://explorer.example/contract/${VAULT}`
+          }
+        ]
+      })
+    );
+
+    expect(csv).toContain("Aportes confirmados\r\n");
+    expect(csv).toContain(
+      "Fecha,PyME,Monto (XLM),Hash de la transacción,Explorador,Bóveda,Explorador de la bóveda\r\n"
+    );
+    expect(csv).toContain(
+      `02/09/2026,Panadería,100.0000000,${"c".repeat(64)},,${VAULT},https://explorer.example/contract/${VAULT}\r\n`
+    );
+  });
+
+  it("keeps the contributions section with only its header when the period has none", () => {
+    const csv = buildReportCsv(report());
+
+    expect(csv).toContain(
+      "Aportes confirmados\r\nFecha,PyME,Monto (XLM),Hash de la transacción,Explorador,Bóveda,Explorador de la bóveda\r\n"
+    );
   });
 
   it("omits the sales-by-PyME section when no sales are present", () => {

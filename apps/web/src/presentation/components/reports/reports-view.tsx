@@ -2,6 +2,7 @@ import { buildReportKpis } from "@/application/reports/kpis";
 import { toChartSeries } from "@/application/reports/series";
 import type { InvestorReport } from "@/application/ports/report-port";
 import type { ReportSalesState } from "@/state/use-report-sales";
+import { ReportContributionTransactions } from "./report-contribution-transactions";
 import { ReportEmptyState } from "./report-empty-state";
 import { ReportKpiGrid } from "./report-kpi-grid";
 import { ReportLatestDistributions } from "./report-latest-distributions";
@@ -11,7 +12,8 @@ import { ReportSalesBlock } from "./report-sales-block";
 /**
  * The investor report body (Feature #430, WU2): the KPI grid, the monthly
  * chart with the sales block beside it, and the latest-distributions table — or
- * the empty-period state. Presentational: the load state, the range and the
+ * the empty-period state. «Aportes en el período» (#438/WU5) closes the body
+ * with the range's Testnet contribution proofs. Presentational: the load state, the range and the
  * ports belong to `reports.tsx`; the pure mappings come from
  * `application/reports/`.
  *
@@ -60,6 +62,8 @@ export function ReportsView({
       </div>
 
       <ReportLatestDistributions distributions={report.latestDistributions} />
+
+      <ReportContributionTransactions transactions={report.contributionTransactions} />
     </div>
   );
 }

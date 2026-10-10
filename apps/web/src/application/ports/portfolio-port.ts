@@ -37,6 +37,22 @@ export interface PortfolioPosition {
   readonly status: PortfolioPositionStatus;
   readonly closeDate: string;
   readonly vaultAddress: string;
+  /** The vault's explorer link built by the API; `null` without an explorer base (#438/WU5). */
+  readonly vaultExplorerUrl: string | null;
+  /**
+   * The investor's own observed contribute transactions to this campaign,
+   * oldest first. Empty for a contribution made before hashes were persisted —
+   * the honest "sin dato", never an invented hash.
+   */
+  readonly transactions: readonly PortfolioContributionTransaction[];
+}
+
+/** One observed contribute transaction: its hash, own amount (canonical XLM) and explorer link. */
+export interface PortfolioContributionTransaction {
+  readonly transactionHash: string;
+  readonly amountXlm: string;
+  readonly observedAt: string;
+  readonly explorerUrl: string | null;
 }
 
 /** One revenue-share distribution the investor is a recipient of. */
@@ -48,6 +64,9 @@ export interface PortfolioDistribution {
   /** This recipient's allocation, canonical XLM (7 decimals). */
   readonly amountXlm: string;
   readonly status: RevenueShareDistributionState;
+  /** The distribution's Testnet hash (never null: the persisted column is `not null`). */
+  readonly transactionHash: string;
+  readonly explorerUrl: string | null;
 }
 
 export interface PortfolioTotals {

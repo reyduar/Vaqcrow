@@ -19,9 +19,11 @@ import {
 } from "@/application/marketplace/format";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail } from "@/application/ports/campaign-detail-port";
+import { formatShortAddress } from "@/application/company/format";
 import { microcopy } from "@/application/trust/disclosures";
 import { Badge, type BadgeTone } from "../badge";
 import { BarChart, type BarChartPoint } from "../bar-chart";
+import { ExplorerProof } from "../explorer-proof";
 import { ProgressBar } from "../progress-bar";
 import { CampaignContribution, type CampaignContributionInjection } from "./campaign-contribution";
 import { CampaignWithdraw } from "./campaign-withdraw";
@@ -417,6 +419,10 @@ function HumanDecisionSection({ detail }: { readonly detail: CampaignDetail }) {
   );
 }
 
+const VAULT_TERM = "Bóveda";
+/** #438/WU5, owner-pending: the template draws no vault link on the public detail. */
+const VAULT_EXPLORER_LINK = "Ver bóveda en el explorador";
+
 function FundingAside({
   detail,
   contribution,
@@ -473,6 +479,23 @@ function FundingAside({
               <dd className="m-0 text-right font-semibold">{term.v}</dd>
             </div>
           ))}
+          {/* #438/WU5: the vault itself, in the template's compact contract row
+              («CDLZ…7Q4K Explorador», `Vaqcrow Sistema.dc.html`), linked only
+              when the API sent its explorer URL; no vault yet is «Sin dato». */}
+          <div className="flex justify-between gap-3 border-t border-border py-2.5 text-sm">
+            <dt className="text-text-secondary">{VAULT_TERM}</dt>
+            <dd className="m-0 flex justify-end">
+              <ExplorerProof
+                label={VAULT_TERM}
+                hideLabel
+                value={detail.vaultAddress}
+                {...(detail.vaultAddress === null ? {} : { displayValue: formatShortAddress(detail.vaultAddress) })}
+                explorerUrl={detail.vaultExplorerUrl}
+                linkText={VAULT_EXPLORER_LINK}
+                className="justify-end"
+              />
+            </dd>
+          </div>
         </dl>
 
         {contribution}

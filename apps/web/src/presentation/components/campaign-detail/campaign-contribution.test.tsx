@@ -50,6 +50,7 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     status: "funding",
     backers: 12,
     vaultAddress: VAULT,
+    vaultExplorerUrl: null,
     assessment: null,
     decision: null,
     ...overrides

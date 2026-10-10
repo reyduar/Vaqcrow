@@ -30,6 +30,7 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
     city: "Córdoba",
     imageSrc: null,
     vaultAddress: VAULT,
+    vaultExplorerUrl: null,
     state: "funding",
     goalArs: 15_000_000,
     raisedArs: 9_450_000,
@@ -42,7 +43,9 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
         period: "2026-08",
         amountArs: 168_561,
         amountXlm: "1.2500000",
-        state: "submitted"
+        state: "submitted",
+        transactionHash: "a".repeat(64),
+        explorerUrl: null
       }
     ],
     sales: [
@@ -175,7 +178,9 @@ describe("CompanyDashboard", () => {
     expect(screen.getByText("Cuentas de Testnet distintas")).toBeInTheDocument();
 
     expect(screen.getByText("Campaña 2026 · Panadería Horizonte")).toBeInTheDocument();
-    expect(screen.getByText("Bóveda CDLZ…N4B2")).toBeInTheDocument();
+    // #438/WU5: «Bóveda» and the template's short address now sit in the vault's proof row.
+    expect(screen.getByText("Bóveda")).toBeInTheDocument();
+    expect(screen.getByText("CDLZ…N4B2")).toBeInTheDocument();
     expect(screen.getByText("Fondeo abierto · 38 aportantes")).toBeInTheDocument();
     expect(screen.getByText("Destino de liquidación fijado por el contrato; es inmutable.")).toBeInTheDocument();
 

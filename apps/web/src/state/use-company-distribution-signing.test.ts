@@ -23,6 +23,7 @@ function campaign(overrides: Partial<MyCampaign> = {}): MyCampaign {
     city: "Córdoba",
     imageSrc: null,
     vaultAddress: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAHHAGCN4B2",
+    vaultExplorerUrl: null,
     state: "settled",
     goalArs: 15_000_000,
     raisedArs: 15_000_000,
