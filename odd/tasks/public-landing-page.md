@@ -44,7 +44,7 @@ Memoria Engram: `decision/418-featured-campaign`, `decision/418-help-assistant`,
 - [x] **WU2 — Datos públicos + destacada + grilla.** Selección derivada de la destacada (mayor `fundedPercentBps`, preferir foto, desempate cierre); card de ejemplo simulada; «PyMEs en campaña» (destacada excluida, 3 por cierre, vacío/error con copy de `/explore`); estados de carga/error sanitizados. — **Commit `84ebf4b`.** Verificado (tier high, verificador independiente PASS tras una corrección).
 - [x] **WU3 — Footer rico de la landing.** Footer del template de la landing (columnas Plataforma / Aprender / Proyecto + disclosure canónico + fila legal), links reales donde existan y 404-aceptado para el resto; sin tocar el footer de las demás páginas. — **Commit `8f2bfa8`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU4 — Asistente flotante «Ayuda».** Botón flotante + panel del template (saludo, 3 links rápidos, input deshabilitado, «Ir al centro de ayuda»); accesible (dialog, `aria-expanded`, cierre con Escape); links al centro de ayuda (#394). — **Commit `8536a77`.** Verificado (tier high, verificador independiente PASS; `build` OK).
-- [ ] **WU5 — Evidencia + cierre.** `docs/planning/public-landing-page-evidence.md` (español, criterios citados) + alineación de docs (`demo-tasks-list.md`, `README.md`, `DEMO.md`, `CLAUDE.md`/`AGENTS.md` si aplica) y cierre de esta bitácora.
+- [x] **WU5 — Evidencia + cierre.** `docs/planning/public-landing-page-evidence.md` (español, criterios citados) + alineación de las refs al ancla (`demo-ui.md`, `account-creation-sign-in-and-role-aware-shell-evidence.md`). — **Commit `fc291a2`.** Verificado por readback estructural (doc pasivo). *La alineación de `demo-tasks-list.md` / `README.md` / `DEMO.md` / `CLAUDE.md` (estado en `main`) queda para el merge, siguiendo el patrón de #467 — hoy nada de #418 está en `main`.*
 
 ## Estrategia de entrega
 
@@ -84,3 +84,14 @@ Por WU: `pnpm --filter @vaqcrow/web test` (+ `pnpm --filter @vaqcrow/web typeche
 - Tests: `help-assistant.test.tsx` (6), `page.test.tsx` (+1).
 - RED→GREEN: import sin resolver → 6 pasando; `page`+assistant 19 pasando. Suite web: 200 archivos / 2008 tests.
 - Verificación independiente (tier `high`): **PASS**. `build` de web corrido por el padre: `/` prerenderiza estático (server + islas componen) y compila el primer `[&_[data-brand-isotipo]]` del repo. Avisos: el isotipo del header reusa `BrandIsotipo` 33×32 vs 28×28 del template (delta menor); la sombra del pill retipa el rgba del template (no el fill de marca). El swap de ícono chat↔close no está asertado por test (solo inspección).
+
+### WU5 — Evidencia + cierre · commit `fc291a2`
+
+- `docs/planning/public-landing-page-evidence.md` (nuevo, español): concita la Feature #418, sus Tasks #419/#420/#421, la rama y los cuatro commits de WU; qué se implementó, qué se probó (con fuente por fila), las decisiones del owner del 2026-10-10 que reemplazan el texto del issue, y el mapeo verbatim de los 7 criterios de aceptación. Declara que nada está en `main` y que no hay PR.
+- Alineación: `docs/design/demo-ui.md:174` (ancla `/#how-it-works` → `/#como-funciona`, estado de la fila actualizado) y `docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md:136`. `grep -rn "#how-it-works" docs/` → sin coincidencias.
+- Gate de cierre `pnpm run verify` (pre-evidencia, sobre los 4 WUs commiteados): **exit 0** — lint, typecheck, test, build, boundaries (`1098 modules, 3689 dependencies cruised`), test:boundaries (9 archivos / 163 tests). Web: 200 archivos / 2008 tests.
+- Verificación: readback estructural por el padre (doc pasivo; sin verificador independiente). Pendiente de merge: alinear `demo-tasks-list.md`/`README.md`/`DEMO.md`/`CLAUDE.md` al estado en `main` (patrón #467).
+
+## Estado
+
+Feature #418 completa en la rama `Vaqcrow#418_Feat_Build_the_public_landing_page` (3 WU de código + 1 de evidencia + WU1 shell), verificada por WU, con el gate completo verde. **Nada en `main`; sin PR.** El merge y el cierre de #418/#419/#420/#421 los decide el owner.
