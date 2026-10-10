@@ -64,7 +64,7 @@ Unas 2.000 líneas autoradas sin el borrado (WU1 ~250, WU2 ~450, WU3 ~350, WU4 ~
 ## Pendientes del owner
 
 - Copy de la vista de evidencia admin y de los estados «Sin dato» (owner-pending, diseñado con el template). Listas completas: WU4 («Copy pendiente del owner»), WU5 y WU5b.
-- Tras el merge a `main`: re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` en Railway a `CCDNM6W4…SV7J` (`application-review-and-vault-deployment-evidence.md:308`).
+- Re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` en Railway a `CCDNM6W4…SV7J` (`application-review-and-vault-deployment-evidence.md:308`); el merge a `main` ya ocurrió (ver «Cierre — merge a main»).
 - Seguimiento: rutas ADMIN sin llamador web (`POST /assessments`, `…/assessment`, `…/manual-review`, `…/decisions`); #438 no las borra.
 - Seguimiento: el aporte, retiro y reembolso vía UI quedan sin e2e live (se borró `campaign-vault.live.spec.ts`; U9 aporta por API).
 - Copy: `application/distribution/derivation-failure-copy.ts` (vivo en la firma de distribución de la PyME) dice «Retome el recorrido…» en tres mensajes.
@@ -507,3 +507,11 @@ Exportados en el barrel: `testnetTransactionHashSchema` (hex de 64 en minúscula
 - El remoto no se consultó: se cita la verificación del 2026-10-09 (WU1, WU3).
 
 **Pendiente:** la PR de la pila a `main` la abre el orquestador con autorización del owner; su número se agrega aquí y en el documento de evidencia.
+
+### Cierre — merge a main
+
+- **Merge:** el owner mergeó [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) el 2026-10-10 a las 14:27:56 UTC; merge commit `2b7e0d5` (verificado con `gh pr view 466` y `git log --oneline -1 main`).
+- **Alcance en `main`:** la pila por roles (#369, #378, #382, #386, #398, #399, #402, #406, #410, #414, #422, #426, #430, #434) y #438.
+- **Issues cerrados:** #438, #439, #440 y #441 (por `Closes` en la PR).
+- **Docs alineados después del merge:** rama `docs/align-docs-after-466-merge`, commit `e0df7ab` (estado «en `main`» en los docs vivos; callout fechado en los documentos de evidencia, sin reescribir su texto).
+- **Mergeado no es desplegado:** no se verificó el estado de Railway ni de Vercel. Sigue pendiente del owner re-apuntar `STELLAR_CAMPAIGN_FACTORY_ID` (ver «Pendientes del owner»).
