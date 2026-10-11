@@ -41,6 +41,13 @@ export type {
 export { DEFAULT_ASSESSMENT_TIMEOUT_MS, runAssessment } from "./run-assessment.js";
 export type { RunAssessmentError, RunAssessmentResult } from "./run-assessment.js";
 
+export {
+  DEFAULT_ASSESSMENT_RETRY_POLICY,
+  backoffMs,
+  isRetryableAssessmentFailure
+} from "./retry-policy.js";
+export type { AssessmentRetryPolicy } from "./retry-policy.js";
+
 export { createSimulatedAssessmentProvider } from "./simulated-assessment-provider.js";
 export type { SimulatedAssessmentProviderOptions } from "./simulated-assessment-provider.js";
 

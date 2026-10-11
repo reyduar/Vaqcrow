@@ -1140,7 +1140,7 @@ railway variable set \
 > | `SUPABASE_URL` | Sí | Debe ser una URL `http(s)` absoluta |
 > | `SUPABASE_SERVICE_ROLE_KEY` | Sí | Nunca se registra ni se devuelve |
 > | `PORT` | No | Default `3000` |
-> | `LOG_LEVEL` | No | Default `info` |
+> | `LOG_LEVEL` | No | Default `info`; lo aplica el logger de la API (cada línea pasa por la redacción de credenciales) |
 > | `SUPABASE_PUBLISHABLE_KEY` | No | La API no sirve el navegador |
 > | `CORS_ALLOWED_ORIGINS` | No | Lista de orígenes exactos separados por coma; default `[]` salvo `APP_ENV=local`. En Railway hay que declarar explícitamente el origen de Vercel — ver [[docs/architecture/environments#8-cors-cors_allowed_origins\|§8 de Perfiles de entorno]] |
 >

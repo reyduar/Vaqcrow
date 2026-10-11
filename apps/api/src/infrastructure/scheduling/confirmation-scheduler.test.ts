@@ -42,7 +42,7 @@ function schedulerFor(
   overrides: {
     intervalMs?: number;
     onStep?: (result: ConfirmFundingIntentsResult) => void;
-    onError?: (error: unknown) => void;
+    onError?: (error: unknown, correlationId: CorrelationId) => void;
     generateCorrelationId?: () => CorrelationId;
   } = {}
 ) {
@@ -221,6 +221,25 @@ describe("ConfirmationScheduler", () => {
     await scheduler.stop();
   });
 
+  it("carries the failed tick's correlation id into the failure report", async () => {
+    const deps = depsFor({ failFirstTick: true });
+    const onError = vi.fn();
+    const generateCorrelationId = vi.fn(() => CORRELATION_ID);
+    const scheduler = schedulerFor(deps, { onError, generateCorrelationId });
+
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+
+    // The id the step ran under is the id the failure carries: an operator
+    // reading "tick failed" can link it to the writes that tick attempted. The
+    // generator runs once for the tick, so the id is not minted a second time
+    // just to report the failure.
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[1]).toBe(CORRELATION_ID);
+    expect(generateCorrelationId).toHaveBeenCalledTimes(1);
+    await scheduler.stop();
+  });
+
   it("hands each tick's result to the observer", async () => {
     const deps = depsFor();
     const onStep = vi.fn();
@@ -242,5 +261,22 @@ describe("ConfirmationScheduler", () => {
     expect(result).toEqual({ ok: true, value: [] });
     expect(deps.findPending).toHaveBeenCalledTimes(1);
     expect(scheduler.start).toBeDefined();
+  });
+
+  it("runOnce hands a freshly generated correlation id to the runner", async () => {
+    const run = vi.fn().mockResolvedValue({ ok: true, value: [] });
+    const scheduler = new ConfirmationScheduler(run, {
+      policy: DEFAULT_CONFIRMATION_POLICY,
+      now: () => NOW,
+      generateCorrelationId: () => CORRELATION_ID
+    });
+
+    const result = await scheduler.runOnce();
+
+    // Long-standing public behavior: one call, one id, reported "now", and the
+    // policy forwarded — unchanged by threading the id into the failure path.
+    expect(result).toEqual({ ok: true, value: [] });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0]?.[0]).toMatchObject({ now: NOW, correlationId: CORRELATION_ID });
   });
 });

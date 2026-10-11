@@ -1,8 +1,8 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { generateCorrelationId } from "@vaqcrow/contracts";
-import Fastify from "fastify";
-import type { FastifyError, FastifyInstance } from "fastify";
+import Fastify, { LogController } from "fastify";
+import type { FastifyError, FastifyInstance, FastifyServerOptions } from "fastify";
 import type { ApplicationReviewRepositoryPort } from "../../application/ports/application-review-repository-port.js";
 import type { DecisionDeploymentDependencies, DecisionNotificationDependencies } from "../../application/use-cases/record-human-decision.js";
 import { MAX_UPLOAD_BYTES } from "../../application/storage/document-upload.js";
@@ -34,6 +34,7 @@ import type { InvestorKycRouteDependencies } from "./routes/investor-kyc.route.j
 import { registerFundingIntentRoute } from "./routes/funding-intent.route.js";
 import type { FundingIntentRouteDependencies } from "./routes/funding-intent.route.js";
 import { registerHealthRoute } from "./routes/health.route.js";
+import type { HealthRouteDependencies } from "./routes/health.route.js";
 import { registerHumanDecisionRoute } from "./routes/human-decision.route.js";
 import { registerMarketplaceRoute } from "./routes/marketplace.route.js";
 import type { MarketplaceRouteDependencies } from "./routes/marketplace.route.js";
@@ -53,6 +54,7 @@ import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
 import { registerStorageRoute } from "./routes/storage.route.js";
 import type { StorageRouteDependencies } from "./routes/storage.route.js";
+import { registerTelemetryRoute } from "./routes/telemetry.route.js";
 import { registerWalletRoute } from "./routes/wallet.route.js";
 import type { WalletRouteDependencies } from "./routes/wallet.route.js";
 import { registerRateTableRoute } from "./routes/rate-table.route.js";
@@ -73,8 +75,10 @@ function isFrameworkClientError(error: FastifyError): boolean {
 /**
  * Anything else that escapes a route is unexpected: answer a bare
  * `500 { code: "internal" }` and log only the error name, never its message
- * (it could echo provider details or request data). Fastify's logger is
- * disabled, so this follows the adapters' `console.error` convention.
+ * (it could echo provider details or request data). The logger is only disabled
+ * when no `logger` dependency is supplied (the test default); `index.ts` supplies
+ * one, but this handler keeps following the adapters' `console.error` convention
+ * until every `console.*` site is migrated.
  */
 function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, request, reply) => {
@@ -148,6 +152,13 @@ export function buildApp(dependencies: {
   readonly myCampaigns?: MyCampaignsRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
+   * The Fastify/pino logger options (#31/WU1). Omitted by tests, where the
+   * logger stays disabled; `index.ts` wires `createLoggerOptions(config.logLevel)`.
+   */
+  readonly logger?: FastifyServerOptions["logger"];
+  /** The `GET /health` dependency report (#31/WU1). Omitted when unwired. */
+  readonly health?: HealthRouteDependencies | undefined;
+  /**
    * Required in production (`index.ts` wires the Supabase adapter). When omitted,
    * every non-public route still denies with 401.
    */
@@ -158,7 +169,12 @@ export function buildApp(dependencies: {
   assertRandomUUIDAvailable();
 
   const app = Fastify({
-    logger: false,
+    logger: dependencies.logger ?? false,
+    // Fastify's automatic per-request `req`/`res` logging would hand whole
+    // request objects to the redaction hook on every request — expensive and
+    // noisy. Request tracing stays on the `x-correlation-id` header instead.
+    // (`logController` is the non-deprecated form of the old top-level option.)
+    logController: new LogController({ disableRequestLogging: true }),
     requestIdHeader: false,
     genReqId: generateCorrelationId
   });
@@ -187,7 +203,10 @@ export function buildApp(dependencies: {
       }
     });
   }
-  registerHealthRoute(app);
+  registerHealthRoute(app, dependencies.health);
+  // The wallet-failure beacon needs no dependencies, so — like `/health` — it is
+  // registered unconditionally and the policy coverage test always sees it.
+  registerTelemetryRoute(app);
   if (dependencies.adminReviewContext) {
     registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
   }

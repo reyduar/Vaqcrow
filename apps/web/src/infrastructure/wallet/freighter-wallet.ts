@@ -1,3 +1,4 @@
+import type { WalletFailureOperation } from "@vaqcrow/contracts";
 import {
   getNetwork as freighterGetNetwork,
   isConnected as freighterIsConnected,
@@ -5,8 +6,10 @@ import {
   signMessage as freighterSignMessage,
   signTransaction as freighterSignTransaction
 } from "@stellar/freighter-api";
+import type { WalletFailureReporterPort } from "@/application/ports/wallet-failure-reporter-port";
 import { WalletError } from "@/application/ports/wallet-port";
 import type { WalletAccount, WalletPort } from "@/application/ports/wallet-port";
+import { defaultWalletFailureReporter } from "@/infrastructure/telemetry/default-wallet-failure-reporter";
 
 /**
  * The failure shape `@stellar/freighter-api` resolves with. The package does not
@@ -96,7 +99,22 @@ const realFreighterApi: FreighterApi = {
  * extension for one — the person reviews and signs inside Freighter.
  */
 export class FreighterWallet implements WalletPort {
-  constructor(private readonly api: FreighterApi = realFreighterApi) {}
+  constructor(
+    private readonly api: FreighterApi = realFreighterApi,
+    private readonly reporter: WalletFailureReporterPort = defaultWalletFailureReporter
+  ) {}
+
+  /**
+   * Reports the failure, then returns it, so a call site can `throw
+   * this.fail(...)`. Telemetry is best-effort and the reporter never throws, so
+   * the wallet's own error surface is unchanged. Only genuine wallet failures
+   * are reported: a caller bug (an empty passphrase or message) is not a wallet
+   * event and goes through `new WalletError` directly.
+   */
+  private fail(operation: WalletFailureOperation, error: WalletError): WalletError {
+    this.reporter.report({ operation, outcome: error.kind });
+    return error;
+  }
 
   async isAvailable(): Promise<boolean> {
     try {
@@ -119,17 +137,17 @@ export class FreighterWallet implements WalletPort {
    */
   async connect(): Promise<WalletAccount> {
     if (!(await this.isAvailable())) {
-      throw new WalletError("unavailable", "Freighter is not available in this browser");
+      throw this.fail("connect", new WalletError("unavailable", "Freighter is not available in this browser"));
     }
 
     const { address, error } = await this.api.requestAccess();
 
     if (error) {
-      throw classify(error);
+      throw this.fail("connect", classify(error));
     }
 
     if (!address) {
-      throw new WalletError("unknown", "Freighter granted access without returning a public address");
+      throw this.fail("connect", new WalletError("unknown", "Freighter granted access without returning a public address"));
     }
 
     return { publicKey: address };
@@ -145,28 +163,36 @@ export class FreighterWallet implements WalletPort {
    */
   async signTransaction(xdr: string, networkPassphrase: string): Promise<string> {
     if (!networkPassphrase) {
+      // A caller bug, not a wallet event: nothing about Freighter failed, so
+      // this is deliberately not reported as telemetry.
       throw new WalletError("unknown", "A network passphrase is required to request a signature");
     }
 
     const walletNetwork = await this.api.getNetwork();
     if (walletNetwork.error) {
-      throw classify(walletNetwork.error);
+      throw this.fail("sign_transaction", classify(walletNetwork.error));
     }
 
     if (walletNetwork.networkPassphrase !== networkPassphrase) {
-      throw new WalletError(
-        "network_mismatch",
-        `Freighter is on "${walletNetwork.network}", not the network the transaction declares`
+      throw this.fail(
+        "sign_transaction",
+        new WalletError(
+          "network_mismatch",
+          `Freighter is on "${walletNetwork.network}", not the network the transaction declares`
+        )
       );
     }
 
     const { signedTxXdr, error } = await this.api.signTransaction(xdr, { networkPassphrase });
     if (error) {
-      throw classify(error);
+      throw this.fail("sign_transaction", classify(error));
     }
 
     if (!signedTxXdr) {
-      throw new WalletError("unknown", "Freighter reported success without returning a signed transaction");
+      throw this.fail(
+        "sign_transaction",
+        new WalletError("unknown", "Freighter reported success without returning a signed transaction")
+      );
     }
 
     return signedTxXdr;
@@ -182,28 +208,32 @@ export class FreighterWallet implements WalletPort {
    */
   async signMessage(message: string): Promise<string> {
     if (!message) {
+      // A caller bug, not a wallet event: not reported as telemetry.
       throw new WalletError("unknown", "A message is required to request a signature");
     }
 
     const walletNetwork = await this.api.getNetwork();
     if (walletNetwork.error) {
-      throw classify(walletNetwork.error);
+      throw this.fail("sign_message", classify(walletNetwork.error));
     }
 
     if (walletNetwork.network !== TESTNET_NETWORK_NAME) {
-      throw new WalletError(
-        "network_mismatch",
-        `Freighter is on "${walletNetwork.network}", not Stellar Testnet`
+      throw this.fail(
+        "sign_message",
+        new WalletError("network_mismatch", `Freighter is on "${walletNetwork.network}", not Stellar Testnet`)
       );
     }
 
     const { signedMessage, error } = await this.api.signMessage(message);
     if (error) {
-      throw classify(error);
+      throw this.fail("sign_message", classify(error));
     }
 
     if (!signedMessage) {
-      throw new WalletError("unknown", "Freighter reported success without returning a signed message");
+      throw this.fail(
+        "sign_message",
+        new WalletError("unknown", "Freighter reported success without returning a signed message")
+      );
     }
 
     return signedMessage;

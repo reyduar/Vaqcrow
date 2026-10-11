@@ -71,8 +71,13 @@ export interface ConfirmationSchedulerOptions<Result = ConfirmFundingIntentsResu
    * The loop keeps going either way, but a swallowed failure with no observer is
    * indistinguishable from a loop that is working, which is the one thing an
    * operator cannot afford during a demo.
+   *
+   * The tick's `correlationId` is passed alongside the error: it is the same id
+   * the step ran under, so a failure report links to the writes that tick
+   * attempted. (An existing `(error) => …` observer stays assignable — a
+   * callback may ignore trailing parameters.)
    */
-  readonly onError?: (error: unknown) => void;
+  readonly onError?: (error: unknown, correlationId: CorrelationId) => void;
 }
 
 export class ConfirmationScheduler<Result = ConfirmFundingIntentsResult> {
@@ -141,10 +146,20 @@ export class ConfirmationScheduler<Result = ConfirmFundingIntentsResult> {
    * operational nudge, or a test that wants one deterministic step.
    */
   async runOnce(): Promise<Result> {
+    // One id per execution: every write a tick causes belongs to that tick.
+    return this.execute(this.generateCorrelationId());
+  }
+
+  /**
+   * One step bound to an already-minted correlation id. `runOnce` mints one per
+   * call and the loop mints one per tick, but both run the step through here —
+   * so the id that reaches the runner is the same one a tick's failure report
+   * carries.
+   */
+  private async execute(correlationId: CorrelationId): Promise<Result> {
     return this.runConfirmation({
       now: this.now(),
-      // One id per execution: every write a tick causes belongs to that tick.
-      correlationId: this.generateCorrelationId(),
+      correlationId,
       policy: this.options.policy
     });
   }
@@ -173,14 +188,18 @@ export class ConfirmationScheduler<Result = ConfirmFundingIntentsResult> {
   }
 
   private async run(): Promise<void> {
+    // Minted here rather than inside `runOnce` for one reason: the failure report
+    // below must carry the very id the step ran under, and `runOnce` has no way
+    // to hand it back if it throws.
+    const correlationId = this.generateCorrelationId();
     try {
       // The step runs first and is reported second, and the order is load-bearing
-      // rather than stylistic. `this.options.onStep?.(await this.runOnce())` reads
+      // rather than stylistic. `this.options.onStep?.(await this.execute(...))` reads
       // as the same thing and is not: an optional call short-circuits the
       // evaluation of its **arguments**, so with no observer registered the step
       // would never run at all — the scheduler would tick forever doing nothing,
       // and every test that registers an observer would still pass.
-      const result = await this.runOnce();
+      const result = await this.execute(correlationId);
 
       this.options.onStep?.(result);
     } catch (error) {
@@ -189,7 +208,7 @@ export class ConfirmationScheduler<Result = ConfirmFundingIntentsResult> {
       // precisely when the loop must keep going, and precisely when an operator
       // needs to know it is happening. Per-intent outcomes travel through
       // `onStep` instead, because those are not failures of the tick.
-      this.options.onError?.(error);
+      this.options.onError?.(error, correlationId);
     } finally {
       this.inFlight = undefined;
       // Re-armed here rather than on a fixed cadence, which is what makes

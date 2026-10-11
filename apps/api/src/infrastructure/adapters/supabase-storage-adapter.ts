@@ -94,8 +94,7 @@ export class SupabaseStorageAdapter implements StoragePort {
   ): StoragePortError {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error(`[SupabaseStorageAdapter] ${operation} error`, {
-      statusCode: error.statusCode,
-      message: error.message
+      statusCode: error.statusCode
     });
 
     if (error.statusCode === NOT_FOUND) return { code: "not_found" };

@@ -116,12 +116,7 @@ export class SupabaseInvestorKycRepository implements InvestorKycRepositoryPort 
 
   private logProviderError(operation: string, error: PostgrestError): void {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
-    console.error(`[SupabaseInvestorKycRepository] ${operation} error`, {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error(`[SupabaseInvestorKycRepository] ${operation} error`, { code: error.code });
   }
 
   private logUnexpected(operation: string, cause: unknown): void {

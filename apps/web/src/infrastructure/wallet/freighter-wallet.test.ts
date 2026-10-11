@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { WalletFailureReporterPort } from "@/application/ports/wallet-failure-reporter-port";
 import { WalletError } from "@/application/ports/wallet-port";
 import { FreighterWallet } from "./freighter-wallet";
 import type { FreighterApi } from "./freighter-wallet";
@@ -44,6 +45,12 @@ function createApi(overrides: Partial<FreighterApi> = {}): FreighterApi {
     })),
     ...overrides
   };
+}
+
+/** Deterministic reporter double: records every event, never throws. */
+function createReporter() {
+  const report = vi.fn();
+  return { reporter: { report } as unknown as WalletFailureReporterPort, report };
 }
 
 async function failureFrom(action: () => Promise<unknown>): Promise<WalletError> {
@@ -334,5 +341,138 @@ describe("FreighterWallet.signMessage", () => {
     const error = await failureFrom(() => wallet.signMessage(MESSAGE));
 
     expect(error.kind).toBe("unavailable");
+  });
+});
+
+describe("FreighterWallet failure reporting", () => {
+  it("reports a rejected connect as { connect, rejected }", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(
+      createApi({
+        requestAccess: vi.fn(async () => ({
+          address: "",
+          error: { code: -1, message: DOCUMENTED_ERRORS.rejected }
+        }))
+      }),
+      reporter
+    );
+
+    await failureFrom(() => wallet.connect());
+
+    expect(report).toHaveBeenCalledExactlyOnceWith({ operation: "connect", outcome: "rejected" });
+  });
+
+  it("reports a missing wallet on connect as { connect, unavailable }", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(
+      createApi({ isConnected: vi.fn(async () => ({ isConnected: false })) }),
+      reporter
+    );
+
+    await failureFrom(() => wallet.connect());
+
+    expect(report).toHaveBeenCalledExactlyOnceWith({ operation: "connect", outcome: "unavailable" });
+  });
+
+  it("reports a network mismatch on signTransaction as { sign_transaction, network_mismatch }", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(
+      createApi({
+        getNetwork: vi.fn(async () => ({
+          network: "PUBLIC",
+          networkPassphrase: "synthetic-other-network-passphrase"
+        }))
+      }),
+      reporter
+    );
+
+    await failureFrom(() => wallet.signTransaction(XDR, WALLET_PASSPHRASE));
+
+    expect(report).toHaveBeenCalledExactlyOnceWith({
+      operation: "sign_transaction",
+      outcome: "network_mismatch"
+    });
+  });
+
+  it("reports a network mismatch on signMessage as { sign_message, network_mismatch }", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(
+      createApi({
+        getNetwork: vi.fn(async () => ({
+          network: "PUBLIC",
+          networkPassphrase: "synthetic-other-network-passphrase"
+        }))
+      }),
+      reporter
+    );
+
+    await failureFrom(() => wallet.signMessage(MESSAGE));
+
+    expect(report).toHaveBeenCalledExactlyOnceWith({
+      operation: "sign_message",
+      outcome: "network_mismatch"
+    });
+  });
+
+  it("reports a rejected signMessage as { sign_message, rejected }", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(
+      createApi({
+        signMessage: vi.fn(async () => ({
+          signedMessage: null,
+          signerAddress: "",
+          error: { code: -1, message: DOCUMENTED_ERRORS.rejected }
+        }))
+      }),
+      reporter
+    );
+
+    await failureFrom(() => wallet.signMessage(MESSAGE));
+
+    expect(report).toHaveBeenCalledExactlyOnceWith({ operation: "sign_message", outcome: "rejected" });
+  });
+
+  it("does not report an empty passphrase — a caller bug is not a wallet event", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(createApi(), reporter);
+
+    await expect(wallet.signTransaction(XDR, "")).rejects.toBeInstanceOf(WalletError);
+
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("does not report an empty message — a caller bug is not a wallet event", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(createApi(), reporter);
+
+    await expect(wallet.signMessage("")).rejects.toBeInstanceOf(WalletError);
+
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("reports nothing when connect, signTransaction and signMessage succeed", async () => {
+    const { reporter, report } = createReporter();
+    const wallet = new FreighterWallet(createApi(), reporter);
+
+    await wallet.connect();
+    await wallet.signTransaction(XDR, WALLET_PASSPHRASE);
+    await wallet.signMessage(MESSAGE);
+
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("never throws from the default reporter when the API is unavailable", async () => {
+    // No reporter injected: the adapter falls back to the browser default,
+    // which must stay a no-op (and never throw) without a configured API base.
+    const wallet = new FreighterWallet(
+      createApi({
+        requestAccess: vi.fn(async () => ({
+          address: "",
+          error: { code: -1, message: DOCUMENTED_ERRORS.rejected }
+        }))
+      })
+    );
+
+    await expect(wallet.connect()).rejects.toBeInstanceOf(WalletError);
   });
 });

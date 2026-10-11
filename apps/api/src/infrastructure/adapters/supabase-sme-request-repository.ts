@@ -316,9 +316,6 @@ export class SupabaseSmeRequestRepository implements SmeRequestRepositoryPort {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error("[SupabaseSmeRequestRepository] persistence error", {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
       correlationId,
       applicationId
     });

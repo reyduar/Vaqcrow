@@ -268,12 +268,7 @@ export class SupabaseCampaignDeploymentRepository implements CampaignDeploymentR
 
   private failure(error: PostgrestError): CampaignDeploymentRepositoryResult<never> {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
-    console.error("[SupabaseCampaignDeploymentRepository] persistence error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error("[SupabaseCampaignDeploymentRepository] persistence error", { code: error.code });
 
     return { ok: false, error: { code: "unavailable" } };
   }

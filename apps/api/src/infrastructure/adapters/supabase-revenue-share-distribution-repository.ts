@@ -633,9 +633,6 @@ export class SupabaseRevenueShareDistributionRepository
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error("[SupabaseRevenueShareDistributionRepository] persistence error", {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
       correlationId,
       distributionId
     });

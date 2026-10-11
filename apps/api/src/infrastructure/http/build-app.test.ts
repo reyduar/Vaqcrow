@@ -199,6 +199,17 @@ describe("buildApp", () => {
     });
   });
 
+  describe("health dependency", () => {
+    it("forwards the dependency report to GET /health", async () => {
+      app = buildApp({ health: { probes: { supabase: async () => "unavailable" } } });
+
+      const response = await app.inject({ method: "GET", url: "/health" });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "degraded", dependencies: { supabase: "unavailable" } });
+    });
+  });
+
   describe("notification dependency", () => {
     it("registers the notification routes when the dependency is present", async () => {
       const repository = {

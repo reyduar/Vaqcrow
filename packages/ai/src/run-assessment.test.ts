@@ -4,7 +4,12 @@ import {
   createSimulatedAssessmentProvider,
   runAssessment
 } from "./index.js";
-import type { AssessmentEvidenceBundle, AssessmentProviderPort } from "./index.js";
+import type {
+  AssessmentEvidenceBundle,
+  AssessmentProviderOutcome,
+  AssessmentProviderPort,
+  AssessmentRetryPolicy
+} from "./index.js";
 
 /**
  * Focused behaviour for the replaceable provider boundary (Feature #21, Task #68).
@@ -71,6 +76,46 @@ function simulatedProvider(output: unknown = VALID_OUTPUT): AssessmentProviderPo
     promptVersion: "prompt-v1",
     now: () => FIXED_NOW
   });
+}
+
+/** A zero-delay policy: exercises the retry control flow without a real wait. */
+const FAST_RETRY: AssessmentRetryPolicy = {
+  maxAttempts: 2,
+  initialBackoffMs: 0,
+  maxBackoffMs: 0
+};
+
+const OK_OUTCOME: Extract<AssessmentProviderOutcome, { ok: true }> = {
+  ok: true,
+  rawOutput: VALID_OUTPUT,
+  metadata: {
+    model: "counting-provider",
+    promptVersion: "prompt-v1",
+    generatedAt: FIXED_NOW,
+    source: "provider"
+  }
+};
+
+/**
+ * A provider that answers from a script and records how many times it ran.
+ * The call count is the whole point of the retry contract: an assertion on the
+ * result alone could not tell "retried once" from "retried forever".
+ */
+function countingProvider(outcomeForCall: (call: number) => AssessmentProviderOutcome): {
+  readonly provider: AssessmentProviderPort;
+  readonly calls: () => number;
+} {
+  let calls = 0;
+
+  return {
+    provider: {
+      assess: async (): Promise<AssessmentProviderOutcome> => {
+        calls += 1;
+        return outcomeForCall(calls);
+      }
+    },
+    calls: () => calls
+  };
 }
 
 describe("runAssessment", () => {
@@ -212,5 +257,108 @@ describe("runAssessment", () => {
     }
 
     expect(result.error).toEqual({ code: "timeout" });
+  });
+});
+
+describe("bounded provider retry (Feature #31)", () => {
+  it("retries a provider_unavailable once and succeeds on the second attempt", async () => {
+    const counting = countingProvider((call) =>
+      call === 1 ? { ok: false, error: { code: "provider_unavailable" } } : OK_OUTCOME
+    );
+
+    const result = await runAssessment(counting.provider, {
+      evidence: EVIDENCE,
+      retry: FAST_RETRY
+    });
+
+    expect(result.ok).toBe(true);
+    expect(counting.calls()).toBe(2);
+  });
+
+  it("gives up after the default attempt budget and returns provider_unavailable", async () => {
+    const counting = countingProvider(() => ({ ok: false, error: { code: "provider_unavailable" } }));
+
+    // No explicit retry: the production default of two attempts applies.
+    const result = await runAssessment(counting.provider, { evidence: EVIDENCE });
+
+    expect(result).toEqual({ ok: false, error: { code: "provider_unavailable" } });
+    expect(counting.calls()).toBe(2);
+  });
+
+  it("never retries a provider-reported timeout: it is terminal", async () => {
+    const counting = countingProvider(() => ({ ok: false, error: { code: "timeout" } }));
+
+    const result = await runAssessment(counting.provider, {
+      evidence: EVIDENCE,
+      retry: FAST_RETRY
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "timeout" } });
+    expect(counting.calls()).toBe(1);
+  });
+
+  it("never retries a provider that the boundary itself times out", async () => {
+    let calls = 0;
+    const silent: AssessmentProviderPort = {
+      assess: () => {
+        calls += 1;
+        return new Promise(() => {});
+      }
+    };
+
+    const result = await runAssessment(silent, {
+      evidence: EVIDENCE,
+      timeoutMs: 20,
+      retry: FAST_RETRY
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "timeout" } });
+    expect(calls).toBe(1);
+  });
+
+  it("never retries a validation failure: an invalid output is not a transient break", async () => {
+    const counting = countingProvider(() => ({
+      ...OK_OUTCOME,
+      rawOutput: { ...VALID_OUTPUT, confidence: 72 }
+    }));
+
+    const result = await runAssessment(counting.provider, {
+      evidence: EVIDENCE,
+      retry: FAST_RETRY
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "invalid_output" } });
+    expect(counting.calls()).toBe(1);
+  });
+
+  it("does not retry at all when the policy allows a single attempt", async () => {
+    const counting = countingProvider(() => ({ ok: false, error: { code: "provider_unavailable" } }));
+
+    const result = await runAssessment(counting.provider, {
+      evidence: EVIDENCE,
+      retry: { maxAttempts: 1, initialBackoffMs: 0, maxBackoffMs: 0 }
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "provider_unavailable" } });
+    expect(counting.calls()).toBe(1);
+  });
+
+  it("returns only the sanitized code even when the provider attaches extra fields", async () => {
+    const counting = countingProvider(
+      () =>
+        ({
+          ok: false,
+          error: { code: "provider_unavailable", message: "SECRET", retryAfterMs: 5_000 }
+        }) as unknown as AssessmentProviderOutcome
+    );
+
+    const result = await runAssessment(counting.provider, {
+      evidence: EVIDENCE,
+      retry: FAST_RETRY
+    });
+
+    expect(result).toEqual({ ok: false, error: { code: "provider_unavailable" } });
+    expect(JSON.stringify(result)).not.toContain("SECRET");
+    expect(counting.calls()).toBe(2);
   });
 });
