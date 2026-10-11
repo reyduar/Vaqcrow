@@ -18,6 +18,7 @@ import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/st
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { StellarWalletSignature } from "./infrastructure/adapters/stellar-wallet-signature.js";
 import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
+import { SupabaseHealthProbe } from "./infrastructure/adapters/supabase-health-probe.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
 import { SupabaseApplicationAssessmentRepository } from "./infrastructure/adapters/supabase-application-assessment-repository.js";
@@ -43,6 +44,7 @@ import { SupabaseRevenueShareDistributionRepository } from "./infrastructure/ada
 import { SupabaseWalletRepository } from "./infrastructure/adapters/supabase-wallet-repository.js";
 import { SupabaseRateTableRepository } from "./infrastructure/adapters/supabase-rate-table-repository.js";
 import { buildApp } from "./infrastructure/http/build-app.js";
+import { createLoggerOptions } from "./infrastructure/logging/logger-options.js";
 import { createSubmissionAssessment } from "./infrastructure/submission-assessment.js";
 import { ConfirmationScheduler } from "./infrastructure/scheduling/confirmation-scheduler.js";
 import { DEFAULT_CONFIRMATION_POLICY } from "./infrastructure/scheduling/confirmation-policy.js";
@@ -55,6 +57,10 @@ const config = parseApiConfig(process.env);
 // One client, shared by every repository: the process holds a single
 // connection pool, not one per adapter.
 const supabase = createSupabaseClient(config.supabase);
+
+// The Supabase liveness probe (#31/WU1): `/health` runs it so a degraded
+// database is visible, without cycling the container (owner decision D1).
+const healthProbe = new SupabaseHealthProbe(supabase);
 
 const applicationReviewRepository = new SupabaseApplicationReviewRepository(supabase);
 const applicationAssessmentRepository = new SupabaseApplicationAssessmentRepository(supabase);
@@ -301,6 +307,13 @@ const applicationAssessmentDependencies = {
 };
 
 const app = buildApp({
+  // The real, redacted logger (#31/WU1): every line crosses `redactForLog`
+  // before it is written. This is also what finally honors `LOG_LEVEL`.
+  logger: createLoggerOptions(config.logLevel),
+  // `GET /health` reports the shared Supabase dependency (#31/WU1). It stays
+  // 200 even when the probe fails — `railway.json` pairs it with
+  // `restartPolicyType: ON_FAILURE`, so a transient blip must not cycle the box.
+  health: { probes: { supabase: () => healthProbe.check() } },
   auth,
   applicationReviewRepository,
   // A recorded changes-requested/rejected decision notifies the application's
