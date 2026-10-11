@@ -50,11 +50,11 @@ Memoria Engram: `decision/394-contact-and-terms`.
 - [x] **WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`).** Hero + TOC + 7 secciones c/u + CTA + footer estándar. — **Commit `b0c29f8`.** Verificado (tier high, verificador independiente PASS tras una corrección).
 - [x] **WU4 — Centro de ayuda (`/help`).** Hero + buscador + 4 categorías + acordeón FAQ (`aria-expanded`) + estado vacío «No encontramos resultados para "…"» + bloque de contacto + aviso «Próximamente». — **Commit `67615d0`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU5 — Modal Términos + trigger + nav `/help`.** Modal de T&C; trigger de «Términos»; entrada `/help` en el nav. — **Commit `4a1d078`.** Verificado (tier high, verificador independiente PASS).
-- [ ] **WU6 — Evidencia + cierre.** `docs/planning/about-guides-and-help-center-evidence.md` (español, criterios citados) + alineación de docs.
+- [x] **WU6 — Evidencia + cierre.** `docs/planning/about-guides-and-help-center-evidence.md` (español, criterios citados) + alineación de docs. — **Commit `ab36691`.** Verificado por readback estructural (doc pasivo). Detectó y corrigió el criterio 4 (copy de la bóveda) en `80a114f`.
 
 ## Decisión de diseño (flag para el owner)
 
-**Dónde vive el trigger de «Términos».** El template solo lo pone en el footer propio de la pantalla Acerca de (nav Inicio/Límites de la demo/GitHub/Términos); el issue dice «header/footer estándar». Propuesta de implementación: agregar «Términos» a la fila legal del `SiteFooter` compartido (alcanzable desde todas las páginas) y montar el modal ahí. Queda flageado; si el owner prefiere solo en `/about` (fiel al template), se cambia.
+**Dónde vive el trigger de «Términos»: RESUELTO (owner, 2026-10-10, opción a).** El trigger vive en la fila legal del `SiteFooter` **compartido** (alcanzable desde todas las páginas), y el modal se monta ahí. La alternativa (solo en `/about`, fiel al template) se descartó. Implementado en WU5.
 
 ## Estrategia de entrega
 
@@ -105,3 +105,13 @@ Por WU: `pnpm --filter @vaqcrow/web test` + typecheck + lint. Al cierre: `pnpm r
 - Tests: `site-footer.test.tsx` (+3), `shell-nav.test.ts`, `app-header.test.tsx`, y el guardián de términos prohibidos ampliado al copy legal.
 - RED→GREEN: 3 fallando → 37 pasando.
 - **Corrección (una):** el verificador/flags detectaron (a) el ícono debía ser help-circle (el mapa vive en `app-header.tsx`, fuera de superficie → **superficie ampliada con OK del owner**); (b) el cambio de menú **rompía** `e2e/auth-roles.spec.ts` (asserta el menú exacto → superficie ampliada). El e2e corrió **6 passed**. Además se agregó la sección «La IA es asesora, no decide» (disclosure `human-ai`) que faltaba en el copy renderizado (hueco menor del verificador) y se ajustó el test de secciones/disclosures.
+
+### WU6 — Evidencia + cierre · commits `80a114f` (copy) y `ab36691` (docs)
+
+- `docs/planning/about-guides-and-help-center-evidence.md` (nuevo, español): la Feature, sus Tasks, la rama y los commits; qué se implementó/probó; las decisiones del owner; el mapeo verbatim de los 7 criterios; límites. Alineó `docs/design/demo-ui.md` y `account-creation-...-evidence.md` (las 4 páginas ya no figuran como inexistentes; «en la rama de #394, no en main»).
+- **Hallazgo del WU documental (criterio 4):** el copy del template sobre la bóveda (la PyME abre y firma la bóveda) se había copiado verbatim y contradecía la decisión asentada. Corregido en `entrepreneur-guide.ts` (commit `80a114f`): la bóveda la despliega la plataforma tras la aprobación del admin; la PyME sólo conecta Freighter, entrega su clave pública (destino inmutable) y firma las distribuciones. Tests de guías + guardián: verdes (31).
+- Criterio 4 pasó de **no cumplido** a **cumplido**; la evidencia se actualizó en consecuencia.
+
+## Estado
+
+Feature #394 completa en la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` (6 WU: contenido, /about, guías, /help, Términos+nav, evidencia; + una corrección de copy), verificada por WU y con los 7 criterios cubiertos. **Nada en `main`; sin PR.** El merge y el cierre de #394/#395/#396/#397 los decide el owner.
