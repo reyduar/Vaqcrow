@@ -34,7 +34,8 @@ describe("shellViewFor (owner decision D9)", () => {
     expect(pairs(view.menu)).toEqual([
       ["Mi portafolio", "/portfolio"],
       ["Guía del inversor", "/investor-guide"],
-      ["Informes", "/reports"]
+      ["Informes", "/reports"],
+      ["Centro de ayuda", "/help"]
     ]);
     expect(view.chip).toEqual({ label: "INVERSOR", icon: "person" });
     expect(view.avatarSrc).toBe("/avatar-inversor.png");
@@ -49,7 +50,8 @@ describe("shellViewFor (owner decision D9)", () => {
     ]);
     expect(pairs(view.menu)).toEqual([
       ["Mi campaña", "/company"],
-      ["Guía del emprendedor", "/entrepreneur-guide"]
+      ["Guía del emprendedor", "/entrepreneur-guide"],
+      ["Centro de ayuda", "/help"]
     ]);
     expect(view.chip).toEqual({ label: "PYME", icon: "storefront" });
     expect(view.avatarSrc).toBe("/avatar-pyme.png");

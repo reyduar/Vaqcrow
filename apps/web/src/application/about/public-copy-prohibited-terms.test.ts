@@ -3,6 +3,7 @@ import { disclosures } from "../trust/disclosures";
 import { HELP_CATEGORIES, HELP_COPY, HELP_FAQS, helpResultLabel } from "../help/faq";
 import { ENTREPRENEUR_GUIDE } from "../guides/entrepreneur-guide";
 import { INVESTOR_GUIDE } from "../guides/investor-guide";
+import { TERMS_COPY } from "../legal/terms";
 import { ABOUT_COPY } from "./copy";
 
 /**
@@ -37,7 +38,8 @@ const ABOUT_TEXT = collectStrings(ABOUT_COPY).join("\n");
 const ENTREPRENEUR_TEXT = collectStrings(ENTREPRENEUR_GUIDE).join("\n");
 const INVESTOR_TEXT = collectStrings(INVESTOR_GUIDE).join("\n");
 const HELP_TEXT = collectStrings({ HELP_COPY, HELP_CATEGORIES, HELP_FAQS }).join("\n");
-const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT].join("\n");
+const TERMS_TEXT = collectStrings(TERMS_COPY).join("\n");
+const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT, TERMS_TEXT].join("\n");
 
 /**
  * The exact template sentences/phrases that contain a denylist stem without
@@ -240,5 +242,42 @@ describe("Help copy (#394)", () => {
       href: "mailto:contact@vaqcrow.com"
     });
     expect(HELP_COPY.contact.guide.href).toBe("/investor-guide");
+  });
+});
+
+describe("Terms copy (#394)", () => {
+  it("renders the standard sections in order", () => {
+    expect(TERMS_COPY.title).toBe("Términos y Condiciones");
+    expect(TERMS_COPY.sections.map((section) => section.heading)).toEqual([
+      "Aceptación",
+      "Qué es Vaqcrow",
+      "Naturaleza de la demo",
+      "Sin oferta de inversión ni asesoramiento",
+      "Stellar Testnet y valor económico",
+      "Firma no custodial",
+      "Datos simulados",
+      "La IA es asesora, no decide",
+      "Elegibilidad",
+      "Propiedad intelectual",
+      "Limitación de responsabilidad",
+      "Cambios a estos términos",
+      "Contacto"
+    ]);
+  });
+
+  it("reuses the canonical notices instead of retyping them", () => {
+    const disclosuresUsed = TERMS_COPY.sections
+      .map((section) => section.disclosure)
+      .filter((id): id is NonNullable<typeof id> => Boolean(id));
+    expect(new Set(disclosuresUsed)).toEqual(
+      new Set(["no-production", "testnet", "non-custody", "simulation", "human-ai"])
+    );
+  });
+
+  it("points the contact section at the real email", () => {
+    expect(TERMS_COPY.contact).toEqual({
+      label: "Escribir al equipo",
+      href: "mailto:contact@vaqcrow.com"
+    });
   });
 });

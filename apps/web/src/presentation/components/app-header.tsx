@@ -7,6 +7,7 @@ import type { IconType } from "react-icons";
 import {
   IoBookOutline,
   IoDocumentTextOutline,
+  IoHelpCircleOutline,
   IoLogOutOutline,
   IoPersonOutline,
   IoPieChartOutline,
@@ -34,7 +35,8 @@ import { ThemeSwitcher } from "./theme-switcher";
 const MENU_ICONS: Readonly<Record<ShellMenuIcon, IconType>> = {
   portfolio: IoPieChartOutline,
   guide: IoBookOutline,
-  reports: IoDocumentTextOutline
+  reports: IoDocumentTextOutline,
+  help: IoHelpCircleOutline
 };
 
 const CHIP_ICONS: Readonly<Record<RoleChipIcon, IconType>> = {
