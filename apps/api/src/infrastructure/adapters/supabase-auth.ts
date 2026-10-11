@@ -87,12 +87,9 @@ export class SupabaseAuth implements AuthPort {
       );
 
       if (profile.error) {
-        this.log("profile read failed", {
-          code: profile.error.code,
-          message: profile.error.message,
-          details: profile.error.details,
-          hint: profile.error.hint
-        });
+        // Only the closed provider code: message/details/hint are provider text
+        // and never cross into diagnostics.
+        this.log("profile read failed", { code: profile.error.code });
         return UNAVAILABLE;
       }
 

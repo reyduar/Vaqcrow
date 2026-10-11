@@ -266,12 +266,7 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
 
   private toRepositoryError(error: PostgrestError): BusinessRepositoryError {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
-    console.error("[SupabaseBusinessRepository] persistence error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error("[SupabaseBusinessRepository] persistence error", { code: error.code });
 
     return error.code === POSTGRES_CHECK_VIOLATION ? { code: "invalid_request" } : { code: "unavailable" };
   }

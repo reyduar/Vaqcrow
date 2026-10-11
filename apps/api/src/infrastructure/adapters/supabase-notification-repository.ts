@@ -408,9 +408,6 @@ export class SupabaseNotificationRepository implements NotificationRepositoryPor
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error(`[SupabaseNotificationRepository] ${operation} error`, {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
       status: "status" in error ? error.status : undefined
     });
   }

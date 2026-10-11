@@ -139,12 +139,7 @@ export class SupabaseDocumentVerdictRepository implements DocumentVerdictReposit
 
   private failure(error: PostgrestError): DocumentVerdictRepositoryResult<never> {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
-    console.error("[SupabaseDocumentVerdictRepository] persistence error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error("[SupabaseDocumentVerdictRepository] persistence error", { code: error.code });
 
     return { ok: false, error: { code: "unavailable" } };
   }

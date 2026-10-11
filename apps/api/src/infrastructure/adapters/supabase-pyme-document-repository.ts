@@ -174,12 +174,7 @@ export class SupabasePymeDocumentRepository implements PymeDocumentRepositoryPor
 
   private toRepositoryError(error: PostgrestError): PymeDocumentRepositoryError {
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
-    console.error("[SupabasePymeDocumentRepository] persistence error", {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    });
+    console.error("[SupabasePymeDocumentRepository] persistence error", { code: error.code });
 
     return error.code === POSTGRES_CHECK_VIOLATION ? { code: "invalid_request" } : { code: "unavailable" };
   }

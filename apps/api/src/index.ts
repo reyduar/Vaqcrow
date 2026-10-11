@@ -457,12 +457,18 @@ const distributionConfirmation = new ConfirmationScheduler(
     ),
   {
     policy: DEFAULT_CONFIRMATION_POLICY,
-    onError: (error) => {
+    onError: (error, correlationId) => {
       // The loop survives, but the failure is not silent: a tick that cannot run
       // at all is usually the database or Horizon being briefly unreachable —
       // precisely when the loop must keep going, and precisely when an operator
-      // needs to know it is happening.
-      app.log.error({ err: error }, "revenue-share distribution confirmation tick failed");
+      // needs to know it is happening. Only the error's closed name is logged,
+      // never the Error object (`redactForLog` does not strip free text, so an
+      // Error's `message` is the same leak class). The tick's correlation id
+      // rides along, so the line links to the writes that tick attempted.
+      app.log.error(
+        { cause: error instanceof Error ? error.name : "unknown", correlationId },
+        "revenue-share distribution confirmation tick failed"
+      );
     }
   }
 );

@@ -399,9 +399,6 @@ export class SupabaseFundingIntentRepository implements FundingIntentRepositoryP
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error("[SupabaseFundingIntentRepository] persistence error", {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
       correlationId,
       intentId
     });

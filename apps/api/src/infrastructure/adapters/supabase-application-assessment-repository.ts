@@ -148,9 +148,6 @@ export class SupabaseApplicationAssessmentRepository implements ApplicationAsses
     // eslint-disable-next-line no-console -- internal diagnostics only; never returned to the caller
     console.error("[SupabaseApplicationAssessmentRepository] persistence error", {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
       correlationId,
       applicationId
     });
