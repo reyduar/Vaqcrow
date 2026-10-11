@@ -42,7 +42,7 @@ Ruta por WU: implementación = **delegated direct** (1 writer por WU); verificac
 - [x] **WU2 — Retry/backoff acotado del LLM.** Envolver `callProvider` con reintentos acotados; clasificar reintentable vs. terminal. Política como constante de código (no env).
 - [x] **WU3 — Sanear logs raw de PostgREST + correlación.** Eliminar los `message/details/hint` crudos de los diagnósticos de los adapters (solo `code`/campos cerrados + correlation id donde ya está en scope) y carrear el correlation id a los logs del scheduler/assessment.
 - [x] **WU4a — Beacon de fallos de wallet: contrato + endpoint API.** `WalletFailureEvent` cerrado (operation × outcome, sin PII) + `POST /telemetry/wallet-failures` (AUTHENTICATED) que valida el body exacto y loguea `{ operation, outcome }` por el logger de WU1; nada persistido.
-- [ ] **WU4b — Reporter web en `FreighterWallet`.** Port + adapter HTTP fire-and-forget (nunca tira, nunca bloquea); emitir en `connect`/`signTransaction`/`signMessage`.
+- [x] **WU4b — Reporter web en `FreighterWallet`.** Port + adapter HTTP fire-and-forget (nunca tira, nunca bloquea) + reporter default lazy; emitir en `connect`/`signTransaction`/`signMessage`.
 - **WU4 (parte A original — «arrancar el loop de `funding-intent` en prod») — DESCARTADA por evidencia (2026-10-11):** ese camino fue **retirado** por #239 (la migración `20260923183356_create_campaign_persistence.sql` renombró `funding_intent` → `funding_intent_legacy`; evidencia `docs/planning/campaign-persistence-and-reconciliation-evidence.md:7,147`). `supabase-funding-intent-repository.ts:16` todavía apunta a la tabla vieja, la web no lo usa, y el aporte real va por la bóveda + `campaign_contribution` (ya cableado). Arrancar ese loop pollearía una tabla inexistente.
 - [ ] **WU5 — Evidencia + cierre.**
 
@@ -117,4 +117,13 @@ Implementación delegada a 1 writer; verificación independiente read-only → *
 - **RED→GREEN**: contrato rojo (33, módulo ausente) → verde; ruta roja (8, 404) → verde. `packages/contracts` 694/694; `apps/api` 2733/2733; typecheck/lint/boundaries verdes.
 - **Notas de verificación (nits)**: (1) la puerta de claves exactas y el `strictObject` son indistinguibles black-box (ambos → 400 sin log); el orden se probó por lectura de fuente; (2) los nombres de operación del wire son snake_case, así que **WU4b debe mapear** los métodos (`signTransaction`→`sign_transaction`), no pasarlos crudos.
 - **Gotcha operativa**: `apps/api` resuelve `@vaqcrow/contracts` desde su `dist`; tras tocar contratos hay que buildear contracts antes de testear la API (Turbo lo hace vía `dependsOn: ["^build"]`).
+- **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
+
+### WU4b — Reporter web de fallos de wallet (2026-10-11)
+
+Implementación delegada a 1 writer; verificación independiente read-only → **pass-with-notes**. Commit de work-unit: `076d68a` (`feat(web): report Freighter failures to the wallet-failure beacon (#31)`).
+
+- **Qué cambió**: `apps/web/src/application/ports/wallet-failure-reporter-port.ts` (nuevo, React-free) — `report(event): void` best-effort; `apps/web/src/infrastructure/telemetry/http-wallet-failure-reporter.ts` (nuevo) — POST fire-and-forget con `void` + try/catch interno; `default-wallet-failure-reporter.ts` (nuevo) — factory + default lazy (resuelve env/token en el primer report, no al importar; sin base URL es no-op estricto); `freighter-wallet.ts` — segundo parámetro opcional `reporter` (default = reporter real) para que los **6 sitios** `new FreighterWallet()` no cambien; emite en cada fallo genuino de `connect`/`signTransaction`/`signMessage` con el operation snake_case del wire (`sign_transaction`/`sign_message`); los guards de config del cliente (passphrase/mensaje vacíos) NO se reportan y un éxito no reporta nada.
+- **RED→GREEN**: 5 tests rojos (spy no llamado) + módulo ausente → 34 verdes. Focales web 34/34; `pnpm --filter @vaqcrow/web typecheck`/`lint` y `pnpm run boundaries` verdes. El suite web completo no se corrió (flaky bajo carga).
+- **Notas de verificación (nits)**: (1) [LOW] el reporter default no envolvía `resolveDefault()` en try/catch (podía enmascarar el `WalletError`); **se endureció inline** (try/catch alrededor de la resolución). (2) [LOW] no hay test dedicado del default reporter (cobertura indirecta); (3) [INFO] re-resuelve el cliente por report (correcto para best-effort). No hay leak de PII (el body se reconstruye de `operation`+`outcome`).
 - **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
