@@ -39,7 +39,7 @@ Ruta por WU: implementación = **delegated direct** (1 writer por WU); verificac
   - No incluye: migrar los ~40 `console.*` de los adapters (WU3); tocar `OPAQUE_TOKEN_PATTERN`/`redactText` (ver hallazgo abajo).
   - Aceptación: tests focales verdes (redaction del logger; `/health` con y sin dependencia; probe `unavailable` y `throw`); `pnpm --filter @vaqcrow/api test`, `typecheck`, `lint` y `pnpm run boundaries` verdes.
   - Verificación independiente: verifier read-only sobre el diff del WU.
-- [ ] **WU2 — Retry/backoff acotado del LLM.** Envolver `callProvider` con reintentos acotados + knobs de config; clasificar reintentable vs. terminal.
+- [x] **WU2 — Retry/backoff acotado del LLM.** Envolver `callProvider` con reintentos acotados; clasificar reintentable vs. terminal. Política como constante de código (no env).
 - [ ] **WU3 — Sanear logs raw de PostgREST + correlación.** Pasar los `message/details/hint` por redaction (migrar los `console.*` de los adapters) y carrear el correlation id a los logs del scheduler/assessment.
 - [ ] **WU4 — Arrancar el loop de confirmación de `funding-intent` en producción + telemetría del wallet.**
 - [ ] **WU5 — Evidencia + cierre.**
@@ -82,3 +82,15 @@ Implementación delegada a 1 writer; verificación independiente por un verifier
 - **Notas de verificación (nits, no bloqueantes)**: (1) `redaction.ts` colapsa un `Error` a `{ name, message }`, así que los logs de producción no llevarán stack — mejora estricta frente al no-op previo, pero es insumo para WU3; (2) el probe real contra Supabase no se ejerció (requiere credenciales; verificado estructuralmente: el grant `select` de `service_role` sobre `audit_log` existe); (3) `HealthReport` quedó documentado y referenciado por el handler.
 - **Decisión D1** aplicada (owner, 2026-10-11): `/health` siempre 200.
 - **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off, sin ceremonia nativa).
+
+### WU2 — Retry/backoff acotado del LLM (2026-10-11)
+
+Implementación delegada a 1 writer; verificación independiente read-only → **pass**. Commit de work-unit: `6a2c1b3` (`feat(ai): add a bounded retry to the LLM assessment boundary (#31)`).
+
+- **Decisión (owner, 2026-10-11)**: **1 reintento, solo fallos rápidos**. Se reintenta `provider_unavailable` una vez (`maxAttempts: 2`, backoff 500ms); `timeout` es **terminal** (un modelo lento no se arregla esperando de nuevo) y ningún fallo de validación se reintenta.
+- **Qué cambió**: `packages/ai/src/retry-policy.ts` (nuevo, sin imports) — `AssessmentRetryPolicy`, `DEFAULT_ASSESSMENT_RETRY_POLICY`, `backoffMs` (exponente clampeado antes de `2 **`, cap a `maxBackoffMs`) e `isRetryableAssessmentFailure` (true solo `provider_unavailable`). `run-assessment.ts` — `runAssessment` gana `retry?` y envuelve la llamada al provider en un loop acotado; `timeout` y validación no se reintentan; los fallos siguen sanitizados y sin éxito fabricado. `index.ts` re-exporta lo nuevo. Sin dependencias nuevas; `packages/ai` sigue framework-free.
+- **Política como constante de código, no env**: evita tocar `scripts/demo/preflight`, los `.env.*.example` y docs por tres variables; sigue el precedente de `confirmation-policy.ts`. Knobs por env quedan como follow-up opcional.
+- **RED→GREEN**: 10 tests de política rojos (módulo ausente) → verdes; luego 3 casos de retry rojos (llamadas 1≠2) → verdes. `pnpm --filter @vaqcrow/ai test` → 160/160; `pnpm --filter @vaqcrow/api test` → 2628/2628; `typecheck`/`lint`/`pnpm run boundaries` verdes.
+- **Notas de verificación (nits, no defectos)**: (1) el no-retry de `unknown_evidence_reference` está probado por inspección (misma rama de retorno que `invalid_output`), sin assert de conteo propio; (2) un `code` fuera de la unión TS cae a `provider_unavailable` (fail-closed documentado) y por tanto se reintentaría una vez.
+- **Cambio observable reportado**: los casos existentes de `provider_unavailable` en la suite de `packages/ai` ahora hacen 2 llamadas y tardan ~500ms (backoff default); las aserciones **no** se debilitaron.
+- **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
