@@ -171,7 +171,7 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | **Acceso y landing** | | | | | |
 | 1 | Crear cuenta / Ingresar | `/signup`, `/login` (`?role=investor\|pyme`) | Implementada: alta e ingreso reales, vista «Cuenta creada», redirección por rol | #379 | La persona crea su cuenta (`PYME` o `INVERSOR`) o ingresa y llega a su home. |
 | 2 | Onboarding PyME: KYC | Paso 1 del wizard dentro de `/company` (sin ruta propia) | Implementada en la rama de [#399](https://github.com/reyduar/Vaqcrow/issues/399), apilada (no en `main`); KYC **simulado detrás de un puerto** | [#399](https://github.com/reyduar/Vaqcrow/issues/399) (Task de [#398](https://github.com/reyduar/Vaqcrow/issues/398)) | Completa KYC/KYB simulado para poder registrar su PyME. |
-| 3 | Landing Page | `/` (con el ancla `/#how-it-works`) | Esqueleto (header y pie, sin contenido) | [#418](https://github.com/reyduar/Vaqcrow/issues/418) | Entiende la propuesta general y navega a Explorar o a Crear cuenta. |
+| 3 | Landing Page | `/` (con el ancla `/#como-funciona`) | Implementada en la rama de [#418](https://github.com/reyduar/Vaqcrow/issues/418) (apilada; no en `main`) | [#418](https://github.com/reyduar/Vaqcrow/issues/418) | Entiende la propuesta general y navega a Explorar o a Crear cuenta. |
 | **Marketplace** | | | | | |
 | 4 | Explorar PyMEs | `/explore` | No existe (link del header) | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Explora múltiples oportunidades de PyMEs sintéticas. |
 | 5 | Explorar con filtros avanzados | `/explore` (modo filtros) | No existe | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Acota oportunidades por sector, riesgo, monto u otros criterios. |
