@@ -2,8 +2,8 @@
 
 > Documento de cierre de Feature. Consolida la evidencia de las Tasks [#419](https://github.com/reyduar/Vaqcrow/issues/419) (implementar), [#420](https://github.com/reyduar/Vaqcrow/issues/420) (probar) y [#421](https://github.com/reyduar/Vaqcrow/issues/421) (documentar) de la Feature [#418](https://github.com/reyduar/Vaqcrow/issues/418) («Feature: Build the public landing page», Epic [#373](https://github.com/reyduar/Vaqcrow/issues/373)); mapea cada criterio de aceptación de la Feature, **citado textualmente**, a su resultado y a la fuente de ese resultado; y registra las decisiones del owner del **2026-10-10** que reemplazan el comportamiento *descrito* en el issue, para que este documento no contradiga la evidencia. La bitácora de iteración que lo alimenta es [[odd/tasks/public-landing-page|Bitácora: landing pública]].
 
-> [!warning] Estado de entrega: nada de #418 está en `main`
-> El trabajo vive en la rama `Vaqcrow#418_Feat_Build_the_public_landing_page`, creada desde `main` (`afede2c`). La rama **no está mergeada** y **todavía no hay PR**. En `main`, `/` sigue siendo el esqueleto (`<AppShell><h1 className="sr-only">Vaqcrow</h1></AppShell>`); este documento **no** reporta un estado mergeado ni un resultado de CI de una PR que no existe.
+> [!success] Mergeado en `main` vía [#468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10)
+> La Feature #418 y sus Tasks #419/#420/#421 están cerradas y su contenido vive en `main`. El «Estado de entrega» que este documento registraba —rama sin mergear, sin PR y `/` todavía como esqueleto en `main`— describía el estado *de rama* al escribir la evidencia y quedó superado por el merge.
 
 ## 1. Contexto y objetivo
 
@@ -55,7 +55,7 @@ Toda la superficie es frontend (`apps/web`); no hay migraciones. Fuente: bitáco
 
 ### 3.4 Footer rico y asistente flotante (WU3 y WU4)
 
-- **`landing/landing-footer.tsx`** — el footer rico del template, montado **solo** por `/` (las demás páginas conservan el `SiteFooter` compacto): marca + columnas `Plataforma` / `Aprender` / `Proyecto` (cada una un `<nav>` con `aria-label`), `CanonicalDisclosure id="no-production"` y fila legal con `microcopy.testnetBadge`. Los slugs de ruta son los que ya define `shell-nav.ts`; `#limites` es un ancla interna válida. `Contacto` queda en `#`, como el template, porque su destino es una pregunta abierta de #394.
+- **`landing/landing-footer.tsx`** — el footer rico del template, montado **solo** por `/` (las demás páginas conservan el `SiteFooter` compacto): marca + columnas `Plataforma` / `Aprender` / `Proyecto` (cada una un `<nav>` con `aria-label`), `CanonicalDisclosure id="no-production"` y fila legal con `microcopy.testnetBadge`. Los slugs de ruta son los que ya define `shell-nav.ts`; `#limites` es un ancla interna válida. `Contacto` queda en `#`, como el template, porque su destino era una pregunta abierta de #394.
 - **`landing/help-assistant.tsx`** — isla Cliente del asistente flotante «Ayuda»: toggle fijo abajo a la derecha con `aria-expanded` e ícono que alterna chat ↔ cierre; panel `role="dialog"` con el saludo, tres enlaces rápidos, un input **deshabilitado** y «Ir al centro de ayuda». Se cierra con **Escape** (listener de `keydown` adjunto solo mientras está abierto). Los enlaces apuntan a `/help` (#394, 404 aceptado) y al ancla `#limites`.
 
 ### 3.5 Documentación (WU5)
@@ -133,8 +133,8 @@ Leyenda: ✅ cumplido · ⚠️ cumplido con la salvedad de una decisión del ow
 
 ## 7. Límites y pendientes
 
-- **Rutas que todavía no existen (404 aceptado a propósito).** Los enlaces del header, del footer y del asistente apuntan a `/help`, `/about`, `/entrepreneur-guide` y `/investor-guide`; hoy responden 404 hasta que aterricen sus Features ([#394](https://github.com/reyduar/Vaqcrow/issues/394), entre otras). Se muestran deliberadamente como recordatorio de las guías pendientes.
-- **`Contacto` queda en `#`.** Es una pregunta abierta de #394; no se inventó una ruta.
+- **Rutas que todavía no existían al escribir esta evidencia (404 aceptado a propósito).** Los enlaces del header, del footer y del asistente apuntan a `/help`, `/about`, `/entrepreneur-guide` y `/investor-guide`; respondían 404 como recordatorio de las guías pendientes y aterrizaron en `main` con [#394](https://github.com/reyduar/Vaqcrow/issues/394) vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11).
+- **`Contacto` queda en `#`.** Era una pregunta abierta de #394; no se inventó una ruta.
 - **El bloque «Recorré la demo completa…» no se implementa** (D1 de [#438](https://github.com/reyduar/Vaqcrow/issues/438)); se registra como decisión, no como omisión.
 - **Copy de UI sin pantalla en el template:** el vacío neutro de la grilla y las variantes de la card real/simulada (dos columnas vs tres) son decisiones de implementación sobre datos del contrato; queda como copy visible a revisar por el owner.
 - **El template no está versionado.** `docs/design/template/` está en `.gitignore` a propósito (es la fuente de verdad visual): la landing se construyó contra `Vaqcrow Landing.dc.html`, que no vive en el repositorio. La variante offline `Landing.html` (export del template) **no se distribuye**; solo se copió el asset `public/pyme-panaderia.jpg`.
@@ -142,6 +142,6 @@ Leyenda: ✅ cumplido · ⚠️ cumplido con la salvedad de una decisión del ow
 
 ## 8. Estado de entrega
 
-- **Nada de #418 está en `main`.** Todo vive en la rama `Vaqcrow#418_Feat_Build_the_public_landing_page`, creada desde `afede2c`. La rama no está mergeada y no hay PR; el merge lo decide el owner.
-- **En `main`** `/` sigue siendo el esqueleto. Al mergear, `main` gana la landing pública con la campaña destacada, «PyMEs en campaña», las secciones explicativas y el asistente «Ayuda».
-- El cierre de la Feature #418 y de las Tasks #419/#420/#421 lo decide el owner.
+- **#418 está en `main`.** Llegó vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10) desde la rama `Vaqcrow#418_Feat_Build_the_public_landing_page`. `main` tiene la landing pública con la campaña destacada, «PyMEs en campaña», las secciones explicativas y el asistente «Ayuda».
+- **En `main`** `/` ya no es el esqueleto: es la landing pública. Las rutas que la landing enlazaba (`/about`, `/entrepreneur-guide`, `/investor-guide`, `/help`) aterrizaron con [#394](https://github.com/reyduar/Vaqcrow/issues/394) en `main` vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11).
+- La Feature #418 y las Tasks #419/#420/#421 están cerradas; el merge lo decidió el owner.
