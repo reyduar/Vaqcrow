@@ -12,12 +12,22 @@ import type {
   AssessmentProviderOutcome,
   AssessmentProviderPort
 } from "./assessment-provider-port.js";
+import {
+  DEFAULT_ASSESSMENT_RETRY_POLICY,
+  backoffMs,
+  isRetryableAssessmentFailure
+} from "./retry-policy.js";
+import type { AssessmentRetryPolicy } from "./retry-policy.js";
 
 /**
  * The provider-independent half of the boundary: call, validate, and fail in a
  * typed way. Every failure mode collapses to a code the caller can branch on,
  * and none of them produces a success — a provider that times out, breaks or
  * answers nonsense routes the case to a person, never to an approval.
+ *
+ * A transient `provider_unavailable` gets one bounded retry (Feature #31); a
+ * timeout or a validation failure is terminal. Retry never turns a failure into
+ * an approval: it only asks a provider that could not answer to try once more.
  */
 
 export type RunAssessmentError =
@@ -107,6 +117,15 @@ async function callProvider(
 }
 
 /**
+ * Waits before another attempt. `setTimeout` rather than a busy loop so nothing
+ * spins while the provider recovers; a test passes a zero-backoff policy and the
+ * timer resolves on the next tick.
+ */
+function sleep(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+/**
  * Rebuilds the failure from the one field that is allowed across the boundary.
  *
  * Passing the provider's object through would let an adapter attach `message`,
@@ -124,43 +143,65 @@ export async function runAssessment(
   input: {
     readonly evidence: AssessmentEvidenceBundle;
     readonly timeoutMs?: number;
+    readonly retry?: AssessmentRetryPolicy;
   }
 ): Promise<RunAssessmentResult> {
   const timeoutMs = input.timeoutMs ?? DEFAULT_ASSESSMENT_TIMEOUT_MS;
+  const retry = input.retry ?? DEFAULT_ASSESSMENT_RETRY_POLICY;
+  // At least one attempt always runs, whatever a caller hands in.
+  const maxAttempts = Math.max(1, retry.maxAttempts);
 
-  const outcome = await withTimeout(callProvider(provider, input.evidence), timeoutMs);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const outcome = await withTimeout(callProvider(provider, input.evidence), timeoutMs);
 
-  if (outcome === TIMED_OUT) {
-    return { ok: false, error: { code: "timeout" } };
+    if (outcome === TIMED_OUT) {
+      // A slow model is not fixed by waiting again: retrying would just double
+      // the wait for the same non-answer. The timeout is terminal.
+      return { ok: false, error: { code: "timeout" } };
+    }
+
+    if (!outcome.ok) {
+      const failure = sanitizeProviderFailure(outcome.error);
+
+      // Only a fast, transient break earns another attempt. Validation failures
+      // below are never retried: the provider answered, the answer was wrong.
+      if (isRetryableAssessmentFailure(failure.code) && attempt < maxAttempts) {
+        await sleep(backoffMs(attempt, retry));
+        continue;
+      }
+
+      return { ok: false, error: failure };
+    }
+
+    const parsed = aiAssessmentSchema.safeParse(normalizeRawOutput(outcome.rawOutput));
+
+    if (!parsed.success) {
+      return { ok: false, error: { code: "invalid_output" } };
+    }
+
+    // Provenance is validated on the same side of the boundary as the output, so
+    // the metadata a caller shows is exactly the declared shape and nothing a
+    // provider decided to append to it.
+    const metadata = assessmentMetadataSchema.safeParse(outcome.metadata);
+
+    if (!metadata.success) {
+      return { ok: false, error: { code: "invalid_output" } };
+    }
+
+    const evidence = validateAssessmentEvidence(parsed.data, citableReferences(input.evidence));
+
+    if (!evidence.ok) {
+      return {
+        ok: false,
+        error: { code: "unknown_evidence_reference", violations: evidence.violations }
+      };
+    }
+
+    return { ok: true, value: { assessment: parsed.data, metadata: metadata.data } };
   }
 
-  if (!outcome.ok) {
-    return { ok: false, error: sanitizeProviderFailure(outcome.error) };
-  }
-
-  const parsed = aiAssessmentSchema.safeParse(normalizeRawOutput(outcome.rawOutput));
-
-  if (!parsed.success) {
-    return { ok: false, error: { code: "invalid_output" } };
-  }
-
-  // Provenance is validated on the same side of the boundary as the output, so
-  // the metadata a caller shows is exactly the declared shape and nothing a
-  // provider decided to append to it.
-  const metadata = assessmentMetadataSchema.safeParse(outcome.metadata);
-
-  if (!metadata.success) {
-    return { ok: false, error: { code: "invalid_output" } };
-  }
-
-  const evidence = validateAssessmentEvidence(parsed.data, citableReferences(input.evidence));
-
-  if (!evidence.ok) {
-    return {
-      ok: false,
-      error: { code: "unknown_evidence_reference", violations: evidence.violations }
-    };
-  }
-
-  return { ok: true, value: { assessment: parsed.data, metadata: metadata.data } };
+  // `maxAttempts` is at least 1, so the loop above always returns; this
+  // fail-closed branch only satisfies the type checker and never fabricates a
+  // success.
+  return { ok: false, error: { code: "provider_unavailable" } };
 }
