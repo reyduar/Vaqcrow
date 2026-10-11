@@ -41,7 +41,9 @@ Ruta por WU: implementación = **delegated direct** (1 writer por WU); verificac
   - Verificación independiente: verifier read-only sobre el diff del WU.
 - [x] **WU2 — Retry/backoff acotado del LLM.** Envolver `callProvider` con reintentos acotados; clasificar reintentable vs. terminal. Política como constante de código (no env).
 - [x] **WU3 — Sanear logs raw de PostgREST + correlación.** Eliminar los `message/details/hint` crudos de los diagnósticos de los adapters (solo `code`/campos cerrados + correlation id donde ya está en scope) y carrear el correlation id a los logs del scheduler/assessment.
-- [ ] **WU4 — Arrancar el loop de confirmación de `funding-intent` en producción + telemetría del wallet.**
+- [x] **WU4a — Beacon de fallos de wallet: contrato + endpoint API.** `WalletFailureEvent` cerrado (operation × outcome, sin PII) + `POST /telemetry/wallet-failures` (AUTHENTICATED) que valida el body exacto y loguea `{ operation, outcome }` por el logger de WU1; nada persistido.
+- [ ] **WU4b — Reporter web en `FreighterWallet`.** Port + adapter HTTP fire-and-forget (nunca tira, nunca bloquea); emitir en `connect`/`signTransaction`/`signMessage`.
+- **WU4 (parte A original — «arrancar el loop de `funding-intent` en prod») — DESCARTADA por evidencia (2026-10-11):** ese camino fue **retirado** por #239 (la migración `20260923183356_create_campaign_persistence.sql` renombró `funding_intent` → `funding_intent_legacy`; evidencia `docs/planning/campaign-persistence-and-reconciliation-evidence.md:7,147`). `supabase-funding-intent-repository.ts:16` todavía apunta a la tabla vieja, la web no lo usa, y el aporte real va por la bóveda + `campaign_contribution` (ya cableado). Arrancar ese loop pollearía una tabla inexistente.
 - [ ] **WU5 — Evidencia + cierre.**
 
 ## Decisiones y hallazgos
@@ -104,4 +106,15 @@ Implementación delegada a 1 writer; verificación independiente read-only → *
 - **Hallazgo durante el WU (fuera de superficies)**: el mismo leak en `supabase-auth.ts:89-94`; se aprobó ampliar la superficie (decisión del owner aplicada consistente) y el guard ampliado lo habría atrapado (RED→GREEN).
 - **RED→GREEN**: guard rojo con 14 sitios y luego rojo con `supabase-auth` (1) → verde (87 tests). Scheduler: 14 tests (12 previos + 2 nuevos). `pnpm --filter @vaqcrow/api test` → 2717/2717; `typecheck`/`lint`/`pnpm run boundaries` verdes.
 - **Notas de verificación (nits del guard, no defectos)**: (1) una *declaración* con prefijo `log` y un parámetro llamado `message` daría falso positivo (hoy no ocurre); (2) el guard es de forma de clave (no ve un leak bajo otra clave o por interpolación). Ambos documentados.
+- **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
+
+### WU4a — Beacon de fallos de wallet: contrato + endpoint (2026-10-11)
+
+Implementación delegada a 1 writer; verificación independiente read-only → **pass-with-notes**. Commit de work-unit: `04bb3f1` (`feat(api): add a wallet-failure telemetry beacon (#31)`).
+
+- **Decisión (owner, 2026-10-11)**: beacon **cliente→API** (completo). Freighter vive en el navegador; la API no ve el rechazo al firmar, así que la web reporta eventos explícitos.
+- **Qué cambió**: `packages/contracts/src/wallet-failure-event.ts` (nuevo) — `WalletFailureEvent` con `operation ∈ {connect, sign_transaction, sign_message}` × `outcome ∈ {rejected, unavailable, network_mismatch, unknown}`, `strictObject` + `parseWalletFailureEvent`, exportado desde `index.ts`. `apps/api/src/infrastructure/http/routes/telemetry.route.ts` (nuevo) — `POST /telemetry/wallet-failures` (AUTHENTICATED): body de claves exactas, parse, `request.log.warn({ operation, outcome }, …)`, `202 { accepted: true }`; nada persistido. Registrado incondicionalmente en `build-app.ts`; policy en `route-policy.ts` + `MATRIX` en lockstep.
+- **RED→GREEN**: contrato rojo (33, módulo ausente) → verde; ruta roja (8, 404) → verde. `packages/contracts` 694/694; `apps/api` 2733/2733; typecheck/lint/boundaries verdes.
+- **Notas de verificación (nits)**: (1) la puerta de claves exactas y el `strictObject` son indistinguibles black-box (ambos → 400 sin log); el orden se probó por lectura de fuente; (2) los nombres de operación del wire son snake_case, así que **WU4b debe mapear** los métodos (`signTransaction`→`sign_transaction`), no pasarlos crudos.
+- **Gotcha operativa**: `apps/api` resuelve `@vaqcrow/contracts` desde su `dist`; tras tocar contratos hay que buildear contracts antes de testear la API (Turbo lo hace vía `dependsOn: ["^build"]`).
 - **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
