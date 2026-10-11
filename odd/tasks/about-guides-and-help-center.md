@@ -47,7 +47,7 @@ Memoria Engram: `decision/394-contact-and-terms`.
 
 - [x] **WU1 — Contenido puro + test de términos prohibidos.** `application/about/copy.ts`, `application/guides/*` (guía emprendedores + inversión, 7 secciones c/u + ejemplo trabajado ARS 3.745.800 × 4,5 % = ARS 168.561,00), `application/help/faq.ts` (4 categorías + 9 FAQs). Test que espeja la denylist. — **Commit `e326a5a`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU2 — Acerca de (`/about`).** Hero, «Misión y visión», «Pilares / ¿Qué es Vaqcrow?» (callout canónico no-production), «Sobre el creador» (foto `creador-gris.png`), «Hablemos» (4 links reales), monedas decorativas `aria-hidden`. — **Commit `5fd806b`.** Verificado (tier high, verificador independiente PASS).
-- [ ] **WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`).** Hero + TOC + 7 secciones c/u + CTA + footer estándar.
+- [x] **WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`).** Hero + TOC + 7 secciones c/u + CTA + footer estándar. — **Commit `b0c29f8`.** Verificado (tier high, verificador independiente PASS tras una corrección).
 - [ ] **WU4 — Centro de ayuda (`/help`).** Hero + buscador + 4 categorías + acordeón FAQ (`aria-expanded`) + estado vacío «No encontramos resultados para "…"» + bloque de contacto + aviso «Próximamente».
 - [ ] **WU5 — Modal Términos + trigger + nav `/help`.** Modal de T&C; trigger de «Términos»; entrada `/help` en el nav.
 - [ ] **WU6 — Evidencia + cierre.** `docs/planning/about-guides-and-help-center-evidence.md` (español, criterios citados) + alineación de docs.
@@ -82,3 +82,11 @@ Por WU: `pnpm --filter @vaqcrow/web test` + typecheck + lint. Al cierre: `pnpm r
 - El CTA del creador → LinkedIn del owner (decisión); se corrigió un comentario de procedencia contradictorio en `copy.ts`.
 - Verificador independiente (tier `high`): **PASS**. El writer reportó `partial` solo por flakiness de la suite completa (timeouts de 5s bajo carga en archivos ajenos, ya visto en #418); el test de `/about` pasa y typecheck/lint limpios.
 - Nota: esta rama predata #418, así que `AppShell` no tiene `fullBleed`/`footer`; las bandas a sangre se aproximan con `-mx-8 border-y` contra el contenedor del shell. A reconciliar al mergear #468.
+
+### WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`) · commit `b0c29f8`
+
+- Código: `app/{entrepreneur-guide,investor-guide}/page.tsx` (rutas públicas fuera de `(app)`) + `presentation/components/guides/*` (renderer compartido: `guide-page`, `guide-hero`, `guide-toc` isla client con TOC sticky + progreso, `guide-section`, `worked-example`, `guide-final-cta`, `guide-icons`).
+- Tests: `page.test.tsx` (7 + 6).
+- RED→GREEN: `./page` sin resolver → 13 pasando.
+- **Corrección (una):** el verificador flageó (a) el ícono decorativo del eyebrow del hero (el template lo diseña) y (b) el nombre accesible del progreso. Se agregó `eyebrowIcon` al `Guide` + render; y — con autorización del owner de ampliar la superficie a `progress-bar.tsx` — se agregó `ariaLabel?` opcional al `ProgressBar` compartido (retrocompatible; los 5 callers existentes no cambian) para que el nombre accesible sea «Progreso de lectura» dejando la fila visible «Tu lectura». Hallazgo: react-aria concatena `aria-label` con cualquier `<Label>` montado (`aria-labelledby` auto-referente), así que la fila visible pasa a `<span>` solo en la rama con `ariaLabel`. Re-verificado: **PASS**.
+- Nota: el TOC sticky/progreso es una isla client acotada (~90 líneas) con guarda `NaN` (la fórmula del template sin guarda rompe en jsdom).
