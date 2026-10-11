@@ -1,10 +1,34 @@
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
-import { AxiosHttpClient } from "@/infrastructure/http/axios-http-client";
+import { createBrowserAuthSession } from "@/infrastructure/auth/browser-auth-session";
+import { createLazyAuthSession } from "@/infrastructure/auth/lazy-auth-session";
+import { type AccessTokenProvider, AxiosHttpClient } from "@/infrastructure/http/axios-http-client";
 import { HttpCampaignGateway } from "./http-campaign-gateway";
 
-/** `null` when no backend is configured: the UI then refuses to act and says so. */
-export function createCampaignGateway(baseUrl: string | undefined): CampaignGateway | null {
+/**
+ * Builds the campaign gateway from the API base URL and the session's access
+ * token. `null` when no backend is configured.
+ *
+ * Every route this gateway serves (`GET /campaigns/:id`, the invocation
+ * prepare/submit and the transaction poll) is `AUTHENTICATED` in the API, so the
+ * request must carry the signed-in session's `Authorization: Bearer` token. The
+ * token is resolved **per request** through a single lazy session, exactly like
+ * `createBrowserSmeRequestGateway`: the factory is never called at import time,
+ * so `createCampaignGateway(baseUrl)` stays safe at module scope in a component
+ * that renders before any session exists. `accessToken` is a test seam;
+ * production omits it and the browser session is used.
+ */
+export function createCampaignGateway(
+  baseUrl: string | undefined,
+  accessToken?: AccessTokenProvider
+): CampaignGateway | null {
   const trimmed = baseUrl?.trim();
   if (!trimmed) return null;
-  return new HttpCampaignGateway(AxiosHttpClient.create({ baseUrl: trimmed }));
+  const provider = accessToken ?? createBrowserAccessTokenProvider();
+  return new HttpCampaignGateway(AxiosHttpClient.create({ baseUrl: trimmed, accessToken: provider }));
+}
+
+/** A single lazy browser session, evaluated on the first request, never at import time. */
+function createBrowserAccessTokenProvider(): AccessTokenProvider {
+  const session = createLazyAuthSession(createBrowserAuthSession);
+  return () => session.getAccessToken();
 }
