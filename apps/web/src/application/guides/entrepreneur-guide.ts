@@ -42,7 +42,7 @@ export const ENTREPRENEUR_GUIDE: Guide = Object.freeze({
         "CUIT activo de la empresa y una persona responsable que complete el KYC.",
         "Al menos 6 meses de ventas declaradas; más historia ayuda a la evaluación.",
         "Un destino claro para los fondos: equipamiento, local, stock o capital de trabajo.",
-        "Una wallet Freighter para abrir la bóveda y firmar las distribuciones."
+        "Una wallet Freighter: su clave pública será el destino de tu bóveda y con ella vas a firmar las distribuciones mensuales."
       ])
     }),
     Object.freeze({
@@ -85,8 +85,8 @@ export const ENTREPRENEUR_GUIDE: Guide = Object.freeze({
       id: "boveda",
       headingId: "boveda-t",
       index: "04",
-      title: "Abrir la bóveda de tu campaña",
-      body: "Si tu solicitud se aprueba, definís los términos de la campaña y abrís una bóveda: un contrato de Stellar (Soroban) que custodia los aportes. Vos lo firmás con Freighter.",
+      title: "La bóveda de tu campaña",
+      body: "Si tu solicitud se aprueba, definís los términos de la campaña y Vaqcrow despliega la bóveda: un contrato de Stellar (Soroban) que custodia los aportes. El despliegue lo firma la plataforma, y el destino queda fijo a tu cuenta de liquidación (tu clave pública de Freighter). Vos no abrís ni firmás la bóveda: sólo conectás Freighter para dar tu clave pública antes de la revisión.",
       terms: Object.freeze([
         Object.freeze({ term: "Meta", definition: "Monto a reunir, dentro del límite aprobado." }),
         Object.freeze({ term: "Fecha límite", definition: "Hasta cuándo se aceptan aportes." }),
