@@ -20,8 +20,22 @@ export const MIN_CONTRIBUTION_STROOPS = "100000000";
 /** The displayed minimum, exactly as the template writes it. */
 export const MIN_CONTRIBUTION_XLM = "10";
 
-/** The network this demo declares; a campaign on anything else cannot be signed here. */
-const TESTNET = "TESTNET";
+/**
+ * The demo's real signable networks. A campaign's `network` is the API's
+ * `config.stellar.network`: `"testnet"` on Testnet (lowercase) and `"local"`
+ * on the local profile. A campaign on anything else cannot be signed here.
+ * Compared case-insensitively: the wallet reports its own label (`"TESTNET"`),
+ * and a network name is a human-readable identifier, not a case-sensitive key.
+ */
+const SIGNABLE_NETWORKS: ReadonlySet<string> = new Set(["testnet", "local"]);
+
+/**
+ * The refusal copy when the campaign is on a network this demo cannot sign.
+ * Owner-pending: the template draws no such message, and the wording that names
+ * exactly what IS supported is not yet confirmed by the owner.
+ */
+export const UNSUPPORTED_NETWORK_MESSAGE =
+  "Esta demo sólo firma aportes en Stellar Testnet o en el entorno local.";
 
 /** Amount failures: the conversion's own kinds plus the minimum-amount rule. */
 export type ContributionAmountError = XlmAmountError | "below_minimum";
@@ -67,9 +81,9 @@ export interface ContributionPreSignInput {
 /**
  * The single sanitized reason signing must not proceed, or `null` when the
  * review is safe to open: the amount is at least the 10 XLM minimum, the vault
- * id is known, and the campaign declares Stellar Testnet. The Freighter network
- * itself is verified by the wallet adapter at sign time; this is the pre-sign
- * check the issue names.
+ * id is known, and the campaign is on a network this demo can sign (`testnet`
+ * or `local`). The Freighter network itself is verified by the wallet adapter
+ * at sign time; this is the pre-sign check the issue names.
  */
 export function contributionPreSignError(input: ContributionPreSignInput): string | null {
   const validated = validateContributionAmount(input.amountInput);
@@ -79,8 +93,8 @@ export function contributionPreSignError(input: ContributionPreSignInput): strin
     return "La campaña todavía no tiene una bóveda desplegada; no se puede aportar.";
   }
 
-  if (input.network !== null && input.network !== TESTNET) {
-    return "Esta demo sólo opera en Stellar Testnet.";
+  if (input.network !== null && !SIGNABLE_NETWORKS.has(input.network.trim().toLowerCase())) {
+    return UNSUPPORTED_NETWORK_MESSAGE;
   }
 
   return null;

@@ -28,33 +28,46 @@ describe("validateContributionAmount", () => {
 });
 
 describe("contributionPreSignError", () => {
-  it("returns no reason for a valid Testnet contribution with a known vault", () => {
+  // The real campaign `network` is the API's `config.stellar.network`: `"testnet"`
+  // on Testnet (lowercase), `"local"` on the local profile. The uppercase
+  // `"TESTNET"` the old fixtures used is the wallet's own label, not the API's
+  // value — accepting only it was the bug that kept the review modal shut.
+  it("returns no reason for a valid contribution on the real Testnet value", () => {
+    expect(contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "testnet" })).toBeNull();
+  });
+
+  it("accepts the local network the local profile declares", () => {
+    expect(contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "local" })).toBeNull();
+  });
+
+  it("tolerates a differently-cased network label (the wallet reports TESTNET)", () => {
     expect(contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "TESTNET" })).toBeNull();
+    expect(contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: " LOCAL " })).toBeNull();
   });
 
   it("surfaces the amount reason first, even with a missing vault", () => {
-    expect(contributionPreSignError({ amountInput: "5", vaultAddress: null, network: "TESTNET" })).toBe(
+    expect(contributionPreSignError({ amountInput: "5", vaultAddress: null, network: "testnet" })).toBe(
       "El aporte mínimo es 10 XLM."
     );
   });
 
   it("refuses when the campaign has no vault id", () => {
-    expect(contributionPreSignError({ amountInput: "15", vaultAddress: null, network: "TESTNET" })).toMatch(
+    expect(contributionPreSignError({ amountInput: "15", vaultAddress: null, network: "testnet" })).toMatch(
       /no tiene una bóveda desplegada/
     );
-    expect(contributionPreSignError({ amountInput: "15", vaultAddress: "   ", network: "TESTNET" })).toMatch(
+    expect(contributionPreSignError({ amountInput: "15", vaultAddress: "   ", network: "testnet" })).toMatch(
       /no tiene una bóveda desplegada/
     );
   });
 
-  it("refuses a campaign that is not on Testnet", () => {
+  it("refuses a campaign on a network this demo cannot sign", () => {
     expect(contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "PUBLIC" })).toMatch(
-      /sólo opera en Stellar Testnet/
+      /sólo firma aportes en Stellar Testnet/
     );
   });
 
   it("does not invent an insufficient-balance reason", () => {
-    const reason = contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "TESTNET" });
+    const reason = contributionPreSignError({ amountInput: "15", vaultAddress: VAULT, network: "testnet" });
     expect(reason).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ import { readDockerEnv } from "./support/docker-env";
 import { installLiveFreighterEmulator, setLiveFreighterScenario } from "./support/freighter-live-emulator";
 import { nativeBalanceStroops, waitForAccount } from "./support/horizon";
 import { createFundedIdentity, createUnfundedIdentity, keypairFor } from "./support/identities";
-import { LIVE_APP_BASE_URL } from "./support/live-targets";
+import { LIVE_APP_BASE_URL, LIVE_NETWORK_PASSPHRASE, STROOPS_PER_XLM } from "./support/live-targets";
 import { pollUntil } from "./support/poll";
 import { readVault, simulateContribute } from "./support/soroban";
 import { syntheticPdf, syntheticPng } from "./support/synthetic-files";
@@ -59,6 +59,20 @@ const DEADLINE_TOLERANCE_SECONDS = 5 * 60;
 /** Freighter reports Testnet for the SEP-53 wallet link (`FreighterWallet.signMessage` only links on Testnet); the link itself is network-independent. */
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 const REQUIRED_DOCUMENTS = ["Declaraciones de ventas", "Constancia de CUIT", "Estatuto"] as const;
+/** 10 XLM minimum the contribution view enforces (`campaign-contribution.ts`), duplicated literally (e2e never imports `src/`). */
+const MIN_CONTRIBUTION_STROOPS = 100_000_000n;
+
+/**
+ * Formats a stroop count as the decimal XLM text the amount field accepts
+ * (1 XLM = 10,000,000 stroops). The whole part is required and up to seven
+ * fraction digits are allowed, exactly as `xlmToStroops` reads it.
+ */
+function stroopsToXlmString(stroops: bigint): string {
+  const whole = stroops / STROOPS_PER_XLM;
+  const fraction = stroops % STROOPS_PER_XLM;
+  if (fraction === 0n) return whole.toString();
+  return `${whole.toString()}.${fraction.toString().padStart(7, "0").replace(/0+$/, "")}`;
+}
 
 /** Per-run log of public facts (ids, hashes, outcomes) printed at the end for the task log. */
 const facts: Record<string, unknown> = {};
@@ -149,6 +163,59 @@ async function contributeThroughApi(
   );
   expect(outcome.body.status, `contribution ${hash}`).toBe("success");
   return hash;
+}
+
+/** Signs the investor in through the UI; a verified `INVERSOR` lands on `/portfolio`. */
+async function signInInvestorThroughUi(page: Page, email: string): Promise<void> {
+  await page.goto("/login?role=investor");
+  await page.getByLabel("Correo electrónico").fill(email);
+  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+  await expect(page).toHaveURL(/\/portfolio$/, { timeout: 30_000 });
+}
+
+/**
+ * Connects Freighter from `/portfolio`. This is not optional: the campaign
+ * detail's contribution flow only opens once the API reports a persisted
+ * connection (`GET /profile/wallet`), so the wallet must be linked here first.
+ */
+async function connectWalletThroughUi(page: Page): Promise<void> {
+  const connect = page.getByRole("button", { name: "Conectar Freighter" });
+  // Bounded: a portfolio that never leaves its loading/error state shows no
+  // connect CTA, and a definitive failure beats hanging to the test timeout.
+  await expect(connect).toBeVisible({ timeout: 30_000 });
+  await connect.click();
+  await expect(page.getByRole("heading", { name: "Freighter conectada de forma no custodial" })).toBeVisible({
+    timeout: 30_000
+  });
+}
+
+/**
+ * Runs the FIRST aporte entirely through the investor UI: open the campaign
+ * detail, pass the one-shot simulated KYC interstitial, review and sign in
+ * Freighter, and reach the honest "Enviada · pendiente de confirmación." state.
+ * The review only opens once the persisted wallet connection is known, so this
+ * must follow `connectWalletThroughUi`.
+ */
+async function contributeFirstThroughUi(page: Page, campaignId: string, amountXlm: string): Promise<void> {
+  await page.goto(`/campaigns/${campaignId}`);
+  const aside = page.getByRole("complementary", { name: "Aportar a la campaña" });
+  await expect(aside).toBeVisible({ timeout: 30_000 });
+  await aside.getByLabel("Monto del aporte (XLM)").fill(amountXlm);
+  await aside.getByRole("button", { name: "Aportar a la campaña" }).click();
+
+  // A fresh investor always sees the one-shot KYC interstitial first; an
+  // already-approved one would open the review directly.
+  const kycConfirm = page.getByRole("button", { name: "Aprobar y continuar" });
+  const reviewHeading = page.getByText("Revisión antes de firmar");
+  await expect(kycConfirm.or(reviewHeading)).toBeVisible({ timeout: 30_000 });
+  if (await kycConfirm.isVisible()) await kycConfirm.click();
+
+  await expect(reviewHeading).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Firmar en Freighter" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Enviada · pendiente de confirmación." })).toBeVisible({
+    timeout: 60_000
+  });
 }
 
 test("U9: a real PyME application is reviewed and approved in /admin, its capped vault deploys on the local network and settles", async ({
@@ -426,7 +493,7 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     expect(Date.parse(campaign.deadline)).toBe(Number(onChainDeadline) * 1000);
   });
 
-  await test.step("9 · contributions: above goal/10 is refused (API and contract); capped investors settle the vault", async () => {
+  await test.step("9 · contributions: the FIRST aporte goes through the investor UI; above goal/10 is refused; budgeted investors settle the vault", async () => {
     const investorEmail = `inversor.u9.${runId}@example.test`;
     await signUpThroughAuthApi(supabase, {
       email: investorEmail,
@@ -454,8 +521,52 @@ test("U9: a real PyME application is reviewed and approved in /admin, its capped
     const smeBefore = await nativeBalanceStroops(pymeWallet.publicKey());
     if (smeBefore === undefined) throw new Error("the PyME account should exist after the deploy");
 
+    // #438 retired `campaign-vault.live.spec.ts`, so the investor aporte had no
+    // live UI coverage. The FIRST contribution now runs entirely through the
+    // investor UI against this same deployed campaign; the rest stay by API so
+    // the vault still reaches its goal and settles. The UI's own minimum is
+    // 10 XLM, so a goal-sized campaign always has a cap-sized first aporte.
+    const uiAmount = goalStroops < cap ? goalStroops : cap;
+    expect(uiAmount >= MIN_CONTRIBUTION_STROOPS).toBe(true);
+    const uiAmountXlm = stroopsToXlmString(uiAmount);
+
+    const investorWallet = await createFundedIdentity();
+    record("uiInvestorPublicKey", investorWallet.publicKey());
+    const beforeUi = BigInt((await getCampaign(adminToken, campaignId)).totalStroops);
+
+    const investorContext = await browser.newContext({ baseURL: LIVE_APP_BASE_URL });
+    const investorPage = await investorContext.newPage();
+    await installLiveFreighterEmulator(investorPage);
+    await signInInvestorThroughUi(investorPage, investorEmail);
+    // One scenario satisfies both wallet steps: the network label is "TESTNET"
+    // (the `/portfolio` link's SEP-53 check, `FreighterWallet.signMessage`) and
+    // the passphrase is the local network's (the prepare response's passphrase,
+    // which `FreighterWallet.signTransaction` compares against).
+    await setLiveFreighterScenario(investorPage, {
+      publicKey: investorWallet.publicKey(),
+      network: "TESTNET",
+      networkPassphrase: LIVE_NETWORK_PASSPHRASE
+    });
+    await connectWalletThroughUi(investorPage);
+    await contributeFirstThroughUi(investorPage, campaignId, uiAmountXlm);
+
+    // The aporte reaches the ledger: the campaign mirror's running total rises
+    // by exactly the amount the UI signed (never a fabricated success).
+    const afterUi = await pollUntil(
+      () => getCampaign(adminToken, campaignId),
+      (campaign) => BigInt(campaign.totalStroops) >= beforeUi + uiAmount,
+      {
+        timeoutMs: 60_000,
+        intervalMs: 1_500,
+        description: `the UI aporte of ${uiAmountXlm} XLM to reach the campaign mirror`
+      }
+    );
+    record("uiContribution", { amountXlm: uiAmountXlm, totalStroops: afterUi.totalStroops });
+    expect(BigInt(afterUi.totalStroops)).toBe(beforeUi + uiAmount);
+    await investorContext.close();
+
     const hashes: string[] = [];
-    let remaining = goalStroops;
+    let remaining = goalStroops - uiAmount;
     while (remaining > 0n) {
       const amount = remaining < cap ? remaining : cap;
       const investor = await createFundedIdentity();
