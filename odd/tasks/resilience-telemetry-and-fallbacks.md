@@ -44,7 +44,7 @@ Ruta por WU: implementación = **delegated direct** (1 writer por WU); verificac
 - [x] **WU4a — Beacon de fallos de wallet: contrato + endpoint API.** `WalletFailureEvent` cerrado (operation × outcome, sin PII) + `POST /telemetry/wallet-failures` (AUTHENTICATED) que valida el body exacto y loguea `{ operation, outcome }` por el logger de WU1; nada persistido.
 - [x] **WU4b — Reporter web en `FreighterWallet`.** Port + adapter HTTP fire-and-forget (nunca tira, nunca bloquea) + reporter default lazy; emitir en `connect`/`signTransaction`/`signMessage`.
 - **WU4 (parte A original — «arrancar el loop de `funding-intent` en prod») — DESCARTADA por evidencia (2026-10-11):** ese camino fue **retirado** por #239 (la migración `20260923183356_create_campaign_persistence.sql` renombró `funding_intent` → `funding_intent_legacy`; evidencia `docs/planning/campaign-persistence-and-reconciliation-evidence.md:7,147`). `supabase-funding-intent-repository.ts:16` todavía apunta a la tabla vieja, la web no lo usa, y el aporte real va por la bóveda + `campaign_contribution` (ya cableado). Arrancar ese loop pollearía una tabla inexistente.
-- [ ] **WU5 — Evidencia + cierre.**
+- [x] **WU5 — Evidencia + cierre.** `docs/planning/resilience-telemetry-and-fallbacks-evidence.md` + alineación del comentario de `index.ts` sobre el camino retirado.
 
 ## Decisiones y hallazgos
 
@@ -127,3 +127,12 @@ Implementación delegada a 1 writer; verificación independiente read-only → *
 - **RED→GREEN**: 5 tests rojos (spy no llamado) + módulo ausente → 34 verdes. Focales web 34/34; `pnpm --filter @vaqcrow/web typecheck`/`lint` y `pnpm run boundaries` verdes. El suite web completo no se corrió (flaky bajo carga).
 - **Notas de verificación (nits)**: (1) [LOW] el reporter default no envolvía `resolveDefault()` en try/catch (podía enmascarar el `WalletError`); **se endureció inline** (try/catch alrededor de la resolución). (2) [LOW] no hay test dedicado del default reporter (cobertura indirecta); (3) [INFO] re-resuelve el cliente por report (correcto para best-effort). No hay leak de PII (el body se reconstruye de `operation`+`outcome`).
 - **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
+
+### WU5 — Evidencia + cierre (2026-10-11)
+
+Implementación delegada a 1 writer (doc pasivo + corrección de comentario). Commit de work-unit: `docs(planning)` con `docs/planning/resilience-telemetry-and-fallbacks-evidence.md` (nuevo, español, estructura de sibling) + la corrección **solo-comentario** del bloque del scheduler en `apps/api/src/index.ts` (el loop de `funding-intent` no arranca por camino retirado, no por wiring pendiente).
+
+- **El doc**: identifica #31/#98/#99/#100 y la rama; separa «ya existía» (Horizon backoff, Freighter, persistencia, estados honestos) de «lo que #31 agregó» (WU1–WU4b); mapea **cada criterio de aceptación citado textualmente** a un veredicto + fuente; registra la corrección de WU4; lista los commits; y declara límites honestos (§5/§9) incluida la discrepancia `redaction.ts` comentario/regex.
+- **Verificación de cierre**: `pnpm run verify` → **7/8 tasks verdes**; el único rojo es `@vaqcrow/web#test` (el suite flaky por carga, 5 s/test). Los 2 archivos que fallaron en la corrida acotada (`admin-review-deployment.test.tsx`, `site-footer.test.tsx`, ajenos a #31) pasan en aislamiento (21/21). No se enmascara: se reportó con la re-ejecución focal.
+- **RED→GREEN**: N/A (doc pasivo + comentario). Verificación ordinaria: `typecheck`/`lint` de `apps/api` limpios tras el cambio de comentario.
+- **Ruta**: delegated direct — writer `gentle-ai-worker` (doc pasivo, sin verifier semántico por contrato).
