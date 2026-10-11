@@ -108,10 +108,12 @@ Por WU: `pnpm --filter @vaqcrow/web test` + typecheck + lint. Al cierre: `pnpm r
 
 ### WU6 — Evidencia + cierre · commits `80a114f` (copy) y `ab36691` (docs)
 
-- `docs/planning/about-guides-and-help-center-evidence.md` (nuevo, español): la Feature, sus Tasks, la rama y los commits; qué se implementó/probó; las decisiones del owner; el mapeo verbatim de los 7 criterios; límites. Alineó `docs/design/demo-ui.md` y `account-creation-...-evidence.md` (las 4 páginas ya no figuran como inexistentes; «en la rama de #394, no en main»).
+- `docs/planning/about-guides-and-help-center-evidence.md` (nuevo, español): la Feature, sus Tasks, la rama y los commits; qué se implementó/probó; las decisiones del owner; el mapeo verbatim de los 7 criterios; límites. Alineó `docs/design/demo-ui.md` y `account-creation-...-evidence.md` (las 4 páginas ya no figuran como inexistentes; «en la rama de #394, no en main»). Tras el merge, la sincronización documental del 2026-10-11 actualizó esas notas a «en `main` vía #469».
 - **Hallazgo del WU documental (criterio 4):** el copy del template sobre la bóveda (la PyME abre y firma la bóveda) se había copiado verbatim y contradecía la decisión asentada. Corregido en `entrepreneur-guide.ts` (commit `80a114f`): la bóveda la despliega la plataforma tras la aprobación del admin; la PyME sólo conecta Freighter, entrega su clave pública (destino inmutable) y firma las distribuciones. Tests de guías + guardián: verdes (31).
 - Criterio 4 pasó de **no cumplido** a **cumplido**; la evidencia se actualizó en consecuencia.
 
 ## Estado
 
-Feature #394 completa en la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` (6 WU: contenido, /about, guías, /help, Términos+nav, evidencia; + una corrección de copy), verificada por WU y con los 7 criterios cubiertos. **Nada en `main`; sin PR.** El merge y el cierre de #394/#395/#396/#397 los decide el owner.
+Feature #394 completa en la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` (6 WU: contenido, /about, guías, /help, Términos+nav, evidencia; + una corrección de copy), verificada por WU y con los 7 criterios cubiertos.
+
+**Cierre (2026-10-11).** La Feature #394 se mergeó a `main` vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`); sus Tasks #395/#396/#397 quedaron cerradas y su contenido vive en `main`.

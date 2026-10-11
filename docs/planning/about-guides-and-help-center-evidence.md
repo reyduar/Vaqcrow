@@ -1,7 +1,7 @@
 # Evidencia de cierre de la Feature #394 — Issue #397
 
-> [!warning] Documento de la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center`
-> **Nada de lo que describe este documento está en `main` y todavía no existe un PR.** La rama sale de `main` `afede2c` y su último commit de código es `80a114f`. Este documento registra el estado de la rama, no una entrega mergeada. El mapeo de criterios (§8) da los 7 criterios de aceptación por cumplidos en la rama.
+> [!success] Mergeado en `main` vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11)
+> La Feature #394 y sus Tasks #395/#396/#397 están cerradas y su contenido vive en `main`. El estado que este documento registraba —la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` sin PR y fuera de `main`, con su último commit de código `80a114f`— describía el estado *de rama* al escribir la evidencia y quedó superado por el merge. El mapeo de criterios (§8) mantiene los 7 criterios de aceptación por cumplidos.
 
 > Documento de cierre de Feature. Consolida la evidencia ya registrada en `odd/tasks/about-guides-and-help-center.md` —las corridas del writer y del verificador independiente de WU1–WU5—, agrega lo que la bitácora no documenta como conjunto: el mapeo contra los criterios de aceptación verbatim de la Feature #394, las decisiones del owner del 2026-10-10 y los límites vigentes. **No re-ejecuta los tests por WU**: su fuente es la bitácora, y cada fila lo dice. No reemplaza a `odd/tasks/about-guides-and-help-center.md`, que sigue siendo la fuente de verdad de cómo se hizo el trabajo.
 
@@ -107,7 +107,7 @@ Memoria Engram: `decision/394-contact-and-terms`. Resuelven los puntos de «Not 
 3. **El trigger de «Términos» vive sólo en el footer compacto compartido.** El footer rico de la landing es #418; en esta rama el modal sólo es alcanzable desde el `SiteFooter` compacto (el que montan las páginas nuevas y el shell). El template dibuja «Términos» en el footer propio de la pantalla Acerca de. Flageado en la bitácora.
 4. **Docstring obsoleto en `shell-nav.ts`.** El comentario de cabecera (`apps/web/src/application/navigation/shell-nav.ts:7-11`) todavía lista `/about` y las guías entre las «pages that do not exist yet … shown on purpose». En esta rama ya existen. Es un comentario de código **fuera de la superficie de este WU**; queda como pendiente de alineación.
 5. **Suite web flaky.** Ver §4: el gate completo de web puede fallar por timeouts de 5 s en archivos ajenos bajo carga del host; los tests focales por WU pasan.
-6. **`demo-tasks-list.md` no se toca.** Siguiendo el precedente del repo (p. ej. #14/#46), el sync del roadmap pertenece a un commit posterior, cuando la Feature esté efectivamente cerrada. Hoy #394 sigue marcada `Backlog` en esa lista.
+6. **`demo-tasks-list.md`.** Al escribir esta evidencia, la sincronización del roadmap quedaba para el commit posterior al cierre, siguiendo el precedente del repo (p. ej. #14/#46). Con la Feature mergeada, esa lista ya marca #394 y sus Tasks #395–#397 como entregadas y cerradas.
 
 ## 7. Correcciones aplicadas durante el ciclo
 
@@ -136,12 +136,12 @@ Criterios citados **verbatim** de `gh issue view 394`.
 
 La rama agrega cuatro páginas públicas de contenido estático, alcanzables sin cuenta: `/about`, `/entrepreneur-guide`, `/investor-guide` y `/help`. Aporta además el modal de Términos y Condiciones (alcanzable desde el footer compartido) y la entrada «Centro de ayuda» en los menús con sesión. No agrega backend ni comportamiento de servidor: todo el contenido es data pura en `application/`, renderizada desde `presentation/`. La navegación pública ya enlazaba `/about` y las guías; `/help` es nuevo en los menús de INVERSOR y PYME.
 
-**Estado de la entrega:** sólo en la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center`. Nada está en `main` y no hay PR.
+**Estado de la entrega:** en `main` desde [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11), que mergeó la rama `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center`.
 
 ## 10. Estado de entrega
 
-- **Feature #394** y sus Tasks #395/#396/#397 **no están cerradas**: la rama no tiene PR y no está en `main` (verificación: `git merge-base --is-ancestor HEAD main` → no; `gh pr list --head … --state all` → vacío).
+- **Feature #394** y sus Tasks #395/#396/#397 **están cerradas y en `main`** vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11); el estado *de rama* (sin PR, fuera de `main`) quedó superado por el merge.
 - **Cinco commits** de implementación (`e326a5a`, `5fd806b`, `b0c29f8`, `67615d0`, `4a1d078`) más los commits de bitácora por WU.
-- **Este documento cierra la Task #397** (evidencia). El criterio 4 (§6, §8) quedó cumplido con la corrección de copy de cierre (commit `80a114f`). Los 7 criterios de aceptación quedan cubiertos en la rama; el cierre de la Feature y de sus Tasks es manual en GitHub y el PR lo decide el owner.
-- **Docs alineados en este WU:** `docs/design/demo-ui.md` y `docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md` dejan de declarar `/about`, las guías y el centro de ayuda como inexistentes; pasan a describirlos como entregados **en la rama de #394 (apilada; no en `main`)**.
+- **Este documento cierra la Task #397** (evidencia). El criterio 4 (§6, §8) quedó cumplido con la corrección de copy de cierre (commit `80a114f`). Los 7 criterios de aceptación quedaron cubiertos; la Feature y sus Tasks se cerraron en GitHub y su [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) fue mergeado por el owner el 2026-10-11.
+- **Docs alineados en este WU:** `docs/design/demo-ui.md` y `docs/planning/account-creation-sign-in-and-role-aware-shell-evidence.md` dejan de declarar `/about`, las guías y el centro de ayuda como inexistentes; pasan a describirlos como entregados **en la rama de #394, hoy en `main` vía #469**.
 - Al cerrarse la Feature, su cierre es **manual** en GitHub (el patrón del repo: la Feature no se cierra al completarse sus sub-issues).

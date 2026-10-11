@@ -94,4 +94,6 @@ Por WU: `pnpm --filter @vaqcrow/web test` (+ `pnpm --filter @vaqcrow/web typeche
 
 ## Estado
 
-Feature #418 completa en la rama `Vaqcrow#418_Feat_Build_the_public_landing_page` (3 WU de código + 1 de evidencia + WU1 shell), verificada por WU, con el gate completo verde. **Nada en `main`; sin PR.** El merge y el cierre de #418/#419/#420/#421 los decide el owner.
+Feature #418 completa en la rama `Vaqcrow#418_Feat_Build_the_public_landing_page` (3 WU de código + 1 de evidencia + WU1 shell), verificada por WU, con el gate completo verde.
+
+**Cierre (2026-10-10).** La Feature #418 se mergeó a `main` vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`); sus Tasks #419/#420/#421 quedaron cerradas y su contenido vive en `main`.

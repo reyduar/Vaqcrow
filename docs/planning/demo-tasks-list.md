@@ -13,7 +13,7 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 ## Comenzar aquí
 
-> **Estado al 2026-10-10: la pila por roles y el retiro del recorrido están en `main`.** El owner mergeó [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`, 2026-10-10 14:27:56 UTC), que llevó a `main` [#369](#^issue-369), [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386), [#398](#^issue-398), [#402](#^issue-402), [#406](#^issue-406), [#410](#^issue-410), [#414](#^issue-414), [#422](#^issue-422), [#426](#^issue-426), [#430](#^issue-430), [#434](#^issue-434) y [#438](#^issue-438); #438–#441 quedaron cerradas (verificado con `gh` el 2026-10-10). Lo siguiente según la hoja de ruta es [#33](#^issue-33) → [#34](#^issue-34); siguen abiertas [#31](#^issue-31), [#32](#^issue-32), [#394](#^issue-394), [#418](#^issue-418) y [#390](#^issue-390). Tras el merge, el 2026-10-10 se verificó (Railway CLI, sólo lectura) que `STELLAR_CAMPAIGN_FACTORY_ID` en Railway (`vaqcrow-api`, `production`, servicio `api`) ya apunta a la fábrica nueva con tope (`CCDNM6W4…SV7J`) y que el despliegue activo `3539d681` está en `SUCCESS`, construido desde `2b7e0d5`, sin errores de arranque (ver [`application-review-and-vault-deployment-evidence.md`](./application-review-and-vault-deployment-evidence.md)). Mergeado no es verificado de punta a punta. Pendientes del owner: el smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva (Vercel tampoco se verificó) y migrar `railway.json`/`railway.toml` (Config as Code, deprecado) a IaC (`.railway/railway.ts`) antes del **2026-12-01**, fecha hasta la que Railway mantiene los archivos existentes (anterior al reset de Testnet del 2026-12-16).
+> **Estado al 2026-10-10: la pila por roles y el retiro del recorrido están en `main`.** El owner mergeó [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`, 2026-10-10 14:27:56 UTC), que llevó a `main` [#369](#^issue-369), [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386), [#398](#^issue-398), [#402](#^issue-402), [#406](#^issue-406), [#410](#^issue-410), [#414](#^issue-414), [#422](#^issue-422), [#426](#^issue-426), [#430](#^issue-430), [#434](#^issue-434) y [#438](#^issue-438); #438–#441 quedaron cerradas (verificado con `gh` el 2026-10-10). Lo siguiente según la hoja de ruta es [#33](#^issue-33) → [#34](#^issue-34); siguen abiertas [#31](#^issue-31), [#32](#^issue-32) y [#390](#^issue-390). Después del PR #466 se mergearon dos Features más del sitio público: la landing pública [#418](#^issue-418) vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10) y, sobre ella, [#394](#^issue-394) —Acerca de, guías y centro de ayuda— vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11); sus Tasks [#419](#^issue-419)–[#421](#^issue-421) y [#395](#^issue-395)–[#397](#^issue-397) quedaron cerradas. Tras el merge, el 2026-10-10 se verificó (Railway CLI, sólo lectura) que `STELLAR_CAMPAIGN_FACTORY_ID` en Railway (`vaqcrow-api`, `production`, servicio `api`) ya apunta a la fábrica nueva con tope (`CCDNM6W4…SV7J`) y que el despliegue activo `3539d681` está en `SUCCESS`, construido desde `2b7e0d5`, sin errores de arranque (ver [`application-review-and-vault-deployment-evidence.md`](./application-review-and-vault-deployment-evidence.md)). Mergeado no es verificado de punta a punta. Pendientes del owner: el smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva (Vercel tampoco se verificó) y migrar `railway.json`/`railway.toml` (Config as Code, deprecado) a IaC (`.railway/railway.ts`) antes del **2026-12-01**, fecha hasta la que Railway mantiene los archivos existentes (anterior al reset de Testnet del 2026-12-16).
 >
 > **Estado al 2026-10-01 (histórico): la siguiente unidad del camino alineado al template era la Feature [#369 — Establecer Supabase Auth, roles, RLS y autorización de la API](#^issue-369) (Ola 10), que no tiene bloqueos y desbloquea [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386) y [#398](#^issue-398).** El orden completo —#369 → #378/#382/#386/#394 → #398 → #402/#406 → #410 → #414/#390 → #418/#422/#434 → #426 → #430 → #438 → #33 → #34— está en [Hoja de ruta alineada al template](#^roadmap-template). [#30](#^issue-30) está cerrada (verificado con `gh` el 2026-10-01); su recorrido de seis pasos lo retira [#438](#^issue-438) una vez reubicado su motor. Las Features [#31](#^issue-31)–[#34](#^issue-34) siguen abiertas sin cambios, salvo que [#33](#^issue-33) quedó bloqueada también por [#438](#^issue-438).
 >
@@ -1929,7 +1929,7 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
 ^issue-394
 
 - **Título original:** `Feature: Publish the About page, guides and help center`
-- **GitHub y estado:** [issue #394](https://github.com/reyduar/Vaqcrow/issues/394) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #394](https://github.com/reyduar/Vaqcrow/issues/394) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#373](#^issue-373); sin bloqueos nativos.
 - **Objetivo:** Entregar Acerca de, la Guía de inversión, la Guía para emprendedores y el centro de ayuda como páginas públicas, siguiendo el template. El asistente RAG de Ayuda queda como «Próximamente».
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
@@ -1938,50 +1938,50 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
   - El comportamiento del asistente RAG más allá del placeholder.
 - **Orden:** Sin dependencias; puede avanzar en paralelo desde el inicio.
 
-**Rama propuesta.** `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#394_Feat_Publish_the_About_page_guides_and_help_center`, mergeada en `main` vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11); se entregó mediante sus Tasks #395–#397. Evidencia en [`about-guides-and-help-center-evidence.md`](./about-guides-and-help-center-evidence.md).
 
 ### #395 — Implementar Acerca de, las guías y el centro de ayuda
 
 ^issue-395
 
 - **Título original:** `Task: Implement the About page, guides and help center`
-- **GitHub y estado:** [issue #395](https://github.com/reyduar/Vaqcrow/issues/395) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #395](https://github.com/reyduar/Vaqcrow/issues/395) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#394](#^issue-394) vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#394](#^issue-394); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#396](#^issue-396).
 
-**Rama propuesta.** `Vaqcrow#395_Task_Implement_the_About_page_guides_and_help_center` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#395_Task_Implement_the_About_page_guides_and_help_center`, mergeada en `main` junto con la Feature [#394](#^issue-394) vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11).
 
 ### #396 — Probar Acerca de, las guías y el centro de ayuda
 
 ^issue-396
 
 - **Título original:** `Task: Test the About page, guides and help center`
-- **GitHub y estado:** [issue #396](https://github.com/reyduar/Vaqcrow/issues/396) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #396](https://github.com/reyduar/Vaqcrow/issues/396) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#394](#^issue-394) vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#394](#^issue-394); bloqueada nativamente por [#395](#^issue-395).
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#397](#^issue-397).
 
-**Rama propuesta.** `Vaqcrow#396_Task_Test_the_About_page_guides_and_help_center` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#396_Task_Test_the_About_page_guides_and_help_center`, mergeada en `main` junto con la Feature [#394](#^issue-394) vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11).
 
 ### #397 — Documentar evidencia de Acerca de, las guías y el centro de ayuda
 
 ^issue-397
 
 - **Título original:** `Task: Document evidence for the About page, guides and help center`
-- **GitHub y estado:** [issue #397](https://github.com/reyduar/Vaqcrow/issues/397) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #397](https://github.com/reyduar/Vaqcrow/issues/397) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#394](#^issue-394) vía [#469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#394](#^issue-394); bloqueada nativamente por [#396](#^issue-396).
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#394](#^issue-394).
 
-**Rama propuesta.** `Vaqcrow#397_Task_Document_evidence_for_the_About_page_guides_and_help_center` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#397_Task_Document_evidence_for_the_About_page_guides_and_help_center`, mergeada en `main` junto con la Feature [#394](#^issue-394) vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (2026-10-11).
 
 ### #418 — Landing pública
 
 ^issue-418
 
 - **Título original:** `Feature: Build the public landing page`
-- **GitHub y estado:** [issue #418](https://github.com/reyduar/Vaqcrow/issues/418) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #418](https://github.com/reyduar/Vaqcrow/issues/418) · Tipo `Feature` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` vía [#468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#373](#^issue-373); sin bloqueos nativos.
 - **Objetivo:** Entregar la landing pública con la campaña destacada, PyMEs en campaña, las secciones explicativas y el placeholder del asistente «Ayuda».
 - **Preguntas abiertas (no diseñadas en el template; las decide el owner antes de implementar):**
@@ -1990,43 +1990,43 @@ Estas **74 unidades nuevas** —6 Epics, 17 Features y 51 Tasks, [#368](https://
   - El comportamiento del asistente más allá de «Próximamente».
 - **Orden:** Sin bloqueo nativo; dependencia blanda de [#414](#^issue-414) para mostrar campañas reales.
 
-**Rama propuesta.** `Vaqcrow#418_Feat_Build_the_public_landing_page` es la rama de integración y seguimiento del Feature; la implementación se entrega mediante sus Tasks.
+**Rama e implementación.** `Vaqcrow#418_Feat_Build_the_public_landing_page`, mergeada en `main` vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10); se entregó mediante sus Tasks #419–#421. Evidencia en [`public-landing-page-evidence.md`](./public-landing-page-evidence.md).
 
 ### #419 — Implementar la landing pública
 
 ^issue-419
 
 - **Título original:** `Task: Implement the public landing page`
-- **GitHub y estado:** [issue #419](https://github.com/reyduar/Vaqcrow/issues/419) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #419](https://github.com/reyduar/Vaqcrow/issues/419) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#418](#^issue-418) vía [#468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#418](#^issue-418); sin bloqueos nativos propios.
 - **Objetivo:** implementar el comportamiento del Feature con sus fallos sanitizados.
 - **Orden:** inicia el Feature y desbloquea [#420](#^issue-420).
 
-**Rama propuesta.** `Vaqcrow#419_Task_Implement_the_public_landing_page` es una unidad de implementación revisable.
+**Rama e implementación.** `Vaqcrow#419_Task_Implement_the_public_landing_page`, mergeada en `main` junto con la Feature [#418](#^issue-418) vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10).
 
 ### #420 — Probar la landing pública
 
 ^issue-420
 
 - **Título original:** `Task: Test the public landing page`
-- **GitHub y estado:** [issue #420](https://github.com/reyduar/Vaqcrow/issues/420) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #420](https://github.com/reyduar/Vaqcrow/issues/420) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#418](#^issue-418) vía [#468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#418](#^issue-418); bloqueada nativamente por [#419](#^issue-419).
 - **Objetivo:** demostrar el comportamiento con pruebas determinísticas, sin depender de Supabase, Resend, Testnet ni del proveedor LLM en vivo.
 - **Orden:** valida la implementación y desbloquea [#421](#^issue-421).
 
-**Rama propuesta.** `Vaqcrow#420_Task_Test_the_public_landing_page` es una unidad de pruebas revisable.
+**Rama e implementación.** `Vaqcrow#420_Task_Test_the_public_landing_page`, mergeada en `main` junto con la Feature [#418](#^issue-418) vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10).
 
 ### #421 — Documentar evidencia de la landing pública
 
 ^issue-421
 
 - **Título original:** `Task: Document evidence for the public landing page`
-- **GitHub y estado:** [issue #421](https://github.com/reyduar/Vaqcrow/issues/421) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #421](https://github.com/reyduar/Vaqcrow/issues/421) · Tipo `Task` · Área `frontend` · Prioridad `High` · Workflow `Done`. **Entrega:** mergeada en `main` junto con la Feature [#418](#^issue-418) vía [#468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10); issue cerrado.
 - **Jerarquía y bloqueos:** padre [#418](#^issue-418); bloqueada nativamente por [#420](#^issue-420).
 - **Objetivo:** documentar la evidencia reproducible de cierre en `docs/planning/`, en español, con cada criterio de aceptación citado textualmente del issue.
 - **Orden:** cierra [#418](#^issue-418).
 
-**Rama propuesta.** `Vaqcrow#421_Task_Document_evidence_for_the_public_landing_page` es una unidad de documentación revisable.
+**Rama e implementación.** `Vaqcrow#421_Task_Document_evidence_for_the_public_landing_page`, mergeada en `main` junto con la Feature [#418](#^issue-418) vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (2026-10-10).
 
 ### #374 — Alta de PyMEs y campaña
 
