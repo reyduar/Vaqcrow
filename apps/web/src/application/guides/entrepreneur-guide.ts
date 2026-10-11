@@ -12,6 +12,7 @@ import type { Guide } from "./types";
  */
 export const ENTREPRENEUR_GUIDE: Guide = Object.freeze({
   eyebrow: "Guía para emprendedores",
+  eyebrowIcon: "storefront-outline",
   titleLead: "De tus ventas a una ",
   titleAccent: "campaña",
   subtitle:

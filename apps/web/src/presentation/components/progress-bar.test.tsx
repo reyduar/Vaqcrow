@@ -56,4 +56,19 @@ describe("ProgressBar", () => {
     const reached = screen.getByRole("progressbar", { name: "Meta alcanzada" });
     expect(reached.className).toContain("progress-bar--success");
   });
+
+  it("uses ariaLabel as the accessible name while keeping the visible label row", () => {
+    render(<ProgressBar label="Tu lectura" ariaLabel="Progreso de lectura" value={42} goal={100} />);
+
+    expect(screen.getByRole("progressbar", { name: "Progreso de lectura" })).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Tu lectura" })).not.toBeInTheDocument();
+    // The visible label row is unchanged — only the accessible name moved.
+    expect(screen.getByText("Tu lectura")).toBeInTheDocument();
+  });
+
+  it("keeps the visible label as the accessible name when ariaLabel is omitted", () => {
+    render(<ProgressBar label="Progreso de fondeo" value={630000} goal={1000000} />);
+
+    expect(screen.getByRole("progressbar", { name: "Progreso de fondeo" })).toBeInTheDocument();
+  });
 });

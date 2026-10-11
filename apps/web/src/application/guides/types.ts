@@ -104,6 +104,8 @@ export interface GuideFinalCta {
 
 export interface Guide {
   readonly eyebrow: string;
+  /** Decorative Ionicons name the template puts inside the eyebrow pill. */
+  readonly eyebrowIcon: string;
   readonly titleLead: string;
   readonly titleAccent: string;
   readonly subtitle: string;

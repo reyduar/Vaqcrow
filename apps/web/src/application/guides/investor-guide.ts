@@ -12,6 +12,7 @@ import type { Guide } from "./types";
  */
 export const INVESTOR_GUIDE: Guide = Object.freeze({
   eyebrow: "Contenido educativo",
+  eyebrowIcon: "school-outline",
   titleLead: "Guía de ",
   titleAccent: "inversión",
   subtitle:
