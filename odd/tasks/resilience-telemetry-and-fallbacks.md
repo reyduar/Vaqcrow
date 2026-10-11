@@ -40,7 +40,7 @@ Ruta por WU: implementación = **delegated direct** (1 writer por WU); verificac
   - Aceptación: tests focales verdes (redaction del logger; `/health` con y sin dependencia; probe `unavailable` y `throw`); `pnpm --filter @vaqcrow/api test`, `typecheck`, `lint` y `pnpm run boundaries` verdes.
   - Verificación independiente: verifier read-only sobre el diff del WU.
 - [x] **WU2 — Retry/backoff acotado del LLM.** Envolver `callProvider` con reintentos acotados; clasificar reintentable vs. terminal. Política como constante de código (no env).
-- [ ] **WU3 — Sanear logs raw de PostgREST + correlación.** Pasar los `message/details/hint` por redaction (migrar los `console.*` de los adapters) y carrear el correlation id a los logs del scheduler/assessment.
+- [x] **WU3 — Sanear logs raw de PostgREST + correlación.** Eliminar los `message/details/hint` crudos de los diagnósticos de los adapters (solo `code`/campos cerrados + correlation id donde ya está en scope) y carrear el correlation id a los logs del scheduler/assessment.
 - [ ] **WU4 — Arrancar el loop de confirmación de `funding-intent` en producción + telemetría del wallet.**
 - [ ] **WU5 — Evidencia + cierre.**
 
@@ -93,4 +93,15 @@ Implementación delegada a 1 writer; verificación independiente read-only → *
 - **RED→GREEN**: 10 tests de política rojos (módulo ausente) → verdes; luego 3 casos de retry rojos (llamadas 1≠2) → verdes. `pnpm --filter @vaqcrow/ai test` → 160/160; `pnpm --filter @vaqcrow/api test` → 2628/2628; `typecheck`/`lint`/`pnpm run boundaries` verdes.
 - **Notas de verificación (nits, no defectos)**: (1) el no-retry de `unknown_evidence_reference` está probado por inspección (misma rama de retorno que `invalid_output`), sin assert de conteo propio; (2) un `code` fuera de la unión TS cae a `provider_unavailable` (fail-closed documentado) y por tanto se reintentaría una vez.
 - **Cambio observable reportado**: los casos existentes de `provider_unavailable` en la suite de `packages/ai` ahora hacen 2 llamadas y tardan ~500ms (backoff default); las aserciones **no** se debilitaron.
+- **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
+
+### WU3 — Sanear logs raw de PostgREST + correlación (2026-10-11)
+
+Implementación delegada a 1 writer; verificación independiente read-only → **pass-with-notes**. Commit de work-unit: `43c099c` (`fix(api): stop logging raw provider text and carry the scheduler correlation id (#31)`).
+
+- **Decisión (owner, 2026-10-11): eliminar los campos crudos.** Hallazgo que la motivó: `redactForLog` enmascara por **nombre de clave** y por **forma de token** (JWT/seed/opaco), **no** por texto libre — envolver `message/details/hint` en él NO los desinfecta. Se loguea solo el `code` cerrado (y `status`/`statusCode`/nombre de error) + `correlationId` donde ya estaba en scope.
+- **Qué cambió**: 15 adapters (14 sitios `console.*` + `supabase-auth.ts` vía `this.log`) dejaron de loguear texto de proveedor; `confirmation-scheduler.ts` ahora acuña un `correlationId` por tick en `run()` y lo pasa a `onError(error, correlationId)` (con `runOnce()` intacto, mintiendo su propio id y delegando en un `execute(id)` privado); `index.ts` loguea `{ cause: <nombre cerrado>, correlationId }` — nunca el objeto `Error` (su `message` es la misma clase de leak). Se agregó un guard de fuente `no-raw-provider-fields.test.ts` que falla si un diagnóstico reintroduce `message:/details:/hint:` (cubre `console.*` y callees con prefijo `log`, con lexer que blanquea comentarios/literales).
+- **Hallazgo durante el WU (fuera de superficies)**: el mismo leak en `supabase-auth.ts:89-94`; se aprobó ampliar la superficie (decisión del owner aplicada consistente) y el guard ampliado lo habría atrapado (RED→GREEN).
+- **RED→GREEN**: guard rojo con 14 sitios y luego rojo con `supabase-auth` (1) → verde (87 tests). Scheduler: 14 tests (12 previos + 2 nuevos). `pnpm --filter @vaqcrow/api test` → 2717/2717; `typecheck`/`lint`/`pnpm run boundaries` verdes.
+- **Notas de verificación (nits del guard, no defectos)**: (1) una *declaración* con prefijo `log` y un parámetro llamado `message` daría falso positivo (hoy no ocurre); (2) el guard es de forma de clave (no ve un leak bajo otra clave o por interpolación). Ambos documentados.
 - **Ruta**: delegated direct — writer `gentle-ai-worker`; verifier `gentle-ai-verify` (RDD off).
