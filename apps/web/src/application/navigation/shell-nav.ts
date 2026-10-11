@@ -15,8 +15,8 @@ export interface ShellLink {
   readonly href: string;
 }
 
-/** Icon keys for the avatar menu (template: pie-chart, book, document-text). */
-export type ShellMenuIcon = "portfolio" | "guide" | "reports";
+/** Icon keys for the avatar menu (template: pie-chart, book, document-text, help-circle). */
+export type ShellMenuIcon = "portfolio" | "guide" | "reports" | "help";
 
 export interface ShellMenuLink extends ShellLink {
   readonly icon: ShellMenuIcon;
@@ -55,6 +55,13 @@ export function accountMenuLabel(displayName: string): string {
 const EXPLORE: ShellLink = { label: "Explorar PyMEs", href: "/explore" };
 const HOW_IT_WORKS: ShellLink = { label: "Cómo funciona", href: "/#como-funciona" };
 const ABOUT: ShellLink = { label: "Acerca de", href: "/about" };
+/**
+ * Avatar-menu entry (Feature #394 / WU5): `Vaqcrow Landing.dc.html:70`, placed
+ * before sign-out. The template draws a help-circle glyph
+ * (`help-circle-outline`), which the presenter's `MENU_ICONS` map renders from
+ * the dedicated `"help"` key.
+ */
+const HELP: ShellMenuLink = { label: "Centro de ayuda", href: "/help", icon: "help" };
 
 const view = (shell: ShellView): ShellView => Object.freeze(shell);
 
@@ -71,7 +78,8 @@ const VIEWS: Readonly<Record<PrincipalRole, ShellView>> = Object.freeze({
     menu: Object.freeze([
       { label: "Mi portafolio", href: "/portfolio", icon: "portfolio" },
       { label: "Guía del inversor", href: "/investor-guide", icon: "guide" },
-      { label: "Informes", href: "/reports", icon: "reports" }
+      { label: "Informes", href: "/reports", icon: "reports" },
+      HELP
     ] as const),
     chip: { label: "INVERSOR", icon: "person" },
     avatarSrc: "/avatar-inversor.png"
@@ -80,7 +88,8 @@ const VIEWS: Readonly<Record<PrincipalRole, ShellView>> = Object.freeze({
     nav: Object.freeze([{ label: "Mi campaña", href: "/company" }, HOW_IT_WORKS, ABOUT]),
     menu: Object.freeze([
       { label: "Mi campaña", href: "/company", icon: "portfolio" },
-      { label: "Guía del emprendedor", href: "/entrepreneur-guide", icon: "guide" }
+      { label: "Guía del emprendedor", href: "/entrepreneur-guide", icon: "guide" },
+      HELP
     ] as const),
     chip: { label: "PYME", icon: "storefront" },
     avatarSrc: "/avatar-pyme.png"

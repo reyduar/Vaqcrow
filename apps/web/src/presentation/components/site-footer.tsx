@@ -1,10 +1,11 @@
+import { TermsTrigger } from "./legal/terms-modal";
 import { CanonicalDisclosure } from "./canonical-disclosure";
 
 /**
  * SiteFooter (Issue #318 / T1): the compact footer from `Vaqcrow Onboarding
  * PyME.dc.html` (`docs/design/template/`, git-ignored) — a top border, the
  * canonical "No apto para producción" notice and a muted legal row.
- * Presentational only: no network, no storage, no state.
+ * Presentational only: no network, no storage, no state of its own.
  *
  * Decoding of the template (recorded, not left implicit):
  * - **The notice is canonical and never retyped.** It renders the
@@ -17,13 +18,15 @@ import { CanonicalDisclosure } from "./canonical-disclosure";
  *   that box would mean duplicating banner markup the shared renderer already
  *   owns. The footer itself carries the muted surface (`bg-surface`) and the
  *   `border-t`.
- * - **The legal row is caller-supplied.** The template's second slot reads
- *   `Stellar Testnet · Activos sin valor económico`, which is NOT canonical:
- *   `microcopy.testnetBadge` reads `TESTNET · Activos sin valor económico`.
- *   Treating the template string as copy would invent wording, so both slots
- *   are plain caller strings — the story passes the canonical
- *   `microcopy.testnetBadge`, and neither string is hardcoded here. The row is
- *   omitted entirely when the caller supplies neither.
+ * - **The legal row is caller-supplied plus one shared trigger.** The
+ *   template's second slot reads `Stellar Testnet · Activos sin valor
+ *   económico`, which is NOT canonical: `microcopy.testnetBadge` reads
+ *   `TESTNET · Activos sin valor económico`. Treating the template string as
+ *   copy would invent wording, so both text slots are plain caller strings —
+ *   the story passes the canonical `microcopy.testnetBadge`, and neither
+ *   string is hardcoded here. The «Términos» trigger (Feature #394 / WU5) is
+ *   NOT caller-supplied: it owns the terms modal and is always rendered, so
+ *   the terms are reachable from every page that mounts this footer.
  * - **Tokens.** `--border` → HeroUI `border-border`; `--surface` → HeroUI
  *   `bg-surface`; `--text2` → `text-text-secondary`. The template's other
  *   tokens (`--control`, `--raised`, `--accent-*`, `--logo`, the status
@@ -40,8 +43,6 @@ export interface SiteFooterProps {
 }
 
 export function SiteFooter({ copyright, environment, className }: SiteFooterProps) {
-  const hasLegalRow = Boolean(copyright) || Boolean(environment);
-
   return (
     <footer className={`border-t border-border bg-surface ${className ?? ""}`.trim()}>
       {/* Template footer geometry (`Vaqcrow Sistema.dc.html` lines 416–428):
@@ -51,12 +52,13 @@ export function SiteFooter({ copyright, environment, className }: SiteFooterProp
           scope (see the plan's Out of scope). */}
       <div className="mx-auto flex max-w-[1264px] flex-col gap-5 px-8 py-12">
         <CanonicalDisclosure id="no-production" />
-        {hasLegalRow ? (
-          <div className="flex flex-wrap justify-between gap-4 border-t border-border pt-6 text-xs text-text-secondary">
-            {copyright ? <span>{copyright}</span> : null}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-xs text-text-secondary">
+          {copyright ? <span>{copyright}</span> : null}
+          <span className="flex items-center gap-4">
             {environment ? <span>{environment}</span> : null}
-          </div>
-        ) : null}
+            <TermsTrigger />
+          </span>
+        </div>
       </div>
     </footer>
   );

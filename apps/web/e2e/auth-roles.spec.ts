@@ -23,7 +23,7 @@ const ROLES = [
     home: "/portfolio",
     pageTitle: "Mi portafolio",
     nav: ["Explorar PyMEs", "Mi portafolio", "Acerca de"],
-    menu: ["Mi portafolio", "Guía del inversor", "Informes", "Cerrar sesión"],
+    menu: ["Mi portafolio", "Guía del inversor", "Informes", "Centro de ayuda", "Cerrar sesión"],
     chip: "INVERSOR"
   },
   {
@@ -38,7 +38,7 @@ const ROLES = [
     home: "/company",
     pageTitle: "Mi campaña",
     nav: ["Mi campaña", "Cómo funciona", "Acerca de"],
-    menu: ["Mi campaña", "Guía del emprendedor", "Cerrar sesión"],
+    menu: ["Mi campaña", "Guía del emprendedor", "Centro de ayuda", "Cerrar sesión"],
     chip: "PYME"
   }
 ] as const;

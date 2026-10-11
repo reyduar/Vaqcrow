@@ -159,6 +159,7 @@ describe("AppHeader INVERSOR", () => {
       ["Mi portafolio", "/portfolio"],
       ["Guía del inversor", "/investor-guide"],
       ["Informes", "/reports"],
+      ["Centro de ayuda", "/help"],
       ["Cerrar sesión", null]
     ]);
     expect(view.container.querySelector('[data-avatar-src="/avatar-inversor.png"]')).not.toBeNull();
@@ -250,6 +251,7 @@ describe("AppHeader PYME", () => {
     ).toEqual([
       ["Mi campaña", "/company"],
       ["Guía del emprendedor", "/entrepreneur-guide"],
+      ["Centro de ayuda", "/help"],
       ["Cerrar sesión", null]
     ]);
     expect(view.container.querySelector('[data-avatar-src="/avatar-pyme.png"]')).not.toBeNull();

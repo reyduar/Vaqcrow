@@ -34,6 +34,15 @@ export interface ProgressBarProps {
    * never reads as already successful from color alone.
    */
   readonly isGoalReached?: boolean;
+  /**
+   * Accessible name for the `role="progressbar"` element. When omitted, the
+   * visible `label` is the accessible name (react-aria associates the `<Label>`
+   * child). When set, the visible row keeps its text and styling but is no
+   * longer a react-aria `<Label>`, so the accessible name comes from this value
+   * alone — the guide's reading-progress bar shows "Tu lectura" while carrying
+   * `aria-label="Progreso de lectura"`.
+   */
+  readonly ariaLabel?: string;
   readonly className?: string;
 }
 
@@ -44,9 +53,11 @@ export function ProgressBar({
   minValue = 0,
   formatValue,
   isGoalReached = false,
+  ariaLabel,
   className
 }: ProgressBarProps) {
   const valueText = formatValue ? formatValue(value, goal) : `${value} de ${goal}`;
+  const labelRow = "label text-sm font-medium text-text-secondary";
 
   return (
     <HeroProgressBar
@@ -55,11 +66,27 @@ export function ProgressBar({
       maxValue={goal}
       color={isGoalReached ? "success" : "accent"}
       valueLabel={valueText}
+      {...(ariaLabel ? { "aria-label": ariaLabel } : {})}
       {...(className ? { className } : {})}
     >
       {/* Track geometry from `Vaqcrow Sistema.dc.html` line 261: 6 px high,
-          pill radius, `--surface` fill and an inset 1 px `--border` line. */}
-      <Label className="text-sm font-medium text-text-secondary">{label}</Label>
+          pill radius, `--surface` fill and an inset 1 px `--border` line.
+
+          When `ariaLabel` drives the accessible name the visible row must NOT
+          be a react-aria `<Label>`: react-aria's `useLabels` points
+          `aria-labelledby` at the element itself, which overrides the bare
+          `aria-label`, so the computed name would come from the visible label
+          (plus the value) instead of `ariaLabel`. A plain span with identical
+          classes/`data-slot` keeps the row visible without joining the name.
+          Without `ariaLabel` the `<Label>` is rendered exactly as before, so
+          the accessible name stays `label`. */}
+      {ariaLabel ? (
+        <span className={labelRow} data-slot="label">
+          {label}
+        </span>
+      ) : (
+        <Label className="text-sm font-medium text-text-secondary">{label}</Label>
+      )}
       <HeroProgressBar.Output className="text-sm font-medium tabular-nums">{valueText}</HeroProgressBar.Output>
       <HeroProgressBar.Track className="h-1.5 rounded-pill bg-page-surface shadow-[inset_0_0_0_1px_var(--color-page-border)]">
         <HeroProgressBar.Fill className="rounded-pill" />
