@@ -49,7 +49,7 @@ Memoria Engram: `decision/394-contact-and-terms`.
 - [x] **WU2 — Acerca de (`/about`).** Hero, «Misión y visión», «Pilares / ¿Qué es Vaqcrow?» (callout canónico no-production), «Sobre el creador» (foto `creador-gris.png`), «Hablemos» (4 links reales), monedas decorativas `aria-hidden`. — **Commit `5fd806b`.** Verificado (tier high, verificador independiente PASS).
 - [x] **WU3 — Guías (`/entrepreneur-guide`, `/investor-guide`).** Hero + TOC + 7 secciones c/u + CTA + footer estándar. — **Commit `b0c29f8`.** Verificado (tier high, verificador independiente PASS tras una corrección).
 - [x] **WU4 — Centro de ayuda (`/help`).** Hero + buscador + 4 categorías + acordeón FAQ (`aria-expanded`) + estado vacío «No encontramos resultados para "…"» + bloque de contacto + aviso «Próximamente». — **Commit `67615d0`.** Verificado (tier high, verificador independiente PASS).
-- [ ] **WU5 — Modal Términos + trigger + nav `/help`.** Modal de T&C; trigger de «Términos»; entrada `/help` en el nav.
+- [x] **WU5 — Modal Términos + trigger + nav `/help`.** Modal de T&C; trigger de «Términos»; entrada `/help` en el nav. — **Commit `4a1d078`.** Verificado (tier high, verificador independiente PASS).
 - [ ] **WU6 — Evidencia + cierre.** `docs/planning/about-guides-and-help-center-evidence.md` (español, criterios citados) + alineación de docs.
 
 ## Decisión de diseño (flag para el owner)
@@ -98,3 +98,10 @@ Por WU: `pnpm --filter @vaqcrow/web test` + typecheck + lint. Al cierre: `pnpm r
 - RED→GREEN: `./page` sin resolver → 8 pasando.
 - Verificador independiente (tier `high`): **PASS**. Hueco menor de cobertura (el `aria-pressed` de las categorías estaba implementado pero sin assert) → se agregó el assert inline.
 - Notas (fidelidad): el `EmptyState` compartido es centrado vs. el box izquierdo del template (reuso por sobre pixel-fidelity); el acordeón es single-open con la 1.ª fila abierta (como el template). No hay `Accordion` de HeroUI en el repo — se dibuja a mano, como el template.
+
+### WU5 — Modal Términos + trigger + nav `/help` · commit `4a1d078`
+
+- Código: `application/legal/terms.ts` (T&C, React-free, secciones con `disclosure` canónico reusado); `presentation/components/legal/terms-modal.tsx` (modal HeroUI + trigger); `site-footer.tsx` (trigger «Términos» en la fila legal); `shell-nav.ts` («Centro de ayuda» → `/help` en los menús con sesión, ícono help-circle) + `app-header.tsx` (`MENU_ICONS.help`).
+- Tests: `site-footer.test.tsx` (+3), `shell-nav.test.ts`, `app-header.test.tsx`, y el guardián de términos prohibidos ampliado al copy legal.
+- RED→GREEN: 3 fallando → 37 pasando.
+- **Corrección (una):** el verificador/flags detectaron (a) el ícono debía ser help-circle (el mapa vive en `app-header.tsx`, fuera de superficie → **superficie ampliada con OK del owner**); (b) el cambio de menú **rompía** `e2e/auth-roles.spec.ts` (asserta el menú exacto → superficie ampliada). El e2e corrió **6 passed**. Además se agregó la sección «La IA es asesora, no decide» (disclosure `human-ai`) que faltaba en el copy renderizado (hueco menor del verificador) y se ajustó el test de secciones/disclosures.
