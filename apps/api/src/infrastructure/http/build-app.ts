@@ -54,6 +54,7 @@ import { registerSalesFeedRoute } from "./routes/sales-feed.route.js";
 import type { SalesFeedRouteDependencies } from "./routes/sales-feed.route.js";
 import { registerStorageRoute } from "./routes/storage.route.js";
 import type { StorageRouteDependencies } from "./routes/storage.route.js";
+import { registerTelemetryRoute } from "./routes/telemetry.route.js";
 import { registerWalletRoute } from "./routes/wallet.route.js";
 import type { WalletRouteDependencies } from "./routes/wallet.route.js";
 import { registerRateTableRoute } from "./routes/rate-table.route.js";
@@ -203,6 +204,9 @@ export function buildApp(dependencies: {
     });
   }
   registerHealthRoute(app, dependencies.health);
+  // The wallet-failure beacon needs no dependencies, so — like `/health` — it is
+  // registered unconditionally and the policy coverage test always sees it.
+  registerTelemetryRoute(app);
   if (dependencies.adminReviewContext) {
     registerAdminReviewContextRoute(app, dependencies.adminReviewContext);
   }

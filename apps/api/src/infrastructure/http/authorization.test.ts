@@ -10,6 +10,9 @@ type Allowed = readonly Role[] | "public" | "any";
 // Written independently of route-policy.ts on purpose: this is the spec table.
 const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/health", "public"],
+  // The wallet-failure beacon (#31/WU4a): any signed-in role reports a wallet
+  // classification, which the API logs; it is never anonymous.
+  ["POST", "/telemetry/wallet-failures", "any"],
   // Public marketplace listing (#414/WU1) and campaign image (#414/WU3):
   // reachable without a token.
   ["GET", "/marketplace/campaigns", "public"],

@@ -180,6 +180,18 @@ export { parseStellarFailureReason, stellarFailureReasonSchema } from "./stellar
 export type { StellarFailureReason } from "./stellar-failure-reason.js";
 
 export {
+  parseWalletFailureEvent,
+  walletFailureEventSchema,
+  walletFailureOperationSchema,
+  walletFailureOutcomeSchema
+} from "./wallet-failure-event.js";
+export type {
+  WalletFailureEvent,
+  WalletFailureOperation,
+  WalletFailureOutcome
+} from "./wallet-failure-event.js";
+
+export {
   marketplaceCampaignListSchema,
   marketplaceCampaignSchema,
   parseMarketplaceCampaignList,

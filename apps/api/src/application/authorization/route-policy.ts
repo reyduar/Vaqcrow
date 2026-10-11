@@ -19,6 +19,11 @@ const only = (...roles: Role[]): RoutePolicy => ({ kind: "roles", roles });
  */
 const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /health": PUBLIC,
+  // The wallet-failure beacon (#31/WU4a): the web reports a wallet
+  // classification it alone can observe, and the API logs it. AUTHENTICATED —
+  // the beacon fires only from signed-in flows, so it is never anonymous, and
+  // the handler still trusts nothing from the body beyond the closed vocabulary.
+  "POST /telemetry/wallet-failures": AUTHENTICATED,
   // Public marketplace (#414/WU1/WU3): anyone can browse published PyMEs and
   // see their real photo; the listing carries no PII and the image route
   // proxies bytes only for a confirmed/open campaign.
