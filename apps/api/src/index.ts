@@ -438,9 +438,12 @@ const app = buildApp({
 /**
  * The revenue-share distribution confirmation loop (S2d).
  *
- * The funding-intent confirmation loop is still not started from this composition
- * root today — it is exercised by tests only — so only the distribution loop runs
- * in production. Both loops are now driven by the same `ConfirmationScheduler`,
+ * Only the distribution loop runs in production. The funding-intent confirmation
+ * loop is intentionally not started from this composition root: that path was
+ * retired by #239 (the migration renamed `funding_intent` to
+ * `funding_intent_legacy`, and contributions now go through the vault and
+ * `campaign_contribution`), so its loop is exercised by tests only — it is not
+ * pending wiring. Both loops are driven by the same `ConfirmationScheduler`,
  * which owns the recursive `setTimeout` (so a slow Horizon call cannot let ticks
  * overlap), the `unref`ed timer (so the HTTP server alone keeps the process
  * alive) and the shared confirmation policy. Before the scheduler was generalized
