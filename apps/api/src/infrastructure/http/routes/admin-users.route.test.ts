@@ -5,13 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AdminUsersReaderPort } from "../../../application/ports/admin-users-reader-port.js";
 import { buildApp } from "../build-app.js";
 import { bearer, fakeAuthPort, principalFor } from "../test-support/auth.js";
-import {
-  createAdminUsersRouteDependencies,
-  parseAdminUsersQueryParams
-} from "./admin-users.route.js";
+import type { AdminUsersRouteDependencies } from "./admin-users.route.js";
+import { parseAdminUsersQueryParams } from "./admin-users.route.js";
 
 const URL = "/admin/users";
 const ADMIN_ID = principalFor("ADMIN").userId;
+const USER_ID = "11111111-1111-4111-8111-111111111111";
+const ACTIVATION_URL = `/admin/users/${USER_ID}/activation`;
+const ROLE_URL = `/admin/users/${USER_ID}/role`;
 
 const PAGE: AdminUsersPage = parseAdminUsersPage({
   items: [
@@ -33,7 +34,23 @@ const PAGE: AdminUsersPage = parseAdminUsersPage({
 
 function appFor(list: AdminUsersReaderPort["list"]): FastifyInstance {
   return buildApp({
-    adminUsers: createAdminUsersRouteDependencies({ list }),
+    adminUsers: {
+      users: { list },
+      setActivation: vi.fn(),
+      changeRole: vi.fn()
+    },
+    auth: { port: fakeAuthPort() }
+  });
+}
+
+function mutationsApp(overrides: Partial<AdminUsersRouteDependencies> = {}): FastifyInstance {
+  return buildApp({
+    adminUsers: {
+      users: { list: vi.fn() },
+      setActivation: vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, active: false } }),
+      changeRole: vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, role: "INVERSOR" } }),
+      ...overrides
+    },
     auth: { port: fakeAuthPort() }
   });
 }
@@ -146,6 +163,220 @@ describe("GET /admin/users", () => {
     app = appFor(vi.fn().mockRejectedValue(new Error("secret detail")));
 
     const response = await app.inject({ method: "GET", url: URL, headers: bearer("ADMIN") });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    expect(response.body).not.toMatch(/secret/);
+  });
+});
+
+describe("POST /admin/users/:userId/activation", () => {
+  let app: FastifyInstance | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await app?.close();
+    app = undefined;
+  });
+
+  async function post(
+    list: AdminUsersRouteDependencies["setActivation"],
+    body: unknown,
+    role: "ADMIN" | "PYME" | "INVERSOR" = "ADMIN",
+    url = ACTIVATION_URL
+  ) {
+    app = mutationsApp({ setActivation: list });
+    return app.inject({ method: "POST", url, headers: bearer(role), payload: body as object });
+  }
+
+  it("activates for an ADMIN and passes the verified actor, never a body identity", async () => {
+    const setActivation = vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, active: false } });
+
+    const response = await post(setActivation, { active: false });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ userId: USER_ID, active: false });
+    expect(setActivation).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        targetUserId: USER_ID,
+        active: false,
+        actorUserId: ADMIN_ID,
+        correlationId: expect.any(String)
+      })
+    );
+  });
+
+  it.each([
+    [{ active: "yes" }],
+    [{}],
+    [{ active: true, actorUserId: ADMIN_ID }],
+    [null]
+  ])("answers 400 for a malformed body (%o) without calling the use case", async (body) => {
+    const setActivation = vi.fn();
+
+    const response = await post(setActivation, body);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(setActivation).not.toHaveBeenCalled();
+  });
+
+  it("answers 400 for a malformed userId", async () => {
+    const setActivation = vi.fn();
+
+    const response = await post(setActivation, { active: true }, "ADMIN", "/admin/users/not-a-uuid/activation");
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(setActivation).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a token", async () => {
+    const setActivation = vi.fn();
+    app = mutationsApp({ setActivation });
+
+    const response = await app.inject({ method: "POST", url: ACTIVATION_URL, payload: { active: true } });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ code: "unauthenticated" });
+    expect(setActivation).not.toHaveBeenCalled();
+  });
+
+  it.each(["PYME", "INVERSOR"] as const)("rejects %s with 403 before the use case", async (role) => {
+    const setActivation = vi.fn();
+
+    const response = await post(setActivation, { active: true }, role);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+    expect(setActivation).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["not_found", 404],
+    ["self", 409],
+    ["last_admin", 409],
+    ["already_inactive", 409],
+    ["unavailable", 503]
+  ] as const)("maps the use-case code %s to %i", async (code, status) => {
+    const setActivation = vi.fn().mockResolvedValue({ ok: false, error: { code } });
+
+    const response = await post(setActivation, { active: false });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({ code });
+  });
+
+  it("maps a thrown dependency to a sanitized 503 that never echoes the error", async () => {
+    const setActivation = vi.fn().mockRejectedValue(new Error("secret detail"));
+
+    const response = await post(setActivation, { active: true });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    expect(response.body).not.toMatch(/secret/);
+  });
+});
+
+describe("POST /admin/users/:userId/role", () => {
+  let app: FastifyInstance | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await app?.close();
+    app = undefined;
+  });
+
+  async function post(
+    changeRole: AdminUsersRouteDependencies["changeRole"],
+    body: unknown,
+    role: "ADMIN" | "PYME" | "INVERSOR" = "ADMIN",
+    url = ROLE_URL
+  ) {
+    app = mutationsApp({ changeRole });
+    return app.inject({ method: "POST", url, headers: bearer(role), payload: body as object });
+  }
+
+  it("changes the role for an ADMIN and passes the verified actor", async () => {
+    const changeRole = vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, role: "INVERSOR" } });
+
+    const response = await post(changeRole, { role: "INVERSOR" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ userId: USER_ID, role: "INVERSOR" });
+    expect(changeRole).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        targetUserId: USER_ID,
+        role: "INVERSOR",
+        actorUserId: ADMIN_ID,
+        correlationId: expect.any(String)
+      })
+    );
+  });
+
+  it.each([[{ role: "ADMIN" }], [{ role: "PEPE" }], [{}]])(
+    "answers 400 for a malformed body (%o) without calling the use case",
+    async (body) => {
+      const changeRole = vi.fn();
+
+      const response = await post(changeRole, body);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ code: "invalid_request" });
+      expect(changeRole).not.toHaveBeenCalled();
+    }
+  );
+
+  it("answers 400 for a malformed userId", async () => {
+    const changeRole = vi.fn();
+
+    const response = await post(changeRole, { role: "INVERSOR" }, "ADMIN", "/admin/users/nope/role");
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(changeRole).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a token", async () => {
+    const changeRole = vi.fn();
+    app = mutationsApp({ changeRole });
+
+    const response = await app.inject({ method: "POST", url: ROLE_URL, payload: { role: "INVERSOR" } });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ code: "unauthenticated" });
+    expect(changeRole).not.toHaveBeenCalled();
+  });
+
+  it.each(["PYME", "INVERSOR"] as const)("rejects %s with 403 before the use case", async (role) => {
+    const changeRole = vi.fn();
+
+    const response = await post(changeRole, { role: "INVERSOR" }, role);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+    expect(changeRole).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["not_found", 404],
+    ["target_is_admin", 409],
+    ["unchanged", 409],
+    ["role_not_allowed", 409],
+    ["unavailable", 503]
+  ] as const)("maps the use-case code %s to %i", async (code, status) => {
+    const changeRole = vi.fn().mockResolvedValue({ ok: false, error: { code } });
+
+    const response = await post(changeRole, { role: "INVERSOR" });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({ code });
+  });
+
+  it("maps a thrown dependency to a sanitized 503 that never echoes the error", async () => {
+    const changeRole = vi.fn().mockRejectedValue(new Error("secret detail"));
+
+    const response = await post(changeRole, { role: "INVERSOR" });
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });

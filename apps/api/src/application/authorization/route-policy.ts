@@ -86,6 +86,12 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // read-only and ADMIN-only; the caller's identity never scopes the listing.
   "GET /admin/users": only("ADMIN"),
   "GET /admin/audit-log": only("ADMIN"),
+  // Admin › Usuarios mutations (#390/WU3a): activate/deactivate a user and
+  // change a role. ADMIN-only; the actor is the verified principal, and the
+  // domain rules (last active admin, PYME↔INVERSOR only) are enforced by the
+  // use cases, not by the policy.
+  "POST /admin/users/:userId/activation": only("ADMIN"),
+  "POST /admin/users/:userId/role": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),

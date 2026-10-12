@@ -57,6 +57,10 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // ADMIN only.
   ["GET", "/admin/users", ["ADMIN"]],
   ["GET", "/admin/audit-log", ["ADMIN"]],
+  // Admin › Usuarios mutations (#390/WU3a): activate/deactivate and role change,
+  // ADMIN only; the actor is the verified principal.
+  ["POST", "/admin/users/:userId/activation", ["ADMIN"]],
+  ["POST", "/admin/users/:userId/role", ["ADMIN"]],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
   ["POST", "/admin/rates", ["ADMIN"]],

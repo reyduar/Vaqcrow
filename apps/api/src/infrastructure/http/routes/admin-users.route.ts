@@ -1,37 +1,67 @@
-import { adminUsersQuerySchema } from "@vaqcrow/contracts";
+import {
+  adminUsersQuerySchema,
+  parseChangeUserRoleCommand,
+  parseSetUserActiveCommand
+} from "@vaqcrow/contracts";
 import type { AdminUsersQuery } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
+import { changeUserRole } from "../../../application/admin-users/change-user-role.js";
+import type {
+  ChangeUserRoleOutcome,
+  ChangeUserRoleRequest
+} from "../../../application/admin-users/change-user-role.js";
+import { setUserActivation } from "../../../application/admin-users/set-user-activation.js";
+import type {
+  SetUserActivationErrorCode,
+  SetUserActivationOutcome,
+  SetUserActivationRequest
+} from "../../../application/admin-users/set-user-activation.js";
+import type { AdminUserWriterPort } from "../../../application/ports/admin-user-writer-port.js";
+import type { AuditLogPort } from "../../../application/ports/audit-log-port.js";
 import type { AdminUsersReaderPort } from "../../../application/ports/admin-users-reader-port.js";
 
 /**
- * The ADMIN users list (Feature #390, WU2). Read-only and `ADMIN`-only (see
- * `route-policy.ts`).
+ * The ADMIN users surface (Feature #390).
  *
- * `GET /admin/users` decodes `search`/`role`/`status`/`page`/`pageSize` into the
- * shared `AdminUsersQuery` with `adminUsersQuerySchema`; `page`/`pageSize`
- * default to 1/20 when omitted. Unknown query keys, a non-numeric page, or a
- * `pageSize` over 100 are a `400 { code: "invalid_request" }` before the reader
- * is touched. The caller is always `request.principal` — a query- or
- * body-supplied identity is ignored, and `principal.userId` only feeds `isSelf`;
- * it never narrows the listing, because an admin reads every account.
+ * WU2 added the read-only list: `GET /admin/users` decodes the query into the
+ * shared `AdminUsersQuery` with `adminUsersQuerySchema` (`page`/`pageSize`
+ * default to 1/20); unknown keys, a non-numeric page or a `pageSize` over 100
+ * are a `400 { code: "invalid_request" }` before the reader is touched. The
+ * caller is always `request.principal`; `principal.userId` only feeds `isSelf`.
  *
- * Any read failure — a returned `unavailable` or a thrown adapter — is a
- * sanitized `503 { code: "unavailable" }`, never a 200 with an
- * empty-but-misleading page. The 200 body is exactly what the reader returned.
+ * WU3a adds the two mutations, both `ADMIN`-only by the route-policy table:
+ * `POST /admin/users/:userId/activation` (body `{ active }`) and
+ * `POST /admin/users/:userId/role` (body `{ role: "PYME" | "INVERSOR" }`). The
+ * body is validated with the WU1 command schemas (strict: an `actor` field is a
+ * `400`, never ignored); a malformed `:userId` is a `400`. The actor is the
+ * verified principal, never request data. Domain rejections are a `409` with a
+ * specific code, an unknown user is `404`, and any provider failure — returned
+ * or thrown — is a sanitized `503 { code: "unavailable" }`.
  */
 
 export const DEFAULT_ADMIN_USERS_PAGE = 1;
 export const DEFAULT_ADMIN_USERS_PAGE_SIZE = 20;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export interface AdminUsersRouteDependencies {
   readonly users: AdminUsersReaderPort;
+  readonly setActivation: (request: SetUserActivationRequest) => Promise<SetUserActivationOutcome>;
+  readonly changeRole: (request: ChangeUserRoleRequest) => Promise<ChangeUserRoleOutcome>;
 }
 
-/** Composition-root helper keeps the route's dependency a vendor-free port. */
+/** Composition-root helper keeps the routes' dependencies vendor-free ports. */
 export function createAdminUsersRouteDependencies(
-  users: AdminUsersReaderPort
+  users: AdminUsersReaderPort,
+  writer: AdminUserWriterPort,
+  audit: AuditLogPort
 ): AdminUsersRouteDependencies {
-  return { users };
+  const useCases = { users: writer, audit };
+  return {
+    users,
+    setActivation: (request) => setUserActivation(useCases, request),
+    changeRole: (request) => changeUserRole(useCases, request)
+  };
 }
 
 function asRecord(query: unknown): Record<string, unknown> | undefined {
@@ -70,6 +100,17 @@ export function parseAdminUsersQueryParams(query: unknown): AdminUsersQuery | un
   return parsed.success ? parsed.data : undefined;
 }
 
+/**
+ * A domain rejection is a conflict; an unknown user is `404`; a provider failure
+ * is `503`. Activation and role share this mapping (the role-only code is added
+ * on top below).
+ */
+function statusForActivationError(code: SetUserActivationErrorCode): number {
+  if (code === "not_found") return 404;
+  if (code === "unavailable") return 503;
+  return 409;
+}
+
 export function registerAdminUsersRoute(
   app: FastifyInstance,
   dependencies: AdminUsersRouteDependencies
@@ -99,4 +140,84 @@ export function registerAdminUsersRoute(
       return reply.code(503).send({ code: "unavailable" });
     }
   });
+
+  app.post<{ Params: { userId: string }; Body: unknown }>(
+    "/admin/users/:userId/activation",
+    async (request, reply) => {
+      const principal = request.principal;
+      if (principal === undefined) {
+        return reply.code(401).send({ code: "unauthenticated" });
+      }
+
+      const userId = request.params.userId;
+      if (!UUID.test(userId)) {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      let active: boolean;
+      try {
+        active = parseSetUserActiveCommand(request.body).active;
+      } catch {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      try {
+        const result = await dependencies.setActivation({
+          targetUserId: userId,
+          active,
+          actorUserId: principal.userId,
+          correlationId: request.id
+        });
+        if (result.ok) {
+          return reply.code(200).send(result.value);
+        }
+        return reply.code(statusForActivationError(result.error.code)).send({ code: result.error.code });
+      } catch {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+    }
+  );
+
+  app.post<{ Params: { userId: string }; Body: unknown }>(
+    "/admin/users/:userId/role",
+    async (request, reply) => {
+      const principal = request.principal;
+      if (principal === undefined) {
+        return reply.code(401).send({ code: "unauthenticated" });
+      }
+
+      const userId = request.params.userId;
+      if (!UUID.test(userId)) {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      let role: ChangeUserRoleRequest["role"];
+      try {
+        role = parseChangeUserRoleCommand(request.body).role;
+      } catch {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      try {
+        const result = await dependencies.changeRole({
+          targetUserId: userId,
+          role,
+          actorUserId: principal.userId,
+          correlationId: request.id
+        });
+        if (result.ok) {
+          return reply.code(200).send(result.value);
+        }
+        const status =
+          result.error.code === "not_found"
+            ? 404
+            : result.error.code === "unavailable"
+              ? 503
+              : 409;
+        return reply.code(status).send({ code: result.error.code });
+      } catch {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+    }
+  );
 }

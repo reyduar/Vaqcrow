@@ -22,6 +22,7 @@ import { StellarWalletSignature } from "./infrastructure/adapters/stellar-wallet
 import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
 import { SupabaseAuditLogReader } from "./infrastructure/adapters/supabase-audit-log-reader.js";
 import { SupabaseAdminUsersReader } from "./infrastructure/adapters/supabase-admin-users-reader.js";
+import { SupabaseAdminUserWriter } from "./infrastructure/adapters/supabase-admin-user-writer.js";
 import { SupabaseHealthProbe } from "./infrastructure/adapters/supabase-health-probe.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
@@ -189,11 +190,11 @@ const visionProvider = createOpenCodeGoVisionProvider({
   timeoutMs: config.llm.timeoutMs
 });
 
-// Identity and audit (Task #370). The audit log is wired here so its first
-// callers (#410, #390) only have to consume the port; no route appends yet.
+// Identity and audit (Task #370). The audit log is wired here so its callers
+// only have to consume the port; the admin user-management mutations (#390/WU3a)
+// are its first production writers.
 const auth = { port: new SupabaseAuth(supabase) };
 const auditLog = new SupabaseAuditLog(supabase);
-void auditLog; // not consumed by any route yet
 
 // Notifications (#382/T1c). The repository backs the bell routes below; the
 // publisher's first production call site is the submission below (#402/T1b),
@@ -249,10 +250,12 @@ const reportsRepository = new SupabaseReportsRepository(supabase);
 // historic.
 const myCampaignsRepository = new SupabaseMyCampaignsRepository(supabase);
 
-// Admin › Usuarios (#390/WU2): the read-only users list composes `profile`, the
-// Supabase Auth user list and the simulated KYC; the audit-log reader mirrors
-// `audit_log` newest first. Both back ADMIN-only routes; nothing here writes.
+// Admin › Usuarios (#390): the read-only users list composes `profile`, the
+// Supabase Auth user list and the simulated KYC; the writer mutates a profile's
+// `status`/`role` and every successful write appends to the audit log. All three
+// back ADMIN-only routes (#390/WU2 read, WU3a mutations).
 const adminUsersReader = new SupabaseAdminUsersReader(supabase);
+const adminUserWriter = new SupabaseAdminUserWriter(supabase);
 const auditLogReader = new SupabaseAuditLogReader(supabase);
 
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
@@ -354,9 +357,9 @@ const app = buildApp({
       businesses: businessRepository
     })
   ),
-  // Admin › Usuarios (#390/WU2): the ADMIN-only users list and audit log, both
-  // read-only.
-  adminUsers: createAdminUsersRouteDependencies(adminUsersReader),
+  // Admin › Usuarios (#390): the ADMIN-only users list, audit log and the two
+  // mutations (activation, role change), each writing one audit entry.
+  adminUsers: createAdminUsersRouteDependencies(adminUsersReader, adminUserWriter, auditLog),
   adminAuditLog: createAdminAuditLogRouteDependencies(auditLogReader),
   documentVerdict: createDocumentVerdictRouteDependencies({
     applicationReviews: applicationReviewRepository,
