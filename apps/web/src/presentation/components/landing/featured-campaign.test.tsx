@@ -82,6 +82,15 @@ describe("FeaturedCampaign (Feature #418, WU2)", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Panadería Horizonte SRL" })).toBeInTheDocument();
   });
 
+  // Issue #481: the placeholder's CTA must open the synthetic detail page
+  // instead of the empty `/explore`.
+  it("links the simulated example CTA to the synthetic detail page", async () => {
+    renderFeatured(okPort([]));
+
+    const cta = await screen.findByRole("link", { name: "Ver evidencia y riesgo" });
+    expect(cta).toHaveAttribute("href", "/campaigns/example");
+  });
+
   it("shows the loading region while the list is still in flight", () => {
     renderFeatured({ list: vi.fn().mockReturnValue(new Promise(() => {})) });
 
