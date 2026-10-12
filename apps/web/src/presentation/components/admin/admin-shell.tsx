@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { IoBriefcaseOutline, IoLogOutOutline, IoPeopleOutline } from "react-icons/io5";
 import { ADMIN_CONSOLE_PATH } from "@/application/admin/admin-guard";
 import { DEFAULT_ADMIN_QUEUE_QUERY } from "@/application/admin/queue";
+import { ADMIN_USERS_PATH } from "@/application/admin/users";
 import { SIGN_OUT_ERROR } from "@/application/navigation/shell-nav";
 import type { AdminQueuePort } from "@/application/ports/admin-queue-port";
 import type { NotificationPort } from "@/application/ports/notification-port";
@@ -43,9 +44,8 @@ export interface AdminShellProps {
  * theme switcher, the notification bell with its unread count, the user chip
  * (name + `Administrador`, D3) and "Cerrar sesión".
  *
- * `Usuarios` is #390's view and is not built here: it renders as the designed
- * nav item but as an inert, disabled control, so the shell never ships a dead
- * link (it is not a full users screen either).
+ * Both nav items are real links: `Usuarios` points at `/admin/users` (#390 /
+ * WU4) and marks itself current there.
  *
  * The `PyMEs` badge shows the API's global pending count (T1b), never the
  * pending rows of the loaded page.
@@ -62,6 +62,7 @@ export function AdminShell({ children, queuePort, bellPort }: AdminShellProps) {
   const displayName = principal?.displayName ?? "";
 
   const pymesActive = pathname === ADMIN_CONSOLE_PATH || pathname.startsWith(`${ADMIN_CONSOLE_PATH}/`);
+  const usersActive = pathname === ADMIN_USERS_PATH || pathname.startsWith(`${ADMIN_USERS_PATH}/`);
 
   async function signOut() {
     setSignOutFailed(false);
@@ -103,14 +104,18 @@ export function AdminShell({ children, queuePort, bellPort }: AdminShellProps) {
             ) : null}
           </Link>
 
-          <button
-            type="button"
-            disabled
-            className="flex h-11 items-center gap-3 rounded-control px-3 text-left text-[15px] font-medium text-text-secondary opacity-70"
+          <Link
+            href={ADMIN_USERS_PATH}
+            aria-current={usersActive ? "page" : undefined}
+            className={`flex h-11 items-center gap-3 rounded-control px-3 text-[15px] no-underline ${FOCUS_RING} ${
+              usersActive
+                ? "bg-brand-accent-tint font-[650] text-brand-accent-text"
+                : "font-medium text-text-primary hover:bg-page-surface"
+            }`}
           >
             <IoPeopleOutline aria-hidden="true" focusable="false" className="shrink-0 text-xl" />
             <span className="flex-1">Usuarios</span>
-          </button>
+          </Link>
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-page-border pt-4">
