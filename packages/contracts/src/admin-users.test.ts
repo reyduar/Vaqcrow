@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  acceptOperatorInvitationCommandSchema,
   adminUserSchema,
   adminUsersQuerySchema,
   auditLogPageSchema,
   changeUserRoleCommandSchema,
   inviteOperatorCommandSchema,
+  parseAcceptOperatorInvitationCommand,
   parseAdminUsersQuery,
   parseChangeUserRoleCommand,
   parseInviteOperatorCommand,
@@ -108,6 +110,30 @@ describe("inviteOperatorCommandSchema", () => {
 
   it("is strict: an unknown key is an error", () => {
     expect(inviteOperatorCommandSchema.safeParse({ email: "op@vaqcrow.com", role: "ADMIN" }).success).toBe(
+      false
+    );
+  });
+});
+
+describe("acceptOperatorInvitationCommandSchema", () => {
+  it("takes only the display name, trimmed", () => {
+    expect(parseAcceptOperatorInvitationCommand({ displayName: "  Ana Operadora  " })).toEqual({
+      displayName: "Ana Operadora"
+    });
+  });
+
+  it("rejects an empty display name", () => {
+    expect(acceptOperatorInvitationCommandSchema.safeParse({ displayName: "   " }).success).toBe(false);
+    expect(acceptOperatorInvitationCommandSchema.safeParse({ displayName: "" }).success).toBe(false);
+  });
+
+  it("caps the display name at 120 characters", () => {
+    expect(acceptOperatorInvitationCommandSchema.safeParse({ displayName: "a".repeat(120) }).success).toBe(true);
+    expect(acceptOperatorInvitationCommandSchema.safeParse({ displayName: "a".repeat(121) }).success).toBe(false);
+  });
+
+  it("is strict and no longer carries the password (it is set client-side)", () => {
+    expect(acceptOperatorInvitationCommandSchema.safeParse({ displayName: "Ana", password: "secret-123" }).success).toBe(
       false
     );
   });

@@ -23,6 +23,7 @@ import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.j
 import { SupabaseAuditLogReader } from "./infrastructure/adapters/supabase-audit-log-reader.js";
 import { SupabaseAdminUsersReader } from "./infrastructure/adapters/supabase-admin-users-reader.js";
 import { SupabaseAdminUserWriter } from "./infrastructure/adapters/supabase-admin-user-writer.js";
+import { SupabaseOperatorProfileWriter } from "./infrastructure/adapters/supabase-operator-profile-writer.js";
 import {
   OPERATOR_INVITATION_ACCEPT_PATH,
   SupabaseOperatorInviter
@@ -260,6 +261,9 @@ const myCampaignsRepository = new SupabaseMyCampaignsRepository(supabase);
 // back ADMIN-only routes (#390/WU2 read, WU3a mutations).
 const adminUsersReader = new SupabaseAdminUsersReader(supabase);
 const adminUserWriter = new SupabaseAdminUserWriter(supabase);
+// The invitation acceptance (#390/WU5) writes the caller's own
+// `profile.display_name` through a dedicated, non-admin writer port.
+const operatorProfileWriter = new SupabaseOperatorProfileWriter(supabase);
 const auditLogReader = new SupabaseAuditLogReader(supabase);
 
 // The operator invitation (#390/WU3b): the invite email's redirect target is
@@ -379,6 +383,7 @@ const app = buildApp({
     adminUsersReader,
     adminUserWriter,
     auditLog,
+    operatorProfileWriter,
     operatorInviter,
     notificationPublisher
   ),

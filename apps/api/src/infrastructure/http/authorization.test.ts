@@ -64,6 +64,9 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // The operator invitation (#390/WU3b): ADMIN only; the actor is the verified
   // principal and the invitee's email is the only body field.
   ["POST", "/admin/invitations", ["ADMIN"]],
+  // The invitation acceptance (#390/WU5): any signed-in invitee accepts their
+  // own invitation; the route only edits the caller's own profile row.
+  ["POST", "/admin/invitations/accept", "any"],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
   ["POST", "/admin/rates", ["ADMIN"]],

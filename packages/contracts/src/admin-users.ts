@@ -116,10 +116,14 @@ export function parseInviteOperatorResult(input: unknown): InviteOperatorResult 
   return inviteOperatorResultSchema.parse(input);
 }
 
-/** The invited operator sets their own display name and password on acceptance. */
+/**
+ * The invited operator sets their own display name on acceptance. The password
+ * is set client-side against Supabase Auth (`updateUser({ password })`), so it
+ * never travels through this API command; the profile column caps the name at
+ * 120 characters.
+ */
 export const acceptOperatorInvitationCommandSchema = z.strictObject({
-  displayName: z.string().trim().min(1),
-  password: z.string().min(8)
+  displayName: z.string().trim().min(1).max(120)
 });
 export type AcceptOperatorInvitationCommand = z.infer<
   typeof acceptOperatorInvitationCommandSchema

@@ -1,11 +1,17 @@
 import {
   adminUsersQuerySchema,
+  parseAcceptOperatorInvitationCommand,
   parseChangeUserRoleCommand,
   parseInviteOperatorCommand,
   parseSetUserActiveCommand
 } from "@vaqcrow/contracts";
 import type { AdminUsersQuery } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
+import { acceptOperatorInvitation } from "../../../application/admin-users/accept-operator-invitation.js";
+import type {
+  AcceptOperatorInvitationOutcome,
+  AcceptOperatorInvitationRequest
+} from "../../../application/admin-users/accept-operator-invitation.js";
 import { changeUserRole } from "../../../application/admin-users/change-user-role.js";
 import type {
   ChangeUserRoleOutcome,
@@ -27,6 +33,7 @@ import type { AuditLogPort } from "../../../application/ports/audit-log-port.js"
 import type { AdminUsersReaderPort } from "../../../application/ports/admin-users-reader-port.js";
 import type { NotificationPublisherPort } from "../../../application/ports/notification-publisher-port.js";
 import type { OperatorInviterPort } from "../../../application/ports/operator-inviter-port.js";
+import type { OperatorProfileWriterPort } from "../../../application/ports/operator-profile-writer-port.js";
 
 /**
  * The ADMIN users surface (Feature #390).
@@ -52,6 +59,13 @@ import type { OperatorInviterPort } from "../../../application/ports/operator-in
  * one audit entry and publishes the in-app event best-effort. An address that
  * already has an account is a `409 { code: "email_exists" }`; any other failure
  * is a sanitized `503`.
+ *
+ * WU5 adds `POST /admin/invitations/accept` (body `{ displayName }`), the one
+ * route here that is `AUTHENTICATED` rather than `ADMIN`-only: the invitee
+ * edits only their own profile row, so the actor is always the verified
+ * principal and the body can never name another user. The password is set
+ * client-side and is not part of the command. A missing profile is `404`; any
+ * provider failure — returned or thrown — is a sanitized `503`.
  */
 
 export const DEFAULT_ADMIN_USERS_PAGE = 1;
@@ -64,6 +78,9 @@ export interface AdminUsersRouteDependencies {
   readonly setActivation: (request: SetUserActivationRequest) => Promise<SetUserActivationOutcome>;
   readonly changeRole: (request: ChangeUserRoleRequest) => Promise<ChangeUserRoleOutcome>;
   readonly invite: (request: InviteOperatorRequest) => Promise<InviteOperatorOutcome>;
+  readonly acceptInvitation: (
+    request: AcceptOperatorInvitationRequest
+  ) => Promise<AcceptOperatorInvitationOutcome>;
 }
 
 /** Composition-root helper keeps the routes' dependencies vendor-free ports. */
@@ -71,6 +88,7 @@ export function createAdminUsersRouteDependencies(
   users: AdminUsersReaderPort,
   writer: AdminUserWriterPort,
   audit: AuditLogPort,
+  profileWriter: OperatorProfileWriterPort,
   inviter: OperatorInviterPort,
   notifications: Pick<NotificationPublisherPort, "publish">
 ): AdminUsersRouteDependencies {
@@ -79,7 +97,8 @@ export function createAdminUsersRouteDependencies(
     users,
     setActivation: (request) => setUserActivation(useCases, request),
     changeRole: (request) => changeUserRole(useCases, request),
-    invite: (request) => inviteOperator({ inviter, audit, notifications }, request)
+    invite: (request) => inviteOperator({ inviter, audit, notifications }, request),
+    acceptInvitation: (request) => acceptOperatorInvitation({ profile: profileWriter, audit }, request)
   };
 }
 
@@ -264,6 +283,40 @@ export function registerAdminUsersRoute(
       }
       return reply
         .code(result.error.code === "email_exists" ? 409 : 503)
+        .send({ code: result.error.code });
+    } catch {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+  });
+
+  // WU5: the invited operator accepts. AUTHENTICATED, not ADMIN-only, because
+  // the route only ever edits the caller's own profile row — the user id comes
+  // from the verified principal, never the body. The password is set
+  // client-side against Supabase Auth and never crosses this API.
+  app.post<{ Body: unknown }>("/admin/invitations/accept", async (request, reply) => {
+    const principal = request.principal;
+    if (principal === undefined) {
+      return reply.code(401).send({ code: "unauthenticated" });
+    }
+
+    let displayName: string;
+    try {
+      displayName = parseAcceptOperatorInvitationCommand(request.body).displayName;
+    } catch {
+      return reply.code(400).send({ code: "invalid_request" });
+    }
+
+    try {
+      const result = await dependencies.acceptInvitation({
+        displayName,
+        actorUserId: principal.userId,
+        correlationId: request.id
+      });
+      if (result.ok) {
+        return reply.code(200).send(result.value);
+      }
+      return reply
+        .code(result.error.code === "not_found" ? 404 : 503)
         .send({ code: result.error.code });
     } catch {
       return reply.code(503).send({ code: "unavailable" });

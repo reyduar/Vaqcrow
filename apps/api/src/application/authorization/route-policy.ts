@@ -96,6 +96,11 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // address is the only body field; the actor is the verified principal, and
   // the actor can never invite themselves into a role through request data.
   "POST /admin/invitations": only("ADMIN"),
+  // The invitation acceptance (#390/WU5): AUTHENTICATED — any signed-in invitee
+  // accepts their own invitation. The route only edits the caller's own profile
+  // row (the user id is the verified principal, never the body), so it is not
+  // ADMIN-gated; the ADMIN that sent the invitation is a different route above.
+  "POST /admin/invitations/accept": AUTHENTICATED,
 
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),
