@@ -11,6 +11,9 @@
 
 La Feature #422 entrega la página de detalle de campaña (template `Vaqcrow Detalle PyME.dc.html`) y el flujo de aporte: compuerta de cuenta, modal «Revisión antes de firmar», redirección a la wallet y el KYC simulado del inversor en el primer aporte. El detalle sólo muestra campañas **publicadas** (misma definición que el marketplace de #414) y, por decisión del owner, **abrir el detalle exige cuenta** (la compuerta «Ingresá para ver esta campaña» del template).
 
+> [!note] Actualización (#485): el detalle pasó a ser público
+> La [Feature #485](https://github.com/reyduar/Vaqcrow/issues/485) revirtió la decisión de la compuerta: el detalle es **público y compartible por link** (la ruta `GET /marketplace/campaigns/:campaignId` es `PUBLIC`, se retiró la compuerta de la web) y el `actor` de la decisión humana se **neutraliza** a «Administración Vaqcrow» para no exponer el nombre de un operador. Evidencia: [[docs/planning/public-campaign-detail-evidence|Public campaign detail]].
+
 Reutiliza el motor existente (persistencia de campaña, bóveda/despliegue de #410, wallet Freighter de #406, notificaciones de #382) y el motor de invocación de bóveda que ya usaba el recorrido guionado (`campaign-workspace.tsx`, que #438 retira). Agrega: un modelo de lectura de detalle, la foto/serie de ventas persistida, el flujo de aporte reubicado, el KYC del inversor y la acción «Retirar».
 
 | Task | Rama | Estado del issue |

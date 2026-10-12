@@ -21,7 +21,7 @@ export function createCampaignDetailPort(
 }
 
 /**
- * Browser default. The detail is account-gated, so it reuses the app's lazy
+ * Browser default. The detail is public (#485), so it reuses the app's lazy
  * browser session to attach the `Authorization: Bearer` token; without a
  * configured base URL it is the null object so the page stays honest.
  */

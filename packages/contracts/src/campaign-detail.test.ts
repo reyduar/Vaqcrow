@@ -13,7 +13,7 @@ function without<T extends object, K extends keyof T>(value: T, key: K): Omit<T,
 }
 
 /**
- * The account-gated campaign detail (`GET /marketplace/campaigns/:campaignId`).
+ * The campaign detail (`GET /marketplace/campaigns/:campaignId`).
  * These tests fix the wire shape: only persisted facts travel, every
  * non-persisted field is an explicit `null` (never invented, never a
  * fabricated zero), the image path follows the listing rule, and the schema is

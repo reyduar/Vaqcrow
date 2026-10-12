@@ -282,14 +282,15 @@ describe("GET /marketplace/campaigns/:campaignId", () => {
     expect(local.vaultAddress).toBe(DETAIL_RECORD.vaultAddress);
   });
 
-  it("requires a session and serves the published campaign detail to any signed-in role", async () => {
+  it("serves the published campaign detail without a session and neutralizes the operator name (#422/#485)", async () => {
     app = buildApp({
       auth: { port: fakeAuthPort() },
       marketplace: marketplace({ detail: { ok: true, value: DETAIL_RECORD } })
     });
 
-    const unauthorized = await app.inject({ method: "GET", url });
-    expect(unauthorized.statusCode).toBe(401);
+    // Public since #485: an anonymous visitor reads it (a shared link works).
+    const anonymous = await app.inject({ method: "GET", url });
+    expect(anonymous.statusCode).toBe(200);
 
     const response = await app.inject({ method: "GET", url, headers: bearer("INVERSOR") });
 
@@ -300,7 +301,9 @@ describe("GET /marketplace/campaigns/:campaignId", () => {
     expect(body.raisedArs).toBe(250);
     expect(body.status).toBe("funding");
     expect(body.assessment?.reasons).toEqual(["Ventas declaradas consistentes."]);
-    expect(body.decision?.actor).toBe("Admin Vaqcrow");
+    // The operator's stored name never crosses the public boundary.
+    expect(body.decision?.actor).toBe("Administración Vaqcrow");
+    expect(body.decision?.actor).not.toBe("Admin Vaqcrow");
   });
 
   it("answers 400 for a non-UUID id before touching the repository", async () => {

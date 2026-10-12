@@ -29,10 +29,13 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // proxies bytes only for a confirmed/open campaign.
   "GET /marketplace/campaigns": PUBLIC,
   "GET /marketplace/campaigns/:campaignId/image": PUBLIC,
-  // Account-gated campaign detail (#422/WU1): opening a published campaign's
-  // detail requires a session, any role. Unpublished/unknown ids are 404, so
-  // the policy only ever exposes what the public listing already shows.
-  "GET /marketplace/campaigns/:campaignId": AUTHENTICATED,
+  // Public campaign detail (#422/WU1; made public by #485): a **published**
+  // campaign's detail is readable without a session so an investor can share
+  // the link and other investors can read it while signed out. Unpublished or
+  // unknown ids are 404, so the route only ever exposes what the public listing
+  // already shows; the human-decision `actor` is neutralized to a role label by
+  // the use case and never carries an operator's name.
+  "GET /marketplace/campaigns/:campaignId": PUBLIC,
 
   "POST /sme-requests": only("PYME"),
   // The ADMIN PyMEs queue (#386/T1) lists every application; it is never

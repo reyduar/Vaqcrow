@@ -393,11 +393,7 @@
         "summary": "Read one published campaign's detail",
         "description": "AUTHENTICATED (any role). Unpublished or unknown ids are 404.",
         "operationId": "getMarketplaceCampaignsCampaignId",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
+        "security": [],
         "parameters": [
           {
             "name": "campaignId",

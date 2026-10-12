@@ -61,25 +61,21 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
   };
 }
 
-function renderDetail(port: CampaignDetailPort | null, signedIn = true) {
-  return render(<CampaignDetailController campaignId={CAMPAIGN_ID} signedIn={signedIn} port={port} />, { wrapper });
+function renderDetail(port: CampaignDetailPort | null) {
+  return render(<CampaignDetailController campaignId={CAMPAIGN_ID} port={port} />, { wrapper });
 }
 
-describe("CampaignDetail (account gate)", () => {
-  it("renders the gate card and never fetches when signed out", async () => {
+// Issue #485: the detail is public — a shared link is readable without a
+// session, so a signed-out visitor fetches and sees it (no login gate).
+describe("CampaignDetail (public read)", () => {
+  it("fetches and renders the detail without a session", async () => {
     const get = vi.fn().mockResolvedValue({ ok: true, detail: detail() });
 
-    renderDetail({ get }, false);
+    renderDetail({ get });
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Ingresá para ver esta campaña" })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ingresar como inversor" })).toHaveAttribute("href", "/login");
-    expect(screen.getByRole("link", { name: "Ingresar como PyME" })).toHaveAttribute("href", "/login");
-    expect(screen.getByRole("link", { name: "Creá una" })).toHaveAttribute("href", "/signup");
-
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(get).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Ingresá para ver esta campaña" })).not.toBeInTheDocument();
+    expect(get).toHaveBeenCalledTimes(1);
   });
 });
 

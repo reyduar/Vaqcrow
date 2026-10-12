@@ -228,7 +228,7 @@ Detrás de escena pasan tres cosas que conviene saber al mostrar la demo:
 
 1. Abrí `/signup`, elegí **«Soy inversor»** y completá «Nombre completo», correo y contraseña. Confirmá el correo e ingresá en `/login` con «Soy inversor». Vaqcrow te lleva a `/portfolio` («Mi portafolio»).
 2. En `/portfolio`, con la **cuenta 2** activa en Freighter, presioná «Conectar Freighter» y firmá el mensaje de verificación.
-3. Abrí `/explore` («Explorar PyMEs»): la campaña aprobada aparece en el marketplace. Presioná «Ver evidencia y riesgo» para abrir su detalle en `/campaigns/[id]`. El detalle exige una cuenta: sin sesión vas a ver «Ingresá para ver esta campaña».
+3. Abrí `/explore` («Explorar PyMEs»): la campaña aprobada aparece en el marketplace. Presioná «Ver evidencia y riesgo» para abrir su detalle en `/campaigns/[id]`. El detalle es **público** (desde #485): se abre y se comparte por link sin sesión; el `actor` de la decisión humana se muestra como «Administración Vaqcrow».
 4. En el detalle, escribí el monto y presioná **«Aportar a la campaña»**.
 5. La primera vez aparece la verificación de identidad del inversor: es **simulada** y se aprueba al continuar con «Aprobar y continuar»[^owner-pending]. No vuelve a pedirse.
 6. Se abre la revisión antes de firmar: contrato de la bóveda, función `contribute`, custodia («El contrato de la bóveda, no una persona») y monto. Presioná **«Firmar en Freighter»** y revisá en el popup: **red, cuenta activa, contrato y monto**.

@@ -5,11 +5,12 @@ import useSWR from "swr";
 import type { CampaignDetail, CampaignDetailErrorCode, CampaignDetailPort } from "@/application/ports/campaign-detail-port";
 
 /**
- * Server state of the campaign detail page (Feature #422, WU2).
+ * Server state of the campaign detail page (Feature #422, WU2; public since #485).
  *
  * The detail lives in SWR under `["campaign-detail", campaignId]`, keyed only
- * when a port exists **and** the caller says it is enabled (the page is
- * account-gated, so a signed-out visitor fetches nothing). A failed read never
+ * when a port exists **and** the caller says it is enabled. Since #485 it is a
+ * public read, so the controller always enables it — a signed-out visitor fetches
+ * the detail too. A failed read never
  * invents data: `detail` stays `null` and the flags are the only signal. A 404
  * is kept apart from a generic failure so the UI can show its own not-found
  * state instead of a retry banner.

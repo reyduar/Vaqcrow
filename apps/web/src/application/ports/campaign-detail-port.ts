@@ -7,7 +7,7 @@ import type {
 } from "@vaqcrow/contracts";
 
 /**
- * The account-gated campaign detail capability (Feature #422, WU2). Vendor-free
+ * The campaign detail capability (Feature #422, WU2; public since #485). Vendor-free
  * and React-free: the HTTP adapter lives in `infrastructure/campaign/`.
  *
  * It mirrors `GET /marketplace/campaigns/:campaignId` — a session-gated read of

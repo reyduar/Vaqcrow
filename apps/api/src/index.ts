@@ -224,7 +224,7 @@ const rateTableRepository = new SupabaseRateTableRepository(supabase);
 // published (confirmed vault, open campaign) rows.
 const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(supabase);
 
-// The account-gated campaign detail (#422/WU1): reads the joined
+// The campaign detail (#422/WU1; public since #485): reads the joined
 // `marketplace_campaign_detail` view as service_role. No PII; published rows only.
 const campaignDetailRepository = new SupabaseCampaignDetailRepository(supabase);
 

@@ -9,10 +9,12 @@ import type {
 import type { AccessTokenProvider } from "@/infrastructure/http/axios-http-client";
 
 /**
- * HTTP adapter for the account-gated campaign detail (Feature #422, WU2) talking
- * to `GET /marketplace/campaigns/:campaignId` with the signed-in session's
- * `Authorization: Bearer` token. The owner is resolved from that token by the
- * API, so no principal ever travels from here.
+ * HTTP adapter for the campaign detail (Feature #422, WU2; public since #485)
+ * talking to `GET /marketplace/campaigns/:campaignId`. The route is public, so
+ * the session's `Authorization: Bearer` token is attached only when there is
+ * one; with no token the request still goes out and the API answers the public
+ * read. When a token is present the API resolves the owner from it, so no
+ * principal ever travels from here.
  *
  * The wire contract keeps `imageUrl` API-relative, so this adapter resolves it
  * against the configured API base into the absolute `imageSrc` the DOM needs. A
