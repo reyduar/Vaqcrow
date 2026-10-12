@@ -39,3 +39,17 @@ export type {
   RevenueShareRoundingPolicy,
   RevenueShareRule
 } from "./revenue-share.js";
+
+export {
+  adminUserRoles,
+  changeableUserRoles,
+  isRoleChangeAllowed,
+  roleChangeTargets,
+  canDeactivateUser
+} from "./admin-users.js";
+export type {
+  AdminUserRole,
+  ChangeableUserRole,
+  DeactivationErrorCode,
+  DeactivationCheck
+} from "./admin-users.js";

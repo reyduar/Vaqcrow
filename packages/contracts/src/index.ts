@@ -367,3 +367,49 @@ export type {
   AdminEvidenceReconciliation,
   AdminEvidenceVault
 } from "./admin-application-evidence.js";
+
+export {
+  adminUserRoleSchema,
+  adminUserStatusSchema,
+  adminUserKycStatusSchema,
+  adminUserSchema,
+  adminUsersQuerySchema,
+  adminUsersPageSchema,
+  setUserActiveCommandSchema,
+  changeableUserRoleSchema,
+  changeUserRoleCommandSchema,
+  inviteOperatorCommandSchema,
+  inviteOperatorResultSchema,
+  acceptOperatorInvitationCommandSchema,
+  auditEntryViewSchema,
+  auditLogQuerySchema,
+  auditLogPageSchema,
+  parseAdminUser,
+  parseAdminUsersQuery,
+  parseAdminUsersPage,
+  parseSetUserActiveCommand,
+  parseChangeUserRoleCommand,
+  parseInviteOperatorCommand,
+  parseInviteOperatorResult,
+  parseAcceptOperatorInvitationCommand,
+  parseAuditEntryView,
+  parseAuditLogQuery,
+  parseAuditLogPage
+} from "./admin-users.js";
+export type {
+  AdminUser,
+  AdminUserRole,
+  AdminUserStatus,
+  AdminUserKycStatus,
+  AdminUsersQuery,
+  AdminUsersPage,
+  SetUserActiveCommand,
+  ChangeableUserRole,
+  ChangeUserRoleCommand,
+  InviteOperatorCommand,
+  InviteOperatorResult,
+  AcceptOperatorInvitationCommand,
+  AuditEntryView,
+  AuditLogQuery,
+  AuditLogPage
+} from "./admin-users.js";
