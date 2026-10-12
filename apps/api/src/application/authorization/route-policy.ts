@@ -82,6 +82,26 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // stored mirror, reached from the admin PyMEs queue.
   "GET /application-reviews/:applicationId/evidence": only("ADMIN"),
 
+  // Admin › Usuarios (#390/WU2): the users list and the audit log. Both are
+  // read-only and ADMIN-only; the caller's identity never scopes the listing.
+  "GET /admin/users": only("ADMIN"),
+  "GET /admin/audit-log": only("ADMIN"),
+  // Admin › Usuarios mutations (#390/WU3a): activate/deactivate a user and
+  // change a role. ADMIN-only; the actor is the verified principal, and the
+  // domain rules (last active admin, PYME↔INVERSOR only) are enforced by the
+  // use cases, not by the policy.
+  "POST /admin/users/:userId/activation": only("ADMIN"),
+  "POST /admin/users/:userId/role": only("ADMIN"),
+  // Admin › Usuarios operator invitation (#390/WU3b): ADMIN-only. The invitee's
+  // address is the only body field; the actor is the verified principal, and
+  // the actor can never invite themselves into a role through request data.
+  "POST /admin/invitations": only("ADMIN"),
+  // The invitation acceptance (#390/WU5): AUTHENTICATED — any signed-in invitee
+  // accepts their own invitation. The route only edits the caller's own profile
+  // row (the user id is the verified principal, never the body), so it is not
+  // ADMIN-gated; the ADMIN that sent the invitation is a different route above.
+  "POST /admin/invitations/accept": AUTHENTICATED,
+
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),
   "GET /admin/rates/current": only("ADMIN"),

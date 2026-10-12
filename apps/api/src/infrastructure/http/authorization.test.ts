@@ -53,6 +53,20 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/application-reviews/:applicationId/deployment", ["ADMIN"]],
   // The per-application Testnet evidence chain (#438/WU2): ADMIN only.
   ["GET", "/application-reviews/:applicationId/evidence", ["ADMIN"]],
+  // Admin › Usuarios (#390/WU2): the users list and the audit log, read-only,
+  // ADMIN only.
+  ["GET", "/admin/users", ["ADMIN"]],
+  ["GET", "/admin/audit-log", ["ADMIN"]],
+  // Admin › Usuarios mutations (#390/WU3a): activate/deactivate and role change,
+  // ADMIN only; the actor is the verified principal.
+  ["POST", "/admin/users/:userId/activation", ["ADMIN"]],
+  ["POST", "/admin/users/:userId/role", ["ADMIN"]],
+  // The operator invitation (#390/WU3b): ADMIN only; the actor is the verified
+  // principal and the invitee's email is the only body field.
+  ["POST", "/admin/invitations", ["ADMIN"]],
+  // The invitation acceptance (#390/WU5): any signed-in invitee accepts their
+  // own invitation; the route only edits the caller's own profile row.
+  ["POST", "/admin/invitations/accept", "any"],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
   ["POST", "/admin/rates", ["ADMIN"]],
@@ -150,6 +164,8 @@ function buildFullApp(auth?: AuthDependency): {
     reports: stub,
     myCampaigns: stub,
     adminApplicationEvidence: stub,
+    adminUsers: stub,
+    adminAuditLog: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

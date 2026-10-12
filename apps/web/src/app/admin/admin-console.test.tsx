@@ -240,10 +240,23 @@ describe("admin shell", () => {
     expect(await within(link).findByText("9")).toBeInTheDocument();
   });
 
-  it("renders Usuarios as an inert nav item instead of a dead link", async () => {
-    await renderShell();
-    expect(screen.queryByRole("link", { name: /Usuarios/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Usuarios/ })).toBeDisabled();
+  it("links Usuarios to /admin/users and marks it current there", async () => {
+    pathname.current = "/admin/users";
+    const fake = adminSession();
+    await fake.signIn({ email: "op@vaqcrow.test", password: "secret-123" });
+    render(
+      <SessionStoreProvider port={fake}>
+        <AdminShell>
+          <p>Contenido</p>
+        </AdminShell>
+      </SessionStoreProvider>,
+      { wrapper: swr }
+    );
+
+    const link = await screen.findByRole("link", { name: /Usuarios/ });
+    expect(link).toHaveAttribute("href", "/admin/users");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("button", { name: /Usuarios/ })).toBeNull();
   });
 
   it("closes the session and returns to the admin login", async () => {

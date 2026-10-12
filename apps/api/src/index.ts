@@ -12,12 +12,22 @@ import { NotificationPublisher } from "./application/use-cases/notification-publ
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildAdminApplicationEvidenceDependencies, buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createAdminApplicationEvidenceRouteDependencies } from "./infrastructure/http/routes/admin-application-evidence.route.js";
+import { createAdminAuditLogRouteDependencies } from "./infrastructure/http/routes/admin-audit-log.route.js";
+import { createAdminUsersRouteDependencies } from "./infrastructure/http/routes/admin-users.route.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { StellarWalletSignature } from "./infrastructure/adapters/stellar-wallet-signature.js";
 import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
+import { SupabaseAuditLogReader } from "./infrastructure/adapters/supabase-audit-log-reader.js";
+import { SupabaseAdminUsersReader } from "./infrastructure/adapters/supabase-admin-users-reader.js";
+import { SupabaseAdminUserWriter } from "./infrastructure/adapters/supabase-admin-user-writer.js";
+import { SupabaseOperatorProfileWriter } from "./infrastructure/adapters/supabase-operator-profile-writer.js";
+import {
+  OPERATOR_INVITATION_ACCEPT_PATH,
+  SupabaseOperatorInviter
+} from "./infrastructure/adapters/supabase-operator-inviter.js";
 import { SupabaseHealthProbe } from "./infrastructure/adapters/supabase-health-probe.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
@@ -185,11 +195,11 @@ const visionProvider = createOpenCodeGoVisionProvider({
   timeoutMs: config.llm.timeoutMs
 });
 
-// Identity and audit (Task #370). The audit log is wired here so its first
-// callers (#410, #390) only have to consume the port; no route appends yet.
+// Identity and audit (Task #370). The audit log is wired here so its callers
+// only have to consume the port; the admin user-management mutations (#390/WU3a)
+// are its first production writers.
 const auth = { port: new SupabaseAuth(supabase) };
 const auditLog = new SupabaseAuditLog(supabase);
-void auditLog; // not consumed by any route yet
 
 // Notifications (#382/T1c). The repository backs the bell routes below; the
 // publisher's first production call site is the submission below (#402/T1b),
@@ -244,6 +254,27 @@ const reportsRepository = new SupabaseReportsRepository(supabase);
 // server-side, never the request. Returns the PyME's campaigns, current and
 // historic.
 const myCampaignsRepository = new SupabaseMyCampaignsRepository(supabase);
+
+// Admin › Usuarios (#390): the read-only users list composes `profile`, the
+// Supabase Auth user list and the simulated KYC; the writer mutates a profile's
+// `status`/`role` and every successful write appends to the audit log. All three
+// back ADMIN-only routes (#390/WU2 read, WU3a mutations).
+const adminUsersReader = new SupabaseAdminUsersReader(supabase);
+const adminUserWriter = new SupabaseAdminUserWriter(supabase);
+// The invitation acceptance (#390/WU5) writes the caller's own
+// `profile.display_name` through a dedicated, non-admin writer port.
+const operatorProfileWriter = new SupabaseOperatorProfileWriter(supabase);
+const auditLogReader = new SupabaseAuditLogReader(supabase);
+
+// The operator invitation (#390/WU3b): the invite email's redirect target is
+// the future acceptance screen (WU5), built from the configured app base URL —
+// the same base the email catalogue links against, never a hardcoded default
+// outside the config. `APP_BASE_URL` always resolves (email-config supplies a
+// loopback default for local runs), so `redirectTo` is always set here; it is
+// omitted only if the slice ever yields no base URL.
+const operatorInviter = new SupabaseOperatorInviter(supabase, {
+  redirectTo: `${config.email.appBaseUrl}${OPERATOR_INVITATION_ACCEPT_PATH}`
+});
 
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
@@ -344,6 +375,19 @@ const app = buildApp({
       businesses: businessRepository
     })
   ),
+  // Admin › Usuarios (#390): the ADMIN-only users list, audit log and the two
+  // mutations (activation, role change), each writing one audit entry, plus the
+  // operator invitation (WU3b), which promotes the invitee to ADMIN and
+  // publishes the in-app event best-effort.
+  adminUsers: createAdminUsersRouteDependencies(
+    adminUsersReader,
+    adminUserWriter,
+    auditLog,
+    operatorProfileWriter,
+    operatorInviter,
+    notificationPublisher
+  ),
+  adminAuditLog: createAdminAuditLogRouteDependencies(auditLogReader),
   documentVerdict: createDocumentVerdictRouteDependencies({
     applicationReviews: applicationReviewRepository,
     smeRequests: smeRequestRepository,
