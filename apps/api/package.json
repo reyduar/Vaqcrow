@@ -17,7 +17,8 @@
     "seed:superadmin:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-superadmin-cli.js",
     "seed:sales-periods:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/seed-sales-periods-cli.js",
     "seed:sales-periods:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-sales-periods-cli.js",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "openapi:generate": "tsc -p tsconfig.build.json && node dist/infrastructure/http/openapi/generate-openapi-cli.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
@@ -38,6 +39,7 @@
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vite": "7.3.6",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
