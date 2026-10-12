@@ -23,6 +23,10 @@ import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.j
 import { SupabaseAuditLogReader } from "./infrastructure/adapters/supabase-audit-log-reader.js";
 import { SupabaseAdminUsersReader } from "./infrastructure/adapters/supabase-admin-users-reader.js";
 import { SupabaseAdminUserWriter } from "./infrastructure/adapters/supabase-admin-user-writer.js";
+import {
+  OPERATOR_INVITATION_ACCEPT_PATH,
+  SupabaseOperatorInviter
+} from "./infrastructure/adapters/supabase-operator-inviter.js";
 import { SupabaseHealthProbe } from "./infrastructure/adapters/supabase-health-probe.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
@@ -258,6 +262,16 @@ const adminUsersReader = new SupabaseAdminUsersReader(supabase);
 const adminUserWriter = new SupabaseAdminUserWriter(supabase);
 const auditLogReader = new SupabaseAuditLogReader(supabase);
 
+// The operator invitation (#390/WU3b): the invite email's redirect target is
+// the future acceptance screen (WU5), built from the configured app base URL —
+// the same base the email catalogue links against, never a hardcoded default
+// outside the config. `APP_BASE_URL` always resolves (email-config supplies a
+// loopback default for local runs), so `redirectTo` is always set here; it is
+// omitted only if the slice ever yields no base URL.
+const operatorInviter = new SupabaseOperatorInviter(supabase, {
+  redirectTo: `${config.email.appBaseUrl}${OPERATOR_INVITATION_ACCEPT_PATH}`
+});
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -358,8 +372,16 @@ const app = buildApp({
     })
   ),
   // Admin › Usuarios (#390): the ADMIN-only users list, audit log and the two
-  // mutations (activation, role change), each writing one audit entry.
-  adminUsers: createAdminUsersRouteDependencies(adminUsersReader, adminUserWriter, auditLog),
+  // mutations (activation, role change), each writing one audit entry, plus the
+  // operator invitation (WU3b), which promotes the invitee to ADMIN and
+  // publishes the in-app event best-effort.
+  adminUsers: createAdminUsersRouteDependencies(
+    adminUsersReader,
+    adminUserWriter,
+    auditLog,
+    operatorInviter,
+    notificationPublisher
+  ),
   adminAuditLog: createAdminAuditLogRouteDependencies(auditLogReader),
   documentVerdict: createDocumentVerdictRouteDependencies({
     applicationReviews: applicationReviewRepository,

@@ -13,6 +13,8 @@ const ADMIN_ID = principalFor("ADMIN").userId;
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const ACTIVATION_URL = `/admin/users/${USER_ID}/activation`;
 const ROLE_URL = `/admin/users/${USER_ID}/role`;
+const INVITATIONS_URL = "/admin/invitations";
+const INVITED_EMAIL = "operador@vaqcrow.com";
 
 const PAGE: AdminUsersPage = parseAdminUsersPage({
   items: [
@@ -37,7 +39,8 @@ function appFor(list: AdminUsersReaderPort["list"]): FastifyInstance {
     adminUsers: {
       users: { list },
       setActivation: vi.fn(),
-      changeRole: vi.fn()
+      changeRole: vi.fn(),
+      invite: vi.fn()
     },
     auth: { port: fakeAuthPort() }
   });
@@ -49,6 +52,10 @@ function mutationsApp(overrides: Partial<AdminUsersRouteDependencies> = {}): Fas
       users: { list: vi.fn() },
       setActivation: vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, active: false } }),
       changeRole: vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, role: "INVERSOR" } }),
+      invite: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { userId: USER_ID, email: INVITED_EMAIL, status: "invited" }
+      }),
       ...overrides
     },
     auth: { port: fakeAuthPort() }
@@ -377,6 +384,103 @@ describe("POST /admin/users/:userId/role", () => {
     const changeRole = vi.fn().mockRejectedValue(new Error("secret detail"));
 
     const response = await post(changeRole, { role: "INVERSOR" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    expect(response.body).not.toMatch(/secret/);
+  });
+});
+
+describe("POST /admin/invitations", () => {
+  let app: FastifyInstance | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await app?.close();
+    app = undefined;
+  });
+
+  async function post(
+    invite: AdminUsersRouteDependencies["invite"],
+    body: unknown,
+    role: "ADMIN" | "PYME" | "INVERSOR" = "ADMIN"
+  ) {
+    app = mutationsApp({ invite });
+    return app.inject({ method: "POST", url: INVITATIONS_URL, headers: bearer(role), payload: body as object });
+  }
+
+  it("invites for an ADMIN with the verified actor and returns the invitation result", async () => {
+    const invite = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { userId: USER_ID, email: INVITED_EMAIL, status: "invited" }
+    });
+
+    const response = await post(invite, { email: INVITED_EMAIL });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ userId: USER_ID, email: INVITED_EMAIL, status: "invited" });
+    expect(invite).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        email: INVITED_EMAIL,
+        actorUserId: ADMIN_ID,
+        correlationId: expect.any(String)
+      })
+    );
+  });
+
+  it.each([
+    [{}],
+    [{ email: "nope" }],
+    [{ email: INVITED_EMAIL, actorUserId: ADMIN_ID }],
+    [{ email: INVITED_EMAIL, role: "ADMIN" }],
+    [null]
+  ])("answers 400 for a malformed body (%o) without calling the use case", async (body) => {
+    const invite = vi.fn();
+
+    const response = await post(invite, body);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "invalid_request" });
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a token", async () => {
+    const invite = vi.fn();
+    app = mutationsApp({ invite });
+
+    const response = await app.inject({ method: "POST", url: INVITATIONS_URL, payload: { email: INVITED_EMAIL } });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ code: "unauthenticated" });
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it.each(["PYME", "INVERSOR"] as const)("rejects %s with 403 before the use case", async (role) => {
+    const invite = vi.fn();
+
+    const response = await post(invite, { email: INVITED_EMAIL }, role);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["email_exists", 409],
+    ["unavailable", 503]
+  ] as const)("maps the use-case code %s to %i", async (code, status) => {
+    const invite = vi.fn().mockResolvedValue({ ok: false, error: { code } });
+
+    const response = await post(invite, { email: INVITED_EMAIL });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({ code });
+  });
+
+  it("maps a thrown dependency to a sanitized 503 that never echoes the error", async () => {
+    const invite = vi.fn().mockRejectedValue(new Error("secret detail"));
+
+    const response = await post(invite, { email: INVITED_EMAIL });
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });

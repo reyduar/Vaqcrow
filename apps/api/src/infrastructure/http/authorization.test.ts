@@ -61,6 +61,9 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // ADMIN only; the actor is the verified principal.
   ["POST", "/admin/users/:userId/activation", ["ADMIN"]],
   ["POST", "/admin/users/:userId/role", ["ADMIN"]],
+  // The operator invitation (#390/WU3b): ADMIN only; the actor is the verified
+  // principal and the invitee's email is the only body field.
+  ["POST", "/admin/invitations", ["ADMIN"]],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
   ["POST", "/admin/rates", ["ADMIN"]],

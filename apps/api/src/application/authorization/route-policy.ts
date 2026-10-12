@@ -92,6 +92,10 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // use cases, not by the policy.
   "POST /admin/users/:userId/activation": only("ADMIN"),
   "POST /admin/users/:userId/role": only("ADMIN"),
+  // Admin › Usuarios operator invitation (#390/WU3b): ADMIN-only. The invitee's
+  // address is the only body field; the actor is the verified principal, and
+  // the actor can never invite themselves into a role through request data.
+  "POST /admin/invitations": only("ADMIN"),
 
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),

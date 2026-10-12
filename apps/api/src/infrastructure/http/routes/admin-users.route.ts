@@ -1,6 +1,7 @@
 import {
   adminUsersQuerySchema,
   parseChangeUserRoleCommand,
+  parseInviteOperatorCommand,
   parseSetUserActiveCommand
 } from "@vaqcrow/contracts";
 import type { AdminUsersQuery } from "@vaqcrow/contracts";
@@ -10,6 +11,11 @@ import type {
   ChangeUserRoleOutcome,
   ChangeUserRoleRequest
 } from "../../../application/admin-users/change-user-role.js";
+import { inviteOperator } from "../../../application/admin-users/invite-operator.js";
+import type {
+  InviteOperatorOutcome,
+  InviteOperatorRequest
+} from "../../../application/admin-users/invite-operator.js";
 import { setUserActivation } from "../../../application/admin-users/set-user-activation.js";
 import type {
   SetUserActivationErrorCode,
@@ -19,6 +25,8 @@ import type {
 import type { AdminUserWriterPort } from "../../../application/ports/admin-user-writer-port.js";
 import type { AuditLogPort } from "../../../application/ports/audit-log-port.js";
 import type { AdminUsersReaderPort } from "../../../application/ports/admin-users-reader-port.js";
+import type { NotificationPublisherPort } from "../../../application/ports/notification-publisher-port.js";
+import type { OperatorInviterPort } from "../../../application/ports/operator-inviter-port.js";
 
 /**
  * The ADMIN users surface (Feature #390).
@@ -37,6 +45,13 @@ import type { AdminUsersReaderPort } from "../../../application/ports/admin-user
  * verified principal, never request data. Domain rejections are a `409` with a
  * specific code, an unknown user is `404`, and any provider failure — returned
  * or thrown — is a sanitized `503 { code: "unavailable" }`.
+ *
+ * WU3b adds `POST /admin/invitations` (body `{ email }`, also `ADMIN`-only).
+ * The body is validated with `parseInviteOperatorCommand` (strict: any extra
+ * field is a `400`); the use case creates and promotes the operator, appends
+ * one audit entry and publishes the in-app event best-effort. An address that
+ * already has an account is a `409 { code: "email_exists" }`; any other failure
+ * is a sanitized `503`.
  */
 
 export const DEFAULT_ADMIN_USERS_PAGE = 1;
@@ -48,19 +63,23 @@ export interface AdminUsersRouteDependencies {
   readonly users: AdminUsersReaderPort;
   readonly setActivation: (request: SetUserActivationRequest) => Promise<SetUserActivationOutcome>;
   readonly changeRole: (request: ChangeUserRoleRequest) => Promise<ChangeUserRoleOutcome>;
+  readonly invite: (request: InviteOperatorRequest) => Promise<InviteOperatorOutcome>;
 }
 
 /** Composition-root helper keeps the routes' dependencies vendor-free ports. */
 export function createAdminUsersRouteDependencies(
   users: AdminUsersReaderPort,
   writer: AdminUserWriterPort,
-  audit: AuditLogPort
+  audit: AuditLogPort,
+  inviter: OperatorInviterPort,
+  notifications: Pick<NotificationPublisherPort, "publish">
 ): AdminUsersRouteDependencies {
   const useCases = { users: writer, audit };
   return {
     users,
     setActivation: (request) => setUserActivation(useCases, request),
-    changeRole: (request) => changeUserRole(useCases, request)
+    changeRole: (request) => changeUserRole(useCases, request),
+    invite: (request) => inviteOperator({ inviter, audit, notifications }, request)
   };
 }
 
@@ -220,4 +239,34 @@ export function registerAdminUsersRoute(
       }
     }
   );
+
+  app.post<{ Body: unknown }>("/admin/invitations", async (request, reply) => {
+    const principal = request.principal;
+    if (principal === undefined) {
+      return reply.code(401).send({ code: "unauthenticated" });
+    }
+
+    let email: string;
+    try {
+      email = parseInviteOperatorCommand(request.body).email;
+    } catch {
+      return reply.code(400).send({ code: "invalid_request" });
+    }
+
+    try {
+      const result = await dependencies.invite({
+        email,
+        actorUserId: principal.userId,
+        correlationId: request.id
+      });
+      if (result.ok) {
+        return reply.code(200).send(result.value);
+      }
+      return reply
+        .code(result.error.code === "email_exists" ? 409 : 503)
+        .send({ code: result.error.code });
+    } catch {
+      return reply.code(503).send({ code: "unavailable" });
+    }
+  });
 }
