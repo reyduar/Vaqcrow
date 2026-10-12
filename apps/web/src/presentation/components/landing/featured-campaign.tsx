@@ -7,6 +7,7 @@ import type { IconType } from "react-icons";
 import { IoAlertOutline, IoArrowForwardOutline, IoHelpCircleOutline, IoShieldOutline, IoWarningOutline } from "react-icons/io5";
 import type { RiskBand } from "@vaqcrow/contracts";
 import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marketplace-port";
+import { EXAMPLE_CAMPAIGN_PATH } from "@/application/campaign/example-campaign";
 import { selectFeatured } from "@/application/marketplace/landing-selection";
 import { toMarketplaceCardView } from "@/application/marketplace/view-model";
 import { createBrowserMarketplacePort } from "@/infrastructure/marketplace/create-marketplace-port";
@@ -30,8 +31,8 @@ import { Skeleton } from "../skeleton";
  * contract carries neither), so its metrics row has two columns and it keeps
  * the campaign's real photo. With no campaign the template's own simulated
  * example is shown instead, marked `SIMULADO`, with a representative image and
- * a three-column row including the (simulated) KYC result. Its CTA goes to the
- * marketplace, since there is no campaign to open.
+ * a three-column row including the (simulated) KYC result. Its CTA opens the
+ * synthetic example detail (`/campaigns/example`, Issue #481).
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -225,7 +226,7 @@ function FeaturedCampaignSimulated() {
           </div>
         </dl>
 
-        <Link href="/explore" className={CTA_CLASS}>
+        <Link href={EXAMPLE_CAMPAIGN_PATH} className={CTA_CLASS}>
           {CTA_LABEL}
           <IoArrowForwardOutline aria-hidden="true" focusable="false" className="text-[16px]" />
         </Link>
