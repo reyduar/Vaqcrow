@@ -82,10 +82,14 @@ export function NotificationBell({ port }: NotificationBellProps = {}) {
   // owner approval): the generic «no pudimos cargar» would hide a sign-in
   // problem behind a service failure.
   const bellLabel = loadFailed ? "Notificaciones no disponibles" : `Notificaciones, ${unread} sin leer`;
+  // #480: a build with no backend configured is not a service failure, so it
+  // gets its own honest line instead of the generic "no pudimos cargar".
   const loadFailureMessage =
     loadErrorCode === "unauthorized"
       ? "Tu sesión no es válida o venció. Volvé a iniciar sesión."
-      : "No pudimos cargar tus notificaciones.";
+      : loadErrorCode === "not_configured"
+        ? "No hay una API de Vaqcrow configurada en esta instancia."
+        : "No pudimos cargar tus notificaciones.";
 
   const [isOpen, setIsOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);

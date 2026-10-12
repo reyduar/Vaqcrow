@@ -36,6 +36,7 @@ import { useMarketplace } from "@/state/use-marketplace";
 import { CampaignCard } from "../campaign-card";
 import { EmptyState } from "../empty-state";
 import { ErrorState } from "../error-state";
+import { BackendNotice } from "../backend-notice";
 import { PageHeading } from "../page-heading";
 import { ProgressBar } from "../progress-bar";
 import { Select } from "../select";
@@ -327,6 +328,8 @@ export function ExploreMarketplace({ signedIn, marketplacePort, favoritePort }: 
             <Skeleton key={index} shapes={["card"]} label="Cargando campaña" />
           ))}
         </div>
+      ) : marketplace.loadErrorCode === "not_configured" ? (
+        <BackendNotice />
       ) : marketplace.loadFailed ? (
         <ErrorState
           title="No pudimos cargar las campañas"

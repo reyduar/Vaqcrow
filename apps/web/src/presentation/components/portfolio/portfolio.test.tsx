@@ -173,6 +173,18 @@ describe("Portfolio container", () => {
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
 
+  // Issue #480: a missing backend is not a failure.
+  it("shows the no-backend notice (not the error state) when not configured", async () => {
+    renderPortfolio({
+      port: { get: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) },
+      connection: connection(null),
+      balance: BALANCE
+    });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar tu portafolio")).not.toBeInTheDocument();
+  });
+
   it("reorders positions when switching to Por estado", async () => {
     const settled = position({ campaignId: "b", name: "Meta", status: "settled" });
     const funding = position({ campaignId: "a", name: "Fondeo", status: "funding" });

@@ -17,6 +17,7 @@ import { createCampaignGateway } from "@/infrastructure/campaign/default-gateway
 import { createBrowserMyCampaignsPort } from "@/infrastructure/company/create-my-campaigns-port";
 import { createBrowserSalesDeclarationPort } from "@/infrastructure/company/create-sales-declaration-port";
 import { useMyCampaigns } from "@/state/use-my-campaigns";
+import { BackendNotice } from "../backend-notice";
 import { EmptyState } from "../empty-state";
 import { ErrorState } from "../error-state";
 import { Skeleton } from "../skeleton";
@@ -110,7 +111,15 @@ export function CompanyDashboard({
     return <Skeleton shapes={["card", "line", "line"]} label={MY_CAMPAIGNS_COPY.loadingLabel} />;
   }
 
-  if (state.loadFailed || state.data === null) {
+  // #480: "no backend configured" and "nothing fetched yet" are not failures —
+  // they get the calm notice. Only a genuine read failure gets `ErrorState`, and
+  // `data === null` is never OR-ed into that branch (it used to be, which made
+  // an unfetched dashboard read as a service failure).
+  if (state.loadErrorCode === "not_configured") {
+    return <BackendNotice />;
+  }
+
+  if (state.loadFailed) {
     return (
       <ErrorState
         title={MY_CAMPAIGNS_COPY.errorTitle}
@@ -119,6 +128,10 @@ export function CompanyDashboard({
         retryLabel={MY_CAMPAIGNS_COPY.retryLabel}
       />
     );
+  }
+
+  if (state.data === null) {
+    return <BackendNotice />;
   }
 
   const campaigns = state.data.campaigns;

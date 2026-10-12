@@ -110,6 +110,15 @@ describe("CampaignDetail (states)", () => {
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Panadería Horizonte SRL" })).toBeInTheDocument());
   });
 
+  // Issue #480: a missing backend is not a failure.
+  it("shows the no-backend notice (not the error state) when not configured", async () => {
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar la campaña")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("renders a clear not-found state with a way back to the marketplace", async () => {
     const port: CampaignDetailPort = { get: vi.fn().mockResolvedValue({ ok: false, code: "not_found" }) };
 

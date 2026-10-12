@@ -7,6 +7,7 @@ import { ADMIN_PYMES_PATH, adminReviewPath } from "@/application/admin/review";
 import type { AdminEvidencePort } from "@/application/ports/admin-review-port";
 import { createBrowserAdminEvidencePort } from "@/infrastructure/admin/create-admin-review-port";
 import { useAdminEvidence } from "@/state/use-admin-evidence";
+import { BackendNotice } from "../backend-notice";
 import { Badge } from "../badge";
 import { ErrorState } from "../error-state";
 import { Skeleton } from "../skeleton";
@@ -85,6 +86,8 @@ export function EvidenceView({ applicationId, port }: EvidenceViewProps) {
         </Link>
       </div>
     );
+  } else if (errorCode === "not_configured") {
+    body = <BackendNotice />;
   } else if (errorCode !== null) {
     body = <ErrorState title={EVIDENCE_COPY.loadError} message={EVIDENCE_COPY.loadErrorDetail} onRetry={reload} />;
   } else {

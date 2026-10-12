@@ -156,6 +156,17 @@ describe("Reports container", () => {
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
 
+  // Issue #480: a missing backend is not a failure.
+  it("shows the no-backend notice (not the error state) when not configured", async () => {
+    renderReports({
+      reportPort: { get: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) },
+      salesPort: okSales()
+    });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar tu informe")).not.toBeInTheDocument();
+  });
+
   it("refetches the report and the sales block when a preset is selected", async () => {
     const getReport = vi.fn().mockResolvedValue({ ok: true, report: report() });
     const getSales = vi.fn().mockResolvedValue({ ok: true, sales: sales() });

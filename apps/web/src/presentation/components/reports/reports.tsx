@@ -12,6 +12,7 @@ import {
 } from "@/infrastructure/reports/create-report-port";
 import { useInvestorReport } from "@/state/use-investor-report";
 import { useReportSales } from "@/state/use-report-sales";
+import { BackendNotice } from "../backend-notice";
 import { ErrorState } from "../error-state";
 import { PageHeading } from "../page-heading";
 import { Skeleton } from "../skeleton";
@@ -134,13 +135,18 @@ export function Reports({ reportPort, salesPort }: ReportsProps) {
 
       {reportState.isLoading ? (
         <Skeleton shapes={["card", "line", "line"]} label="Cargando tu informe" />
-      ) : reportState.loadFailed || report === null ? (
+      ) : reportState.loadErrorCode === "not_configured" ? (
+        <BackendNotice />
+      ) : reportState.loadFailed ? (
         <ErrorState
           title="No pudimos cargar tu informe"
           message="El servicio no respondió. Ningún dato ni aporte se modificó."
           onRetry={reportState.reload}
           retryLabel="Reintentar"
         />
+      ) : report === null ? (
+        // #480: an unfetched report is not a failure.
+        <BackendNotice />
       ) : (
         <ReportsView
           report={report}

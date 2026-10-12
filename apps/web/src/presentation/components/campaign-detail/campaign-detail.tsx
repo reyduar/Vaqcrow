@@ -9,6 +9,7 @@ import type { CampaignDetailPort } from "@/application/ports/campaign-detail-por
 import { createBrowserCampaignDetailPort } from "@/infrastructure/campaign/create-campaign-detail-port";
 import { useSession } from "@/state/session-store-provider";
 import { useCampaignDetail } from "@/state/use-campaign-detail";
+import { BackendNotice } from "../backend-notice";
 import { ErrorState } from "../error-state";
 import { Skeleton } from "../skeleton";
 import { CampaignDetailView } from "./campaign-detail-view";
@@ -100,7 +101,10 @@ export function CampaignDetail({ campaignId, signedIn, role = null, port, contri
   if (!signedIn) return <CampaignDetailGate />;
   if (state.isLoading) return <Skeleton shapes={["card", "line", "line"]} label="Cargando campaña" />;
   if (state.notFound) return <CampaignDetailNotFound />;
-  if (state.loadFailed || state.detail === null) {
+  // #480: "no backend configured" and "nothing fetched" get the calm notice;
+  // only a genuine failure gets the (softened) error panel.
+  if (state.loadErrorCode === "not_configured") return <BackendNotice />;
+  if (state.loadFailed) {
     return (
       <ErrorState
         title="No pudimos cargar la campaña"
@@ -110,6 +114,7 @@ export function CampaignDetail({ campaignId, signedIn, role = null, port, contri
       />
     );
   }
+  if (state.detail === null) return <BackendNotice />;
   return (
     <CampaignDetailView
       detail={state.detail}

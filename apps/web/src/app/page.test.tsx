@@ -33,9 +33,10 @@ async function renderHome(role: PrincipalRole | null = null) {
     </SessionStoreProvider>
   );
   // No API base URL means the marketplace island's port is the null object, so
-  // the list settles on `unavailable`. Waiting for that error copy keeps the
-  // SWR state update inside `act` rather than logging after the assertion.
-  await screen.findByText("No pudimos cargar las campañas");
+  // the list settles on the "no backend configured" notice (#480). Waiting for
+  // that copy keeps the SWR state update inside `act` rather than logging after
+  // the assertion.
+  await screen.findByText("Esta instancia no tiene configurada la API");
   return { fake, landing: within(await screen.findByRole("main")) };
 }
 

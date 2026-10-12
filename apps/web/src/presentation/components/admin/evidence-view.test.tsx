@@ -104,4 +104,13 @@ describe("EvidenceView", () => {
     renderView(port);
     expect((await screen.findByRole("alert")).textContent).toContain("No pudimos cargar la evidencia.");
   });
+
+  // Issue #480: a missing backend is not a service failure.
+  it("shows the no-backend notice (not the error state) when not configured", async () => {
+    const { port } = portOf(() => ({ ok: false, code: "not_configured" }));
+    renderView(port);
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

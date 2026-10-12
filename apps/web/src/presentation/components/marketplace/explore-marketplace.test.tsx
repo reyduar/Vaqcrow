@@ -153,6 +153,16 @@ describe("ExploreMarketplace", () => {
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
   });
 
+  // Issue #480: no API configured must read as the calm notice, not a failure.
+  it("shows the no-backend notice instead of the failure copy when not configured", async () => {
+    const port: MarketplacePort = { list: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) };
+
+    renderExplore({ signedIn: false, marketplacePort: port });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar las campañas")).not.toBeInTheDocument();
+  });
+
   it("narrows the search, adds a chip, and removes the chip to restore the full list", async () => {
     renderExplore({ signedIn: false, marketplacePort: okPort() });
     await screen.findByRole("heading", { level: 3, name: "Panadería Horizonte SRL" });
