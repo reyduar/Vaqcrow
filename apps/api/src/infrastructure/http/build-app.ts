@@ -10,6 +10,10 @@ import { registerAuthorizationHook } from "./authorization-hook.js";
 import type { AuthorizationDependencies } from "./authorization-hook.js";
 import { registerAdminApplicationEvidenceRoute } from "./routes/admin-application-evidence.route.js";
 import type { AdminApplicationEvidenceRouteDependencies } from "./routes/admin-application-evidence.route.js";
+import { registerAdminAuditLogRoute } from "./routes/admin-audit-log.route.js";
+import type { AuditLogRouteDependencies } from "./routes/admin-audit-log.route.js";
+import { registerAdminUsersRoute } from "./routes/admin-users.route.js";
+import type { AdminUsersRouteDependencies } from "./routes/admin-users.route.js";
 import { registerAdminReviewContextRoute } from "./routes/admin-review-context.route.js";
 import type { AdminReviewContextRouteDependencies } from "./routes/admin-review-context.route.js";
 import { registerApplicationAssessmentRoute } from "./routes/application-assessment.route.js";
@@ -118,6 +122,10 @@ export function buildApp(dependencies: {
   readonly adminReviewContext?: AdminReviewContextRouteDependencies;
   /** The ADMIN per-application Testnet evidence chain (#438/WU2). */
   readonly adminApplicationEvidence?: AdminApplicationEvidenceRouteDependencies | undefined;
+  /** The ADMIN users list (#390/WU2): read-only, ADMIN-only. */
+  readonly adminUsers?: AdminUsersRouteDependencies | undefined;
+  /** The ADMIN audit-log read (#390/WU2): read-only, ADMIN-only. */
+  readonly adminAuditLog?: AuditLogRouteDependencies | undefined;
   /** Per-document KYC/KYB verdicts in the admin review (#410/U1). */
   readonly documentVerdict?: DocumentVerdictRouteDependencies;
   readonly fundingIntent?: FundingIntentRouteDependencies;
@@ -212,6 +220,12 @@ export function buildApp(dependencies: {
   }
   if (dependencies.adminApplicationEvidence) {
     registerAdminApplicationEvidenceRoute(app, dependencies.adminApplicationEvidence);
+  }
+  if (dependencies.adminUsers) {
+    registerAdminUsersRoute(app, dependencies.adminUsers);
+  }
+  if (dependencies.adminAuditLog) {
+    registerAdminAuditLogRoute(app, dependencies.adminAuditLog);
   }
   if (dependencies.documentVerdict) {
     registerDocumentVerdictRoute(app, dependencies.documentVerdict);

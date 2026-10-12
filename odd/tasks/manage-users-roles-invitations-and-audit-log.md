@@ -32,8 +32,8 @@ La última pieza abierta del backlog: la vista **Admin › Usuarios**. Hoy `/adm
 
 ## Work units
 
-- [ ] **WU1 — Contratos y dominio** (`packages/contracts`, `packages/domain`): shapes de usuario/rol/estado/KYC, query de listado (búsqueda/filtros/paginación), entrada de auditoría, invitación; reglas de dominio (transiciones de rol permitidas PYME↔INVERSOR; protección del último admin).
-- [ ] **WU2 — API read** (`GET /admin/users`, `GET /admin/audit-log`): ADMIN-only, con ports/adapters Supabase y paginación.
+- [x] **WU1 — Contratos y dominio** (`packages/contracts`, `packages/domain`): shapes de usuario/rol/estado/KYC, query de listado (búsqueda/filtros/paginación), entrada de auditoría, invitación; reglas de dominio (transiciones de rol permitidas PYME↔INVERSOR; protección del último admin). Commit `58c7f2e`. Verificación: contracts 710 tests ✅ (16 nuevos), domain 130 ✅ (10 nuevos), typecheck ✅, boundaries ✅.
+- [x] **WU2 — API read** (`GET /admin/users`, `GET /admin/audit-log`): ADMIN-only, con ports/adapters Supabase y paginación. El listado de usuarios compone `profile` + Auth Admin `listUsers` (email/última actividad/estado *invited*) + `investor_kyc`; filtra/pagina en memoria (escala demo, documentado). La auditoría pagina server-side (`range` + `count`). Writer delegado. Verificación: `@vaqcrow/api test` 2803 ✅ · typecheck ✅ · boundaries ✅.
 - [ ] **WU3 — API mutations**: activate/deactivate (guarda del último admin), cambio de rol, invitación (`POST /admin/invitations` vía Supabase invite + notificación), cada una escribiendo auditoría.
 - [ ] **WU4 — Web: vista `/admin/users`**: tabla + KYC badge + búsqueda/filtros/paginación + Activar/Desactivar + cambio de rol + modal de invitación + diálogo de confirmación + sección de auditoría.
 - [ ] **WU5 — Web: pantalla de aceptación de invitación** (nombre + contraseña).

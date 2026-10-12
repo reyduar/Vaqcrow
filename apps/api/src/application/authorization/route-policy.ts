@@ -82,6 +82,11 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // stored mirror, reached from the admin PyMEs queue.
   "GET /application-reviews/:applicationId/evidence": only("ADMIN"),
 
+  // Admin › Usuarios (#390/WU2): the users list and the audit log. Both are
+  // read-only and ADMIN-only; the caller's identity never scopes the listing.
+  "GET /admin/users": only("ADMIN"),
+  "GET /admin/audit-log": only("ADMIN"),
+
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),
   "GET /admin/rates/current": only("ADMIN"),

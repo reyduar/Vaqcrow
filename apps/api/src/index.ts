@@ -12,12 +12,16 @@ import { NotificationPublisher } from "./application/use-cases/notification-publ
 import { WALLET_CHALLENGE_TTL_SECONDS } from "./application/use-cases/wallet.js";
 import { buildAdminApplicationEvidenceDependencies, buildCampaignDependencies } from "./infrastructure/campaign-dependencies.js";
 import { createAdminApplicationEvidenceRouteDependencies } from "./infrastructure/http/routes/admin-application-evidence.route.js";
+import { createAdminAuditLogRouteDependencies } from "./infrastructure/http/routes/admin-audit-log.route.js";
+import { createAdminUsersRouteDependencies } from "./infrastructure/http/routes/admin-users.route.js";
 import { createSimulatedSalesDataProvider } from "./infrastructure/adapters/simulated-sales-data-provider.js";
 import { StellarLedger } from "./infrastructure/adapters/stellar-ledger.js";
 import { StellarRevenueShareDistributionXdr } from "./infrastructure/adapters/stellar-revenue-share-distribution-xdr.js";
 import { StellarTransaction } from "./infrastructure/adapters/stellar-transaction.js";
 import { StellarWalletSignature } from "./infrastructure/adapters/stellar-wallet-signature.js";
 import { SupabaseAuditLog } from "./infrastructure/adapters/supabase-audit-log.js";
+import { SupabaseAuditLogReader } from "./infrastructure/adapters/supabase-audit-log-reader.js";
+import { SupabaseAdminUsersReader } from "./infrastructure/adapters/supabase-admin-users-reader.js";
 import { SupabaseHealthProbe } from "./infrastructure/adapters/supabase-health-probe.js";
 import { SupabaseAuth } from "./infrastructure/adapters/supabase-auth.js";
 import { SupabaseApplicationReviewRepository } from "./infrastructure/adapters/supabase-application-review-repository.js";
@@ -245,6 +249,12 @@ const reportsRepository = new SupabaseReportsRepository(supabase);
 // historic.
 const myCampaignsRepository = new SupabaseMyCampaignsRepository(supabase);
 
+// Admin › Usuarios (#390/WU2): the read-only users list composes `profile`, the
+// Supabase Auth user list and the simulated KYC; the audit-log reader mirrors
+// `audit_log` newest first. Both back ADMIN-only routes; nothing here writes.
+const adminUsersReader = new SupabaseAdminUsersReader(supabase);
+const auditLogReader = new SupabaseAuditLogReader(supabase);
+
 // The vault-deployment lifecycle (#410/T5b): one durable row per approved
 // application. The admin route deploys/retries explicitly, and an applied
 // `approved` decision advances it best-effort. It reuses the campaign group's
@@ -344,6 +354,10 @@ const app = buildApp({
       businesses: businessRepository
     })
   ),
+  // Admin › Usuarios (#390/WU2): the ADMIN-only users list and audit log, both
+  // read-only.
+  adminUsers: createAdminUsersRouteDependencies(adminUsersReader),
+  adminAuditLog: createAdminAuditLogRouteDependencies(auditLogReader),
   documentVerdict: createDocumentVerdictRouteDependencies({
     applicationReviews: applicationReviewRepository,
     smeRequests: smeRequestRepository,
