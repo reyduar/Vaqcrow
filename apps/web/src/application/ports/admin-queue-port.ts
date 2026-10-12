@@ -67,8 +67,13 @@ export interface AdminQueuePage {
  * Sanitized failure codes: the API's own `unavailable` envelope plus the
  * transport's `network`. The UI maps each to its own copy.
  */
-export type AdminQueueErrorCode = "unavailable" | "network";
+export type AdminQueueErrorCode = "unavailable" | "network" | "not_configured";
 
+/**
+ * The codes the **API** may answer. `not_configured` (#480) is deliberately
+ * absent: it is a local code the null-object port emits when no API base URL is
+ * configured, and the HTTP gateway must never accept it from the wire.
+ */
 export const ADMIN_QUEUE_ERROR_CODES: readonly AdminQueueErrorCode[] = Object.freeze([
   "unavailable",
   "network"

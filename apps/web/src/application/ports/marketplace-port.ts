@@ -35,8 +35,14 @@ export interface MarketplaceCard {
   readonly imageSrc: string | null;
 }
 
-/** Sanitized failure codes: the API's `unavailable` envelope plus the transport's `network`. */
-export type MarketplaceErrorCode = "unavailable" | "network";
+/**
+ * Sanitized failure codes: the API's `unavailable` envelope, the transport's
+ * `network`, and the local `not_configured` (#480). `not_configured` is emitted
+ * **only** by the null-object port when no API base URL is configured; the HTTP
+ * gateway never produces it, so it is never a server code and must not be
+ * treated as a service failure.
+ */
+export type MarketplaceErrorCode = "unavailable" | "network" | "not_configured";
 
 export type MarketplaceListResult =
   | { readonly ok: true; readonly items: readonly MarketplaceCard[] }

@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marketplace-port";
+import type { MarketplaceCard, MarketplaceErrorCode, MarketplacePort } from "@/application/ports/marketplace-port";
 
 /**
  * Server state of the Explorar PyMEs marketplace (Feature #414, WU4a).
@@ -16,9 +16,9 @@ import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marke
 
 /** Sanitized load failure; the code is already provider-free. */
 class MarketplaceError extends Error {
-  readonly code: string;
+  readonly code: MarketplaceErrorCode;
 
-  constructor(code: string) {
+  constructor(code: MarketplaceErrorCode) {
     super(`marketplace request failed: ${code}`);
     this.name = "MarketplaceError";
     this.code = code;
@@ -37,6 +37,12 @@ export interface MarketplaceState {
   readonly items: readonly MarketplaceCard[];
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
+  /**
+   * The sanitized code behind a failed read, so a screen can tell a genuine
+   * failure apart from a build with no backend configured (`not_configured`,
+   * #480) and never renders the latter as a service failure.
+   */
+  readonly loadErrorCode: MarketplaceErrorCode | null;
   readonly reload: () => void;
 }
 
@@ -51,10 +57,14 @@ export function useMarketplace(port: MarketplacePort | null): MarketplaceState {
     void mutate();
   }, [mutate]);
 
+  const loadErrorCode: MarketplaceErrorCode | null =
+    error === undefined ? null : error instanceof MarketplaceError ? error.code : "unavailable";
+
   return {
     items: data ?? EMPTY,
     isLoading,
     loadFailed: error !== undefined,
+    loadErrorCode,
     reload
   };
 }

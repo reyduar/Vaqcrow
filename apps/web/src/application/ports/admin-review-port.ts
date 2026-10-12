@@ -63,7 +63,7 @@ export interface AdminReviewContext {
  * accept), `unavailable` (any other non-200 or a malformed body) and the
  * transport's `network`.
  */
-export type AdminReviewErrorCode = "not_found" | "unavailable" | "network";
+export type AdminReviewErrorCode = "not_found" | "unavailable" | "network" | "not_configured";
 
 export type AdminReviewResult =
   | { readonly ok: true; readonly context: AdminReviewContext }
@@ -191,7 +191,7 @@ export interface AdminReviewPort {
  * (or an id the API would never accept), `unavailable` any other non-200 or a
  * body that breaks the contract, `network` a transport failure.
  */
-export type AdminEvidenceErrorCode = "not_found" | "unavailable" | "network";
+export type AdminEvidenceErrorCode = "not_found" | "unavailable" | "network" | "not_configured";
 
 export type GetEvidenceResult =
   | { readonly ok: true; readonly evidence: AdminApplicationEvidence }

@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { AdminQueuePage, AdminQueuePort, AdminQueueQuery } from "@/application/ports/admin-queue-port";
+import type { AdminQueuePage, AdminQueuePort, AdminQueueQuery, AdminQueueErrorCode } from "@/application/ports/admin-queue-port";
 
 /**
  * Server state of the admin PyMEs queue (Feature #386 / T3).
@@ -18,9 +18,9 @@ import type { AdminQueuePage, AdminQueuePort, AdminQueueQuery } from "@/applicat
 
 /** Sanitized load failure; the code is already provider-free. */
 class AdminQueueError extends Error {
-  readonly code: string;
+  readonly code: AdminQueueErrorCode;
 
-  constructor(code: string) {
+  constructor(code: AdminQueueErrorCode) {
     super(`admin queue request failed: ${code}`);
     this.name = "AdminQueueError";
     this.code = code;
@@ -37,6 +37,8 @@ export interface AdminQueueState {
   readonly page: AdminQueuePage | null;
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
+  /** The sanitized failure code (`not_configured` is not a service failure; #480). */
+  readonly loadErrorCode: AdminQueueErrorCode | null;
   readonly reload: () => void;
 }
 
@@ -51,10 +53,14 @@ export function useAdminQueue(port: AdminQueuePort | null, query: AdminQueueQuer
     void mutate();
   }, [mutate]);
 
+  const loadErrorCode: AdminQueueErrorCode | null =
+    error === undefined ? null : error instanceof AdminQueueError ? error.code : "unavailable";
+
   return {
     page: data ?? null,
     isLoading,
     loadFailed: error !== undefined,
+    loadErrorCode,
     reload
   };
 }

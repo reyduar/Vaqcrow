@@ -100,7 +100,7 @@ describe("HttpAdminReviewGateway.getEvidence", () => {
     });
   });
 
-  it("is unavailable from the null-object port", async () => {
-    expect(await UNAVAILABLE_ADMIN_REVIEW_PORT.getEvidence(APPLICATION_ID)).toEqual({ ok: false, code: "unavailable" });
+  it("is not_configured from the null-object port", async () => {
+    expect(await UNAVAILABLE_ADMIN_REVIEW_PORT.getEvidence(APPLICATION_ID)).toEqual({ ok: false, code: "not_configured" });
   });
 });
