@@ -290,3 +290,31 @@ body {
     padding: 4px 6px;
   }
 }
+
+/*
+ * Pointer cursor for interactive controls (Issue #479).
+ *
+ * Tailwind v4's preflight does not set a cursor on `<button>`, so the browser
+ * default (the arrow) is what every button shows; only a handful of components
+ * added `cursor-pointer` by hand. This one base-layer rule gives every enabled
+ * button and button-like control the hand cursor, and a disabled control the
+ * `not-allowed` cursor — never the hand. It lives in `@layer base`, so any
+ * component can still override it with a `cursor-*` utility (utilities win over
+ * the base layer); the few existing per-component `cursor-pointer` classes stay
+ * as they are — harmless and intentionally not churned.
+ */
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  input:where([type="button"], [type="submit"], [type="reset"]):not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"],
+  input:where([type="button"], [type="submit"], [type="reset"]):disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
