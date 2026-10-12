@@ -47,8 +47,8 @@ describe("createBrowserReportPort", () => {
 });
 
 describe("unavailable report ports", () => {
-  it("answer the sanitized unavailable without touching the network", async () => {
-    expect(await UNAVAILABLE_REPORT_PORT.get(null, null)).toEqual({ ok: false, code: "unavailable" });
-    expect(await UNAVAILABLE_REPORT_SALES_PORT.get(null, null)).toEqual({ ok: false, code: "unavailable" });
+  it("answer not_configured without touching the network", async () => {
+    expect(await UNAVAILABLE_REPORT_PORT.get(null, null)).toEqual({ ok: false, code: "not_configured" });
+    expect(await UNAVAILABLE_REPORT_SALES_PORT.get(null, null)).toEqual({ ok: false, code: "not_configured" });
   });
 });

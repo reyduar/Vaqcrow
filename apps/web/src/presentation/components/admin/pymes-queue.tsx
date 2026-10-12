@@ -27,6 +27,7 @@ import type {
 } from "@/application/ports/admin-queue-port";
 import { createBrowserAdminQueuePort } from "@/infrastructure/admin/create-admin-queue-port";
 import { useAdminQueue } from "@/state/use-admin-queue";
+import { BackendNotice } from "../backend-notice";
 import { ADMIN_ICONS, ADMIN_TONE_TEXT, AdminStatePill } from "./admin-state-pill";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -61,7 +62,7 @@ export function PymesQueue({ port }: PymesQueueProps) {
   const [resolvedPort] = useState<AdminQueuePort>(() => port ?? createBrowserAdminQueuePort());
   const [query, setQuery] = useState<AdminQueueQuery>(DEFAULT_ADMIN_QUEUE_QUERY);
   const [searchInput, setSearchInput] = useState("");
-  const { page, isLoading, loadFailed, reload } = useAdminQueue(resolvedPort, query);
+  const { page, isLoading, loadFailed, loadErrorCode, reload } = useAdminQueue(resolvedPort, query);
 
   const items = page?.items ?? [];
   const counts = page?.counts ?? EMPTY_COUNTS;
@@ -148,7 +149,9 @@ export function PymesQueue({ port }: PymesQueueProps) {
         />
       </form>
 
-      {loadFailed ? (
+      {loadErrorCode === "not_configured" ? (
+        <BackendNotice />
+      ) : loadFailed ? (
         <div role="alert" className="flex flex-col gap-3 rounded-panel border border-page-border bg-raised p-5 text-text-primary">
           <p className="m-0 text-sm">No pudimos cargar las solicitudes. No se modificó ningún dato.</p>
           <button

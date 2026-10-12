@@ -8,6 +8,7 @@ import { ADMIN_PYMES_PATH, adminEvidencePath, reviewHeaderFor } from "@/applicat
 import type { AdminReviewContext, AdminReviewPort } from "@/application/ports/admin-review-port";
 import { createBrowserAdminReviewPort } from "@/infrastructure/admin/create-admin-review-port";
 import { useAdminReview } from "@/state/use-admin-review";
+import { BackendNotice } from "../backend-notice";
 import { AdminStatePill } from "./admin-state-pill";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -97,6 +98,8 @@ export function ReviewView({ applicationId, port, slots = {} }: ReviewViewProps)
         <p className="m-0 text-sm">No encontramos esta solicitud.</p>
       </div>
     );
+  } else if (errorCode === "not_configured") {
+    body = <BackendNotice />;
   } else if (errorCode !== null) {
     body = (
       <div role="alert" className="flex flex-col gap-3 rounded-panel border border-page-border bg-raised p-5 text-text-primary">

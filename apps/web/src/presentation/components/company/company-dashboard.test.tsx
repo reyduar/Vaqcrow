@@ -298,6 +298,15 @@ describe("CompanyDashboard", () => {
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
 
+  // Issue #480: a missing backend is not a failure and offers no dead-end retry.
+  it("shows the no-backend notice (not the error state) when not configured", async () => {
+    renderDashboard({ port: { get: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) } });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar tu campaña")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+  });
+
   it("shows the pre-vault empty state when the PyME has no campaign", async () => {
     renderDashboard({ port: okPort({ campaigns: [] }) });
 

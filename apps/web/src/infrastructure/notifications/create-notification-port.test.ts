@@ -19,11 +19,11 @@ describe("createNotificationPort", () => {
 });
 
 describe("UNAVAILABLE_NOTIFICATION_PORT", () => {
-  it("answers a sanitized unavailable code on every call", async () => {
-    expect(await UNAVAILABLE_NOTIFICATION_PORT.list()).toEqual({ ok: false, code: "unavailable" });
-    expect(await UNAVAILABLE_NOTIFICATION_PORT.countUnread()).toEqual({ ok: false, code: "unavailable" });
-    expect(await UNAVAILABLE_NOTIFICATION_PORT.markRead("n-1")).toEqual({ ok: false, code: "unavailable" });
-    expect(await UNAVAILABLE_NOTIFICATION_PORT.markAllRead()).toEqual({ ok: false, code: "unavailable" });
+  it("answers not_configured on every call (never a service failure)", async () => {
+    expect(await UNAVAILABLE_NOTIFICATION_PORT.list()).toEqual({ ok: false, code: "not_configured" });
+    expect(await UNAVAILABLE_NOTIFICATION_PORT.countUnread()).toEqual({ ok: false, code: "not_configured" });
+    expect(await UNAVAILABLE_NOTIFICATION_PORT.markRead("n-1")).toEqual({ ok: false, code: "not_configured" });
+    expect(await UNAVAILABLE_NOTIFICATION_PORT.markAllRead()).toEqual({ ok: false, code: "not_configured" });
   });
 });
 

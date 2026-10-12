@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { ReportSalesByPyme, ReportSalesPort } from "@/application/ports/report-port";
+import type { ReportErrorCode, ReportSalesByPyme, ReportSalesPort } from "@/application/ports/report-port";
 
 /**
  * Server state of the "Ventas declaradas por PyME" block (Feature #430, WU2).
@@ -11,12 +11,15 @@ import type { ReportSalesByPyme, ReportSalesPort } from "@/application/ports/rep
  * block has its own partial-error state and can fail while the rest of the
  * report stays up. A failed read leaves `data` `null` and flips `loadFailed`;
  * nothing is fabricated.
+ *
+ * `loadErrorCode` (#480) surfaces the sanitized code so the block can tell a
+ * genuine failure from a build with no backend configured (`not_configured`).
  */
 
 class ReportSalesError extends Error {
-  readonly code: string;
+  readonly code: ReportErrorCode;
 
-  constructor(code: string) {
+  constructor(code: ReportErrorCode) {
     super(`report sales request failed: ${code}`);
     this.name = "ReportSalesError";
     this.code = code;
@@ -33,6 +36,8 @@ export interface ReportSalesState {
   readonly data: ReportSalesByPyme | null;
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
+  /** The sanitized failure code (`not_configured` is not a service failure; #480). */
+  readonly loadErrorCode: ReportErrorCode | null;
   readonly reload: () => void;
 }
 
@@ -53,10 +58,14 @@ export function useReportSales(
     void mutate();
   }, [mutate]);
 
+  const loadErrorCode: ReportErrorCode | null =
+    error === undefined ? null : error instanceof ReportSalesError ? error.code : "unavailable";
+
   return {
     data: data ?? null,
     isLoading,
     loadFailed: error !== undefined,
+    loadErrorCode,
     reload
   };
 }

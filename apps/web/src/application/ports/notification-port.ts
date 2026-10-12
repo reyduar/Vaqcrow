@@ -32,8 +32,13 @@ export interface NotificationItem {
  * Sanitized failure codes. They mirror the API's `{ code }` / `{ error }`
  * envelopes plus the transport's own `network`; the UI maps each one to copy.
  */
-export type NotificationErrorCode = "unauthorized" | "unavailable" | "network" | "not_found";
+export type NotificationErrorCode = "unauthorized" | "unavailable" | "network" | "not_found" | "not_configured";
 
+/**
+ * The codes the **API** may answer. `not_configured` (#480) is deliberately
+ * absent: it is a local code the null-object port emits when no API base URL is
+ * configured, and the HTTP gateway must never accept it from the wire.
+ */
 export const NOTIFICATION_ERROR_CODES: readonly NotificationErrorCode[] = Object.freeze([
   "unauthorized",
   "unavailable",

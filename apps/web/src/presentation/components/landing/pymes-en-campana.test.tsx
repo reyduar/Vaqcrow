@@ -101,4 +101,14 @@ describe("PymesEnCampana (Feature #418, WU2)", () => {
 
     expect(screen.getByRole("status", { name: "Cargando campañas" })).toBeInTheDocument();
   });
+
+  // Issue #480: no API configured is not a service failure — it must show the
+  // calm notice, never the alarming failure copy.
+  it("shows the no-backend notice (not the failure copy) when the backend is not configured", async () => {
+    renderGrid({ list: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) });
+
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos cargar las campañas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

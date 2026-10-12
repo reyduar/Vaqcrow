@@ -9,6 +9,7 @@ import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marke
 import { createBrowserMarketplacePort } from "@/infrastructure/marketplace/create-marketplace-port";
 import { useMarketplace } from "@/state/use-marketplace";
 import { CampaignCard } from "../campaign-card";
+import { BackendNotice } from "../backend-notice";
 import { EmptyState } from "../empty-state";
 import { ErrorState } from "../error-state";
 import { ProgressBar } from "../progress-bar";
@@ -53,10 +54,12 @@ interface GridProps {
   readonly cards: readonly MarketplaceCard[];
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
+  /** No API configured: an informational notice, never the failure panel (#480). */
+  readonly notConfigured: boolean;
   readonly onRetry: () => void;
 }
 
-function CampaignGrid({ cards, isLoading, loadFailed, onRetry }: GridProps) {
+function CampaignGrid({ cards, isLoading, loadFailed, notConfigured, onRetry }: GridProps) {
   const views = marketplaceCardViews(cards);
 
   return (
@@ -88,6 +91,8 @@ function CampaignGrid({ cards, isLoading, loadFailed, onRetry }: GridProps) {
             <Skeleton key={index} shapes={["card"]} label="Cargando campaña" />
           ))}
         </div>
+      ) : notConfigured ? (
+        <BackendNotice />
       ) : loadFailed ? (
         <ErrorState
           title="No pudimos cargar las campañas"
@@ -155,6 +160,7 @@ export function PymesEnCampana({ marketplacePort }: PymesEnCampanaProps) {
       cards={grid}
       isLoading={marketplace.isLoading}
       loadFailed={marketplace.loadFailed}
+      notConfigured={marketplace.loadErrorCode === "not_configured"}
       onRetry={marketplace.reload}
     />
   );

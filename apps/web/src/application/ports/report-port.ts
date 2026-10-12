@@ -110,8 +110,12 @@ export interface ReportSalesByPyme {
   readonly pymes: readonly ReportSalesByPymeEntry[];
 }
 
-/** Sanitized failure codes: the session's `unauthenticated` plus the API/transport codes. */
-export type ReportErrorCode = "unavailable" | "network" | "unauthenticated";
+/**
+ * Sanitized failure codes: the session's `unauthenticated` plus the
+ * API/transport codes, and the local `not_configured` (#480) emitted only by
+ * the null-object port when no API base URL is configured (never a server code).
+ */
+export type ReportErrorCode = "unavailable" | "network" | "unauthenticated" | "not_configured";
 
 export type ReportResult =
   | { readonly ok: true; readonly report: InvestorReport }

@@ -57,6 +57,25 @@ describe("useMarketplace", () => {
     expect(result.current.items).toEqual([]);
   });
 
+  // Issue #480: the sanitized code is what lets a screen tell a real failure
+  // apart from a build with no backend configured.
+  it("surfaces the sanitized code of a real failure", async () => {
+    const port: MarketplacePort = { list: vi.fn().mockResolvedValue({ ok: false, code: "network" }) };
+
+    const { result } = renderHook(() => useMarketplace(port), { wrapper });
+
+    await waitFor(() => expect(result.current.loadErrorCode).toBe("network"));
+  });
+
+  it("surfaces not_configured when no backend is wired up", async () => {
+    const port: MarketplacePort = { list: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }) };
+
+    const { result } = renderHook(() => useMarketplace(port), { wrapper });
+
+    await waitFor(() => expect(result.current.loadErrorCode).toBe("not_configured"));
+    expect(result.current.items).toEqual([]);
+  });
+
   it("reloads through the port", async () => {
     const list = vi.fn().mockResolvedValue({ ok: true, items: [card()] });
     const port: MarketplacePort = { list };

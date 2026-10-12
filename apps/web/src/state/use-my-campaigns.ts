@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
+import type { MyCampaigns, MyCampaignsErrorCode, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
 
 /**
  * Server state of the PyME «Mi campaña» dashboard (Feature #434, WU2).
@@ -12,13 +12,17 @@ import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campai
  * upstream, so a null port fetches nothing). A failed read never invents data:
  * `data` stays `null` and `loadFailed` is the only signal. The controller owns
  * loading and error, never local placeholder data.
+ *
+ * `loadErrorCode` (#480) surfaces the sanitized code so the controller can tell
+ * a genuine failure from a build with no backend configured
+ * (`not_configured`), which must never read as a service failure.
  */
 
 /** Sanitized load failure; the code is already provider-free. */
 class MyCampaignsError extends Error {
-  readonly code: string;
+  readonly code: MyCampaignsErrorCode;
 
-  constructor(code: string) {
+  constructor(code: MyCampaignsErrorCode) {
     super(`my-campaigns request failed: ${code}`);
     this.name = "MyCampaignsError";
     this.code = code;
@@ -35,6 +39,8 @@ export interface MyCampaignsState {
   readonly data: MyCampaigns | null;
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
+  /** The sanitized failure code (`not_configured` is not a service failure; #480). */
+  readonly loadErrorCode: MyCampaignsErrorCode | null;
   readonly reload: () => void;
 }
 
@@ -50,10 +56,14 @@ export function useMyCampaigns(port: MyCampaignsPort | null, enabled: boolean): 
     void mutate();
   }, [mutate]);
 
+  const loadErrorCode: MyCampaignsErrorCode | null =
+    error === undefined ? null : error instanceof MyCampaignsError ? error.code : "unavailable";
+
   return {
     data: data ?? null,
     isLoading,
     loadFailed: error !== undefined,
+    loadErrorCode,
     reload
   };
 }

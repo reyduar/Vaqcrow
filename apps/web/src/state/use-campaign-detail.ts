@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import useSWR from "swr";
-import type { CampaignDetail, CampaignDetailPort } from "@/application/ports/campaign-detail-port";
+import type { CampaignDetail, CampaignDetailErrorCode, CampaignDetailPort } from "@/application/ports/campaign-detail-port";
 
 /**
  * Server state of the campaign detail page (Feature #422, WU2).
@@ -17,9 +17,9 @@ import type { CampaignDetail, CampaignDetailPort } from "@/application/ports/cam
 
 /** Sanitized load failure; the code is already provider-free. */
 class CampaignDetailError extends Error {
-  readonly code: string;
+  readonly code: CampaignDetailErrorCode;
 
-  constructor(code: string) {
+  constructor(code: CampaignDetailErrorCode) {
     super(`campaign detail request failed: ${code}`);
     this.name = "CampaignDetailError";
     this.code = code;
@@ -37,6 +37,8 @@ export interface CampaignDetailState {
   readonly isLoading: boolean;
   readonly loadFailed: boolean;
   readonly notFound: boolean;
+  /** The sanitized failure code (`not_configured` is not a service failure; #480). */
+  readonly loadErrorCode: CampaignDetailErrorCode | null;
   readonly reload: () => void;
 }
 
@@ -57,12 +59,15 @@ export function useCampaignDetail(
   }, [mutate]);
 
   const code = error instanceof CampaignDetailError ? error.code : undefined;
+  const loadErrorCode: CampaignDetailErrorCode | null =
+    error === undefined ? null : (code ?? "unavailable");
 
   return {
     detail: data ?? null,
     isLoading,
     loadFailed: error !== undefined && code !== "not_found",
     notFound: code === "not_found",
+    loadErrorCode,
     reload
   };
 }

@@ -206,4 +206,22 @@ describe("NotificationBell", () => {
       within(dialog).getByText("Tu sesión no es válida o venció. Volvé a iniciar sesión.")
     ).toBeInTheDocument();
   });
+
+  // Issue #480: a missing backend is not a service failure.
+  it("tells a missing backend apart from a generic load failure", async () => {
+    const port: NotificationPort = {
+      list: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }),
+      countUnread: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }),
+      markRead: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" }),
+      markAllRead: vi.fn().mockResolvedValue({ ok: false, code: "not_configured" })
+    };
+
+    renderIsolated(port);
+
+    const bell = await screen.findByRole("button", { name: "Notificaciones no disponibles" });
+    fireEvent.click(bell);
+    const dialog = screen.getByRole("dialog", { name: "Notificaciones" });
+    expect(within(dialog).getByText("No hay una API de Vaqcrow configurada en esta instancia.")).toBeInTheDocument();
+    expect(within(dialog).queryByText("No pudimos cargar tus notificaciones.")).not.toBeInTheDocument();
+  });
 });

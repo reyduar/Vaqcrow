@@ -71,7 +71,12 @@ export interface CampaignDetail {
  * `unauthenticated` is kept apart from `unavailable`: a rejected session is a
  * state the UI can act on, a backend failure is not.
  */
-export type CampaignDetailErrorCode = "unavailable" | "network" | "unauthenticated" | "not_found";
+export type CampaignDetailErrorCode =
+  | "unavailable"
+  | "network"
+  | "unauthenticated"
+  | "not_found"
+  | "not_configured";
 
 export type CampaignDetailResult =
   | { readonly ok: true; readonly detail: CampaignDetail }

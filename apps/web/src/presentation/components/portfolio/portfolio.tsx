@@ -13,6 +13,7 @@ import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/creat
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
 import { usePortfolio } from "@/state/use-portfolio";
+import { BackendNotice } from "../backend-notice";
 import { ErrorState } from "../error-state";
 import { PageHeading } from "../page-heading";
 import { Skeleton } from "../skeleton";
@@ -96,13 +97,18 @@ export function Portfolio({ port, connection, balance, wallet: injectedWallet }:
       <PageHeading title={COPY.title} subtitle={COPY.subtitle} />
       {state.isLoading ? (
         <Skeleton shapes={["card", "line", "line"]} label="Cargando tu portafolio" />
-      ) : state.loadFailed || state.summary === null ? (
+      ) : state.loadErrorCode === "not_configured" ? (
+        <BackendNotice />
+      ) : state.loadFailed ? (
         <ErrorState
           title="No pudimos cargar tu portafolio"
           message="El servicio no respondió. Ningún dato ni aporte se modificó."
           onRetry={state.reload}
           retryLabel="Reintentar"
         />
+      ) : state.summary === null ? (
+        // #480: an unfetched summary is not a failure.
+        <BackendNotice />
       ) : (
         <PortfolioView
           summary={state.summary}

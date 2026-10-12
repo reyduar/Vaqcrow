@@ -37,7 +37,7 @@ describe("createBrowserMyCampaignsPort", () => {
 });
 
 describe("UNAVAILABLE_MY_CAMPAIGNS_PORT", () => {
-  it("always answers the sanitized unavailable", async () => {
-    expect(await UNAVAILABLE_MY_CAMPAIGNS_PORT.get()).toEqual({ ok: false, code: "unavailable" });
+  it("always answers not_configured (never a service failure)", async () => {
+    expect(await UNAVAILABLE_MY_CAMPAIGNS_PORT.get()).toEqual({ ok: false, code: "not_configured" });
   });
 });
