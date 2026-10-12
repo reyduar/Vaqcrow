@@ -177,7 +177,7 @@ Las personas describen roles de la demo, no segmentos validados de producción.
 | 5 | Explorar con filtros avanzados | `/explore` (modo filtros) | No existe | [#414](https://github.com/reyduar/Vaqcrow/issues/414) | Acota oportunidades por sector, riesgo, monto u otros criterios. |
 | **PyME** | | | | | |
 | 6 | Registro de PyME | Paso 2 del wizard dentro de `/company` (sin ruta propia) | Implementada en la rama de [#399](https://github.com/reyduar/Vaqcrow/issues/399), apilada (no en `main`): «Registrar mi PyME» abre el wizard y la carga de documentos y fotos es real, mediada por la API | [#399](https://github.com/reyduar/Vaqcrow/issues/399) (Task de [#398](https://github.com/reyduar/Vaqcrow/issues/398)) | Carga su solicitud, documentos y para qué necesita los fondos; en el paso 4 (Revisión humana) la propia PyME la envía con «Enviar a revisión», con Freighter conectado como requisito. |
-| 7 | Detalle de PyME | Por definir (exige cuenta) | No existe | [#422](https://github.com/reyduar/Vaqcrow/issues/422) | Revisa evidencia, riesgo y evaluación de una PyME puntual y aporta. |
+| 7 | Detalle de PyME | Por definir (público desde #485) | No existe | [#422](https://github.com/reyduar/Vaqcrow/issues/422) | Revisa evidencia, riesgo y evaluación de una PyME puntual y aporta. |
 | 8 | Tokenización de PyME | Sin ruta propia (pregunta abierta) | No existe | — | Define y visualiza la tokenización del financiamiento. |
 | 9 | Mi campaña | `/company` (sólo `PYME`) | Esqueleto protegido por sesión y rol | [#434](https://github.com/reyduar/Vaqcrow/issues/434) | Ve sus bóvedas, distribuciones, ventas y aportantes. |
 | **Inversor** | | | | | |
