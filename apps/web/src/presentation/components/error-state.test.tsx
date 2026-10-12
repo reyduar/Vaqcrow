@@ -44,4 +44,15 @@ describe("ErrorState", () => {
     expect(screen.queryByText("Algo salió mal.")).not.toBeInTheDocument();
     expect(document.querySelector("p.text-sm")).not.toBeInTheDocument();
   });
+
+  // Issue #480: the failure panel is no longer the danger red; it uses the
+  // warning tone so a recoverable failure is honest without alarming.
+  it("uses the warning tone, not the danger-red styling", () => {
+    render(<ErrorState title="No pudimos cargar las campañas" onRetry={() => {}} />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert.className).toContain("bg-trust-caution-surface");
+    expect(alert.className).toContain("text-trust-caution");
+    expect(alert.className).not.toContain("trust-critical");
+  });
 });
