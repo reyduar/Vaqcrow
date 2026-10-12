@@ -351,6 +351,16 @@ pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_
 - **Comprobaciones externas:** Testnet y LLM se ejecutan por separado y de forma acotada en preview/demo o antes del ensayo.
 - **Secretos:** se inyectan desde el entorno. No se deben confirmar seeds, claves privadas, tokens, PII ni credenciales en Git o logs.
 
+## API (especificación OpenAPI)
+
+La superficie HTTP de `apps/api` está documentada con una **OpenAPI 3.1** generada desde dos fuentes verificables por tests: el inventario de rutas (`apps/api/src/application/authorization/route-policy.ts`) y los contratos Zod compartidos (`@vaqcrow/contracts`). Los esquemas salen de `z.toJSONSchema()`, así que un cambio de contrato se refleja en el spec en vez de quedar desincronizado a mano; y `apps/api/src/infrastructure/http/openapi/openapi.test.ts` falla si una ruta de la tabla de autorización queda sin documentar, si el `security` de una operación no coincide con su política, o si el spec commiteado se desvía del generador.
+
+**Documentación publicada (Swagger UI):** **[reyduar.github.io/Vaqcrow/swagger](https://reyduar.github.io/Vaqcrow/swagger)**.
+
+- **Spec:** [`apps/api/openapi.json`](./apps/api/openapi.json)
+- **Regenerar tras cambiar una ruta o un contrato:** `pnpm --filter @vaqcrow/api run openapi:generate`
+- **Publicación:** el workflow [`.github/workflows/storybook.yml`](./.github/workflows/storybook.yml) publica el spec y la UI en GitHub Pages junto al Storybook (`/swagger/`); un pull request sólo construye, sin publicar.
+
 ## Storybook (taller de componentes)
 
 El taller de componentes vive en `apps/web/.storybook/` y renderiza las primitivas reales con los tokens reales, en claro y en oscuro. No es una maqueta paralela: usa los mismos componentes y el mismo CSS que la app. La guía completa —requisitos, temas, qué está cubierto y problemas frecuentes— está en [Storybook y los dos temas](./docs/guides/storybook.md).

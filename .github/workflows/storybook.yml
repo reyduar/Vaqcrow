@@ -56,6 +56,15 @@ jobs:
           cp -R apps/web/storybook-static/. pages/storybook/
           cp .github/pages/index.html pages/index.html
 
+      # The API reference (Issue #487): the committed OpenAPI document plus the
+      # Swagger UI page, staged under swagger/. The document is generated and
+      # drift-guarded by apps/api's openapi.test.ts, so it is not rebuilt here.
+      - name: Stage the API docs (OpenAPI + Swagger UI)
+        run: |
+          mkdir -p pages/swagger
+          cp apps/api/openapi.json pages/swagger/openapi.json
+          cp .github/pages/swagger/index.html pages/swagger/index.html
+
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
