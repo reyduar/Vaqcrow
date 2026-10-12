@@ -17,9 +17,9 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // reachable without a token.
   ["GET", "/marketplace/campaigns", "public"],
   ["GET", "/marketplace/campaigns/:campaignId/image", "public"],
-  // Account-gated campaign detail (#422/WU1): any signed-in role may open a
-  // published campaign; it is not public.
-  ["GET", "/marketplace/campaigns/:campaignId", "any"],
+  // Public campaign detail (#422/WU1; public since #485): shareable without a
+  // session; unpublished/unknown ids are 404.
+  ["GET", "/marketplace/campaigns/:campaignId", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
@@ -153,9 +153,32 @@ function buildFullApp(auth?: AuthDependency): {
       storage: {
         downloadObject: async () => ({ ok: true as const, value: { bytes: new Uint8Array([1]), contentType: "image/png" } })
       },
-      // The account-gated detail route (#422/WU1) is registered so the matrix
-      // exercises it; the probe answers before the handler runs.
-      detail: { findPublished: async () => ({ ok: true as const, value: undefined }) },
+      // The campaign detail route (#422/WU1; public since #485) is registered
+      // and answers 200 for the public probe: a published record is returned.
+      detail: {
+        findPublished: async () => ({
+          ok: true as const,
+          value: {
+            campaignId: "11111111-1111-4111-8111-111111111111",
+            name: "Panadería Sol",
+            sector: "Alimentos",
+            city: "CABA",
+            description: "Panadería artesanal.",
+            foundedAt: "2024-03-01T00:00:00.000Z",
+            goalArs: 1_000n,
+            totalStroops: 2_500_000n,
+            goalStroops: 10_000_000n,
+            revenueShare: 5,
+            deadline: "2026-12-01T00:00:00.000Z",
+            state: "open" as const,
+            hasImage: false,
+            vaultAddress: null,
+            backers: 0,
+            assessment: null,
+            decision: null
+          }
+        })
+      },
       explorerBaseUrl: undefined
     },
     favorite: stub,

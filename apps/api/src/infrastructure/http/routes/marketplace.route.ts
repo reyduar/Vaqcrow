@@ -23,7 +23,7 @@ import { listMarketplaceCampaigns } from "../../../application/use-cases/list-ma
  * cross the wire; a campaign that is not published or has no image is a `404`,
  * and a repository/storage failure is a sanitized `503`.
  *
- * `GET /marketplace/campaigns/:campaignId` is the account-gated campaign detail
+ * `GET /marketplace/campaigns/:campaignId` is the campaign detail
  * (#422/WU1): it requires a session (any role, see `route-policy.ts`) and only
  * serves a **published** campaign. A non-UUID id is a `400`, an unpublished or
  * unknown campaign a `404`, and a repository failure a sanitized `503`. It is
@@ -32,7 +32,7 @@ import { listMarketplaceCampaigns } from "../../../application/use-cases/list-ma
 export interface MarketplaceRouteDependencies {
   readonly campaigns: Pick<MarketplaceCampaignRepositoryPort, "listPublished" | "findPublishedImage">;
   readonly storage: Pick<StoragePort, "downloadObject">;
-  /** The account-gated campaign detail read model (#422/WU1). Omitted when unwired. */
+  /** The campaign detail read model (#422/WU1; public since #485). Omitted when unwired. */
   readonly detail?: Pick<CampaignDetailRepositoryPort, "findPublished"> | undefined;
   /**
    * `StellarConfig.explorerUrl`, used by the detail to link the vault

@@ -9,7 +9,7 @@ import type {
 import { toFundedPercentBps, toRaisedArs } from "./list-marketplace-campaigns.js";
 
 /**
- * The account-gated campaign detail (#422/WU1).
+ * The campaign detail (#422/WU1; public since #485).
  *
  * It resolves a **published** campaign through the detail repository and shapes
  * the persisted facts into the portable `campaignDetailSchema`. The money math
@@ -22,7 +22,18 @@ import { toFundedPercentBps, toRaisedArs } from "./list-marketplace-campaigns.js
  * see `deriveCampaignDetailStatus`. An unknown or unpublished campaign is
  * `not_found`; a repository failure or a malformed record both map to
  * `unavailable`, never a half-built detail.
+ *
+ * Because the route is public (#485), the human-decision attribution is
+ * **neutralized** (see `PUBLIC_DECISION_ACTOR`): only the role label travels, so
+ * a shared link never exposes an admin operator's name.
  */
+
+/**
+ * The public decision attribution (#485). The detail is readable without a
+ * session, so it never carries the admin operator's display name; this neutral
+ * role label keeps the "a person decided" message without a person.
+ */
+export const PUBLIC_DECISION_ACTOR = "Administración Vaqcrow";
 
 export interface GetCampaignDetailDependencies {
   readonly repository: Pick<CampaignDetailRepositoryPort, "findPublished">;
@@ -141,7 +152,9 @@ function toCampaignDetail(record: CampaignDetailRecord, explorerBaseUrl: string 
       record.decision === null
         ? null
         : {
-            actor: record.decision.actor,
+            // Neutralized for the public read (#485): the persisted operator
+            // name stays in the database and never crosses this boundary.
+            actor: PUBLIC_DECISION_ACTOR,
             reason: record.decision.reason,
             approvedLimitArs:
               record.decision.approvedLimitArs === null ? null : Number(record.decision.approvedLimitArs),

@@ -1,5 +1,5 @@
 /**
- * The account-gated campaign detail read model (#422/WU1).
+ * The campaign detail read model (#422/WU1; public since #485).
  *
  * One record per **published** campaign: the vault deployment is `confirmed`
  * and the campaign is `open` — the same definition as the #414 marketplace

@@ -115,7 +115,7 @@ describe("getCampaignDetail", () => {
           generatedAt: "2026-09-30T12:00:00.000Z"
         },
         decision: {
-          actor: "Admin Vaqcrow",
+          actor: "Administración Vaqcrow",
           reason: "Aprobada tras revisar la evidencia.",
           approvedLimitArs: 5_000_000,
           recordedAt: "2026-10-01T09:00:00.000Z"
@@ -132,6 +132,30 @@ describe("getCampaignDetail", () => {
         }
       }
     });
+  });
+
+  it("neutralizes the human-decision actor: the public read never exposes the operator name (#485)", async () => {
+    const result = await getCampaignDetail(
+      {
+        repository: fakeRepository({
+          ok: true,
+          value: record({
+            decision: {
+              actor: "M. Pereyra",
+              reason: "Aprobada.",
+              approvedLimitArs: null,
+              recordedAt: "2026-10-01T09:00:00.000Z"
+            }
+          })
+        }),
+        explorerBaseUrl: EXPLORER
+      },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(result.ok ? result.value.decision?.actor : null).toBe("Administración Vaqcrow");
+    expect(JSON.stringify(result)).not.toContain("M. Pereyra");
   });
 
   it("reports null for every non-persisted field (no snapshot, no assessment, no decision, no image, no vault)", async () => {

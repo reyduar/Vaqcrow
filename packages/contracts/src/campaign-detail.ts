@@ -5,10 +5,11 @@ import { explorerUrlSchema } from "./portfolio.js";
 import { periodSchema, salesPeriodStatusSchema } from "./sme-evidence.js";
 
 /**
- * The account-gated campaign detail (`GET /marketplace/campaigns/:campaignId`,
- * Feature #422, work unit WU1).
+ * The campaign detail (`GET /marketplace/campaigns/:campaignId`,
+ * Feature #422, work unit WU1; public since #485).
  *
- * Opening a campaign's detail requires a session (any role), and only a
+ * A published campaign's detail is **public** — readable without a session and
+ * shareable by link (owner decision #485) — and only a
  * **published** campaign is visible — the same definition as the #414
  * marketplace listing (`campaign_deployment.state = 'confirmed'` on an
  * `open` campaign). An unpublished or unknown campaign is a `404`, so the
