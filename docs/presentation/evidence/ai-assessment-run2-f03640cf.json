@@ -1,0 +1,59 @@
+{
+  "run": "f03640cf",
+  "applicationId": "d377c4c9-c923-4998-8226-0723c3c90be9",
+  "attemptId": "d377c4c9-c923-4998-8226-0723c3c90be9",
+  "correlationId": "5e6e5ebd-6df7-45ab-a5e9-1b38162c5fed",
+  "createdAt": "2026-10-11T20:53:09.055562+00:00",
+  "source": "public.application_assessment (proyecto Supabase remoto)",
+  "assessment": {
+    "reasons": [
+      {
+        "claim": "Eight consecutive monthly sales declarations are reported, all from the same provenance (Declaración mensual sintética).",
+        "evidenceRefs": [
+          "sales:2026-01",
+          "sales:2026-02",
+          "sales:2026-03",
+          "sales:2026-04",
+          "sales:2026-05",
+          "sales:2026-06",
+          "sales:2026-07",
+          "sales:2026-08"
+        ]
+      },
+      {
+        "claim": "Monthly sales are stable, ranging between 3,371,700 and 3,636,100 ARS with no strong trend.",
+        "evidenceRefs": ["sales:2026-01", "sales:2026-04", "sales:2026-06", "sales:2026-08"]
+      },
+      {
+        "claim": "All evidence is labeled SIMULADO, so figures may not reflect real operations.",
+        "evidenceRefs": ["sales:2026-01", "sales:2026-08"]
+      }
+    ],
+    "riskBand": "medium",
+    "anomalies": [
+      { "type": "outlier", "severity": "info", "evidenceRef": "sales:2026-06" },
+      { "type": "outlier", "severity": "info", "evidenceRef": "sales:2026-04" }
+    ],
+    "questions": [
+      "Can the SIMULADO declarations be corroborated with official tax filings or bank statements?",
+      "What explains the mild dips in 2026-04 and 2026-08 and the peak in 2026-06?",
+      "Are sales nominal figures affected by inflation, and is there a real-terms trend?",
+      "What is the company's sector, customer concentration and payment terms?"
+    ],
+    "confidence": 0.6,
+    "missingData": [
+      "No external corroboration (invoices, bank statements, tax filings) beyond synthetic monthly declarations",
+      "No prior-year periods for year-over-year comparison",
+      "No cost, margin or expense data to assess profitability",
+      "No information on the company's identity, sector or size"
+    ],
+    "assessmentId": "asm_7f3c9a2e",
+    "recommendedAction": "human_review"
+  },
+  "metadata": {
+    "model": "glm-5.3-flash",
+    "source": "provider",
+    "generatedAt": "2026-10-11T20:53:08.971Z",
+    "promptVersion": "assessment-v1"
+  }
+}
