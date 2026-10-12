@@ -128,7 +128,6 @@ function renderFlow(options: RenderOptions = {}) {
   return render(
     <CampaignDetailController
       campaignId={CAMPAIGN_ID}
-      signedIn
       role={options.role ?? "INVERSOR"}
       port={port}
       contribution={{

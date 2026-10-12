@@ -7,7 +7,7 @@ import type { WalletConnectionPort } from "@/application/ports/wallet-connection
  * Non-prompting "is a wallet connected?" read for the campaign-detail
  * contribution flow (Feature #422, WU3).
  *
- * The account-gated detail has no "Conectar wallet" button:
+ * The public detail has no "Conectar wallet" button:
  * the template sends a person without a connected wallet to `/portfolio` to
  * connect or create Freighter. The signal is the **persisted** connection the
  * API stores for the signed-in principal (`GET /profile/wallet` through

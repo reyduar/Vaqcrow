@@ -29,7 +29,7 @@ import { CampaignContribution, type CampaignContributionInjection } from "./camp
 import { CampaignWithdraw } from "./campaign-withdraw";
 
 /**
- * The account-gated campaign detail body (Feature #422, WU2): the template's
+ * The campaign detail body (Feature #422, WU2; public since #485): the template's
  * read-only sections (`docs/design/template/Vaqcrow Detalle PyME.dc.html`,
  * git-ignored). Presentational only — every value arrives already validated by
  * the port (the contract's API-relative `imageUrl` is already an absolute
