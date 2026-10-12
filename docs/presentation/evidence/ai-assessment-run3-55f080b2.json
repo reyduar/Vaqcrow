@@ -1,0 +1,56 @@
+{
+  "run": "55f080b2",
+  "applicationId": "8f41722f-b839-473a-8e66-f38741360ec6",
+  "attemptId": "8f41722f-b839-473a-8e66-f38741360ec6",
+  "correlationId": "4618775c-07f2-4640-ba48-59187a1fba1f",
+  "createdAt": "2026-10-11T20:54:19.123972+00:00",
+  "source": "public.application_assessment (proyecto Supabase remoto)",
+  "assessment": {
+    "reasons": [
+      {
+        "claim": "Eight consecutive monthly sales declarations are reported with a single consistent provenance (Declaración mensual sintética).",
+        "evidenceRefs": [
+          "sales:2026-01",
+          "sales:2026-02",
+          "sales:2026-03",
+          "sales:2026-04",
+          "sales:2026-05",
+          "sales:2026-06",
+          "sales:2026-07",
+          "sales:2026-08"
+        ]
+      },
+      {
+        "claim": "Sales show a declining trend from 2026-01 to 2026-04 (4,612,300 to 4,139,000 ARS) followed by a partial recovery through 2026-08 (4,507,200 ARS).",
+        "evidenceRefs": ["sales:2026-01", "sales:2026-04", "sales:2026-08"]
+      },
+      {
+        "claim": "All amounts are labeled SIMULADO, so figures may not reflect actual reported sales.",
+        "evidenceRefs": ["sales:2026-01", "sales:2026-08"]
+      }
+    ],
+    "riskBand": "medium",
+    "anomalies": [{ "type": "outlier", "severity": "info", "evidenceRef": "sales:2026-04" }],
+    "questions": [
+      "Why are all records labeled SIMULADO, and is there non-simulated evidence available?",
+      "What caused the sales decline from January to April 2026 and the subsequent recovery?",
+      "Can the declared amounts be corroborated against VAT/invoicing records or bank deposits?",
+      "Are sales figures nominal or inflation-adjusted, given the Argentine context?"
+    ],
+    "confidence": 0.55,
+    "missingData": [
+      "No corroboration from independent sources (e.g., VAT filings, bank statements) beyond the synthetic monthly declarations",
+      "No prior-period or year-over-year comparison data",
+      "No explanation for the mid-period decline and recovery",
+      "All data is marked SIMULADO; authenticity of figures unverified"
+    ],
+    "assessmentId": "asm_sales_2026_01_08",
+    "recommendedAction": "human_review"
+  },
+  "metadata": {
+    "model": "glm-5.3-flash",
+    "source": "provider",
+    "generatedAt": "2026-10-11T20:54:19.074Z",
+    "promptVersion": "assessment-v1"
+  }
+}
