@@ -13,6 +13,8 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 ## Comenzar aquí
 
+> **Estado al 2026-10-13: seis issues nuevas de mejora en `Backlog` (237 `Done`, 8 `Backlog`).** Verificado en el Project canónico `Vaqcrow-TFM` #4 el 2026-10-13. [#495](https://github.com/reyduar/Vaqcrow/issues/495) (reset guardado de datos de la demo) quedó en `main` vía [PR #496](https://github.com/reyduar/Vaqcrow/pull/496). El owner abrió seis unidades de mejora posteriores a `v1.1.0`, inventariadas en [[#Mejoras posteriores a v1.1.0|Mejoras posteriores a v1.1.0]]: [#497](#^issue-497) («Cómo funciona» con el workflow completo), [#498](#^issue-498) (Blog en Markdown), [#499](#^issue-499) (asistente de ayuda con wiki compilada estilo Karpathy, solo para usuarios logueados), [#500](#^issue-500) («Guía del inversor» en el header público), [#501](#^issue-501) (desbordes de texto y CTA de Explorar como botón primario) y [#502](#^issue-502) (skill OWASP Top 10). Siguen abiertas además [#490](https://github.com/reyduar/Vaqcrow/issues/490) y [#491](https://github.com/reyduar/Vaqcrow/issues/491), con su calendario.
+>
 > **Estado al 2026-10-12: el tablero queda prácticamente cerrado (236 `Done`, 2 `Backlog`), y lo abierto es trabajo posterior a la fecha de la demo.** Verificado en el Project canónico `Vaqcrow-TFM` #4 el 2026-10-12. El 2026-10-12 se cerró la consola de administración —Epic [#375](#^issue-375), Feature [#390](#^issue-390) (mergeada vía [PR #482](https://github.com/reyduar/Vaqcrow/pull/482)) y sus Tasks [#391](#^issue-391)–[#393](#^issue-393)— y el MVP quedó tageado `v1.0.0` con el paquete de evidencia de [#33](#^issue-33). Sobre eso se entregaron cuatro Tasks de UI, una unit de foundation y la Feature del detalle público, todas ya en `main`: [#478](https://github.com/reyduar/Vaqcrow/issues/478) (favicon, [PR #484](https://github.com/reyduar/Vaqcrow/pull/484)), [#479](https://github.com/reyduar/Vaqcrow/issues/479) (cursor de mano en botones, [PR #489](https://github.com/reyduar/Vaqcrow/pull/489)), [#480](https://github.com/reyduar/Vaqcrow/issues/480) (distinguir vacío de fallo de carga, [PR #483](https://github.com/reyduar/Vaqcrow/pull/483)), [#481](https://github.com/reyduar/Vaqcrow/issues/481) (detalle sintético desde la card destacada, [PR #486](https://github.com/reyduar/Vaqcrow/pull/486)), [#487](https://github.com/reyduar/Vaqcrow/issues/487) (OpenAPI 3.1 del API + Swagger UI publicada en GitHub Pages, [PR #488](https://github.com/reyduar/Vaqcrow/pull/488)) y [#485](https://github.com/reyduar/Vaqcrow/issues/485) (detalle de campaña **real** público y compartible, [PR #493](https://github.com/reyduar/Vaqcrow/pull/493)). Todo eso se cerró con el release **[`v1.1.0`](https://github.com/reyduar/Vaqcrow/releases/tag/v1.1.0)** (tag anotado sobre `fc868a03`). Los 2 ítems abiertos son trabajo **posterior** a la demo y no bloquean nada: dos pendientes de calendario — [#490](https://github.com/reyduar/Vaqcrow/issues/490), migrar la configuración de Railway a IaC antes del **2026-12-01**, y [#491](https://github.com/reyduar/Vaqcrow/issues/491), restaurar la demo tras el **reset de Testnet del 2026-12-16** (procedimiento en [Reset de Testnet — runbook](./testnet-reset-runbook.md)).
 >
 > **Estado al 2026-10-10: la pila por roles y el retiro del recorrido están en `main`.** El owner mergeó [PR #466](https://github.com/reyduar/Vaqcrow/pull/466) (merge `2b7e0d5`, 2026-10-10 14:27:56 UTC), que llevó a `main` [#369](#^issue-369), [#378](#^issue-378), [#382](#^issue-382), [#386](#^issue-386), [#398](#^issue-398), [#402](#^issue-402), [#406](#^issue-406), [#410](#^issue-410), [#414](#^issue-414), [#422](#^issue-422), [#426](#^issue-426), [#430](#^issue-430), [#434](#^issue-434) y [#438](#^issue-438); #438–#441 quedaron cerradas (verificado con `gh` el 2026-10-10). Lo siguiente según la hoja de ruta es [#33](#^issue-33) → [#34](#^issue-34); siguen abiertas [#31](#^issue-31), [#32](#^issue-32) y [#390](#^issue-390). Después del PR #466 se mergearon dos Features más del sitio público: la landing pública [#418](#^issue-418) vía [PR #468](https://github.com/reyduar/Vaqcrow/pull/468) (merge `2d1bbb9`, 2026-10-10) y, sobre ella, [#394](#^issue-394) —Acerca de, guías y centro de ayuda— vía [PR #469](https://github.com/reyduar/Vaqcrow/pull/469) (merge `48e7b34`, 2026-10-11); sus Tasks [#419](#^issue-419)–[#421](#^issue-421) y [#395](#^issue-395)–[#397](#^issue-397) quedaron cerradas. Tras el merge, el 2026-10-10 se verificó (Railway CLI, sólo lectura) que `STELLAR_CAMPAIGN_FACTORY_ID` en Railway (`vaqcrow-api`, `production`, servicio `api`) ya apunta a la fábrica nueva con tope (`CCDNM6W4…SV7J`) y que el despliegue activo `3539d681` está en `SUCCESS`, construido desde `2b7e0d5`, sin errores de arranque (ver [`application-review-and-vault-deployment-evidence.md`](./application-review-and-vault-deployment-evidence.md)). Mergeado no es verificado de punta a punta. Pendientes del owner: el smoke test de despliegue de bóveda contra la API hosteada con la fábrica nueva (Vercel tampoco se verificó) y migrar `railway.json`/`railway.toml` (Config as Code, deprecado) a IaC (`.railway/railway.ts`) antes del **2026-12-01**, fecha hasta la que Railway mantiene los archivos existentes (anterior al reset de Testnet del 2026-12-16).
@@ -2764,6 +2766,86 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 - **Orden:** cierra [#438](#^issue-438).
 
 **Rama propuesta.** `Vaqcrow#441_Task_Document_evidence_for_the_retirement_of_the_scripted_six_step_demo_journey` es una unidad de documentación revisable. Pendiente: se escribe como WU8 en la rama de [#438](#^issue-438), en `docs/planning/retire-scripted-journey-evidence.md`.
+
+## Mejoras posteriores a v1.1.0
+
+Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0`](https://github.com/reyduar/Vaqcrow/releases/tag/v1.1.0). No cuelgan de un Epic. Las prioridades las propuso el agente y el owner las aceptó. [#502](#^issue-502) conviene que entre antes que [#498](#^issue-498) y [#499](#^issue-499), para que esas dos Features se evalúen con la skill de seguridad.
+
+> [!question] Preguntas abiertas antes de implementar
+> [#497](#^issue-497), [#498](#^issue-498) y [#499](#^issue-499) registran preguntas abiertas en su cuerpo; se responden en el issue antes de arrancar. [#498](#^issue-498) y [#499](#^issue-499) comparten una: si `docs/guides/storybook.md` (guía para desarrolladores) se publica en el Blog y entra en la wiki del asistente, o si los artículos públicos viven en una subcarpeta propia.
+
+### #497 — Ampliar «Cómo funciona» de la landing al workflow completo
+
+^issue-497
+
+- **Título original:** `Task: Expand the landing "How it works" section to the full end-to-end workflow`
+- **GitHub y estado:** [issue #497](https://github.com/reyduar/Vaqcrow/issues/497) · Tipo `Task` · Área `frontend` · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#418](#^issue-418) y [#394](#^issue-394).
+- **Objetivo:** que `#como-funciona` cubra el workflow de punta a punta —onboarding de la PyME, registro con documentos, evaluación por IA, wallet Freighter, aprobación humana, bóveda, publicación, onboarding y aporte del inversor, regla All-or-Nothing, cobro de la PyME y distribución mensual— y explique en qué se basan las recompensas, verificado contra el cálculo del dominio. Se aparta de los cuatro pasos del template por decisión del owner.
+- **Orden:** independiente.
+
+**Rama propuesta.** `Vaqcrow#497_Task_Expand_the_landing_How_it_works_section_to_the_full_end_to_end_workflow`.
+
+### #498 — Blog en Markdown dentro de «Acerca de», respaldado por `docs/guides`
+
+^issue-498
+
+- **Título original:** `Feature: Publish a Markdown Blog in About backed by docs/guides`
+- **GitHub y estado:** [issue #498](https://github.com/reyduar/Vaqcrow/issues/498) · Tipo `Feature` · Área `frontend` (también `database`, `docs`) · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos nativos; requiere [#394](#^issue-394) (cerrado). Comparte el corpus `docs/guides/` con [#499](#^issue-499).
+- **Objetivo:** sección «Blog» en `/about`, rutas públicas `/blog` y `/blog/[slug]` que renderizan cada `.md` de `docs/guides/` como un preview de Markdown, y una tabla (`blog_post`: `slug` → archivo) con RLS. Primer artículo: Vaqcrow sobre Stellar, inspirado en la nota de El Economista sobre EthicHub.
+- **Orden:** después de [#502](#^issue-502). Cierra con su documento de evidencia.
+
+**Rama propuesta.** `Vaqcrow#498_Feat_Publish_a_Markdown_Blog_in_About_backed_by_docs_guides`.
+
+### #499 — Asistente de ayuda para usuarios logueados con wiki compilada estilo Karpathy
+
+^issue-499
+
+- **Título original:** `Feature: Add a help assistant for signed-in users grounded in a Karpathy-style compiled wiki`
+- **GitHub y estado:** [issue #499](https://github.com/reyduar/Vaqcrow/issues/499) · Tipo `Feature` · Área `ai` (también `backend`, `frontend`, `docs`) · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos nativos; requiere [#394](#^issue-394) (cerrado). Comparte el corpus con [#498](#^issue-498).
+- **Objetivo:** chat de ayuda, el mismo componente en el asistente flotante y en `/help`, solo para usuarios logueados; el visitante anónimo sigue viendo solo las preguntas frecuentes. Responde únicamente desde una wiki compilada de `docs/guides/` en `docs/wiki/` (`schema.md`, `index.md`, `log.md`), revisada por PR. En cada pregunta hace una llamada router sobre `index.md` y una de respuesta sobre las páginas elegidas; las guardias van en código (sin páginas no hay respuesta; no hay citas fuera de lo elegido).
+- **Decisiones del owner (2026-10-13):** método LLM Wiki de Karpathy en lugar de RAG vectorial; modelos de OpenCode Go; sin embeddings ni API key aparte (OpenAI `text-embedding-3-small` fue considerado y descartado). Investigación: OpenCode Go no ofrece modelos de embeddings (`/v1/embeddings` responde 404).
+- **Orden:** después de [#502](#^issue-502). Diez preguntas abiertas en el issue antes de arrancar. Cierra con su documento de evidencia.
+
+**Rama propuesta.** `Vaqcrow#499_Feat_Add_a_help_assistant_for_signed_in_users_grounded_in_a_Karpathy_style_compiled_wiki`.
+
+### #500 — «Guía del inversor» en el header público
+
+^issue-500
+
+- **Título original:** `Task: Add the investor guide link to the public landing header`
+- **GitHub y estado:** [issue #500](https://github.com/reyduar/Vaqcrow/issues/500) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#394](#^issue-394) y [#378](#^issue-378).
+- **Objetivo:** agregar «Guía del inversor» → `/investor-guide` a `PUBLIC_VIEW.nav` (`apps/web/src/application/navigation/shell-nav.ts`), en desktop y mobile; hoy solo aparece en el menú del `INVERSOR` logueado.
+- **Orden:** independiente.
+
+**Rama propuesta.** `Vaqcrow#500_Task_Add_the_investor_guide_link_to_the_public_landing_header`.
+
+### #501 — Desbordes de texto y CTA de Explorar como botón primario
+
+^issue-501
+
+- **Título original:** `Task: Fix text overflow across screens and make the Explore card CTA a primary button`
+- **GitHub y estado:** [issue #501](https://github.com/reyduar/Vaqcrow/issues/501) · Tipo `Task` · Área `frontend` · Etiqueta `bug` · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#414](#^issue-414) y [#422](#^issue-422).
+- **Objetivo:** corregir el badge «TESTNET · Activos sin valor económico» que se sale del card del detalle de campaña, auditar todas las pantallas a 375/768/1280 px y convertir «Ver evidencia y riesgo» de las cards de Explorar en un botón primario sin perder la semántica de link.
+- **Orden:** independiente.
+
+**Rama propuesta.** `Vaqcrow#501_Task_Fix_text_overflow_across_screens_and_make_the_Explore_card_CTA_a_primary_button`.
+
+### #502 — Skill OWASP Top 10 y regla de seguridad en `AGENTS.md`/`CLAUDE.md`
+
+^issue-502
+
+- **Título original:** `Technical: Add an OWASP Top 10 security skill and require it in AGENTS.md/CLAUDE.md`
+- **GitHub y estado:** [issue #502](https://github.com/reyduar/Vaqcrow/issues/502) · Tipo `Technical/Foundation` · Área `security` · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos.
+- **Objetivo:** agregar una skill OWASP Top 10 (más los ítems relevantes del OWASP Top 10 para aplicaciones LLM) mapeada a este stack, registrarla en `.atl/skill-registry.md` y exigir en `AGENTS.md`/`CLAUDE.md` una evaluación de seguridad para los cambios que tocan auth, inputs, uploads, contenido no confiable, prompts o secretos.
+- **Orden:** antes de [#498](#^issue-498) y [#499](#^issue-499).
+
+**Rama propuesta.** `Vaqcrow#502_Technical_Add_an_OWASP_Top_10_security_skill_and_require_it_in_AGENTS_md_CLAUDE_md`.
 
 ## Discrepancias y exclusiones
 
