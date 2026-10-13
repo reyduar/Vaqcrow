@@ -18,7 +18,9 @@
     "seed:sales-periods:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/seed-sales-periods-cli.js",
     "seed:sales-periods:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/seed-sales-periods-cli.js",
     "start": "node dist/index.js",
-    "openapi:generate": "tsc -p tsconfig.build.json && node dist/infrastructure/http/openapi/generate-openapi-cli.js"
+    "openapi:generate": "tsc -p tsconfig.build.json && node dist/infrastructure/http/openapi/generate-openapi-cli.js",
+    "reset:demo-data:docker": "tsc -p tsconfig.build.json && node --env-file=../../.env.docker dist/infrastructure/seed/reset-demo-data-cli.js",
+    "reset:demo-data:cloud": "tsc -p tsconfig.build.json && node --env-file=../../.env.cloud dist/infrastructure/seed/reset-demo-data-cli.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

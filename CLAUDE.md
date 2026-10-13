@@ -99,7 +99,7 @@ Before writing or approving a factual claim of the form "this was proven", "this
 
 Settled decisions — do not relitigate without new evidence:
 
-- **No database reset between rehearsals (Option A).** Each rehearsal creates a fresh application and campaign; the evidence is scoped to the current run's identifiers (the ADMIN evidence view is per application).
+- **No database reset between rehearsals (Option A).** Each rehearsal creates a fresh application and campaign; the evidence is scoped to the current run's identifiers (the ADMIN evidence view is per application). A separate, **guarded reset exists to start from zero** — `RESET_DEMO_DATA_CONFIRM=yes pnpm --filter @vaqcrow/api reset:demo-data:docker|cloud` deletes all activity and every account except the super admin, keeping `fx_rate`; it is not used *between* rehearsals.
 - **The canonical Testnet Horizon/RPC endpoints are defaults, not required variables.** Both `STELLAR_HORIZON_URL` and `STELLAR_RPC_URL` are optional, falling back to `https://horizon-testnet.stellar.org` and `https://soroban-testnet.stellar.org`.
 - **The platform-key ↔ factory-`owner` correspondence is retired (proven 2026-09-25).** `POST /campaigns` deployed a vault on the hosted deployment; never describe it as unproven.
 - **The 2026-12-16 Testnet reset invalidates the contract addresses**, so the factory is redeployed and `STELLAR_CAMPAIGN_FACTORY_ID` re-pointed after that date.
