@@ -53,8 +53,13 @@ Un test lo caza temprano: el lead de la sección seguía renderizando el texto c
 - `diff -q AGENTS.md CLAUDE.md` → idénticas.
 - El texto del documento corre por el mismo denylist de términos prohibidos que el resto de la copy pública (`public-copy-prohibited-terms.test.ts`).
 
+## Arreglos de paso (mismo PR)
+
+- **Los dos guides citaban una regla que no existe.** `investor-guide.ts` y `entrepreneur-guide.ts` mostraban `(regla rs-v1.2)`, texto de ejemplo del template: **`rs-v1.2` no existe en el código**. La versión canónica es `RS-2026-01` (`packages/domain/src/revenue-share.ts`, fijada por `demo-ui.md` §10.2). Es una afirmación falsa en copy pública, así que se corrigió en ambos y se agregó `application/guides/revenue-share-rule-version.test.ts`, que la fija: un guide que cite otra versión falla. (`apps/web` no puede importar `packages/domain` por dependency-cruiser, así que la versión se fija como literal, documentado en el test.)
+- **El README declaraba un conteo de tests viejo.** Decía `190 archivos de test` (el mismo número, sin verificar, en `docs/presentation/demo-deck.md`). Re-derivado de la corrida final de `pnpm run verify` del 2026-10-13: **403 archivos / 6.161 casos** por `pnpm run test` (domain 3, contracts 26, ai 9, api 142, web 223). Reemplazado en los dos documentos y anotado con la fecha de medición.
+
 ## Lo que queda para el ojo humano
 
 - **Revisión visual en el navegador**: no vi la sección renderizada. Lo verificado por código es estructura, orden, badges, ausencia de marcado literal y build estático; el juicio estético (proporciones de la traza, la bifurcación en desktop y en mobile, el dibujo al scrollear) queda para el owner.
 - El diseño se aprobó con 8 etapas lineales; quedaron **9** (el onboarding y la wallet del inversor se separaron del aporte, porque el issue los pide como etapas distintas). Sin impacto en la dirección acordada.
-- `docs/planning/demo-tasks-list.md` todavía lista #497 como `Backlog`.
+- El estado del tablero ya está sincronizado en `docs/planning/demo-tasks-list.md` (238 `Done`, 6 `Backlog`, 1 `In review`) y el README referencia este documento de guía.

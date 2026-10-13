@@ -131,7 +131,7 @@ export const ENTREPRENEUR_GUIDE: Guide = Object.freeze({
         salesLabel: "Ventas declaradas de agosto",
         salesTag: "SIMULADO",
         salesValue: "ARS 3.745.800,00",
-        ruleLabel: "Revenue share (regla rs-v1.2)",
+        ruleLabel: "Revenue share (regla RS-2026-01)",
         ruleValue: "× 4,5 %",
         resultLabel: "A distribuir entre aportantes",
         resultValue: "ARS 168.561,00",
