@@ -15,7 +15,7 @@ import {
   IoWalletOutline
 } from "react-icons/io5";
 import { HOW_IT_WORKS_GUIDE, readGuideSource } from "@/infrastructure/guides/read-guide-source";
-import { HOW_IT_WORKS_KINDS, parseHowItWorks } from "@/application/landing/how-it-works";
+import { HOW_IT_WORKS_KINDS, parseHowItWorks, parseInline } from "@/application/landing/how-it-works";
 import { Badge, type BadgeVariant } from "../badge";
 import { RevealOnScroll } from "./reveal-on-scroll";
 
@@ -78,12 +78,36 @@ interface Stage {
   readonly metaIndex: number;
 }
 
+function Inline({ text }: { readonly text: string }) {
+  return (
+    <>
+      {parseInline(text).map((span, index) => {
+        if (span.kind === "strong") {
+          return (
+            <strong key={index} className="font-semibold text-text-primary">
+              {span.text}
+            </strong>
+          );
+        }
+        if (span.kind === "code") {
+          return (
+            <code key={index} className="rounded bg-page-surface px-1 py-0.5 text-[13px]">
+              {span.text}
+            </code>
+          );
+        }
+        return <span key={index}>{span.text}</span>;
+      })}
+    </>
+  );
+}
+
 function StageParagraphs({ paragraphs }: { readonly paragraphs: readonly string[] }) {
   return (
     <>
       {paragraphs.map((text) => (
         <p key={text} className="m-0 max-w-[68ch] text-[15px] leading-[1.6] text-pretty text-text-secondary">
-          {text}
+          <Inline text={text} />
         </p>
       ))}
     </>
@@ -146,7 +170,7 @@ export function HowItWorks() {
           </h2>
           {lead.map((text) => (
             <p key={text} className="m-0 text-[17px] leading-[1.6] text-pretty text-text-secondary">
-              {text}
+              <Inline text={text} />
             </p>
           ))}
         </div>

@@ -48,6 +48,14 @@ describe("「Cómo funciona」 — La traza", () => {
     }
   });
 
+  it("renders the guide's inline markup as elements, never as literal markers", () => {
+    const { container } = render(<HowItWorks />);
+
+    expect(container.textContent ?? "").not.toContain("**");
+    expect(container.textContent ?? "").not.toContain("`");
+    expect(container.querySelector("strong")).not.toBeNull();
+  });
+
   it("draws the trace with the project's reduced-motion guard", () => {
     const { container } = render(<HowItWorks />);
     const rail = container.querySelector("ol > span[aria-hidden='true']");

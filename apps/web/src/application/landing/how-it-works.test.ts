@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOW_IT_WORKS_KINDS, parseHowItWorks } from "./how-it-works";
+import { HOW_IT_WORKS_KINDS, parseHowItWorks, parseInline } from "./how-it-works";
 import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides/read-guide-source";
 
 const SAMPLE = `---
@@ -59,6 +59,22 @@ describe("parseHowItWorks", () => {
     expect(stations.map((station) => station.title)).toEqual(["Uno", "Dos"]);
     expect(stations[0]?.body).toEqual(["Cuerpo uno."]);
     expect(stations[1]?.body).toEqual(["Cuerpo dos.", "Un segundo párrafo."]);
+  });
+});
+
+describe("parseInline", () => {
+  it("splits strong and code spans out of a paragraph", () => {
+    expect(parseInline("texto **fuerte** y `código` final")).toEqual([
+      { text: "texto ", kind: "text" },
+      { text: "fuerte", kind: "strong" },
+      { text: " y ", kind: "text" },
+      { text: "código", kind: "code" },
+      { text: " final", kind: "text" }
+    ]);
+  });
+
+  it("leaves a paragraph without markup as a single span", () => {
+    expect(parseInline("sin marcado")).toEqual([{ text: "sin marcado", kind: "text" }]);
   });
 });
 

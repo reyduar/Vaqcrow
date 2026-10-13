@@ -58,6 +58,41 @@ const H2 = /^##\s+\S/;
 const BLOCKQUOTE = /^>/;
 const H2_PREFIX = /^##\s+/;
 
+/**
+ * The inline markup the guide uses: `**strong**` and `` `code` ``. The section
+ * turns these into React elements — never into HTML — so the document can carry
+ * emphasis without opening an untrusted-markup surface.
+ */
+export interface InlineSpan {
+  readonly text: string;
+  readonly kind: "text" | "strong" | "code";
+}
+
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+
+/** Splits one paragraph into plain, strong and code spans. */
+export function parseInline(text: string): readonly InlineSpan[] {
+  const spans: InlineSpan[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(INLINE)) {
+    const at = match.index ?? 0;
+    if (at > cursor) spans.push({ text: text.slice(cursor, at), kind: "text" });
+
+    if (match[1] !== undefined) {
+      spans.push({ text: match[1], kind: "code" });
+    } else if (match[2] !== undefined) {
+      spans.push({ text: match[2], kind: "strong" });
+    }
+
+    cursor = at + match[0].length;
+  }
+
+  if (cursor < text.length) spans.push({ text: text.slice(cursor), kind: "text" });
+
+  return spans;
+}
+
 /** The line after a leading `---` block, or `0` when there is none. */
 function afterFrontmatter(lines: readonly string[]): number {
   if (!FRONTMATTER_FENCE.test(lines[0] ?? "")) return 0;
