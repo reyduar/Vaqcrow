@@ -316,7 +316,7 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 - **Ensayo hosteado end-to-end, 3/3 en verde** contra el stack desplegado (Railway API + Supabase remoto + Testnet): **deploy de bóveda confirmado** + **aporte firmado `success`**.
 - **Corpus de evidencia:** 48 documentos `docs/planning/*-evidence.md` (uno por Feature cerrada).
 - **Gates de CI:** `pnpm run verify` (lint + typecheck + test + build + boundaries), Playwright por rol y compilación/prueba/deploy de los contratos Rust en red local.
-- **190 archivos de test** unitarios y de componentes, con dobles locales — sin depender de Testnet, Horizon ni el LLM vivo.
+- **403 archivos de test** (6.161 casos) unitarios y de componentes, con dobles locales — sin depender de Testnet, Horizon ni el LLM vivo.
 
 <div class="muted">Los verificadores vivos (ensayo hosteado, e2e en vivo) son <strong>opt-in</strong>: nunca corren en <code>verify</code> ni en CI. Ensayo: <code>scripts/demo/rehearsal/hosted-rehearsal.mjs</code>.</div>
 
