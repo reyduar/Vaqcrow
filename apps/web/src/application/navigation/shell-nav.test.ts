@@ -17,6 +17,7 @@ describe("shellViewFor (owner decision D9)", () => {
       ["Explorar PyMEs", "/explore"],
       ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
+      ["Guía del inversor", "/investor-guide"],
       ["Acerca de", "/about"]
     ]);
     expect(view.menu).toEqual([]);

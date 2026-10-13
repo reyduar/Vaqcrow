@@ -3,10 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { THEME_STORAGE_KEY, ThemeSwitcher } from "./theme-switcher";
 
 /**
- * Theme choice: `Claro`, `Oscuro` and `Sistema` as the template's three icon
- * buttons (`Tema claro` / `Tema oscuro` / `Tema del sistema`), persisted under a stable key,
- * applied through both markers HeroUI documents (the `dark` class and the
- * `data-theme` attribute), and `Sistema` following the OS preference.
+ * Theme choice: `Tema claro`, `Tema oscuro` and `Tema del sistema`, persisted
+ * under a stable key, applied through both markers HeroUI documents (the `dark`
+ * class and the `data-theme` attribute), and `Sistema` following the OS
+ * preference.
+ *
+ * Since #500 the three choices are collapsed behind one 46 px trigger that opens
+ * a menu (owner decision, to give the public header back the width a fifth nav
+ * entry needs); the template drew three 44 px buttons instead.
  */
 function stubSystemDark(isDark: boolean) {
   vi.stubGlobal(
@@ -19,6 +23,11 @@ function stubSystemDark(isDark: boolean) {
         removeEventListener: () => undefined
       }) as unknown as MediaQueryList
   );
+}
+
+function openMenu() {
+  fireEvent.click(screen.getByRole("button", { name: "Tema" }));
+  return screen.getByRole("menu", { name: "Tema" });
 }
 
 describe("ThemeSwitcher", () => {
@@ -35,56 +44,54 @@ describe("ThemeSwitcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers the three theme choices as the template's icon buttons, each with an accessible name", () => {
+  it("collapses the choices behind one icon trigger, closed by default", () => {
     render(<ThemeSwitcher />);
 
-    const group = screen.getByRole("group", { name: "Tema" });
-    const buttons = within(group).getAllByRole("button");
-    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Tema claro",
-      "Tema oscuro",
-      "Tema del sistema"
-    ]);
-    for (const button of buttons) {
-      // Icon only, as in the template: the name comes from aria-label, the tooltip from title.
-      expect(button).toHaveTextContent("");
-      expect(button).toHaveAttribute("title", button.getAttribute("aria-label") ?? "");
-      expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    }
-    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: "Tema" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    // Icon only: the name comes from aria-label, the tooltip from title.
+    expect(trigger).toHaveTextContent("");
+    expect(trigger).toHaveAttribute("title", "Tema");
+    expect(trigger.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    // The 44 px touch target and the focus ring survive the collapse.
+    expect(trigger.className).toMatch(/\bsize-11\b/);
+    expect(trigger.className).toMatch(/focus-visible:outline-focus-ring/);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("keeps 44 px targets and a visible focus ring", () => {
-    render(<ThemeSwitcher />);
-
-    for (const button of within(screen.getByRole("group", { name: "Tema" })).getAllByRole("button")) {
-      expect(button.className).toMatch(/\bsize-11\b/);
-      expect(button.className).toMatch(/focus-visible:outline-focus-ring/);
-    }
-  });
-
-  it("marks only the selected choice as pressed, with a border shape and not only colour", () => {
+  it("opens a menu with the three choices, the stored one checked", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "dark");
     render(<ThemeSwitcher />);
 
-    const pressed = screen.getByRole("button", { name: "Tema oscuro" });
-    expect(pressed).toHaveAttribute("aria-pressed", "true");
-    expect(pressed.className).toMatch(/\bborder-control\b/);
-    expect(screen.getByRole("button", { name: "Tema claro" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Tema del sistema" })).toHaveAttribute("aria-pressed", "false");
+    const menu = openMenu();
+    const items = within(menu).getAllByRole("menuitemradio");
+
+    expect(items.map((item) => item.textContent)).toEqual(["Tema claro", "Tema oscuro", "Tema del sistema"]);
+    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
   });
 
-  it("applies and persists an explicit dark choice, on both markers", () => {
+  it("applies and persists an explicit dark choice on both markers, and closes the menu", () => {
     render(<ThemeSwitcher />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Tema oscuro" }));
+    fireEvent.click(within(openMenu()).getByRole("menuitemradio", { name: "Tema oscuro" }));
 
     const root = document.documentElement;
     expect(root.getAttribute("data-theme")).toBe("dark");
     expect(root.classList.contains("dark")).toBe(true);
     expect(root.style.colorScheme).toBe("dark");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-    expect(screen.getByRole("button", { name: "Tema oscuro" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("closes on Escape and returns focus to the trigger", () => {
+    render(<ThemeSwitcher />);
+
+    openMenu();
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Tema" }));
   });
 
   it("restores the persisted choice on mount", () => {
@@ -92,17 +99,18 @@ describe("ThemeSwitcher", () => {
 
     render(<ThemeSwitcher />);
 
-    expect(screen.getByRole("button", { name: "Tema claro" })).toHaveAttribute("aria-pressed", "true");
+    const checked = within(openMenu()).getByRole("menuitemradio", { name: "Tema claro" });
+    expect(checked).toHaveAttribute("aria-checked", "true");
   });
 
   it("resolves Sistema against the OS preference", () => {
     stubSystemDark(true);
     render(<ThemeSwitcher />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Tema claro" }));
+    fireEvent.click(within(openMenu()).getByRole("menuitemradio", { name: "Tema claro" }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 
-    fireEvent.click(screen.getByRole("button", { name: "Tema del sistema" }));
+    fireEvent.click(within(openMenu()).getByRole("menuitemradio", { name: "Tema del sistema" }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
@@ -113,11 +121,14 @@ describe("ThemeSwitcher", () => {
     vi.stubGlobal("localStorage", { getItem: denied, setItem: denied, clear: denied });
 
     expect(() => render(<ThemeSwitcher />)).not.toThrow();
-    expect(() => fireEvent.click(screen.getByRole("button", { name: "Tema oscuro" }))).not.toThrow();
+    expect(() => {
+      fireEvent.click(within(openMenu()).getByRole("menuitemradio", { name: "Tema oscuro" }));
+    }).not.toThrow();
 
     // Without storage the choice cannot be remembered, so the control reports the
     // system-resolved theme instead of claiming a preference it cannot keep.
-    expect(screen.getByRole("button", { name: "Tema del sistema" })).toHaveAttribute("aria-pressed", "true");
+    const checked = within(openMenu()).getByRole("menuitemradio", { name: "Tema del sistema" });
+    expect(checked).toHaveAttribute("aria-checked", "true");
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 });

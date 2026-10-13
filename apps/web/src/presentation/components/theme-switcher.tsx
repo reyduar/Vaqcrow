@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent
+} from "react";
 import type { IconType } from "react-icons";
 import { IoDesktopOutline, IoMoonOutline, IoSunnyOutline } from "react-icons/io5";
 
@@ -15,6 +23,14 @@ import { IoDesktopOutline, IoMoonOutline, IoSunnyOutline } from "react-icons/io5
  * stored choice, and React reconciles the two without a cascading render. The
  * bootstrap script in `layout.tsx` already applied the effective theme before
  * first paint; this component only keeps it in sync afterwards.
+ *
+ * **Collapsed into a menu (owner decision, 2026-10-13, #500).** The template
+ * draws three 44 px icon buttons over a bordered group (~138 px). The public
+ * header needed ~85 px back to fit a fifth nav entry, so the same three choices
+ * now live behind one 46 px trigger that opens a `menu` of `menuitemradio`
+ * items — the current choice's icon on the trigger, which is the affordance.
+ * Measured by `e2e/app-header.spec.ts`: it reclaims ~92 px at 1280 px, wide text
+ * included. The deviation from the template is deliberate and recorded here.
  */
 export const THEME_STORAGE_KEY = "vaqcrow-theme";
 
@@ -97,6 +113,11 @@ function writeChoice(choice: ThemeChoice): void {
 export function ThemeSwitcher() {
   const snapshot = useSyncExternalStore(subscribe, readSnapshot, () => SERVER_SNAPSHOT);
   const [choice, systemTheme] = snapshot.split("|") as [ThemeChoice, string];
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
 
   // Syncing the DOM with the resolved theme is what effects are for; it is not
   // state mirroring.
@@ -104,37 +125,103 @@ export function ThemeSwitcher() {
     applyTheme(choice);
   }, [choice, systemTheme]);
 
+  function closeMenu(returnFocus = false) {
+    setIsOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !wrapperRef.current?.contains(event.target)) closeMenu();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu(true);
+    };
+
+    // WAI-ARIA menu button: focus the selected choice, so the menu opens where
+    // the user already is.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]')?.focus();
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  /** Arrow keys, Home and End move focus between the choices, wrapping around. */
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? []);
+    if (items.length === 0) return;
+
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next: Record<string, number> = {
+      ArrowDown: (current + 1) % items.length,
+      ArrowUp: (current - 1 + items.length) % items.length,
+      Home: 0,
+      End: items.length - 1
+    };
+    const target = next[event.key];
+    if (target === undefined) return;
+
+    event.preventDefault();
+    items[target]?.focus();
+  }
+
+  /** Focus leaving the compound control (Tab) closes it where the user sent focus. */
+  function handleFocusOut(event: ReactFocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && !wrapperRef.current?.contains(next)) closeMenu();
+  }
+
+  const Current = CHOICES.find((option) => option.value === choice) ?? CHOICES[2]!;
+
   return (
-    // The template's control (`Vaqcrow Landing.dc.html` header): a `Tema`
-    // group of three icon buttons with `aria-pressed`, over a 1 px `--border`
-    // at the control radius on `--surface` (2 px padding and no gap instead of
-    // the template's 3 px and 2 px, to absorb part of the larger targets). The
-    // pressed choice gets the `--control` border on `--canvas`: a shape cue,
-    // not only colour (`demo-ui.md` §5.8). Deviation, recorded: 44 px buttons
-    // instead of the template's 36 px, for the minimum touch target.
-    <div
-      role="group"
-      aria-label="Tema"
-      className="inline-flex rounded-control border border-border bg-page-surface p-0.5"
-    >
-      {CHOICES.map(({ value, label, icon: Icon }) => {
-        const pressed = choice === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={pressed}
-            aria-label={label}
-            title={label}
-            onClick={() => writeChoice(value)}
-            className={`grid size-11 cursor-pointer place-items-center rounded-[7px] border text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${
-              pressed ? "border-control bg-canvas" : "border-transparent bg-transparent hover:bg-canvas"
-            }`}
-          >
-            <Icon aria-hidden="true" focusable="false" className="text-base" />
-          </button>
-        );
-      })}
+    <div ref={wrapperRef} className="relative inline-flex" onBlur={handleFocusOut}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        {...(isOpen ? { "aria-controls": menuId } : {})}
+        aria-label="Tema"
+        title="Tema"
+        onClick={() => setIsOpen((open) => !open)}
+        className="grid size-11 cursor-pointer place-items-center rounded-control border border-border bg-page-surface text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+      >
+        <Current.icon aria-hidden="true" focusable="false" className="text-base" />
+      </button>
+
+      {isOpen ? (
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label="Tema"
+          onKeyDown={handleMenuKeyDown}
+          className="absolute right-0 top-full z-20 mt-2 flex min-w-48 flex-col rounded-control border border-border bg-canvas p-1 shadow"
+        >
+          {CHOICES.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={choice === value}
+              onClick={() => {
+                writeChoice(value);
+                closeMenu(true);
+              }}
+              className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[10px] bg-transparent px-3 text-left text-sm font-semibold text-text-primary outline-none hover:bg-page-surface focus-visible:bg-page-surface"
+            >
+              <Icon aria-hidden="true" focusable="false" className="shrink-0 text-[19px]" />
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

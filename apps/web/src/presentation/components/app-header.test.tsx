@@ -76,6 +76,7 @@ describe("AppHeader signed out", () => {
       ["Explorar PyMEs", "/explore"],
       ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
+      ["Guía del inversor", "/investor-guide"],
       ["Acerca de", "/about"]
     ]);
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/login");
@@ -85,7 +86,12 @@ describe("AppHeader signed out", () => {
     // template; the full "Activos sin valor económico" note stays in the footer.
     expect(screen.getByText("TESTNET", { exact: true })).toBeInTheDocument();
     expect(screen.queryByText("TESTNET · Activos sin valor económico")).not.toBeInTheDocument();
-    expect(within(screen.getByRole("group", { name: "Tema" })).getAllByRole("button")).toHaveLength(3);
+    // Since #500 the theme control is one trigger that opens a menu instead of
+    // the template's three icon buttons (see theme-switcher.test.tsx): the header
+    // needs that width to fit a fifth nav entry.
+    const theme = screen.getByRole("button", { name: "Tema" });
+    expect(theme).toHaveAttribute("aria-haspopup", "menu");
+    expect(theme).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("button", { name: /^Notificaciones,/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Menú de cuenta/ })).not.toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
