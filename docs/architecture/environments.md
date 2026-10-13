@@ -254,6 +254,20 @@ La web abre la sesión real de Supabase Auth en el navegador (Task [#379](https:
 
 - `generate-docker-env.sh` las escribe solo, a partir de `supabase status -o env` (las mismas URL y clave publicable que `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`).
 - En `.env.cloud` y en el panel de Vercel las agrega la persona operadora; las plantillas `.env.*.example` también las tienen que listar vacías (las sesiones de agente no pueden editar `.env*`).
+
+### 13.5 Resetear los datos de prueba (demo)
+
+Script **destructivo y versionado** para dejar la demo con una pizarra limpia antes de un ensayo manual:
+
+```bash
+RESET_DEMO_DATA_CONFIRM=yes pnpm --filter @vaqcrow/api reset:demo-data:docker   # lee ../../.env.docker
+RESET_DEMO_DATA_CONFIRM=yes pnpm --filter @vaqcrow/api reset:demo-data:cloud    # lee ../../.env.cloud
+```
+
+- Borra **toda** la actividad —solicitudes, revisiones, evaluaciones de IA, decisiones, campañas, aportes, distribuciones, documentos, ventas, notificaciones y retos de wallet— y **todas las cuentas salvo el superadmin** (`VAQCROW_SUPERADMIN_EMAIL`). Los objetos del bucket `pyme-documents` se borran por la **Storage API** (un `DELETE` por SQL dejaría los blobs).
+- **Conserva** el superadmin y la fila de `fx_rate`: sin esa fila `POST /campaigns` responde `rate_unavailable`.
+- **Guardas:** exige `RESET_DEMO_DATA_CONFIRM=yes` y se **niega** —sin borrar nada— si el email del superadmin no resuelve a un `ADMIN` activo. No corre al arrancar la API; la lógica tiene tests con cliente falso (`apps/api/src/infrastructure/seed/reset-demo-data.test.ts`).
+- La **cadena no se limpia**: las bóvedas de Testnet siguen existiendo (la base es el espejo); el reset de Testnet del 2026-12-16 las borra igual.
 - `pnpm demo:preflight` las exige en el chequeo «Web environment variables», junto con `NEXT_PUBLIC_API_BASE_URL`; como la de la API, sólo nombra la variable faltante, nunca el valor.
 - Si falta alguna, crear el cliente falla con `SupabaseConfigError`, que nombra la variable sin imprimir valores. La web no se cae: el puerto de sesión se construye perezosamente en el navegador y una configuración faltante se vuelve el error saneado `unavailable` (la pantalla de ingreso muestra «No pudimos ingresar…»), y el proxy la trata como «sin sesión». Así las páginas que no exigen sesión siguen renderizando sin estas variables (por ejemplo la landing y Explorar; las seis rutas del recorrido guiado ya no existen desde que #438 llegó a `main` vía #466).
 - El cliente del navegador es `@supabase/ssr` (`createBrowserClient`): guarda la sesión en cookies, y por eso el servidor puede leer la misma sesión. El rol y el nombre visible salen siempre de la fila propia de `public.profile` (política `profile_select_own`), nunca de los claims del JWT ni del formulario; el email no llega a la UI.
