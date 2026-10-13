@@ -318,3 +318,23 @@ body {
     cursor: not-allowed;
   }
 }
+
+/*
+ * 「La traza」 (#497): the landing's trace draws itself once, the first time the
+ * section enters the viewport. The rail is visible by default, so without
+ * JavaScript — or without `IntersectionObserver` — the section renders fully
+ * drawn; the animation is the enhancement, and `motion-reduce:animate-none`
+ * removes it. It is the section's only motion: no per-item fades.
+ */
+@theme {
+  --animate-traza: traza-draw 1400ms ease-out both;
+
+  @keyframes traza-draw {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+}

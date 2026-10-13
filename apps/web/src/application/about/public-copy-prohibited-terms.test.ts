@@ -4,6 +4,8 @@ import { HELP_CATEGORIES, HELP_COPY, HELP_FAQS, helpResultLabel } from "../help/
 import { ENTREPRENEUR_GUIDE } from "../guides/entrepreneur-guide";
 import { INVESTOR_GUIDE } from "../guides/investor-guide";
 import { TERMS_COPY } from "../legal/terms";
+import { parseHowItWorks } from "../landing/how-it-works";
+import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides/read-guide-source";
 import { ABOUT_COPY } from "./copy";
 
 /**
@@ -39,7 +41,14 @@ const ENTREPRENEUR_TEXT = collectStrings(ENTREPRENEUR_GUIDE).join("\n");
 const INVESTOR_TEXT = collectStrings(INVESTOR_GUIDE).join("\n");
 const HELP_TEXT = collectStrings({ HELP_COPY, HELP_CATEGORIES, HELP_FAQS }).join("\n");
 const TERMS_TEXT = collectStrings(TERMS_COPY).join("\n");
-const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT, TERMS_TEXT].join("\n");
+/**
+ * The landing's 「Cómo funciona」 section renders this guide (#497), so its text is
+ * public copy too: it runs through the same denylist as the copy above.
+ */
+const HOW_IT_WORKS_TEXT = collectStrings(parseHowItWorks(readGuideSource(HOW_IT_WORKS_GUIDE))).join("\n");
+const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT, TERMS_TEXT, HOW_IT_WORKS_TEXT].join(
+  "\n"
+);
 
 /**
  * The exact template sentences/phrases that contain a denylist stem without

@@ -153,7 +153,7 @@ export const INVESTOR_GUIDE: Guide = Object.freeze({
         salesLabel: "Ventas declaradas de agosto",
         salesTag: "SIMULADO",
         salesValue: "ARS 3.745.800,00",
-        ruleLabel: "Participación (regla rs-v1.2)",
+        ruleLabel: "Participación (regla RS-2026-01)",
         ruleValue: "× 4,5 %",
         roundingLabel: "Redondeo",
         roundingValue: "2 decimales, al par",

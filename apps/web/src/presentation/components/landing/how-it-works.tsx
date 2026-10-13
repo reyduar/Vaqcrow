@@ -1,75 +1,221 @@
 import type { IconType } from "react-icons";
-import { IoAnalyticsOutline, IoCubeOutline, IoDocumentTextOutline, IoReceiptOutline } from "react-icons/io5";
+import {
+  IoAnalyticsOutline,
+  IoArrowForwardCircleOutline,
+  IoCheckmarkCircleOutline,
+  IoCubeOutline,
+  IoDocumentTextOutline,
+  IoEllipseOutline,
+  IoGlobeOutline,
+  IoHelpCircleOutline,
+  IoPersonAddOutline,
+  IoPersonCircleOutline,
+  IoReceiptOutline,
+  IoReturnDownBackOutline,
+  IoWalletOutline
+} from "react-icons/io5";
+import { HOW_IT_WORKS_GUIDE, readGuideSource } from "@/infrastructure/guides/read-guide-source";
+import { HOW_IT_WORKS_KINDS, parseHowItWorks, parseInline } from "@/application/landing/how-it-works";
+import { Badge, type BadgeVariant } from "../badge";
+import { RevealOnScroll } from "./reveal-on-scroll";
 
 /**
- * 「Cómo funciona」 (`Vaqcrow Landing.dc.html` lines 187–204, WU1): the heading,
- * its subtitle and the four numbered steps, verbatim from the template's
- * `steps` data (lines 320–325). The anchor `#como-funciona` is the Spanish
- * in-page target the header links to (owner decision, 2026-10-10).
+ * 「La traza」 — the landing's 「Cómo funciona」 section (#497), replacing the
+ * template's four steps (owner decision, 2026-10-13: the template's explanation
+ * was too thin to explain the operation).
+ *
+ * It is **one continuous trace** of a whole campaign, from the PyME's account to
+ * the monthly revenue share. At the vault the trace forks, because the
+ * All-or-Nothing rule is where the path really splits in two. Each stage
+ * declares what it leaves behind, so the trace doubles as the trust map
+ * `docs/design/demo-ui.md` §2 requires, instead of a footnote under it.
+ *
+ * The words come from `docs/guides/como-funciona-vaqcrow.md`, read at build time
+ * (owner decision, option A). What lives here is presentation only: the icon and
+ * the trust badge of each stage. Order ties them to the document, and
+ * `how-it-works.test.tsx` pins the titles, the kinds and the badges so a
+ * reordered document fails in CI instead of rendering the wrong badge.
  */
-const STEPS: readonly { readonly n: string; readonly icon: IconType; readonly title: string; readonly body: string }[] =
-  [
-    {
-      n: "01",
-      icon: IoDocumentTextOutline,
-      title: "La PyME presenta evidencia",
-      body: "Perfil, KYC y ventas mensuales. Cada dato declara su origen; en esta demo, todos son sintéticos."
-    },
-    {
-      n: "02",
-      icon: IoAnalyticsOutline,
-      title: "La IA ordena; una persona decide",
-      body: "La IA marca anomalías y faltantes y propone una evaluación. La aprobación la registra una persona, con nombre y fecha."
-    },
-    {
-      n: "03",
-      icon: IoCubeOutline,
-      title: "Los aportes van a una bóveda",
-      body: "Un contrato custodia los fondos. Si se alcanza la meta, paga a la PyME; si vence sin alcanzarla, habilita el reembolso."
-    },
-    {
-      n: "04",
-      icon: IoReceiptOutline,
-      title: "La distribución se calcula y se firma",
-      body: "Un cálculo determinístico sobre las ventas del período, con regla versionada. La PyME firma en Freighter."
-    }
-  ];
+
+interface StageMark {
+  readonly variant: BadgeVariant;
+  readonly label: string;
+}
+
+interface StageMeta {
+  readonly icon: IconType;
+  readonly mark: StageMark;
+}
+
+/** One entry per `##` section of the guide, in the same order. */
+const STAGE_META: readonly StageMeta[] = Object.freeze([
+  { icon: IoPersonAddOutline, mark: { variant: "simulado", label: "KYC simulado" } },
+  { icon: IoDocumentTextOutline, mark: { variant: "evidence", label: "se suben de verdad" } },
+  { icon: IoAnalyticsOutline, mark: { variant: "evidence", label: "asesora, no decide" } },
+  { icon: IoWalletOutline, mark: { variant: "transaction", label: "no custodial" } },
+  { icon: IoPersonCircleOutline, mark: { variant: "evidence", label: "con nombre, razón y fecha" } },
+  { icon: IoCubeOutline, mark: { variant: "testnet", label: "contrato en Testnet" } },
+  { icon: IoGlobeOutline, mark: { variant: "evidence", label: "pública y compartible" } },
+  { icon: IoPersonAddOutline, mark: { variant: "simulado", label: "KYC simulado" } },
+  { icon: IoArrowForwardCircleOutline, mark: { variant: "transaction", label: "lo firma el inversor" } },
+  { icon: IoHelpCircleOutline, mark: { variant: "testnet", label: "lo aplica el contrato" } },
+  { icon: IoCheckmarkCircleOutline, mark: { variant: "evidence", label: "liquidación atómica" } },
+  { icon: IoReturnDownBackOutline, mark: { variant: "evidence", label: "reembolso habilitado" } },
+  { icon: IoReceiptOutline, mark: { variant: "simulado", label: "ventas simuladas" } }
+]);
+
+const RAIL =
+  "pointer-events-none absolute left-5 top-0 h-full w-px origin-top bg-border group-data-[revealed=true]/traza:animate-traza motion-reduce:animate-none";
+
+const MARKER =
+  "absolute left-0 top-0 grid size-10 place-items-center rounded-full border border-border bg-canvas text-[18px] text-text-secondary";
+
+const FORK_MARKER =
+  "absolute left-0 top-0 grid size-10 place-items-center rounded-full border border-brand-accent bg-brand-accent-tint text-[18px] text-brand-accent-text";
+
+interface Stage {
+  readonly station: { readonly title: string; readonly body: readonly string[] };
+  readonly metaIndex: number;
+}
+
+function Inline({ text }: { readonly text: string }) {
+  return (
+    <>
+      {parseInline(text).map((span, index) => {
+        if (span.kind === "strong") {
+          return (
+            <strong key={index} className="font-semibold text-text-primary">
+              {span.text}
+            </strong>
+          );
+        }
+        if (span.kind === "code") {
+          return (
+            <code key={index} className="rounded bg-page-surface px-1 py-0.5 text-[13px]">
+              {span.text}
+            </code>
+          );
+        }
+        return <span key={index}>{span.text}</span>;
+      })}
+    </>
+  );
+}
+
+function StageParagraphs({ paragraphs }: { readonly paragraphs: readonly string[] }) {
+  return (
+    <>
+      {paragraphs.map((text) => (
+        <p key={text} className="m-0 max-w-[68ch] text-[15px] leading-[1.6] text-pretty text-text-secondary">
+          <Inline text={text} />
+        </p>
+      ))}
+    </>
+  );
+}
 
 export function HowItWorks() {
-  return (
-    <section
-      id="como-funciona"
-      aria-labelledby="how-t"
-      className="mx-auto flex w-full max-w-[1264px] flex-col gap-12 px-8 py-24"
-    >
-      <div
-        className="grid items-end gap-x-16 gap-y-6"
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))" }}
-      >
-        <h2 id="how-t" className="m-0 text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-balance">
-          Cómo funciona
-        </h2>
-        <p className="m-0 max-w-[56ch] text-[18px] leading-[1.55] text-pretty text-text-secondary">
-          Cuatro pasos, cada uno con evidencia visible. Ningún paso depende de confiar en una persona para mover el
-          dinero.
-        </p>
-      </div>
+  const { lead, stations } = parseHowItWorks(readGuideSource(HOW_IT_WORKS_GUIDE));
 
-      <ol
-        className="m-0 grid list-none gap-0 border-t border-border p-0"
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))" }}
-      >
-        {STEPS.map(({ n, icon: Icon, title, body }) => (
-          <li key={n} className="flex flex-col gap-3 pt-7 pr-6 pb-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[13px] font-semibold text-text-secondary">{n}</span>
-              <Icon aria-hidden="true" focusable="false" className="text-[22px]" />
-            </div>
-            <h3 className="m-0 text-[20px] leading-[1.3] font-bold">{title}</h3>
-            <p className="m-0 text-[15px] leading-normal text-pretty text-text-secondary">{body}</p>
-          </li>
-        ))}
-      </ol>
+  const forkAt = HOW_IT_WORKS_KINDS.indexOf("fork");
+  const before: readonly Stage[] = stations
+    .slice(0, forkAt)
+    .map((station, index) => ({ station, metaIndex: index }));
+  const fork: Stage | undefined =
+    forkAt === -1 ? undefined : { station: stations[forkAt]!, metaIndex: forkAt };
+  const tail: readonly Stage[] = stations
+    .slice(forkAt + 1)
+    .map((station, index) => ({ station, metaIndex: forkAt + 1 + index }));
+  const branches = tail.filter((stage) => HOW_IT_WORKS_KINDS[stage.metaIndex] === "branch");
+  const after = tail.filter((stage) => HOW_IT_WORKS_KINDS[stage.metaIndex] !== "branch");
+
+  // Linear stages are numbered in render order; the two branches are not numbered.
+  const stageNumber = new Map(
+    stations
+      .map((_, index) => index)
+      .filter((index) => HOW_IT_WORKS_KINDS[index] !== "branch")
+      .map((index, position) => [index, String(position + 1).padStart(2, "0")])
+  );
+
+  function renderStage({ station, metaIndex }: Stage) {
+    const meta = STAGE_META[metaIndex];
+    const Icon = meta?.icon ?? IoEllipseOutline;
+
+    return (
+      <li key={station.title} className="relative flex flex-col gap-3 pl-14">
+        <span aria-hidden="true" className={MARKER}>
+          <Icon focusable="false" />
+        </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-[13px] font-semibold tabular-nums text-text-secondary">
+            {stageNumber.get(metaIndex)}
+          </span>
+          <h3 className="m-0 text-[19px] leading-[1.3] font-bold">{station.title}</h3>
+          {meta ? <Badge variant={meta.mark.variant} label={meta.mark.label} /> : null}
+        </div>
+        <StageParagraphs paragraphs={station.body} />
+      </li>
+    );
+  }
+
+  const forkMeta = fork === undefined ? undefined : STAGE_META[fork.metaIndex];
+  const ForkIcon = forkMeta?.icon ?? IoHelpCircleOutline;
+
+  return (
+    <section id="como-funciona" aria-labelledby="how-t" className="border-t border-border">
+      <div className="mx-auto flex w-full max-w-[1264px] flex-col gap-14 px-8 py-24">
+        <div className="flex max-w-[760px] flex-col gap-4">
+          <h2 id="how-t" className="m-0 text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-balance">
+            Cómo funciona
+          </h2>
+          {lead.map((text) => (
+            <p key={text} className="m-0 text-[17px] leading-[1.6] text-pretty text-text-secondary">
+              <Inline text={text} />
+            </p>
+          ))}
+        </div>
+
+        <RevealOnScroll>
+          <ol className="relative m-0 flex list-none flex-col gap-9 p-0">
+            <span aria-hidden="true" className={RAIL} />
+
+            {before.map(renderStage)}
+
+            {fork === undefined ? null : (
+              <li key={fork.station.title} className="relative flex flex-col gap-4 pl-14">
+                <span aria-hidden="true" className={FORK_MARKER}>
+                  <ForkIcon focusable="false" />
+                </span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <h3 className="m-0 text-[19px] leading-[1.3] font-bold">{fork.station.title}</h3>
+                  {forkMeta ? <Badge variant={forkMeta.mark.variant} label={forkMeta.mark.label} /> : null}
+                </div>
+                <StageParagraphs paragraphs={fork.station.body} />
+
+                <ol className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2">
+                  {branches.map(({ station, metaIndex }) => {
+                    const meta = STAGE_META[metaIndex];
+                    const Icon = meta?.icon ?? IoEllipseOutline;
+
+                    return (
+                      <li key={station.title} className="flex flex-col gap-3 rounded-card border border-border bg-canvas p-5">
+                        <div className="flex items-center gap-x-3">
+                          <Icon aria-hidden="true" focusable="false" className="text-[18px] text-text-secondary" />
+                          <h4 className="m-0 text-[17px] leading-[1.3] font-bold">{station.title}</h4>
+                        </div>
+                        {meta ? <Badge variant={meta.mark.variant} label={meta.mark.label} /> : null}
+                        <StageParagraphs paragraphs={station.body} />
+                      </li>
+                    );
+                  })}
+                </ol>
+              </li>
+            )}
+
+            {after.map(renderStage)}
+          </ol>
+        </RevealOnScroll>
+      </div>
     </section>
   );
 }
