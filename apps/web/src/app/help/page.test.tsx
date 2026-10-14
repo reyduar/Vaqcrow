@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import type { PrincipalRole } from "@/application/ports/auth-session-port";
+import { ASSISTANT_COPY } from "@/application/assistant/copy";
 import { HELP_CATEGORIES, HELP_COPY, HELP_FAQS } from "@/application/help/faq";
 import { SessionStoreProvider } from "@/state/session-store-provider";
 import { FakeAuthSession } from "@/test/fake-auth-session";
@@ -15,6 +17,8 @@ vi.mock("next/navigation", () => ({
 import HelpPage from "./page";
 
 const SEARCH_LABEL = HELP_COPY.search.label;
+const EMAIL = "persona@example.test";
+const PASSWORD = "secret-123";
 
 function renderPage() {
   return render(
@@ -22,6 +26,20 @@ function renderPage() {
       <HelpPage />
     </SessionStoreProvider>
   );
+}
+
+/** Mounts `/help` for a signed-in role (#499/WU3); no API base URL, so the chat uses the null port. */
+async function renderPageFor(role: PrincipalRole) {
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+  const fake = new FakeAuthSession();
+  fake.seedAccount({ email: EMAIL, password: PASSWORD, role, displayName: "Cuenta" });
+  await fake.signIn({ email: EMAIL, password: PASSWORD });
+  render(
+    <SessionStoreProvider port={fake}>
+      <HelpPage />
+    </SessionStoreProvider>
+  );
+  return fake;
 }
 
 describe("/help", () => {
@@ -132,4 +150,19 @@ describe("/help", () => {
 
     expect(within(screen.getByRole("main")).getByText(HELP_COPY.upcoming)).toBeInTheDocument();
   });
+
+  it.each(["PYME", "INVERSOR"] as const)(
+    "mounts the chat for a signed-in %s, alongside the FAQ (S1)",
+    async (role) => {
+      await renderPageFor(role);
+
+      expect(await screen.findByLabelText(ASSISTANT_COPY.inputLabel)).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: ASSISTANT_COPY.send })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: HELP_COPY.hero.title })).toBeInTheDocument();
+    }
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });

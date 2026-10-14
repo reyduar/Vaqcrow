@@ -4469,6 +4469,9 @@
                           },
                           "isSelf": {
                             "type": "boolean"
+                          },
+                          "chatEnabled": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4479,7 +4482,8 @@
                           "status",
                           "lastActivityAt",
                           "kycStatus",
-                          "isSelf"
+                          "isSelf",
+                          "chatEnabled"
                         ],
                         "additionalProperties": false
                       }

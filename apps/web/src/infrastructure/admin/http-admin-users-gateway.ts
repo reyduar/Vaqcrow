@@ -10,6 +10,7 @@ import type {
   ChangeUserRoleCommand,
   InviteOperatorCommand,
   InviteOperatorResult,
+  SetChatAccessCommand,
   SetUserActiveCommand
 } from "@vaqcrow/contracts";
 import type {
@@ -80,6 +81,13 @@ function matchesRole(data: unknown, userId: string, command: ChangeUserRoleComma
   if (typeof data !== "object" || data === null) return false;
   const record = data as Record<string, unknown>;
   return record.userId === userId && record.role === command.role;
+}
+
+/** Guards the assistant-access response: the echoed `{ userId, enabled }` must match the request. */
+function matchesChatAccess(data: unknown, userId: string, command: SetChatAccessCommand): boolean {
+  if (typeof data !== "object" || data === null) return false;
+  const record = data as Record<string, unknown>;
+  return record.userId === userId && record.enabled === command.enabled;
 }
 
 function usersParams(query: AdminUsersQuery): Record<string, string | number> {
@@ -158,6 +166,14 @@ export class HttpAdminUsersGateway implements AdminUsersPort {
   async changeUserRole(userId: string, command: ChangeUserRoleCommand): Promise<AdminUsersMutationResult> {
     return this.mutate(`/admin/users/${encodeURIComponent(userId)}/role`, { role: command.role }, (data) =>
       matchesRole(data, userId, command)
+    );
+  }
+
+  async setChatAccess(userId: string, command: SetChatAccessCommand): Promise<AdminUsersMutationResult> {
+    return this.mutate(
+      `/admin/users/${encodeURIComponent(userId)}/chat-access`,
+      { enabled: command.enabled },
+      (data) => matchesChatAccess(data, userId, command)
     );
   }
 

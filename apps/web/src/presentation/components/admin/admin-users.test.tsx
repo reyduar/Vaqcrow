@@ -12,6 +12,7 @@ import type {
   ChangeableUserRole,
   InviteOperatorCommand,
   InviteOperatorResult,
+  SetChatAccessCommand,
   SetUserActiveCommand
 } from "@vaqcrow/contracts";
 import type {
@@ -31,7 +32,8 @@ const SELF: AdminUser = {
   status: "active",
   lastActivityAt: "2026-09-13T12:00:00.000Z",
   kycStatus: "not_applicable",
-  isSelf: true
+  isSelf: true,
+  chatEnabled: true
 };
 
 const INVESTOR: AdminUser = {
@@ -42,7 +44,8 @@ const INVESTOR: AdminUser = {
   status: "active",
   lastActivityAt: "2026-09-11T12:00:00.000Z",
   kycStatus: "approved_simulated",
-  isSelf: false
+  isSelf: false,
+  chatEnabled: true
 };
 
 const PYME: AdminUser = {
@@ -53,7 +56,8 @@ const PYME: AdminUser = {
   status: "inactive",
   lastActivityAt: null,
   kycStatus: "not_started",
-  isSelf: false
+  isSelf: false,
+  chatEnabled: false
 };
 
 const INVITED: AdminUser = {
@@ -64,7 +68,8 @@ const INVITED: AdminUser = {
   status: "invited",
   lastActivityAt: null,
   kycStatus: "not_applicable",
-  isSelf: false
+  isSelf: false,
+  chatEnabled: false
 };
 
 function usersPage(items: AdminUser[], over: Partial<AdminUsersPage> = {}): AdminUsersPageResult {
@@ -95,6 +100,7 @@ interface FakeOptions {
   readonly activation?: AdminUsersMutationResult;
   readonly role?: AdminUsersMutationResult;
   readonly invite?: InviteOperatorOutcome;
+  readonly chatAccess?: AdminUsersMutationResult;
 }
 
 class FakeAdminUsersPort implements AdminUsersPort {
@@ -103,6 +109,7 @@ class FakeAdminUsersPort implements AdminUsersPort {
   readonly activationCalls: SetUserActiveCommand[] = [];
   readonly roleCalls: ChangeUserRoleCommand[] = [];
   readonly inviteCalls: InviteOperatorCommand[] = [];
+  readonly chatAccessCalls: SetChatAccessCommand[] = [];
 
   constructor(private readonly options: FakeOptions = {}) {}
 
@@ -124,6 +131,11 @@ class FakeAdminUsersPort implements AdminUsersPort {
   async changeUserRole(_userId: string, command: ChangeUserRoleCommand): Promise<AdminUsersMutationResult> {
     this.roleCalls.push(command);
     return this.options.role ?? { ok: true };
+  }
+
+  async setChatAccess(_userId: string, command: SetChatAccessCommand): Promise<AdminUsersMutationResult> {
+    this.chatAccessCalls.push(command);
+    return this.options.chatAccess ?? { ok: true };
   }
 
   async inviteOperator(command: InviteOperatorCommand): Promise<InviteOperatorOutcome> {
@@ -230,6 +242,24 @@ describe("AdminUsers", () => {
     await screen.findByText("M. Pereyra");
     expect(screen.queryByRole("button", { name: "Cambiar rol de M. Pereyra" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cambiar rol de L. Gómez" })).toBeNull();
+  });
+
+  it("reflects the assistant flag and flips it through the confirmation (#499, D9)", async () => {
+    const port = renderUsers();
+    await screen.findByText("Lucía Fernández");
+
+    // The control reflects the real `chatEnabled`: the investor is enabled, the PyME is not.
+    expect(screen.getByRole("button", { name: "Deshabilitar asistente a Lucía Fernández" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Habilitar asistente a Panadería Horizonte SRL" })).toBeInTheDocument();
+    // The assistant is PYME/INVERSOR only (D7), so an ADMIN row offers no toggle.
+    expect(screen.queryByRole("button", { name: /asistente a M\. Pereyra/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deshabilitar asistente a Lucía Fernández" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Deshabilitar el asistente de Lucía Fernández")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(port.chatAccessCalls).toEqual([{ enabled: false }]));
   });
 
   it("surfaces a sanitized self-deactivation conflict", async () => {

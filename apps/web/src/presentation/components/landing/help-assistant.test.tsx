@@ -1,5 +1,9 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PrincipalRole } from "@/application/ports/auth-session-port";
+import { ASSISTANT_COPY } from "@/application/assistant/copy";
+import { SessionStoreProvider } from "@/state/session-store-provider";
+import { FakeAuthSession } from "@/test/fake-auth-session";
 
 // The quick links are `next/link`s; no router behaviour is asserted.
 vi.mock("next/navigation", () => ({
@@ -10,10 +14,37 @@ vi.mock("next/navigation", () => ({
 import { HelpAssistant } from "./help-assistant";
 
 const TOGGLE = "Abrir ayuda";
+const EMAIL = "persona@example.test";
+const PASSWORD = "secret-123";
+
+/**
+ * Mounts the floating assistant under the session provider the app always has
+ * (#499/WU3): the role decides whether the panel shows the chat or the FAQ view.
+ * With no API base URL the assistant's port is the null object, so these tests
+ * never touch the network.
+ */
+async function renderAssistant(role: PrincipalRole | null = null) {
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+  const fake = new FakeAuthSession();
+  if (role) {
+    fake.seedAccount({ email: EMAIL, password: PASSWORD, role, displayName: "Cuenta" });
+    await fake.signIn({ email: EMAIL, password: PASSWORD });
+  }
+  render(
+    <SessionStoreProvider port={fake}>
+      <HelpAssistant />
+    </SessionStoreProvider>
+  );
+  return fake;
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("HelpAssistant (Feature #418, WU4)", () => {
-  it("keeps the panel hidden until the toggle is used, then opens it", () => {
-    render(<HelpAssistant />);
+  it("keeps the panel hidden until the toggle is used, then opens it", async () => {
+    await renderAssistant();
 
     const toggle = screen.getByRole("button", { name: TOGGLE });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -25,8 +56,8 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("closes the panel when the toggle is used again", () => {
-    render(<HelpAssistant />);
+  it("closes the panel when the toggle is used again", async () => {
+    await renderAssistant();
 
     const toggle = screen.getByRole("button", { name: TOGGLE });
     fireEvent.click(toggle);
@@ -38,15 +69,15 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("names the dialog for assistive technology", () => {
-    render(<HelpAssistant />);
+  it("names the dialog for assistive technology", async () => {
+    await renderAssistant();
     fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
 
     expect(screen.getByRole("dialog", { name: "Asistente de ayuda" })).toBeInTheDocument();
   });
 
-  it("greets the visitor and points the three quick links at /help and #limites", () => {
-    render(<HelpAssistant />);
+  it("greets the visitor and points the three quick links at /help and #limites", async () => {
+    await renderAssistant();
     fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
 
     const panel = within(screen.getByRole("dialog"));
@@ -58,8 +89,8 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
     expect(panel.getByRole("link", { name: "¿Qué es real y qué es simulado?" })).toHaveAttribute("href", "#limites");
   });
 
-  it("shows the disabled question input with its sr-only label and the help-center link", () => {
-    render(<HelpAssistant />);
+  it("shows the disabled question input with its sr-only label and the help-center link", async () => {
+    await renderAssistant();
     fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
 
     const panel = within(screen.getByRole("dialog"));
@@ -69,8 +100,8 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
     expect(panel.getByRole("link", { name: "Ir al centro de ayuda" })).toHaveAttribute("href", "/help");
   });
 
-  it("closes the panel on Escape", () => {
-    render(<HelpAssistant />);
+  it("closes the panel on Escape", async () => {
+    await renderAssistant();
     fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
@@ -78,5 +109,41 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: TOGGLE })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it.each(["PYME", "INVERSOR"] as const)(
+    "shows the chat to a signed-in %s, replacing the disabled field (S1)",
+    async (role) => {
+      await renderAssistant(role);
+      fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
+
+      const panel = within(screen.getByRole("dialog"));
+      // The chat's own input is enabled and the disabled FAQ field is gone.
+      expect(panel.getByLabelText(ASSISTANT_COPY.inputLabel)).not.toBeDisabled();
+      expect(panel.getByRole("button", { name: ASSISTANT_COPY.send })).toBeInTheDocument();
+      expect(panel.getByText(ASSISTANT_COPY.greeting)).toBeInTheDocument();
+      expect(panel.queryByText("Próximamente con respuestas de la documentación")).toBeNull();
+      // The signed-in header names the documentation source.
+      expect(panel.getByText(ASSISTANT_COPY.subtitle)).toBeInTheDocument();
+    }
+  );
+
+  it("keeps an anonymous visitor on the FAQ view (S2)", async () => {
+    await renderAssistant(null);
+    fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
+
+    const panel = within(screen.getByRole("dialog"));
+    expect(panel.getByLabelText("Escribí tu pregunta")).toBeDisabled();
+    expect(panel.queryByRole("button", { name: ASSISTANT_COPY.send })).toBeNull();
+    expect(panel.getByText("Próximamente con respuestas de la documentación")).toBeInTheDocument();
+  });
+
+  it("keeps an ADMIN on the FAQ view (D7)", async () => {
+    await renderAssistant("ADMIN");
+    fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
+
+    const panel = within(screen.getByRole("dialog"));
+    expect(panel.getByLabelText("Escribí tu pregunta")).toBeDisabled();
+    expect(panel.queryByRole("button", { name: ASSISTANT_COPY.send })).toBeNull();
   });
 });

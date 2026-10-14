@@ -23,6 +23,8 @@ import {
   activateConfirmCopy,
   auditQueryWithPage,
   auditQueryWithSearch,
+  chatAccessConfirmCopy,
+  chatAccessControlLabel,
   DEFAULT_ADMIN_AUDIT_QUERY,
   DEFAULT_ADMIN_USERS_QUERY,
   deactivateConfirmCopy,
@@ -153,6 +155,15 @@ export function AdminUsers({ port }: AdminUsersProps) {
     setConfirm({
       ...roleChangeConfirmCopy(user.displayName, target),
       run: () => resolvedPort.changeUserRole(user.userId, { role: target })
+    });
+  }
+
+  /** The per-user assistant access toggle (#499, D9), off by default. */
+  function askChatAccess(user: AdminUser) {
+    const nextEnabled = !user.chatEnabled;
+    setConfirm({
+      ...chatAccessConfirmCopy(user.displayName, nextEnabled),
+      run: () => resolvedPort.setChatAccess(user.userId, { enabled: nextEnabled })
     });
   }
 
@@ -373,24 +384,39 @@ export function AdminUsers({ port }: AdminUsersProps) {
                       </td>
                       <td className="px-4 py-3.5 text-text-secondary">{formatLastActivityAt(user.lastActivityAt)}</td>
                       <td className="px-4 py-3.5 text-right">
-                        {activation.kind === "self" ? (
-                          <span className="text-[13px] font-semibold text-text-secondary">{activation.label}</span>
-                        ) : activation.kind === "toggle" ? (
-                          <button
-                            type="button"
-                            onClick={() => askSetActive(user, activation.nextActive)}
-                            aria-label={`${activation.label} a ${user.displayName}`}
-                            className={`h-9 rounded-control border border-control px-3 text-[13px] font-semibold hover:bg-page-surface ${FOCUS_RING} ${
-                              activation.nextActive ? "text-brand-accent-text" : "text-trust-critical"
-                            }`}
-                          >
-                            {activation.label}
-                          </button>
-                        ) : (
-                          <span aria-hidden="true" className="text-text-secondary">
-                            —
-                          </span>
-                        )}
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {activation.kind === "self" ? (
+                            <span className="text-[13px] font-semibold text-text-secondary">{activation.label}</span>
+                          ) : activation.kind === "toggle" ? (
+                            <button
+                              type="button"
+                              onClick={() => askSetActive(user, activation.nextActive)}
+                              aria-label={`${activation.label} a ${user.displayName}`}
+                              className={`h-9 rounded-control border border-control px-3 text-[13px] font-semibold hover:bg-page-surface ${FOCUS_RING} ${
+                                activation.nextActive ? "text-brand-accent-text" : "text-trust-critical"
+                              }`}
+                            >
+                              {activation.label}
+                            </button>
+                          ) : (
+                            <span aria-hidden="true" className="text-text-secondary">
+                              —
+                            </span>
+                          )}
+                          {/* The help assistant is for PYME/INVERSOR only (#499, D7). */}
+                          {user.role === "ADMIN" ? null : (
+                            <button
+                              type="button"
+                              onClick={() => askChatAccess(user)}
+                              aria-label={`${chatAccessControlLabel(user.chatEnabled)} a ${user.displayName}`}
+                              className={`h-9 rounded-control border border-control px-3 text-[13px] font-semibold hover:bg-page-surface ${FOCUS_RING} ${
+                                user.chatEnabled ? "text-brand-accent-text" : "text-text-secondary"
+                              }`}
+                            >
+                              {chatAccessControlLabel(user.chatEnabled)}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

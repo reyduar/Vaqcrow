@@ -38,7 +38,13 @@ export const adminUserSchema = z.strictObject({
   lastActivityAt: z.iso.datetime({ offset: true }).nullable(),
   kycStatus: adminUserKycStatusSchema,
   /** True on the signed-in admin's own row: shown as "Tu cuenta", not deactivatable. */
-  isSelf: z.boolean()
+  isSelf: z.boolean(),
+  /**
+   * The per-user help-assistant access flag (#499, owner decision D9): off by
+   * default, granted only by an admin. The admin console reflects the real
+   * value; the API enforces it.
+   */
+  chatEnabled: z.boolean()
 });
 export type AdminUser = z.infer<typeof adminUserSchema>;
 
