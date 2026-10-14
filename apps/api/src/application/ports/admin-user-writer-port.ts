@@ -40,3 +40,16 @@ export interface AdminUserWriterPort {
   /** Sets `role` for the target; `not_found` when the row does not exist. */
   setRole(userId: string, role: AdminUserRole): Promise<AdminUserWriterResult<void>>;
 }
+
+/**
+ * The per-user assistant access writer (#499/WU2, owner decision D9).
+ *
+ * Kept as its own port, rather than another method on `AdminUserWriterPort`, so
+ * the existing activation/role implementers and their fakes stay untouched; the
+ * concrete Supabase adapter implements both. `not_found` means the update
+ * matched no profile row.
+ */
+export interface AdminChatAccessWriterPort {
+  /** Sets `chat_enabled` for the target; `not_found` when the row does not exist. */
+  setChatAccess(userId: string, enabled: boolean): Promise<AdminUserWriterResult<void>>;
+}

@@ -423,3 +423,32 @@ export type {
   AuditLogQuery,
   AuditLogPage
 } from "./admin-users.js";
+
+export {
+  assistantAnswerOutputSchema,
+  assistantAnswerSchema,
+  assistantCitationSchema,
+  assistantPageIdSchema,
+  assistantQuestionCommandSchema,
+  assistantRouterOutputSchema,
+  assistantScopeSchema,
+  parseAssistantAnswer,
+  parseAssistantAnswerOutput,
+  parseAssistantQuestionCommand,
+  parseAssistantRouterOutput,
+  parseSetChatAccessCommand,
+  parseSetChatAccessResult,
+  setChatAccessCommandSchema,
+  setChatAccessResultSchema
+} from "./assistant.js";
+export type {
+  AssistantAnswer,
+  AssistantAnswerOutput,
+  AssistantCitation,
+  AssistantPageId,
+  AssistantQuestionCommand,
+  AssistantRouterOutput,
+  AssistantScope,
+  SetChatAccessCommand,
+  SetChatAccessResult
+} from "./assistant.js";

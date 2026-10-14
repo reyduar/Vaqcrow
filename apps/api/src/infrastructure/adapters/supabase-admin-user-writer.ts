@@ -1,6 +1,7 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { AdminUserRole } from "@vaqcrow/domain";
 import type {
+  AdminChatAccessWriterPort,
   AdminUserProfile,
   AdminUserStatus,
   AdminUserWriterPort,
@@ -32,7 +33,7 @@ const STATUSES: readonly AdminUserStatus[] = ["active", "inactive"];
 const NOT_FOUND: AdminUserWriterResult<never> = { ok: false, error: { code: "not_found" } };
 const UNAVAILABLE: AdminUserWriterResult<never> = { ok: false, error: { code: "unavailable" } };
 
-export class SupabaseAdminUserWriter implements AdminUserWriterPort {
+export class SupabaseAdminUserWriter implements AdminUserWriterPort, AdminChatAccessWriterPort {
   constructor(private readonly client: SupabaseClient) {}
 
   async findProfile(userId: string): Promise<AdminUserWriterResult<AdminUserProfile>> {
@@ -89,10 +90,19 @@ export class SupabaseAdminUserWriter implements AdminUserWriterPort {
     return this.update(userId, { role }, "setRole");
   }
 
+  /**
+   * The per-user assistant access flag (#499/WU2, D9). A separate method, so the
+   * `profile` read (`findProfile`) keeps its exact column list; the write reuses
+   * the same `UPDATE ... WHERE user_id = $1 RETURNING user_id` shape.
+   */
+  async setChatAccess(userId: string, enabled: boolean): Promise<AdminUserWriterResult<void>> {
+    return this.update(userId, { chat_enabled: enabled }, "setChatAccess");
+  }
+
   /** The shared `UPDATE ... WHERE user_id = $1 RETURNING user_id` shape. */
   private async update(
     userId: string,
-    values: Readonly<Record<string, string>>,
+    values: Readonly<Record<string, string | boolean>>,
     operation: string
   ): Promise<AdminUserWriterResult<void>> {
     try {

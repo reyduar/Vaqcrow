@@ -13,6 +13,7 @@ const ADMIN_ID = principalFor("ADMIN").userId;
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const ACTIVATION_URL = `/admin/users/${USER_ID}/activation`;
 const ROLE_URL = `/admin/users/${USER_ID}/role`;
+const CHAT_ACCESS_URL = `/admin/users/${USER_ID}/chat-access`;
 const INVITATIONS_URL = "/admin/invitations";
 const ACCEPT_URL = "/admin/invitations/accept";
 const INVITED_EMAIL = "operador@vaqcrow.com";
@@ -42,7 +43,8 @@ function appFor(list: AdminUsersReaderPort["list"]): FastifyInstance {
       setActivation: vi.fn(),
       changeRole: vi.fn(),
       invite: vi.fn(),
-      acceptInvitation: vi.fn()
+      acceptInvitation: vi.fn(),
+      setChatAccess: vi.fn()
     },
     auth: { port: fakeAuthPort() }
   });
@@ -62,6 +64,7 @@ function mutationsApp(overrides: Partial<AdminUsersRouteDependencies> = {}): Fas
         ok: true,
         value: { userId: USER_ID, displayName: "Ana Operadora" }
       }),
+      setChatAccess: vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, enabled: true } }),
       ...overrides
     },
     auth: { port: fakeAuthPort() }
@@ -593,6 +596,101 @@ describe("POST /admin/invitations/accept", () => {
     const acceptInvitation = vi.fn().mockRejectedValue(new Error("secret detail"));
 
     const response = await post(acceptInvitation, { displayName: "Ana" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ code: "unavailable" });
+    expect(response.body).not.toMatch(/secret/);
+  });
+});
+
+describe("POST /admin/users/:userId/chat-access", () => {
+  let app: FastifyInstance | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await app?.close();
+    app = undefined;
+  });
+
+  async function post(
+    setChatAccess: AdminUsersRouteDependencies["setChatAccess"],
+    body: unknown,
+    role: "ADMIN" | "PYME" | "INVERSOR" = "ADMIN",
+    url = CHAT_ACCESS_URL
+  ) {
+    app = mutationsApp({ setChatAccess });
+    return app.inject({ method: "POST", url, headers: bearer(role), payload: body as object });
+  }
+
+  it("toggles access for an ADMIN and passes the verified actor", async () => {
+    const setChatAccess = vi.fn().mockResolvedValue({ ok: true, value: { userId: USER_ID, enabled: true } });
+
+    const response = await post(setChatAccess, { enabled: true });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ userId: USER_ID, enabled: true });
+    expect(setChatAccess).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        targetUserId: USER_ID,
+        enabled: true,
+        actorUserId: ADMIN_ID,
+        correlationId: expect.any(String)
+      })
+    );
+  });
+
+  it.each([[{}], [{ enabled: "yes" }], [{ enabled: true, actor: "me" }], [null]])(
+    "answers 400 for a malformed body (%o) without calling the use case",
+    async (body) => {
+      const setChatAccess = vi.fn();
+      const response = await post(setChatAccess, body);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ code: "invalid_request" });
+      expect(setChatAccess).not.toHaveBeenCalled();
+    }
+  );
+
+  it("answers 400 for a malformed userId", async () => {
+    const setChatAccess = vi.fn();
+    const response = await post(setChatAccess, { enabled: true }, "ADMIN", "/admin/users/nope/chat-access");
+
+    expect(response.statusCode).toBe(400);
+    expect(setChatAccess).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 without a token", async () => {
+    const setChatAccess = vi.fn();
+    app = mutationsApp({ setChatAccess });
+    const response = await app.inject({ method: "POST", url: CHAT_ACCESS_URL, payload: { enabled: true } });
+
+    expect(response.statusCode).toBe(401);
+    expect(setChatAccess).not.toHaveBeenCalled();
+  });
+
+  it.each(["PYME", "INVERSOR"] as const)("rejects %s with 403 before the use case", async (role) => {
+    const setChatAccess = vi.fn();
+    const response = await post(setChatAccess, { enabled: true }, role);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ code: "forbidden" });
+    expect(setChatAccess).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["not_found", 404],
+    ["unavailable", 503]
+  ] as const)("maps the use-case code %s to %i", async (code, status) => {
+    const setChatAccess = vi.fn().mockResolvedValue({ ok: false, error: { code } });
+    const response = await post(setChatAccess, { enabled: true });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({ code });
+  });
+
+  it("maps a thrown dependency to a sanitized 503", async () => {
+    const setChatAccess = vi.fn().mockRejectedValue(new Error("secret detail"));
+    const response = await post(setChatAccess, { enabled: true });
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });

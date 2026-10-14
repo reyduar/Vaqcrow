@@ -212,6 +212,7 @@ const TAG_LIST = [
   { name: "Health", description: "Liveness and dependency status." },
   { name: "Marketplace", description: "Public listing and campaign detail." },
   { name: "Blog", description: "Public Markdown blog backed by docs/guides." },
+  { name: "Assistant", description: "Help assistant grounded in the compiled wiki." },
   { name: "PyME", description: "The PyME onboarding, company, sales and campaign surface." },
   { name: "Wallet", description: "Freighter connection (challenge, connect, read)." },
   { name: "Storage", description: "Private document/photo uploads." },

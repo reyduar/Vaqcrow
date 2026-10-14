@@ -44,6 +44,8 @@ const env = {
   LLM_PROVIDER: "openai",
   LLM_MODEL: "model",
   LLM_VISION_MODEL: "vision-model",
+  LLM_ASSISTANT_ROUTER_MODEL: "router-model",
+  LLM_ASSISTANT_ANSWER_MODEL: "answer-model",
   LLM_API_KEY: LLM_KEY,
   STELLAR_NETWORK: "testnet",
   STELLAR_HORIZON_URL: HORIZON,
@@ -214,6 +216,11 @@ describe("demo preflight: environment names", () => {
 
   it("mirrors the API's required vision model: it is a journey-critical name", () => {
     expect(REQUIRED_API_ENV).toContain("LLM_VISION_MODEL");
+  });
+
+  it("mirrors the API's required assistant models: both are journey-critical names", () => {
+    expect(REQUIRED_API_ENV).toContain("LLM_ASSISTANT_ROUTER_MODEL");
+    expect(REQUIRED_API_ENV).toContain("LLM_ASSISTANT_ANSWER_MODEL");
   });
 
   it("exports the canonical Testnet endpoints mirrored from the API config", () => {

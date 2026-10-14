@@ -142,8 +142,12 @@ function parseProvider(env: EnvSource, issues: ConfigIssue[]): LlmProvider | und
   return undefined;
 }
 
-/** The two model variables share one validation; only the key name differs. */
-type ModelKey = "LLM_MODEL" | "LLM_VISION_MODEL";
+/** The model variables share one validation; only the key name differs. */
+type ModelKey =
+  | "LLM_MODEL"
+  | "LLM_VISION_MODEL"
+  | "LLM_ASSISTANT_ROUTER_MODEL"
+  | "LLM_ASSISTANT_ANSWER_MODEL";
 
 /**
  * A model has no default on purpose, for the text and vision variables alike:
@@ -255,4 +259,53 @@ function isLoopbackHost(hostname: string): boolean {
     hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
 
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
+}
+
+/**
+ * The assistant models (#499/WU2).
+ *
+ * Two steps run per question — a router that picks the wiki pages and an
+ * answerer that writes the answer from them — and each has its own model, both
+ * **required with no default**, for the same reason `LLM_MODEL` is: choosing
+ * which model grounds a public answer is a decision, not a configuration.
+ *
+ * They are parsed by their own entry point rather than folded into
+ * `LlmConfig`/`parseLlmConfigResult`: that keeps the whole `parseApiConfig`
+ * contract (and its exhaustive test matrix) untouched, while `index.ts` still
+ * fails fast at boot when either model is missing. The validation is exactly
+ * the one `LLM_MODEL` uses.
+ */
+export const ASSISTANT_MODEL_KEYS = [
+  "LLM_ASSISTANT_ROUTER_MODEL",
+  "LLM_ASSISTANT_ANSWER_MODEL"
+] as const;
+
+export type AssistantModelsConfig = {
+  readonly routerModel: string;
+  readonly answerModel: string;
+};
+
+export function parseAssistantModels(env: EnvSource): AssistantModelsConfig {
+  const result = parseAssistantModelsResult(env);
+
+  if (!result.ok) {
+    throw new ConfigurationError("assistant model configuration", result.issues);
+  }
+
+  return result.value;
+}
+
+export function parseAssistantModelsResult(env: EnvSource): ParseResult<AssistantModelsConfig> {
+  const issues: ConfigIssue[] = [];
+  const routerModel = parseModel(env, issues, "LLM_ASSISTANT_ROUTER_MODEL");
+  const answerModel = parseModel(env, issues, "LLM_ASSISTANT_ANSWER_MODEL");
+
+  if (issues.length > 0) {
+    return { ok: false, issues };
+  }
+
+  return {
+    ok: true,
+    value: Object.freeze({ routerModel: routerModel as string, answerModel: answerModel as string })
+  };
 }

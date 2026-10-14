@@ -3,8 +3,11 @@ import { ConfigurationError } from "./config-issue.js";
 import type { ConfigIssue } from "./config-issue.js";
 import type { EnvSource } from "./env-source.js";
 import {
+  ASSISTANT_MODEL_KEYS,
   DEFAULT_LLM_TIMEOUT_MS,
   OPENCODE_GO_BASE_URL,
+  parseAssistantModels,
+  parseAssistantModelsResult,
   parseLlmConfig,
   parseLlmConfigResult
 } from "./llm-config.js";
@@ -179,6 +182,70 @@ describe("the vision model has no default", () => {
 
   it("accepts the documented vision model id shape", () => {
     expect(parseLlmConfig(VALID_ENV).visionModel).toBe("deepseek-v4-flash-vision-exp");
+  });
+});
+
+describe("the assistant models have no default", () => {
+  const ASSISTANT_ENV: EnvSource = {
+    LLM_ASSISTANT_ROUTER_MODEL: "glm-5.3-flash",
+    LLM_ASSISTANT_ANSWER_MODEL: "deepseek-v4-pro"
+  };
+
+  it("exposes the two documented keys", () => {
+    expect(ASSISTANT_MODEL_KEYS).toEqual(["LLM_ASSISTANT_ROUTER_MODEL", "LLM_ASSISTANT_ANSWER_MODEL"]);
+  });
+
+  it("parses both models", () => {
+    expect(parseAssistantModels(ASSISTANT_ENV)).toEqual({
+      routerModel: "glm-5.3-flash",
+      answerModel: "deepseek-v4-pro"
+    });
+  });
+
+  it.each(ASSISTANT_MODEL_KEYS)("reports %s as missing when it is absent", (key) => {
+    const env: Record<string, string | undefined> = { ...ASSISTANT_ENV };
+    delete env[key];
+    const result = parseAssistantModelsResult(env);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues).toEqual([{ key, code: "missing", detail: "required but not set" }]);
+    }
+  });
+
+  it.each(ASSISTANT_MODEL_KEYS)("treats a blank %s as absent", (key) => {
+    const result = parseAssistantModelsResult({ ...ASSISTANT_ENV, [key]: "   " });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues).toEqual([{ key, code: "missing", detail: "required but not set" }]);
+    }
+  });
+
+  it("rejects the OpenCode config prefix and a malformed id", () => {
+    const prefixed = parseAssistantModelsResult({
+      ...ASSISTANT_ENV,
+      LLM_ASSISTANT_ROUTER_MODEL: "opencode-go/deepseek-v4-pro"
+    });
+    expect(prefixed.ok).toBe(false);
+    if (!prefixed.ok) {
+      expect(prefixed.issues[0]?.detail).toContain("bare model id");
+    }
+
+    const malformed = parseAssistantModelsResult({ ...ASSISTANT_ENV, LLM_ASSISTANT_ANSWER_MODEL: "DeepSeek V4" });
+    expect(malformed.ok).toBe(false);
+  });
+
+  it("names both missing keys at once", () => {
+    const result = parseAssistantModelsResult({});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.map((issue) => issue.key)).toEqual([...ASSISTANT_MODEL_KEYS]);
+    }
+  });
+
+  it("throws a ConfigurationError from the fail-fast entry point", () => {
+    expect(() => parseAssistantModels({})).toThrow(ConfigurationError);
   });
 });
 
