@@ -62,6 +62,8 @@ function expectNoAdminLinkAndNoEmail(container: HTMLElement) {
 
 beforeEach(() => {
   push.mockReset();
+  // A fragment set by one case must not leak into the next (#514).
+  window.location.hash = "";
 });
 
 afterEach(() => {
@@ -95,6 +97,23 @@ describe("AppHeader signed out", () => {
     expect(screen.queryByRole("button", { name: /^Notificaciones,/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Menú de cuenta/ })).not.toBeInTheDocument();
     expectNoAdminLinkAndNoEmail(view.container);
+  });
+
+  it("marks the in-page item current when its fragment is selected (#514)", async () => {
+    await renderHeader(null, "/");
+
+    expect(screen.getByRole("link", { name: "Cómo funciona" })).not.toHaveAttribute("aria-current");
+
+    act(() => {
+      window.location.hash = "#como-funciona";
+      fireEvent(window, new Event("hashchange"));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Cómo funciona" })).toHaveAttribute("aria-current", "page")
+    );
+    // A fragment leaves the route links alone.
+    expect(screen.getByRole("link", { name: "Explorar PyMEs" })).not.toHaveAttribute("aria-current");
   });
 
   it("draws the isotipo next to the wordmark inside the brand link, as in the template", async () => {

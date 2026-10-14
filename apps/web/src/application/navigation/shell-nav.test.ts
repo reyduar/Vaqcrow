@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   accountMenuLabel,
+  isCurrentLink,
   isCurrentPath,
   shellViewFor,
   SIGN_IN_LINK,
@@ -77,6 +78,24 @@ describe("shellViewFor (owner decision D9)", () => {
     expect(SIGN_UP_LINK).toEqual({ label: "Crear cuenta", href: "/signup" });
     expect(SIGN_OUT_LABEL).toBe("Cerrar sesión");
     expect(accountMenuLabel("Lucía Fernández")).toBe("Menú de cuenta de Lucía Fernández");
+  });
+});
+
+describe("isCurrentLink", () => {
+  it.each([
+    ["/#como-funciona", "/", "#como-funciona", true],
+    ["/#como-funciona", "/", "", false],
+    ["/#como-funciona", "/", "#limites", false],
+    ["/#como-funciona", "/explore", "#como-funciona", false],
+    ["/explore", "/explore", "", true],
+    ["/explore", "/", "", false],
+    ["/explore", "/explore", "#como-funciona", true]
+  ] as const)("%s on %s with hash %s → %s", (href, pathname, hash, expected) => {
+    expect(isCurrentLink(href, pathname, hash)).toBe(expected);
+  });
+
+  it("keeps isCurrentPath's route-only contract for fragments", () => {
+    expect(isCurrentPath("/#como-funciona", "/")).toBe(false);
   });
 });
 
