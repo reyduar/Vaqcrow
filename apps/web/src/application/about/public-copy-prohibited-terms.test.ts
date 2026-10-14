@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { disclosures } from "../trust/disclosures";
 import { HELP_CATEGORIES, HELP_COPY, HELP_FAQS, helpResultLabel } from "../help/faq";
@@ -36,6 +38,37 @@ function collectStrings(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+const WORKSPACE_MANIFEST = "pnpm-workspace.yaml";
+
+/**
+ * Reads one Blog article from `docs/guides/blog/` (#498). The slug is a bare
+ * file name, and the guides root is resolved by walking up to the workspace
+ * manifest — never by counting `..` levels — mirroring
+ * `infrastructure/guides/read-guide-source.ts`.
+ */
+function readBlogArticle(fileName: string, from: string = process.cwd()): string {
+  let directory = from;
+  let root: string | undefined;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(join(directory, WORKSPACE_MANIFEST))) {
+      root = directory;
+      break;
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  if (root === undefined) {
+    throw new Error(`No ${WORKSPACE_MANIFEST} above ${from}; cannot resolve docs/guides/blog`);
+  }
+  return readFileSync(join(root, "docs", "guides", "blog", fileName), "utf8");
+}
+
+/** Drops a leading `---` front-matter block (S8: front matter is not body text). */
+function stripFrontMatter(markdown: string): string {
+  return markdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+}
+
 const ABOUT_TEXT = collectStrings(ABOUT_COPY).join("\n");
 const ENTREPRENEUR_TEXT = collectStrings(ENTREPRENEUR_GUIDE).join("\n");
 const INVESTOR_TEXT = collectStrings(INVESTOR_GUIDE).join("\n");
@@ -46,9 +79,24 @@ const TERMS_TEXT = collectStrings(TERMS_COPY).join("\n");
  * public copy too: it runs through the same denylist as the copy above.
  */
 const HOW_IT_WORKS_TEXT = collectStrings(parseHowItWorks(readGuideSource(HOW_IT_WORKS_GUIDE))).join("\n");
-const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT, TERMS_TEXT, HOW_IT_WORKS_TEXT].join(
-  "\n"
-);
+/**
+ * Feature #498: every Blog article is public copy. The body ships as a
+ * `docs/guides/blog/*.md` file served by the API (owner decisions D2/D3), so it
+ * never lands in a web bundle — but its words run through the same denylist as
+ * the landing's 「Cómo funciona」 guide. The front matter is stripped first,
+ * mirroring how that guide source is scanned (S8).
+ */
+const BLOG_ARTICLE_SOURCE = "vaqcrow-sobre-stellar.md";
+const BLOG_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(BLOG_ARTICLE_SOURCE));
+const PUBLIC_TEXT = [
+  ABOUT_TEXT,
+  ENTREPRENEUR_TEXT,
+  INVESTOR_TEXT,
+  HELP_TEXT,
+  TERMS_TEXT,
+  HOW_IT_WORKS_TEXT,
+  BLOG_ARTICLE_TEXT
+].join("\n");
 
 /**
  * The exact template sentences/phrases that contain a denylist stem without
@@ -112,6 +160,21 @@ describe("public copy — prohibited terms (#394)", () => {
     }
     // The canonical no-production sentence belongs to CanonicalDisclosure only.
     expect(ABOUT_TEXT).not.toContain("no constituye una oferta de inversión");
+  });
+});
+
+describe("Blog article copy (#498)", () => {
+  it("is scanned as public copy and exercises the renderer's features", () => {
+    // The body reached the denylist above through `PUBLIC_TEXT`; pin that it
+    // carries the Markdown the renderer must show (headings, lists, a table, a
+    // fenced code block and a blockquote) and the front matter is stripped.
+    expect(BLOG_ARTICLE_TEXT).toContain("# Vaqcrow: financiar");
+    expect(BLOG_ARTICLE_TEXT).toContain("| Pieza |");
+    expect(BLOG_ARTICLE_TEXT).toContain("```sh");
+    expect(BLOG_ARTICLE_TEXT).toContain("- el *crowdfunding*");
+    expect(BLOG_ARTICLE_TEXT).toContain("> Es una demo.");
+    // A leading `title` + `tags` block, per `docs/guides/storybook.md` (S8).
+    expect(readBlogArticle(BLOG_ARTICLE_SOURCE)).toMatch(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
   });
 });
 
