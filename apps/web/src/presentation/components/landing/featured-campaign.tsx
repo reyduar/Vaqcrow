@@ -13,6 +13,7 @@ import { toMarketplaceCardView } from "@/application/marketplace/view-model";
 import { createBrowserMarketplacePort } from "@/infrastructure/marketplace/create-marketplace-port";
 import { useMarketplace } from "@/state/use-marketplace";
 import { Badge, type BadgeTone } from "../badge";
+import { buttonClasses } from "../button";
 import { Skeleton } from "../skeleton";
 
 /**
@@ -40,7 +41,7 @@ const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus
 /** Visible text is short; the campaign name goes in the accessible name, as in `CampaignCard`. */
 const CTA_LABEL = "Ver evidencia y riesgo";
 
-const CTA_CLASS = `flex h-11 items-center justify-center gap-2 rounded-control border border-control text-[15px] font-semibold text-text-primary no-underline hover:bg-page-surface ${FOCUS_RING}`;
+const CTA_CLASS = `flex items-center justify-center gap-2 ${buttonClasses("primary")} ${FOCUS_RING}`;
 const HIGHLIGHT_BADGE_CLASS =
   "absolute top-3.5 left-3.5 inline-flex h-[26px] items-center rounded-pill border border-border bg-canvas px-2.5 text-xs font-semibold";
 

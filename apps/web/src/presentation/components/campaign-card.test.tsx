@@ -114,6 +114,12 @@ describe("CampaignCard", () => {
 
     const link = screen.getByRole("link", { name: "Ver evidencia y riesgo" });
     expect(link).toHaveAttribute("href", "/pymes/panaderia-horizonte");
+    // #501: the action is a link that wears the primary button (owner decision,
+    // 2026-10-13) — an anchor, never a `<button>` with a click handler.
+    expect(link.tagName).toBe("A");
+    expect(link.className).toContain("bg-brand-accent");
+    expect(link.className).toContain("text-on-accent");
+    expect(link.className).toContain("rounded-control");
   });
 
   it("renders a button action when the caller provides onPress instead of href", () => {
@@ -223,6 +229,9 @@ describe("CampaignCard — image and marketplace extensions", () => {
 
     const link = screen.getByRole("link", { name: "Ver evidencia y riesgo de Panadería Horizonte SRL" });
     expect(link).toHaveTextContent("Ver evidencia y riesgo");
+    // The primary styling and the anchor survive the richer accessible name (#501).
+    expect(link.tagName).toBe("A");
+    expect(link.className).toContain("bg-brand-accent");
   });
 
   it("omits the close row instead of rendering an empty value when an image has no close date", () => {

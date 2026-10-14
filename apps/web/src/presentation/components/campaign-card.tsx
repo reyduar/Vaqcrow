@@ -1,9 +1,9 @@
-import { Link } from "@heroui/react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { IoAlertOutline, IoHelpCircleOutline, IoShieldOutline, IoWarningOutline } from "react-icons/io5";
 import type { IconType } from "react-icons";
 import { Badge, type BadgeTone } from "./badge";
-import { Button } from "./button";
+import { Button, buttonClasses } from "./button";
 import { ProgressBar } from "./progress-bar";
 
 /**
@@ -194,7 +194,14 @@ export function CampaignCard({
         {action ? (
           <div className="mt-auto">
             {action.href ? (
-              <Link href={action.href} {...(action.ariaLabel ? { "aria-label": action.ariaLabel } : {})}>
+              // #501: the card's call to action is a link that navigates, and the
+              // owner asked for it as a **primary button** (2026-10-13): an anchor,
+              // never a `<button>` with a click handler, and never a bare text link.
+              <Link
+                href={action.href}
+                {...(action.ariaLabel ? { "aria-label": action.ariaLabel } : {})}
+                className={`flex w-full items-center justify-center ${buttonClasses("primary")}`}
+              >
                 {action.label}
               </Link>
             ) : (

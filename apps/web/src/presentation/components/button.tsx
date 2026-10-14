@@ -55,6 +55,17 @@ const VARIANT_CLASSES: Readonly<Record<ButtonVariant, string>> = {
     "h-11 px-[18px] rounded-control border border-trust-critical bg-transparent text-trust-critical hover:bg-trust-critical-surface"
 };
 
+/**
+ * The variant's full class set, exported so an **anchor that navigates** can wear
+ * the same button. The cards' call to action is a link — it navigates — and the
+ * owner asked for it as a primary button instead of a text link or an outlined
+ * button (#501, 2026-10-13): never a `<button>` with a click handler. One source,
+ * so the button and the button-shaped link cannot drift apart.
+ */
+export function buttonClasses(variant: ButtonVariant = "primary"): string {
+  return `text-[15px] font-semibold ${VARIANT_CLASSES[variant]}`;
+}
+
 export function Button({
   variant = "primary",
   type = "button",
@@ -78,7 +89,7 @@ export function Button({
         isDisabled={isDisabled || isLoading}
         isPending={isLoading}
         fullWidth={fullWidth}
-        className={`text-[15px] font-semibold ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ""}`}
+        className={`${buttonClasses(variant)}${className ? ` ${className}` : ""}`}
         {...(showReason ? { "aria-describedby": reasonId } : {})}
         {...(onPress ? { onPress } : {})}
         // HeroUI's Button filters "aria-busy" out of the DOM props it forwards
