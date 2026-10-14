@@ -26,19 +26,34 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   wraps its items from the `@md` width up: it takes the free space and
  *   scrolls sideways if it ever runs out. The collapsed narrow-screen
  *   disclosure still wraps. Opt-in; without it the nav wraps its items.
- * - **Room for wider text (`singleLineNav`).** The 44 px theme buttons
- *   (`demo-ui.md` §5.6; template 36 px) cost 18 px the template never had,
- *   and Linux/Windows render the same labels ~4 % wider than macOS (the CI
- *   runner overflowed the nav by 22 px when the header had ~1 px to spare).
- *   So the role-aware header keeps ~80 px of free nav width at 1280 px:
- *   template header chips (`Badge size="compact"`, 22 px), and from the
- *   `@6xl` container width (the full 1200 px desktop row) 8 px between the
- *   brand and its badges (template 12), 16 px from them to the nav
- *   (template 24) and 8 px from the nav to the actions (template 24; the
- *   nav's own free width sits there, so the visible gap is larger). Links use
- *   8 px side padding and no gap (template: 12 px plus a 4 px gap; text to
- *   text 16 px). Below `@6xl` the gaps stay at the template's values, so a
- *   scrolling nav never runs into the theme switcher.
+ * - **Room for wider text (`singleLineNav`).** Linux/Windows render the same
+ *   labels ~4 % wider than macOS (the CI runner once overflowed the nav by
+ *   22 px when the header had ~1 px to spare), so the role-aware header keeps
+ *   slack in the nav at 1280 px: template header chips (`Badge
+ *   size="compact"`, 22 px), and from the `@6xl` container width (the full
+ *   1200 px desktop row) 8 px between the brand and its badges (template 12),
+ *   16 px from them to the nav (template 24) and 8 px from the nav to the
+ *   actions (template 24; the nav's own free width sits there, so the visible
+ *   gap is larger). Links use 8 px side padding and no gap (template: 12 px
+ *   plus a 4 px gap; text to text 16 px). Below `@6xl` the gaps stay at the
+ *   template's values, so a scrolling nav never runs into the theme control.
+ * - **Where the fifth entry's width came from (#500, 2026-10-13).** Two owner
+ *   decisions gave the public header room for «Guía del inversor» without
+ *   touching the existing entries or their labels:
+ *   1. the theme control is one 46 px trigger that opens a menu, not the
+ *      template's three 44 px buttons (~138 px);
+ *   2. the header is **full width** (`px-4`) instead of the 1264 px page
+ *      container the sections below still use — the owner's call, after a
+ *      reference header that runs edge to edge. The header no longer aligns
+ *      with the page content above `1264` px; that is the price, and it is
+ *      deliberate.
+ *
+ *   `e2e/app-header.spec.ts` measures the result at 1280 px: **100 px** of slack
+ *   with normal text and **57 px** with text ~6 % wider. The spec simulates the
+ *   Linux difference on top of whatever the runner already renders, so on CI it
+ *   is stricter than any real platform — it already failed this header once.
+ *   A longer nav label or a wider control eats that slack, and the spec fails
+ *   first.
  * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`;
  *   the role-aware header passes the
  *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
@@ -102,7 +117,7 @@ export function DemoNavbar({
     <header
       className={`sticky top-0 z-10 border-b border-border bg-canvas ${className ?? ""}`.trim()}
     >
-      <div className="@container mx-auto max-w-[1264px] px-8 py-3">
+      <div className="@container w-full px-4 py-3">
         <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 ${singleLineNav ? "@6xl:gap-x-2" : ""}`.trim()}>
           <div className={`flex items-center ${singleLineNav ? "gap-3 @6xl:gap-2" : "gap-3"}`}>
             <Link

@@ -56,7 +56,8 @@ describe("AuthScreen layout", () => {
     expect(screen.getByRole("link", { name: "Volver al inicio" })).toHaveAttribute("href", "/");
     expect(screen.getByText("DEMO")).toBeInTheDocument();
     expect(screen.getByText("TESTNET")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Tema" })).toBeInTheDocument();
+    // The theme control is one trigger that opens a menu since #500.
+    expect(screen.getByRole("button", { name: "Tema" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Creá tu cuenta" })).toBeInTheDocument();
     expect(screen.getByText("Después vas a conectar Freighter para aportar con activos de prueba.")).toBeInTheDocument();
     expect(screen.getByText(/Tu cuenta de Vaqcrow no guarda fondos/)).toBeInTheDocument();

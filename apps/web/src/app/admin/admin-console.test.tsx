@@ -230,7 +230,8 @@ describe("admin shell", () => {
     expect(await screen.findByText("Admin Vaqcrow")).toBeInTheDocument();
     expect(screen.getByText("Administrador")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Tema" })).toBeInTheDocument();
+    // The theme control is one trigger that opens a menu since #500.
+    expect(screen.getByRole("button", { name: "Tema" })).toBeInTheDocument();
   });
 
   it("shows the global pending count on the PyMEs nav item, not the loaded page", async () => {

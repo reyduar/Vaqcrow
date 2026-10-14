@@ -42,7 +42,13 @@ test("the public header keeps its nav on one line at 1280 px, as in the template
   await page.goto("/");
   const header = page.getByRole("banner").first();
   const links = header.getByRole("navigation", { name: "Principal" }).getByRole("link");
-  await expect(links).toHaveText(["Explorar PyMEs", "Cómo funciona", "Para emprendedores", "Acerca de"]);
+  await expect(links).toHaveText([
+    "Explorar PyMEs",
+    "Cómo funciona",
+    "Para emprendedores",
+    "Guía del inversor",
+    "Acerca de"
+  ]);
 
   const tops = new Set<number>();
   const heights: number[] = [];
@@ -69,16 +75,22 @@ test("the public header keeps its nav on one line at 1280 px, as in the template
   expect(Math.abs((signUpBox?.y ?? 0) - navTop)).toBeLessThan(12);
 
   await expect(header.getByText("TESTNET", { exact: true })).toBeVisible();
-  const theme = header.getByRole("group", { name: "Tema" });
-  await expect(theme.getByRole("button")).toHaveCount(3);
-  await expect(theme.getByRole("button", { name: "Tema oscuro" })).toBeVisible();
+  // Since #500 the theme control is one trigger that opens a menu, not the
+  // template's three icon buttons: that is where the fifth nav entry's width came
+  // from (owner decision, measured by this spec).
+  const theme = header.getByRole("button", { name: "Tema" });
+  await expect(theme).toHaveAttribute("aria-haspopup", "menu");
+  await theme.click();
+  const themeMenu = header.getByRole("menu", { name: "Tema" });
+  await expect(themeMenu.getByRole("menuitemradio")).toHaveCount(3);
+  await expect(themeMenu.getByRole("menuitemradio", { name: "Tema oscuro" })).toBeVisible();
 });
 
 test("the public header still fits on one line at 1280 px when text renders wider", async ({ page }, testInfo) => {
   await page.goto("/");
   const header = page.getByRole("banner").first();
   const nav = header.getByRole("navigation", { name: "Principal" });
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link")).toHaveCount(5);
 
   const normalSlack = await navSlack(page);
   testInfo.annotations.push({ type: "nav-slack-px", description: `normal: ${normalSlack}` });

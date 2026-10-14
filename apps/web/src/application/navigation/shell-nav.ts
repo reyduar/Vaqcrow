@@ -66,7 +66,16 @@ const HELP: ShellMenuLink = { label: "Centro de ayuda", href: "/help", icon: "he
 const view = (shell: ShellView): ShellView => Object.freeze(shell);
 
 const PUBLIC_VIEW: ShellView = view({
-  nav: Object.freeze([EXPLORE, HOW_IT_WORKS, { label: "Para emprendedores", href: "/entrepreneur-guide" }, ABOUT]),
+  nav: Object.freeze([
+    EXPLORE,
+    HOW_IT_WORKS,
+    { label: "Para emprendedores", href: "/entrepreneur-guide" },
+    // Owner decision, 2026-10-13 (#500): a visitor reaches the investor guide as
+    // easily as the entrepreneur one. The template does not draw this entry, and
+    // it only fits because the theme control collapsed into a menu that same day.
+    { label: "Guía del inversor", href: "/investor-guide" },
+    ABOUT
+  ]),
   menu: Object.freeze([]),
   chip: null,
   avatarSrc: null
