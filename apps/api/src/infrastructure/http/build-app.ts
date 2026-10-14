@@ -21,6 +21,8 @@ import type { ApplicationAssessmentRouteDependencies } from "./routes/applicatio
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
+import { registerAssistantRoute } from "./routes/assistant.route.js";
+import type { AssistantRouteDependencies } from "./routes/assistant.route.js";
 import { registerBlogRoute } from "./routes/blog.route.js";
 import type { BlogRouteDependencies } from "./routes/blog.route.js";
 import { registerBusinessRoute } from "./routes/business.route.js";
@@ -162,6 +164,8 @@ export function buildApp(dependencies: {
   readonly myCampaigns?: MyCampaignsRouteDependencies | undefined;
   /** The public blog surface (#498/WU2). Omitted when unwired. */
   readonly blog?: BlogRouteDependencies | undefined;
+  /** The help assistant (#499/WU2). Omitted when unwired. */
+  readonly assistant?: AssistantRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * The Fastify/pino logger options (#31/WU1). Omitted by tests, where the
@@ -311,6 +315,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.blog !== undefined) {
     registerBlogRoute(app, dependencies.blog);
+  }
+  if (dependencies.assistant !== undefined) {
+    registerAssistantRoute(app, dependencies.assistant);
   }
   return app;
 }

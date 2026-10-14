@@ -3,9 +3,11 @@ import { createOpenCodeGoProvider, createOpenCodeGoVisionProvider } from "@vaqcr
 import { parseApplicationId, parseRevenueShareDistributionId } from "@vaqcrow/contracts";
 import type { ApplicationId, CorrelationId } from "@vaqcrow/contracts";
 import { parseApiConfig } from "./application/config/api-config.js";
+import { parseAssistantModels } from "./application/config/llm-config.js";
 import { confirmRevenueShareDistributions } from "./application/use-cases/confirm-revenue-share-distributions.js";
 import { deployApprovedCampaign } from "./application/use-cases/deploy-approved-campaign.js";
 import { deriveRevenueShareDistribution } from "./application/use-cases/derive-revenue-share-distribution.js";
+import { askAssistant } from "./application/use-cases/ask-assistant.js";
 import { createAdminReviewContextRouteDependencies } from "./infrastructure/http/routes/admin-review-context.route.js";
 import { createDocumentVerdictRouteDependencies } from "./infrastructure/http/routes/document-verdict.route.js";
 import { NotificationPublisher } from "./application/use-cases/notification-publisher.js";
@@ -43,6 +45,9 @@ import { SupabaseNotificationRepository } from "./infrastructure/adapters/supaba
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
 import { SupabaseBlogPostRepository } from "./infrastructure/adapters/supabase-blog-post-repository.js";
 import { FileSystemBlogContentSource, resolveGuidesRoot } from "./infrastructure/adapters/filesystem-blog-content-source.js";
+import { FileSystemWikiRepository, resolveWikiRoot } from "./infrastructure/adapters/filesystem-wiki-repository.js";
+import { createOpenCodeGoAssistantChat } from "./infrastructure/adapters/opencode-go-assistant-chat.js";
+import { SupabaseAssistantAccess } from "./infrastructure/adapters/supabase-assistant-access.js";
 import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
 import { SupabasePortfolioRepository } from "./infrastructure/adapters/supabase-portfolio-repository.js";
 import { SupabaseReportsRepository } from "./infrastructure/adapters/supabase-reports-repository.js";
@@ -65,6 +70,10 @@ import { createSupabaseClient } from "./infrastructure/supabase/create-supabase-
 // Fail fast and clearly: a missing or out-of-scope value stops the process here
 // with every offending key listed, rather than surfacing at the first request.
 const config = parseApiConfig(process.env);
+
+// The assistant models are required at boot (#499/WU2): the API does not start
+// without both, and their validation mirrors `LLM_MODEL` exactly.
+const assistantModels = parseAssistantModels(process.env);
 
 // One client, shared by every repository: the process holds a single
 // connection pool, not one per adapter.
@@ -233,6 +242,37 @@ const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(
 const blogPostRepository = new SupabaseBlogPostRepository(supabase);
 const blogContentSource = new FileSystemBlogContentSource({ guidesRoot: resolveGuidesRoot() });
 
+// The help assistant (#499/WU2, owner decisions D2/D6/D7/D9): the wiki is
+// bundled in the image (`docs/wiki/`, copied in the Dockerfile), read through
+// the filesystem adapter; the flag and the rolling-window usage live in
+// `profile.chat_enabled` and `assistant_question`. The two model transports
+// reuse the one LLM key, base and timeout the assessment already uses.
+const wikiRepository = new FileSystemWikiRepository({ wikiRoot: resolveWikiRoot() });
+const assistantAccess = new SupabaseAssistantAccess(supabase);
+const assistant = {
+  ask: (request: { readonly question: string; readonly userId: string }) =>
+    askAssistant(
+      {
+        wiki: wikiRepository,
+        router: createOpenCodeGoAssistantChat({
+          baseUrl: config.llm.baseUrl,
+          model: assistantModels.routerModel,
+          apiKey: config.llm.apiKey.reveal(),
+          timeoutMs: config.llm.timeoutMs
+        }),
+        answerer: createOpenCodeGoAssistantChat({
+          baseUrl: config.llm.baseUrl,
+          model: assistantModels.answerModel,
+          apiKey: config.llm.apiKey.reveal(),
+          timeoutMs: config.llm.timeoutMs
+        }),
+        access: assistantAccess,
+        now: () => new Date()
+      },
+      request
+    )
+};
+
 // The campaign detail (#422/WU1; public since #485): reads the joined
 // `marketplace_campaign_detail` view as service_role. No PII; published rows only.
 const campaignDetailRepository = new SupabaseCampaignDetailRepository(supabase);
@@ -394,7 +434,9 @@ const app = buildApp({
     auditLog,
     operatorProfileWriter,
     operatorInviter,
-    notificationPublisher
+    notificationPublisher,
+    // The same Supabase writer satisfies both ports (#499/WU2, D9).
+    adminUserWriter
   ),
   adminAuditLog: createAdminAuditLogRouteDependencies(auditLogReader),
   documentVerdict: createDocumentVerdictRouteDependencies({
@@ -470,6 +512,9 @@ const app = buildApp({
   // The public blog (#498/WU2): published `blog_post` rows plus the Markdown
   // bundled in the image. Read-only, no session, no PII.
   blog: { posts: blogPostRepository, source: blogContentSource },
+  // The help assistant (#499/WU2): PYME + INVERSOR, grounded only in the
+  // compiled wiki, gated by the per-user flag and the 5-per-24h cap.
+  assistant,
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

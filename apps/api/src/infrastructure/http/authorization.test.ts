@@ -108,7 +108,11 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["GET", "/reports", "any"],
   ["GET", "/reports/sales-by-pyme", "any"],
   // The PyME dashboard (#434/WU1): only a PyME reads its own campaigns.
-  ["GET", "/my-campaigns", ["PYME"]]
+  ["GET", "/my-campaigns", ["PYME"]],
+  // The help assistant (#499/WU2, D7): PYME + INVERSOR; the ADMIN does not see it.
+  ["POST", "/assistant/questions", ["PYME", "INVERSOR"]],
+  // The per-user assistant access toggle (#499/WU2, D9): ADMIN only.
+  ["POST", "/admin/users/:userId/chat-access", ["ADMIN"]]
 ];
 
 const ROLES: readonly Role[] = ["PYME", "INVERSOR", "ADMIN"];
@@ -212,6 +216,7 @@ function buildFullApp(auth?: AuthDependency): {
     adminApplicationEvidence: stub,
     adminUsers: stub,
     adminAuditLog: stub,
+    assistant: stub,
     observeRoutes: (route) => routes.push(route),
     ...(auth ? { auth } : {})
   });

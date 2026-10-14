@@ -155,6 +155,15 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "GET /reports": AUTHENTICATED,
   "GET /reports/sales-by-pyme": AUTHENTICATED,
 
+  // The help assistant (#499/WU2, owner decision D7): PYME + INVERSOR only; the
+  // ADMIN does not see it and the anonymous visitor keeps the FAQ. The per-user
+  // `chat_enabled` flag (D9, off by default) is a second check enforced by the
+  // use case on top of this policy, and the 5-per-24h cap (D6) is the third.
+  "POST /assistant/questions": only("PYME", "INVERSOR"),
+
+  // The ADMIN per-user assistant access toggle (#499/WU2, D9).
+  "POST /admin/users/:userId/chat-access": only("ADMIN"),
+
   // The PyME dashboard (#434/WU1): only a PyME reads its own campaigns — current
   // and historic. The owner is the verified principal, resolved server-side,
   // never a request parameter.

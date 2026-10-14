@@ -6,6 +6,8 @@ import {
   applicationAssessmentOutcomeSchema,
   applicationAssessmentReadSchema,
   applicationManualReviewContextSchema,
+  assistantAnswerSchema,
+  assistantQuestionCommandSchema,
   auditLogPageSchema,
   blogPostListSchema,
   blogPostSchema,
@@ -36,6 +38,8 @@ import {
   preparedRevenueShareDistributionSchema,
   reportSalesByPymeSchema,
   revenueShareDistributionSnapshotSchema,
+  setChatAccessCommandSchema,
+  setChatAccessResultSchema,
   setUserActiveCommandSchema,
   smeRequestReadSchema,
   smeRequestSchema,
@@ -144,6 +148,17 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
     description: "PUBLIC. Unknown or unpublished slugs are 404; a published row whose Markdown cannot be read is 503.",
     success: { 200: { description: "The article with its front matter stripped.", schema: blogPostSchema } },
     errors: [404, 503]
+  },
+
+  // ---- Assistant -----------------------------------------------------------
+  "POST /assistant/questions": {
+    tag: "Assistant",
+    summary: "Ask the help assistant",
+    description:
+      "PYME or INVERSOR, and only when the per-user chat access is enabled. Answers only from the compiled wiki: an out-of-scope question is declined and an uncovered one is the fixed no-documentation answer. 5 questions per user per rolling 24h. One JSON body — no streaming.",
+    request: { contentType: "application/json", schema: assistantQuestionCommandSchema },
+    success: { 200: { description: "The answer and the wiki pages it cites.", schema: assistantAnswerSchema } },
+    errors: [400, 401, 403, 503]
   },
 
   // ---- PyME ----------------------------------------------------------------
@@ -389,6 +404,14 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
     request: { contentType: "application/json", schema: changeUserRoleCommandSchema },
     success: { 200: { description: "`{ userId, role }`." } },
     errors: [400, 401, 404, 409, 503]
+  },
+  "POST /admin/users/:userId/chat-access": {
+    tag: "Admin",
+    summary: "Enable or disable a user's assistant access",
+    description: "ADMIN-only. The per-user assistant flag is off by default (#499/WU2, D9).",
+    request: { contentType: "application/json", schema: setChatAccessCommandSchema },
+    success: { 200: { description: "`{ userId, enabled }`.", schema: setChatAccessResultSchema } },
+    errors: [400, 401, 404, 503]
   },
   "POST /admin/invitations": {
     tag: "Admin",

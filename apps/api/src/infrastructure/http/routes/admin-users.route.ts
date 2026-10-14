@@ -3,6 +3,7 @@ import {
   parseAcceptOperatorInvitationCommand,
   parseChangeUserRoleCommand,
   parseInviteOperatorCommand,
+  parseSetChatAccessCommand,
   parseSetUserActiveCommand
 } from "@vaqcrow/contracts";
 import type { AdminUsersQuery } from "@vaqcrow/contracts";
@@ -28,7 +29,15 @@ import type {
   SetUserActivationOutcome,
   SetUserActivationRequest
 } from "../../../application/admin-users/set-user-activation.js";
-import type { AdminUserWriterPort } from "../../../application/ports/admin-user-writer-port.js";
+import { setChatAccess } from "../../../application/admin-users/set-chat-access.js";
+import type {
+  SetChatAccessOutcome,
+  SetChatAccessRequest
+} from "../../../application/admin-users/set-chat-access.js";
+import type {
+  AdminChatAccessWriterPort,
+  AdminUserWriterPort
+} from "../../../application/ports/admin-user-writer-port.js";
 import type { AuditLogPort } from "../../../application/ports/audit-log-port.js";
 import type { AdminUsersReaderPort } from "../../../application/ports/admin-users-reader-port.js";
 import type { NotificationPublisherPort } from "../../../application/ports/notification-publisher-port.js";
@@ -81,6 +90,8 @@ export interface AdminUsersRouteDependencies {
   readonly acceptInvitation: (
     request: AcceptOperatorInvitationRequest
   ) => Promise<AcceptOperatorInvitationOutcome>;
+  /** The per-user assistant access toggle (#499/WU2, D9). */
+  readonly setChatAccess: (request: SetChatAccessRequest) => Promise<SetChatAccessOutcome>;
 }
 
 /** Composition-root helper keeps the routes' dependencies vendor-free ports. */
@@ -90,7 +101,8 @@ export function createAdminUsersRouteDependencies(
   audit: AuditLogPort,
   profileWriter: OperatorProfileWriterPort,
   inviter: OperatorInviterPort,
-  notifications: Pick<NotificationPublisherPort, "publish">
+  notifications: Pick<NotificationPublisherPort, "publish">,
+  chatAccess: AdminChatAccessWriterPort
 ): AdminUsersRouteDependencies {
   const useCases = { users: writer, audit };
   return {
@@ -98,7 +110,8 @@ export function createAdminUsersRouteDependencies(
     setActivation: (request) => setUserActivation(useCases, request),
     changeRole: (request) => changeUserRole(useCases, request),
     invite: (request) => inviteOperator({ inviter, audit, notifications }, request),
-    acceptInvitation: (request) => acceptOperatorInvitation({ profile: profileWriter, audit }, request)
+    acceptInvitation: (request) => acceptOperatorInvitation({ profile: profileWriter, audit }, request),
+    setChatAccess: (request) => setChatAccess({ users: chatAccess, audit }, request)
   };
 }
 
@@ -322,4 +335,46 @@ export function registerAdminUsersRoute(
       return reply.code(503).send({ code: "unavailable" });
     }
   });
+
+  // The per-user assistant access toggle (#499/WU2, D9): ADMIN-only. The flag is
+  // off by default; this is the only way to grant it. The actor is the verified
+  // principal, never the body.
+  app.post<{ Params: { userId: string }; Body: unknown }>(
+    "/admin/users/:userId/chat-access",
+    async (request, reply) => {
+      const principal = request.principal;
+      if (principal === undefined) {
+        return reply.code(401).send({ code: "unauthenticated" });
+      }
+
+      const userId = request.params.userId;
+      if (!UUID.test(userId)) {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      let enabled: boolean;
+      try {
+        enabled = parseSetChatAccessCommand(request.body).enabled;
+      } catch {
+        return reply.code(400).send({ code: "invalid_request" });
+      }
+
+      try {
+        const result = await dependencies.setChatAccess({
+          targetUserId: userId,
+          enabled,
+          actorUserId: principal.userId,
+          correlationId: request.id
+        });
+        if (result.ok) {
+          return reply.code(200).send(result.value);
+        }
+        return reply
+          .code(result.error.code === "not_found" ? 404 : 503)
+          .send({ code: result.error.code });
+      } catch {
+        return reply.code(503).send({ code: "unavailable" });
+      }
+    }
+  );
 }

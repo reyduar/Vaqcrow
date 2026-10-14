@@ -80,6 +80,11 @@ COPY --from=build /app/apps/api/package.json ./apps/api/
 # /app, where `resolveGuidesRoot()` finds it via the workspace manifest below.
 COPY docs/guides/blog ./docs/guides/blog
 
+# The compiled help wiki the assistant reads at runtime (#499/WU2). Like the
+# blog, it lives in the repository and is copied from the build context to
+# `docs/wiki` under /app, where `resolveWikiRoot()` finds it.
+COPY docs/wiki ./docs/wiki
+
 # The deps stage installed with devDependencies, because the TypeScript build
 # needs them. Production dependencies are therefore reinstalled from scratch
 # here instead of copying the deps node_modules wholesale.

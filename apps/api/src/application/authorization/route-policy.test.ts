@@ -48,6 +48,20 @@ describe("resolveRoutePolicy", () => {
     expect(resolveRoutePolicy("HEAD", "/blog/:slug")).toEqual({ kind: "public" });
   });
 
+  it("restricts the help assistant to PYME and INVERSOR (#499/WU2, D7)", () => {
+    expect(resolveRoutePolicy("POST", "/assistant/questions")).toEqual({
+      kind: "roles",
+      roles: ["PYME", "INVERSOR"]
+    });
+  });
+
+  it("restricts the assistant access toggle to ADMIN (#499/WU2, D9)", () => {
+    expect(resolveRoutePolicy("POST", "/admin/users/:userId/chat-access")).toEqual({
+      kind: "roles",
+      roles: ["ADMIN"]
+    });
+  });
+
   it("lists the notification routes as authenticated for every role", () => {
     const routes = [
       "GET /notifications",

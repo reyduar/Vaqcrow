@@ -12,8 +12,9 @@
       "/tsconfig.base.json",
       "/.npmrc",
       "/.dockerignore",
-      "/docs/guides/blog/**",
-      "/railway.json"
+    "/docs/guides/blog/**",
+    "/docs/wiki/**",
+    "/railway.json"
     ]
   },
   "deploy": {
