@@ -17,7 +17,7 @@ import {
 import {
   accountMenuLabel,
   HEADER_TESTNET_BADGE,
-  isCurrentPath,
+  isCurrentLink,
   shellViewFor,
   SIGN_IN_LINK,
   SIGN_OUT_ERROR,
@@ -26,6 +26,7 @@ import {
   type RoleChipIcon,
   type ShellMenuIcon
 } from "@/application/navigation/shell-nav";
+import { useHash } from "@/state/use-hash";
 import { useSession, useSessionStoreApi } from "@/state/session-store-provider";
 import { AccountMenu, type AccountMenuItem } from "./account-menu";
 import { DemoNavbar } from "./demo-navbar";
@@ -71,6 +72,9 @@ export function AppHeader() {
   const status = useSession((state) => state.status);
   const principal = useSession((state) => state.principal);
   const view = shellViewFor(principal?.role ?? null);
+  // The fragment is not in the pathname: an in-page item (`/#como-funciona`) is
+  // current only when its hash matches (#514).
+  const hash = useHash();
   const [signOutFailed, setSignOutFailed] = useState(false);
   // The bell is a PYME/INVERSOR surface: ADMIN's entry is the console (#386)
   // and a signed-out visitor has no notifications.
@@ -80,7 +84,7 @@ export function AppHeader() {
   const items = view.nav.map((link) => ({
     label: link.label,
     href: link.href,
-    ...(isCurrentPath(link.href, pathname) ? { current: true } : {})
+    ...(isCurrentLink(link.href, pathname, hash) ? { current: true } : {})
   }));
 
   async function signOut() {

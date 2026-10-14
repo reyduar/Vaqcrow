@@ -125,6 +125,22 @@ export function isCurrentPath(href: string, pathname: string): boolean {
 }
 
 /**
+ * A nav item is current when its target is the visited one. A route link matches
+ * the path ({@link isCurrentPath}); a fragment link — `/#como-funciona`, the
+ * landing's in-page section — is current only when the path **and** the hash
+ * match, so selecting it highlights the item exactly like a route does (owner
+ * request, 2026-10-13, #514). The URL stays the state: there is no scroll-spy, so
+ * merely scrolling to the section does not select it.
+ */
+export function isCurrentLink(href: string, pathname: string, hash: string): boolean {
+  const hashAt = href.indexOf("#");
+  if (hashAt === -1) return isCurrentPath(href, pathname);
+
+  const path = href.slice(0, hashAt);
+  return isCurrentPath(path.length > 0 ? path : pathname, pathname) && href.slice(hashAt) === hash;
+}
+
+/**
  * Title and subtitle of each role's home, verbatim from `Vaqcrow
  * Portafolio.dc.html` (`pageTitle` / `pageSubtitle`, investor and PyME modes).
  */
