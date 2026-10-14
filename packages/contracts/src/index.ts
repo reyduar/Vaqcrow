@@ -200,6 +200,16 @@ export {
 export type { MarketplaceCampaign, MarketplaceCampaignList, RiskBand } from "./marketplace.js";
 
 export {
+  blogPostListSchema,
+  blogPostSchema,
+  blogPostSummarySchema,
+  blogSlugSchema,
+  parseBlogPost,
+  parseBlogPostList
+} from "./blog.js";
+export type { BlogPost, BlogPostList, BlogPostSummary, BlogSlug } from "./blog.js";
+
+export {
   favoriteCampaignListSchema,
   favoriteCampaignResultSchema,
   parseFavoriteCampaignList,

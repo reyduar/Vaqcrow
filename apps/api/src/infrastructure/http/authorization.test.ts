@@ -20,6 +20,10 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   // Public campaign detail (#422/WU1; public since #485): shareable without a
   // session; unpublished/unknown ids are 404.
   ["GET", "/marketplace/campaigns/:campaignId", "public"],
+  // Public blog (#498/WU2): the listing and a single article are reachable
+  // without a token; unknown/unpublished slugs are 404.
+  ["GET", "/blog", "public"],
+  ["GET", "/blog/:slug", "public"],
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
@@ -180,6 +184,25 @@ function buildFullApp(auth?: AuthDependency): {
         })
       },
       explorerBaseUrl: undefined
+    },
+    // The public blog routes are actually invoked by the matrix, so the
+    // repository answers an empty listing and one published article, and the
+    // content source returns a body; both public probes then answer 200.
+    blog: {
+      posts: {
+        listPublished: async () => ({ ok: true as const, value: [] }),
+        findPublished: async () => ({
+          ok: true as const,
+          value: {
+            slug: "11111111-1111-4111-8111-111111111111",
+            title: "Vaqcrow sobre Stellar",
+            summary: "Cómo funciona.",
+            publishedAt: "2026-10-14T12:00:00.000Z",
+            sourcePath: "blog/vaqcrow-sobre-stellar.md"
+          }
+        })
+      },
+      source: { read: async () => ({ ok: true as const, value: "# Cuerpo" }) }
     },
     favorite: stub,
     investorKyc: stub,

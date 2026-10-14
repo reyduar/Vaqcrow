@@ -37,6 +37,12 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // the use case and never carries an operator's name.
   "GET /marketplace/campaigns/:campaignId": PUBLIC,
 
+  // Public blog (#498/WU2): anyone can read the published article listing and a
+  // single article; the content is public and carries no PII. Owner decision D4
+  // links it only from «Acerca de», which does not change who may read it.
+  "GET /blog": PUBLIC,
+  "GET /blog/:slug": PUBLIC,
+
   "POST /sme-requests": only("PYME"),
   // The ADMIN PyMEs queue (#386/T1) lists every application; it is never
   // reachable by the PyME that owns one of them.

@@ -21,6 +21,8 @@ import type { ApplicationAssessmentRouteDependencies } from "./routes/applicatio
 import { registerApplicationManualReviewRoute } from "./routes/application-manual-review.route.js";
 import { registerAssessmentRoute } from "./routes/assessment.route.js";
 import type { AssessmentRouteDependencies } from "./routes/assessment.route.js";
+import { registerBlogRoute } from "./routes/blog.route.js";
+import type { BlogRouteDependencies } from "./routes/blog.route.js";
 import { registerBusinessRoute } from "./routes/business.route.js";
 import type { BusinessRouteDependencies } from "./routes/business.route.js";
 import { registerCampaignRoute } from "./routes/campaign.route.js";
@@ -158,6 +160,8 @@ export function buildApp(dependencies: {
   readonly reports?: ReportsRouteDependencies | undefined;
   /** The PyME dashboard read model (#434/WU1). Omitted when unwired. */
   readonly myCampaigns?: MyCampaignsRouteDependencies | undefined;
+  /** The public blog surface (#498/WU2). Omitted when unwired. */
+  readonly blog?: BlogRouteDependencies | undefined;
   readonly cors?: { readonly allowedOrigins: readonly string[] };
   /**
    * The Fastify/pino logger options (#31/WU1). Omitted by tests, where the
@@ -304,6 +308,9 @@ export function buildApp(dependencies: {
   }
   if (dependencies.myCampaigns) {
     registerMyCampaignsRoute(app, dependencies.myCampaigns);
+  }
+  if (dependencies.blog !== undefined) {
+    registerBlogRoute(app, dependencies.blog);
   }
   return app;
 }

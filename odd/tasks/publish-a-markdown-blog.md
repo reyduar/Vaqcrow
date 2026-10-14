@@ -45,14 +45,20 @@ Del cuerpo de #498 (citas textuales de las acceptance criteria) más las decisio
 ## Unidades de trabajo
 
 - [x] **WU1 — Migración `blog_post`.** Tabla + RLS + grants explícitos en una migración; probar en docker (`pnpm run test:db`), aplicar y verificar en el remoto — (S4).
-- [ ] **WU2 — API.** Contrato en `packages/contracts`; puerto en `application/ports/`; adaptador que lee `docs/guides/blog/*.md` (bundleado en la imagen) con guarda anti path-traversal; front matter parseado; rutas `GET /blog` y `GET /blog/:slug`; tests funcionales — (S2, S3, S5, S7, S8, D2, D3).
+- [x] **WU2 — API.** Contrato en `packages/contracts`; puerto en `application/ports/`; adaptador que lee `docs/guides/blog/*.md` (bundleado en la imagen) con guarda anti path-traversal; front matter parseado; rutas `GET /blog` y `GET /blog/:slug`; tests funcionales — (S2, S3, S5, S7, S8, D2, D3).
 - [ ] **WU3 — Web.** `/blog` (lista), `/blog/[slug]` (layout de guía), renderer Markdown (`react-markdown` + `remark-gfm`, sin `rehype-raw`) por el gate de dependencias; sección «Blog» en `/about`; tests de componente — (S1, S2, S6, D4, D5, D6).
 - [ ] **WU4 — Primer artículo.** `docs/guides/blog/<slug>.md` en español, inspirado en EthicHub y adaptado a Stellar, con front matter y reglas de honestidad — (S10, D1).
 - [ ] **WU5 — Evidencia y cierre.** `docs/planning/<feature-slug>-evidence.md`, sync de `docs/planning/demo-tasks-list.md`, `pnpm run verify` — (S11).
 
 ## Evaluación de seguridad (`owasp-security`)
 
-Se completa antes de cerrar cada PR (superficies: uploads no aplican; sí **lectura de archivo** por `source_path` — A01/path traversal — y **renderizado de contenido no confiable** — A05/XSS por Markdown).
+**WU2 — API** (2026-10-14), contra OWASP Top 10:2025:
+
+- **A01 — Broken Access Control (path traversal).** El adaptador de contenido (`filesystem-blog-content-source.ts`) rechaza, **antes de tocar el filesystem**, cualquier `source_path` absoluto, con `\`, con un segmento `..`, o que resuelva fuera de la raíz de guías (`startsWith(root + sep)`); un path rechazado se reporta como `value: undefined` y nunca se lee. Cubierto por tests (`../storybook.md`, `/etc/passwd`, `a\b.md`, vacío). **Sin hallazgo.**
+- **A05 — Injection (XSS).** WU2 devuelve el Markdown como **string JSON** y no ejecuta HTML; el renderizado (y la no-ejecución de HTML crudo) es de WU3, en el web. **Sin hallazgo en esta unidad.**
+- **A10 — Mishandling of Exceptional Conditions.** Falla cerrado: un archivo faltante o un error de I/O se resuelven a `unavailable`/`not_found`, nunca a un 200 vacío. **Sin hallazgo.**
+
+Pendiente para WU3: el renderer Markdown del web (no ejecutar HTML crudo sin sanitizar).
 
 ## Verificación
 
@@ -63,9 +69,18 @@ Se completa antes de cerrar cada PR (superficies: uploads no aplican; sí **lect
 - **Remoto** (`ppvlnwejajxpsmazvnbj`): migración aplicada y verificada por SQL — tabla presente, 6 columnas, RLS on, 0 policies, `anon`/`authenticated` sin `SELECT`, `service_role` con `SELECT`/`INSERT`, 2 índices (pkey + `blog_post_published_at_idx`).
 - **Drift corregido:** el primer apply vía MCP grabó su propia versión (`20261014112232`) y el nombre completo como `name`; se reparó el historial en `supabase_migrations.schema_migrations` a `20261014120000` / `create_blog_post` para que la versión y el nombre coincidan con el archivo del repo.
 
+**WU2 — API** (2026-10-14):
+
+- `pnpm --filter @vaqcrow/contracts test` → **PASS** (27 archivos / 722 tests); `pnpm --filter @vaqcrow/api test` → **PASS** (148 archivos / 3005 tests), re-corrido por el padre.
+- `pnpm run typecheck` → 8/8; `pnpm run boundaries` → sin violaciones (1274 módulos).
+- `pnpm --filter @vaqcrow/api openapi:generate` → `openapi.json` con 55 paths; diff aditivo (165 inserciones, 0 borrados).
+- Prerequisito: `pnpm --filter @vaqcrow/contracts build` (la API resuelve `@vaqcrow/contracts` desde su `dist/`).
+- Guardas de drift actualizadas (autorizadas por el owner): `authorization.test.ts` (filas del Blog en la MATRIX + wiring) y `openapi.json` regenerado; tag `Blog` declarado en `TAG_LIST`.
+
 ## Log
 
 - **L1 (2026-10-14, pedido original del owner, verbatim):** «Retomamos Vaqcrow. Leé Engram (topic handoff/next-session-497-516 y el resumen de la sesión 2026-10-13/14). Estado: main ya tiene adentro las mejoras posteriores a v1.1.0 —#502 (skill OWASP), #497 («La traza»), #500 + #510 (header), #501 (desbordes + CTA), #512 (etiqueta) y #514 (estado activo del nav con fragmento)—. Lo único abierto es el PR #516 (sincronización de docs/planning/demo-tasks-list.md con el tablero), listo para mergear. El workspace quedó limpio: solo main más la rama del PR #516. Primero: 1) verificá si #516 se mergeó, sincronizá main y borrá la rama si corresponde; 2) lo único trabado son #498 (Blog) y #499 (asistente RAG): necesitan que el owner responda sus preguntas abiertas —recordáselas, y en particular la que comparten: si docs/guides/storybook.md (guía para desarrolladores) se publica en el Blog y entra en la wiki del asistente, o si los artículos públicos viven en una subcarpeta propia; 3) proponé por dónde arrancar. No implementes nada sin que el owner elija. Contexto ya registrado: la sección «Cómo funciona» es la excepción acordada al template y su texto vive en docs/guides/como-funciona-vaqcrow.md, leído en build; el header es ancho completo y el nav está centrado. Regla de la casa: creá siempre la rama desde main explícito — el owner mergea rápido y dos veces un push a una rama en review quedó fuera del merge.»
 - **L2 (2026-10-14).** PR #516 verificado: **mergeado** (`f0da69a`); `main` sincronizado por fast-forward; rama `docs/roadmap-sync-2026-10-14` borrada (local y remota). Workspace limpio: solo `main`.
 - **L3 (2026-10-14).** El owner eligió **arrancar por #498** (Blog) y respondió sus 6 preguntas abiertas (D1–D6). Estrategia de entrega: **encadenada a main, 3 PRs**.
 - **L4 (2026-10-14).** **WU1 entregada** (commit WU1): migración `supabase/migrations/20261014120000_create_blog_post.sql` + test pgTAP `supabase/tests/blog_post.sql` (39 tests). Local RED→GREEN; remoto aplicado y verificado; historial remoto alineado al repo (ver Verificación). El apply vía MCP genera su propia versión, así que todo `apply_migration` de esta Feature se repara después a la versión del archivo (procedimiento a repetir en las migraciones siguientes, si las hay).
+- **L5 (2026-10-14).** **WU2 entregada** (commit WU2): contratos `blog.ts`; ports `blog-post-repository-port` y `blog-content-source-port`; parser puro de front matter; use cases `list-blog-posts` y `get-blog-post`; adaptadores `SupabaseBlogPostRepository` y `FileSystemBlogContentSource` (con `resolveGuidesRoot`); rutas públicas `GET /blog` y `GET /blog/:slug`; wiring en `build-app.ts`/`index.ts`; `Dockerfile` (`COPY docs/guides/blog`); `railway.json` (watch pattern `/docs/guides/blog/**`) y `docs/guides/blog/.gitkeep`. WU2 se implementó **delegando a un writer** (backstop de contexto, sesión larga); el owner autorizó ampliar las superficies para cerrar las guardas de drift (`authorization.test.ts`, `openapi.json`, `TAG_LIST`). Verificación y evaluación de seguridad arriba.
