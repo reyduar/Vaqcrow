@@ -26,6 +26,10 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   wraps its items from the `@md` width up: it takes the free space and
  *   scrolls sideways if it ever runs out. The collapsed narrow-screen
  *   disclosure still wraps. Opt-in; without it the nav wraps its items.
+ * - **Centred nav (owner decision, 2026-10-13).** From `@md` up the primary nav
+ *   takes the free space between the brand and the actions and centres its links
+ *   in it, instead of hugging the brand's badges. The free space is what is left
+ *   after both sides, so the block reads as centred in the header.
  * - **Room for wider text (`singleLineNav`).** Linux/Windows render the same
  *   labels ~4 % wider than macOS (the CI runner once overflowed the nav by
  *   22 px when the header had ~1 px to spare), so the role-aware header keeps
@@ -159,7 +163,7 @@ export function DemoNavbar({
             data-state={isOpen ? "open" : "closed"}
             className={`${
               isOpen ? "flex" : "hidden"
-            } order-last w-full flex-wrap items-center @md:order-none @md:flex @md:w-auto @md:min-w-0 @md:flex-1 ${
+            } order-last w-full flex-wrap items-center @md:order-none @md:flex @md:w-auto @md:min-w-0 @md:flex-1 @md:justify-center ${
               singleLineNav ? "gap-0 @6xl:ml-2 @md:flex-nowrap @md:overflow-x-auto @md:[scrollbar-width:none]" : "gap-1"
             }`}
           >
