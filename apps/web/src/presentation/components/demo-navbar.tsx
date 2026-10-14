@@ -37,13 +37,23 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   gap is larger). Links use 8 px side padding and no gap (template: 12 px
  *   plus a 4 px gap; text to text 16 px). Below `@6xl` the gaps stay at the
  *   template's values, so a scrolling nav never runs into the theme control.
- * - **Where the fifth entry's width came from (#500).** Since 2026-10-13 the
- *   theme control is one 46 px trigger that opens a menu, not the template's
- *   three 44 px buttons (~138 px); that ~92 px is what let the public header
- *   carry «Guía del inversor» as a fifth entry. `e2e/app-header.spec.ts`
- *   measures the result at 1280 px: **52 px** of slack with normal text and
- *   **9 px** with text ~4 % wider. The 9 px is the real budget — a longer nav
- *   label or a wider control eats it, and the spec fails first.
+ * - **Where the fifth entry's width came from (#500, 2026-10-13).** Two owner
+ *   decisions gave the public header room for «Guía del inversor» without
+ *   touching the existing entries or their labels:
+ *   1. the theme control is one 46 px trigger that opens a menu, not the
+ *      template's three 44 px buttons (~138 px);
+ *   2. the header is **full width** (`px-4`) instead of the 1264 px page
+ *      container the sections below still use — the owner's call, after a
+ *      reference header that runs edge to edge. The header no longer aligns
+ *      with the page content above `1264` px; that is the price, and it is
+ *      deliberate.
+ *
+ *   `e2e/app-header.spec.ts` measures the result at 1280 px: **100 px** of slack
+ *   with normal text and **57 px** with text ~6 % wider. The spec simulates the
+ *   Linux difference on top of whatever the runner already renders, so on CI it
+ *   is stricter than any real platform — it already failed this header once.
+ *   A longer nav label or a wider control eats that slack, and the spec fails
+ *   first.
  * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`;
  *   the role-aware header passes the
  *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
@@ -107,7 +117,7 @@ export function DemoNavbar({
     <header
       className={`sticky top-0 z-10 border-b border-border bg-canvas ${className ?? ""}`.trim()}
     >
-      <div className="@container mx-auto max-w-[1264px] px-8 py-3">
+      <div className="@container w-full px-4 py-3">
         <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 ${singleLineNav ? "@6xl:gap-x-2" : ""}`.trim()}>
           <div className={`flex items-center ${singleLineNav ? "gap-3 @6xl:gap-2" : "gap-3"}`}>
             <Link
