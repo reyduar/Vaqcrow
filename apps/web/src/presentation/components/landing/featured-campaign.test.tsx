@@ -88,6 +88,11 @@ describe("FeaturedCampaign (Feature #418, WU2)", () => {
     renderFeatured(okPort([]));
 
     const cta = await screen.findByRole("link", { name: "Ver evidencia y riesgo" });
+    // #501: the featured card's CTA is the primary button now, not the outlined
+    // control it used to be (owner decision, 2026-10-13), and it stays a link.
+    expect(cta.tagName).toBe("A");
+    expect(cta.className).toContain("bg-brand-accent");
+    expect(cta.className).toContain("text-on-accent");
     expect(cta).toHaveAttribute("href", "/campaigns/example");
   });
 
