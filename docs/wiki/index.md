@@ -12,6 +12,9 @@ Una línea por página, en el orden en que conviene leerlas. El enlace y el nomb
 - [mi-campana](mi-campana.md): el área de la PyME y lo que puede hacer ahí.
 - [explorar-pymes](explorar-pymes.md): el marketplace público de campañas.
 - [mi-portafolio](mi-portafolio.md): el área del inversor, sus aportes y su evidencia.
+- [reports](reports.md): los informes del inversor, con distribuciones y aportes del período.
 - [detalle-de-campana](detalle-de-campana.md): la página pública y compartible de una campaña.
 - [centro-de-ayuda](centro-de-ayuda.md): la página pública de ayuda y sus preguntas frecuentes.
+- [guia-del-inversor](guia-del-inversor.md): la guía educativa pública para quien va a aportar.
+- [guia-para-emprendedores](guia-para-emprendedores.md): la guía educativa pública para la PyME que busca financiarse.
 - [que-es-real-y-que-es-simulado](que-es-real-y-que-es-simulado.md): las reglas de honestidad de la demo, en un solo lugar.

@@ -45,6 +45,9 @@ const REAL_SCREENS = [
   "/campaigns/[id]",
   "/help",
   "/about",
+  "/reports",
+  "/investor-guide",
+  "/entrepreneur-guide",
   "/admin"
 ] as const;
 
