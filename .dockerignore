@@ -24,14 +24,16 @@ node_modules
 .env.*
 *.local
 
-# Repository documentation, agent state and non-runtime test fixtures. The one
-# exception is the blog Markdown the API serves at runtime (#498/WU2): it is
-# bundled into the API image, so its subtree is re-included here — the rest of
-# `docs/` stays out of the build context.
+# Repository documentation, agent state and non-runtime test fixtures. The
+# exceptions are the content the API serves at runtime: the blog Markdown
+# (#498) and the assistant's compiled wiki (#499). Both ship inside the API
+# image, so their subtrees are re-included here; the rest of `docs/` stays out of
+# the build context.
 docs/*
 !docs/guides
 docs/guides/*
 !docs/guides/blog
+!docs/wiki
 odd
 .atl
 .claude
