@@ -10,6 +10,7 @@ import type {
   ChangeableUserRole,
   InviteOperatorCommand,
   InviteOperatorResult,
+  SetChatAccessCommand,
   SetUserActiveCommand
 } from "@vaqcrow/contracts";
 
@@ -153,6 +154,24 @@ export function roleChangeConfirmCopy(displayName: string, target: ChangeableUse
   return {
     title: `Cambiar rol de ${displayName}`,
     body: `Su cuenta pasa a ${ROLE_LABEL[target]}. El cambio queda auditado.`
+  };
+}
+
+/**
+ * The Acciones-cell control for the per-user assistant access flag (#499, D9):
+ * the label reflects the real `chatEnabled` state and the button flips it.
+ */
+export function chatAccessControlLabel(chatEnabled: boolean): string {
+  return chatEnabled ? "Deshabilitar asistente" : "Habilitar asistente";
+}
+
+/** The confirmation copy for the assistant-access toggle, mirroring the activation dialogs. */
+export function chatAccessConfirmCopy(displayName: string, nextEnabled: boolean): ConfirmCopy {
+  return {
+    title: `${nextEnabled ? "Habilitar" : "Deshabilitar"} el asistente de ${displayName}`,
+    body: nextEnabled
+      ? "Va a poder preguntarle al asistente desde la landing y el centro de ayuda."
+      : "Deja de ver el asistente. El resto de su cuenta no cambia."
   };
 }
 
@@ -325,5 +344,7 @@ export interface AdminUsersPort {
   listAudit(query: AuditLogQuery): Promise<AuditLogResult>;
   setUserActive(userId: string, command: SetUserActiveCommand): Promise<AdminUsersMutationResult>;
   changeUserRole(userId: string, command: ChangeUserRoleCommand): Promise<AdminUsersMutationResult>;
+  /** Toggle the per-user assistant access flag (#499, D9). */
+  setChatAccess(userId: string, command: SetChatAccessCommand): Promise<AdminUsersMutationResult>;
   inviteOperator(command: InviteOperatorCommand): Promise<InviteOperatorOutcome>;
 }

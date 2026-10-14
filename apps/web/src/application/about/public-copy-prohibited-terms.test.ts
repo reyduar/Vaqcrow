@@ -9,6 +9,7 @@ import { TERMS_COPY } from "../legal/terms";
 import { parseHowItWorks } from "../landing/how-it-works";
 import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides/read-guide-source";
 import { BLOG_COPY } from "../blog/copy";
+import { ASSISTANT_COPY } from "../assistant/copy";
 import { ABOUT_COPY } from "./copy";
 
 /**
@@ -94,6 +95,13 @@ const BLOG_TEXT = collectStrings(BLOG_COPY).join("\n");
  */
 const BLOG_ARTICLE_SOURCE = "vaqcrow-sobre-stellar.md";
 const BLOG_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(BLOG_ARTICLE_SOURCE));
+/**
+ * Feature #499: the help assistant's web-side chrome (labels, placeholders and
+ * the failure/access strings) is public copy too, so it runs through the same
+ * denylist as the copy above. The four fixed answers (out-of-scope,
+ * no-documentation, account, cap) are owned by the API, not here.
+ */
+const ASSISTANT_TEXT = collectStrings(ASSISTANT_COPY).join("\n");
 const PUBLIC_TEXT = [
   ABOUT_TEXT,
   ENTREPRENEUR_TEXT,
@@ -102,7 +110,8 @@ const PUBLIC_TEXT = [
   TERMS_TEXT,
   HOW_IT_WORKS_TEXT,
   BLOG_TEXT,
-  BLOG_ARTICLE_TEXT
+  BLOG_ARTICLE_TEXT,
+  ASSISTANT_TEXT
 ].join("\n");
 
 /**
@@ -331,6 +340,20 @@ describe("Help copy (#394)", () => {
       href: "mailto:contact@vaqcrow.com"
     });
     expect(HELP_COPY.contact.guide.href).toBe("/investor-guide");
+  });
+});
+
+describe("Assistant copy (#499)", () => {
+  it("names the assistant and pins the access and failure strings", () => {
+    expect(ASSISTANT_COPY.title).toBe("Asistente de Vaqcrow");
+    expect(ASSISTANT_COPY.subtitle).toBe("Respuestas de la documentación");
+    expect(ASSISTANT_COPY.send).toBe("Enviar");
+    // The one string not in the approved D8 list: the per-user flag (D9) is off.
+    expect(ASSISTANT_COPY.errors.forbidden).toBe(
+      "El asistente todavía no está habilitado para tu cuenta."
+    );
+    expect(ASSISTANT_COPY.errors.unavailable).not.toBe(ASSISTANT_COPY.errors.network);
+    expect(ASSISTANT_COPY.errors.not_configured).toContain("API");
   });
 });
 

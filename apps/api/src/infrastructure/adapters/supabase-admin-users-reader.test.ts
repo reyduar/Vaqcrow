@@ -14,10 +14,10 @@ const INVESTOR_ID = "11111111-1111-4111-8111-111111111111";
 const INVESTOR_NO_KYC = "22222222-2222-4222-8222-222222222222";
 const PYME_ID = "33333333-3333-4333-8333-333333333333";
 
-const ADMIN_ROW = { user_id: ADMIN_ID, role: "ADMIN", display_name: "Admin Vaqcrow", status: "active" };
-const INVESTOR_ROW = { user_id: INVESTOR_ID, role: "INVERSOR", display_name: "Ana", status: "active" };
-const INVESTOR_NO_KYC_ROW = { user_id: INVESTOR_NO_KYC, role: "INVERSOR", display_name: "Beto", status: "inactive" };
-const PYME_ROW = { user_id: PYME_ID, role: "PYME", display_name: "Panadería", status: "inactive" };
+const ADMIN_ROW = { user_id: ADMIN_ID, role: "ADMIN", display_name: "Admin Vaqcrow", status: "active", chat_enabled: false };
+const INVESTOR_ROW = { user_id: INVESTOR_ID, role: "INVERSOR", display_name: "Ana", status: "active", chat_enabled: true };
+const INVESTOR_NO_KYC_ROW = { user_id: INVESTOR_NO_KYC, role: "INVERSOR", display_name: "Beto", status: "inactive", chat_enabled: false };
+const PYME_ROW = { user_id: PYME_ID, role: "PYME", display_name: "Panadería", status: "inactive", chat_enabled: true };
 
 const AUTH_USERS = [
   { id: ADMIN_ID, email: "admin@vaqcrow.com", last_sign_in_at: "2026-10-12T13:00:00.000Z", email_confirmed_at: "2026-01-01T00:00:00.000Z" },
@@ -98,8 +98,22 @@ describe("SupabaseAdminUsersReader", () => {
       status: "active",
       lastActivityAt: "2026-10-12T13:00:00.000Z",
       kycStatus: "not_applicable",
-      isSelf: true
+      isSelf: true,
+      chatEnabled: false
     });
+  });
+
+  it("projects the per-user assistant flag (#499, D9) from profile.chat_enabled", async () => {
+    const client = fakeClient(fullTables(), { users: AUTH_USERS });
+
+    const result = await new SupabaseAdminUsersReader(client).list({ page: 1, pageSize: 20 }, ADMIN_ID);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const byId = new Map(result.value.items.map((item) => [item.userId, item.chatEnabled]));
+    expect(byId.get(ADMIN_ID)).toBe(false);
+    expect(byId.get(INVESTOR_ID)).toBe(true);
+    expect(byId.get(PYME_ID)).toBe(true);
   });
 
   it("maps kycStatus by role: approved_simulated, not_started, not_applicable", async () => {
@@ -178,6 +192,10 @@ describe("SupabaseAdminUsersReader", () => {
       { users: AUTH_USERS }
     );
     const notAnArray = fakeClient(fullTables({ profile: { data: { not: "an array" } } }), { users: AUTH_USERS });
+    const badFlag = fakeClient(
+      fullTables({ profile: { data: [{ ...ADMIN_ROW, chat_enabled: "yes" }] } }),
+      { users: AUTH_USERS }
+    );
 
     expect(await new SupabaseAdminUsersReader(authFails).list({ page: 1, pageSize: 20 }, ADMIN_ID)).toEqual({
       ok: false,
@@ -188,6 +206,10 @@ describe("SupabaseAdminUsersReader", () => {
       error: { code: "unavailable" }
     });
     expect(await new SupabaseAdminUsersReader(notAnArray).list({ page: 1, pageSize: 20 }, ADMIN_ID)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+    expect(await new SupabaseAdminUsersReader(badFlag).list({ page: 1, pageSize: 20 }, ADMIN_ID)).toEqual({
       ok: false,
       error: { code: "unavailable" }
     });

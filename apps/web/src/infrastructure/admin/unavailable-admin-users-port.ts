@@ -25,6 +25,9 @@ export const UNAVAILABLE_ADMIN_USERS_PORT: AdminUsersPort = Object.freeze({
   async changeUserRole(): Promise<AdminUsersMutationResult> {
     return { ok: false, code: "unavailable" };
   },
+  async setChatAccess(): Promise<AdminUsersMutationResult> {
+    return { ok: false, code: "unavailable" };
+  },
   async inviteOperator(): Promise<InviteOperatorOutcome> {
     return { ok: false, code: "unavailable" };
   }

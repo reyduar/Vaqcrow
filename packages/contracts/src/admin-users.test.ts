@@ -27,12 +27,23 @@ const USER = {
   status: "active",
   lastActivityAt: "2026-10-12T13:00:00.000Z",
   kycStatus: "not_applicable",
-  isSelf: true
+  isSelf: true,
+  chatEnabled: false
 };
 
 describe("adminUserSchema", () => {
   it("parses a user row", () => {
     expect(adminUserSchema.parse(USER)).toEqual(USER);
+  });
+
+  it("carries the per-user assistant access flag (#499, D9)", () => {
+    expect(adminUserSchema.parse(USER).chatEnabled).toBe(false);
+    expect(adminUserSchema.parse({ ...USER, chatEnabled: true }).chatEnabled).toBe(true);
+    // A missing or non-boolean flag is an error, never a defaulted `false`.
+    const withoutFlag: Record<string, unknown> = { ...USER };
+    delete withoutFlag["chatEnabled"];
+    expect(adminUserSchema.safeParse(withoutFlag).success).toBe(false);
+    expect(adminUserSchema.safeParse({ ...USER, chatEnabled: "no" }).success).toBe(false);
   });
 
   it("accepts a null last activity (never a fabricated date)", () => {

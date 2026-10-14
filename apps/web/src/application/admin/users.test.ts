@@ -5,6 +5,8 @@ import {
   ADMIN_USERS_PAGE_SIZE,
   auditQueryWithPage,
   auditQueryWithSearch,
+  chatAccessConfirmCopy,
+  chatAccessControlLabel,
   DEFAULT_ADMIN_AUDIT_QUERY,
   DEFAULT_ADMIN_USERS_QUERY,
   deactivateConfirmCopy,
@@ -196,5 +198,23 @@ describe("error copy", () => {
     expect(MUTATION_ERROR_COPY.last_admin).toBe("No podés desactivar al último administrador activo.");
     expect(MUTATION_ERROR_COPY.target_is_admin).toBe("No se puede cambiar el rol de un administrador.");
     expect(MUTATION_ERROR_COPY.email_exists).toBe("Ya existe una cuenta con ese correo.");
+  });
+});
+
+describe("assistant access control (#499, D9)", () => {
+  it("labels the toggle from the real flag", () => {
+    expect(chatAccessControlLabel(true)).toBe("Deshabilitar asistente");
+    expect(chatAccessControlLabel(false)).toBe("Habilitar asistente");
+  });
+
+  it("states the outcome in the confirmation, both ways", () => {
+    expect(chatAccessConfirmCopy("Lucía", true)).toEqual({
+      title: "Habilitar el asistente de Lucía",
+      body: "Va a poder preguntarle al asistente desde la landing y el centro de ayuda."
+    });
+    expect(chatAccessConfirmCopy("Lucía", false)).toEqual({
+      title: "Deshabilitar el asistente de Lucía",
+      body: "Deja de ver el asistente. El resto de su cuenta no cambia."
+    });
   });
 });

@@ -13,7 +13,8 @@ const WIRE_USER = {
   status: "active",
   lastActivityAt: "2026-09-11T12:00:00.000Z",
   kycStatus: "approved_simulated",
-  isSelf: false
+  isSelf: false,
+  chatEnabled: true
 };
 
 const WIRE_USERS_PAGE = { items: [WIRE_USER], total: 41, page: 2, pageSize: 20 };
@@ -201,6 +202,35 @@ describe("HttpAdminUsersGateway.changeUserRole", () => {
 
     const same = new HttpAdminUsersGateway(fakeClient({ status: 409, data: { code: "unchanged" } }).client);
     expect(await same.changeUserRole(USER_ID, { role: "PYME" })).toEqual({ ok: false, code: "unchanged" });
+  });
+});
+
+describe("HttpAdminUsersGateway.setChatAccess", () => {
+  it("posts the assistant-access command and resolves ok on a matching echo", async () => {
+    const { client, calls } = fakeClient({ status: 200, data: { userId: USER_ID, enabled: true } });
+    const gateway = new HttpAdminUsersGateway(client, async () => "token-123");
+
+    const result = await gateway.setChatAccess(USER_ID, { enabled: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(calls[0]!.url).toBe(`/admin/users/${USER_ID}/chat-access`);
+    expect(calls[0]!.body).toEqual({ enabled: true });
+    expect(calls[0]!.headers).toEqual({ Authorization: "Bearer token-123" });
+  });
+
+  it("rejects a mismatched echo instead of trusting the status code", async () => {
+    const { client } = fakeClient({ status: 200, data: { userId: USER_ID, enabled: false } });
+    const gateway = new HttpAdminUsersGateway(client);
+
+    expect(await gateway.setChatAccess(USER_ID, { enabled: true })).toEqual({ ok: false, code: "unavailable" });
+  });
+
+  it("maps 404 to not_found and a failure to unavailable", async () => {
+    const missing = new HttpAdminUsersGateway(fakeClient({ status: 404, data: { code: "not_found" } }).client);
+    expect(await missing.setChatAccess(USER_ID, { enabled: true })).toEqual({ ok: false, code: "not_found" });
+
+    const down = new HttpAdminUsersGateway(fakeClient({ status: 503, data: { code: "unavailable" } }).client);
+    expect(await down.setChatAccess(USER_ID, { enabled: true })).toEqual({ ok: false, code: "unavailable" });
   });
 });
 

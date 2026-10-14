@@ -28,7 +28,8 @@ const PAGE: AdminUsersPage = parseAdminUsersPage({
       status: "active",
       lastActivityAt: "2026-10-12T13:00:00.000Z",
       kycStatus: "approved_simulated",
-      isSelf: false
+      isSelf: false,
+      chatEnabled: true
     }
   ],
   total: 1,

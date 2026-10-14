@@ -41,7 +41,7 @@ import type {
 
 const PROFILE_TABLE = "profile";
 const KYC_TABLE = "investor_kyc";
-const PROFILE_COLUMNS = "user_id, role, display_name, status";
+const PROFILE_COLUMNS = "user_id, role, display_name, status, chat_enabled";
 const KYC_COLUMNS = "user_id";
 /** Supabase caps `perPage`; the loop below walks every page it returns. */
 const AUTH_PAGE_SIZE = 1000;
@@ -56,6 +56,8 @@ interface ProfileRow {
   readonly role: AdminUserRole;
   readonly displayName: string;
   readonly status: "active" | "inactive";
+  /** The per-user assistant access flag (#499, D9); off by default. */
+  readonly chatEnabled: boolean;
 }
 
 interface AuthRow {
@@ -129,7 +131,8 @@ export class SupabaseAdminUsersReader implements AdminUsersReaderPort {
         userId: this.text(value["user_id"]),
         role: this.role(value["role"]),
         displayName: this.text(value["display_name"]),
-        status: this.profileStatus(value["status"])
+        status: this.profileStatus(value["status"]),
+        chatEnabled: this.boolean(value["chat_enabled"])
       };
     });
   }
@@ -178,7 +181,8 @@ export class SupabaseAdminUsersReader implements AdminUsersReaderPort {
       status: this.userStatus(profile.status, auth),
       lastActivityAt: auth.lastSignInAt ?? null,
       kycStatus: this.kycStatus(profile.role, hasKycRow),
-      isSelf: profile.userId === viewerUserId
+      isSelf: profile.userId === viewerUserId,
+      chatEnabled: profile.chatEnabled
     });
   }
 
@@ -232,6 +236,12 @@ export class SupabaseAdminUsersReader implements AdminUsersReaderPort {
   private optionalText(value: unknown): string | undefined {
     if (value === null || value === undefined) return undefined;
     return this.text(value);
+  }
+
+  /** A `not null` boolean column; a missing or non-boolean value fails the read. */
+  private boolean(value: unknown): boolean {
+    if (typeof value !== "boolean") throw new Error("malformed boolean column");
+    return value;
   }
 
   private role(value: unknown): AdminUserRole {

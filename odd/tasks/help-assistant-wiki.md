@@ -52,16 +52,26 @@ Criterios de aceptación del issue (citados textualmente):
 
 - [x] **WU1 — Wiki compilada.** `docs/wiki/schema.md` (contrato), 16 páginas por tipo, `index.md`, `log.md` y `tests/wiki-structure.test.ts` (invariantes) — (S9). PR **#523**, mergeado.
 - [ ] **WU2 — API.** Contratos, ports (`WikiRepository`, `AssistantRouter`, `AssistantAnswerer`), adaptadores (wiki bundleada en la imagen, cliente OpenCode Go), casos de uso puros con las guardias (fuera de alcance → declinación; sin páginas → «no documentación»; cita fuera → descarta; salida inválida → 1 retry; falla del proveedor → 503), ruta autenticada con el flag de acceso + el tope de 5/24 h, migración (flag + timestamps), config (+ espejo en `scripts/demo/preflight`) y `Dockerfile` que bundlea `docs/wiki/` — (S2, S3, S4, S5, S6, S7, S8, D2–D9).
-- [ ] **WU3 — Web + admin.** El mismo componente de chat en el asistente flotante y en `/help`; el anónimo solo FAQ; el toggle de acceso en `/admin` → Usuarios — (S1, S2, D7, D9).
+- [x] **WU3 — Web + admin.** El mismo componente de chat en el asistente flotante y en `/help`; el anónimo solo FAQ; el toggle de acceso en `/admin` → Usuarios — (S1, S2, D7, D9).
 - [ ] **WU4 — Evidencia y cierre.** `docs/planning/<feature-slug>-evidence.md`, sync de `docs/planning/demo-tasks-list.md`, `pnpm run verify` — (S11).
 
 ## Evaluación de seguridad (`owasp-security`)
 
 Se completa antes de cerrar cada PR. Superficies: **entrada no confiable** (la pregunta) e **inyección de prompt** (en la pregunta y en el contenido de la wiki) — LLM Top 10; **acceso** (flag por usuario + roles) — A01; **DoS/abuso** (tope + flag) — A10; **fuga de datos** (el texto no se guarda; el proveedor no recibe datos del usuario) — A02/A04.
 
+**WU2 — API** (OWASP Top 10:2025): **A01** la ruta es `only("PYME","INVERSOR")` y el flag `chat_enabled` se hace cumplir server-side (403), nunca desde el body; **A03/A05** la pregunta es entrada no confiable (trim + 2000 chars) y el cuerpo de la wiki se trata como contenido, con framing anti-inyección en los prompts (fixtures que cubren inyección en la pregunta y dentro de una página); **A10** falla cerrado (proveedor → 503, salida inválida → «no documentación» tras un retry); **A02/A04** no se persiste el texto (solo timestamps); **A06** sin dependencias nuevas. **Sin hallazgos.**
+
+**WU3 — Web** (OWASP Top 10:2025): **A01** la visibilidad es por rol y el flag lo impone la API (403 → copy), el cliente no puede saltarlo; **A05** la respuesta se renderiza como texto (React escapa) y las citas como enlaces internos; **A02** el store vive por montaje y no persiste nada; **A06** sin dependencias nuevas. **Sin hallazgos.**
+
 ## Verificación
 
-Se completa a medida que avanza cada WU.
+**WU1 — Wiki** (2026-10-14, PR #523): `tests/wiki-structure.test.ts` 19/19 (`test:boundaries` 185) · `typecheck:tests`/`lint:tests` OK · `storybook.md` fuera por D1.
+
+**WU2 — API** (2026-10-14, PR #524): `pnpm --filter @vaqcrow/api test` 157 archivos / 3126 tests · `contracts` 749 · pgTAP `assistant_access.sql` 33/33 · `openapi:generate` 57 paths · `typecheck`/`lint`/`boundaries`/`test:boundaries` OK. **Migración remota aplicada y verificada** (`profile.chat_enabled` + `assistant_question`, RLS on, service_role-only), historial alineado a `20261014190000`. Vars `LLM_ASSISTANT_ROUTER_MODEL`/`LLM_ASSISTANT_ANSWER_MODEL` = `glm-5.3-flash` en Railway.
+
+**WU3 — Web + admin** (2026-10-14): `pnpm --filter @vaqcrow/web test` 237 archivos / 2305 tests, re-corrido por el padre · `api` 3127 · `contracts` 750 · `openapi:generate` 57 paths · `typecheck`/`lint`/`boundaries`/`test:boundaries` OK.
+
+**Advisory:** el `screen` de una cita (`assistantCitationSchema`) está tipado como string, no restringido a una ruta interna. Hoy el valor es autoría del repo (front matter de la wiki) y el test estructural lo fija a las rutas reales, así que no es un hallazgo; restringirlo a `/`-prefijo en el contrato es un endurecimiento barato.
 
 ## Log
 
@@ -69,3 +79,5 @@ Se completa a medida que avanza cada WU.
 - **L2 (2026-10-14).** Las 10 preguntas abiertas de #499 se respondieron de a una (D1–D10) y quedaron registradas en el issue (comentario `6174765370`). Tablero #499 → **In progress**.
 - **L3 (2026-10-14).** **Spike** corrido por el owner (script en el temp, informe `spike-report.json`): ambos base URLs andan, `x-opencode-session` obligatorio, los modelos son reasoners y `content` puede venir `null` si el razonamiento agota `max_tokens`, `response_format` no ayuda. Detalle en §Spike.
 - **L4 (2026-10-14).** **WU1 entregada** (commit WU1 + el de las tres pantallas): `docs/wiki/` con `schema.md`, 16 páginas, `index.md`, `log.md` y `tests/wiki-structure.test.ts` (19 tests). Delegado a un writer (backstop de contexto). **PR #523 mergeado** (`266dd34`). Aperturas: `centro-de-ayuda`, `/reports` y las dos guías tienen grounding blando (su copy vive en código); `storybook.md` fuera por D1.
+- **L5 (2026-10-14).** **WU2 entregada** (commit `60198f4`, PR #524): API del asistente (endpoint, guardias, flag, tope, toggle de admin, migración, config, Dockerfile). Delegado a un writer. Streaming **diferido** (JSON único, decisión del owner). El router suma el scope `account` (D3). Desvíos por tests ineditables: `parseAssistantModels` en `index.ts`, `AdminChatAccessWriterPort` hermano, helpers espejados de `packages/ai`. Migración remota aplicada; vars en Railway.
+- **L6 (2026-10-14).** **WU3 entregada** (rama `…-03-web`): chat compartido en el flotante (landing) y `/help` para `PYME`/`INVERSOR`, anónimo solo FAQ, store por montaje, y el toggle de acceso en `/admin` → Usuarios. Para que el toggle muestre el estado real se extendió `AdminUser` con `chatEnabled` y el lector del API proyecta `chat_enabled` (openapi regenerado). Copy nueva (fuera de D8) para el 403: «El asistente todavía no está habilitado para tu cuenta.» Desvío forzado: `unavailable-admin-users-port.ts` (implementación nula del port extendido). Delegado a un writer.

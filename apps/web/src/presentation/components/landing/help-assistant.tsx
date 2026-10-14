@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { IconType } from "react-icons";
 import { IoChatbubbleEllipsesOutline, IoChevronForwardOutline, IoCloseOutline, IoSendOutline } from "react-icons/io5";
+import { ASSISTANT_COPY } from "@/application/assistant/copy";
+import { useSession } from "@/state/session-store-provider";
+import { AssistantChat } from "../assistant/assistant-chat";
 import { BrandIsotipo } from "../brand-isotipo";
 
 /**
@@ -34,6 +37,12 @@ import { BrandIsotipo } from "../brand-isotipo";
  *
  * The toggle keeps the template's `aria-label="Abrir ayuda"` in both states and
  * exposes the state through `aria-expanded`.
+ *
+ * #499/WU3: a signed-in `PYME` or `INVERSOR` (owner decision D7) gets the shared
+ * `AssistantChat` in place of the disabled field and the «Próximamente» copy; an
+ * anonymous visitor, and an `ADMIN`, keeps the view above unchanged. The role is
+ * read through `useSession`, so the panel only ever shows what the verified
+ * principal permits.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -57,7 +66,7 @@ function QuickLink({ label, href }: { readonly label: string; readonly href: str
   );
 }
 
-function Panel({ onClose }: { readonly onClose: () => void }) {
+function Panel({ onClose, canChat }: { readonly onClose: () => void; readonly canChat: boolean }) {
   return (
     <div
       role="dialog"
@@ -70,8 +79,10 @@ function Panel({ onClose }: { readonly onClose: () => void }) {
             <BrandIsotipo />
           </span>
           <div>
-            <div className="text-[15px] font-bold">Asistente de Vaqcrow</div>
-            <div className="text-xs">Próximamente con respuestas de la documentación</div>
+            <div className="text-[15px] font-bold">{ASSISTANT_COPY.title}</div>
+            <div className="text-xs">
+              {canChat ? ASSISTANT_COPY.subtitle : "Próximamente con respuestas de la documentación"}
+            </div>
           </div>
         </div>
         <button
@@ -85,34 +96,46 @@ function Panel({ onClose }: { readonly onClose: () => void }) {
       </div>
 
       <div className="flex flex-col gap-2.5 p-4">
-        <div className="max-w-[90%] self-start rounded-[12px_12px_12px_4px] bg-surface px-3 py-2.5 text-sm leading-[1.5]">
-          Hola. Todavía no estoy conectado, pero estas respuestas te pueden servir:
-        </div>
-
-        {QUICK_LINKS.map((link) => (
-          <QuickLink key={link.label} label={link.label} href={link.href} />
-        ))}
-
-        <label className="mt-1 flex h-11 items-center gap-2 rounded-control border border-dashed border-control pr-1.5 pl-3">
-          <span className="sr-only">Escribí tu pregunta</span>
-          <input
-            disabled
-            placeholder="Escribir pregunta · próximamente"
-            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-text-secondary outline-none"
-          />
-          <IoSendOutline aria-hidden="true" focusable="false" className="text-lg text-text-secondary" />
-        </label>
-
-        <Link href="/help" className={`text-center text-[13px] font-semibold ${FOCUS_RING}`}>
-          Ir al centro de ayuda
-        </Link>
+        {canChat ? <AssistantChat /> : <AnonymousPanelBody />}
       </div>
     </div>
   );
 }
 
+/** The anonymous view, unchanged: the greeting, the quick links and the disabled field. */
+function AnonymousPanelBody() {
+  return (
+    <>
+      <div className="max-w-[90%] self-start rounded-[12px_12px_12px_4px] bg-surface px-3 py-2.5 text-sm leading-[1.5]">
+        Hola. Todavía no estoy conectado, pero estas respuestas te pueden servir:
+      </div>
+
+      {QUICK_LINKS.map((link) => (
+        <QuickLink key={link.label} label={link.label} href={link.href} />
+      ))}
+
+      <label className="mt-1 flex h-11 items-center gap-2 rounded-control border border-dashed border-control pr-1.5 pl-3">
+        <span className="sr-only">Escribí tu pregunta</span>
+        <input
+          disabled
+          placeholder="Escribir pregunta · próximamente"
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm text-text-secondary outline-none"
+        />
+        <IoSendOutline aria-hidden="true" focusable="false" className="text-lg text-text-secondary" />
+      </label>
+
+      <Link href="/help" className={`text-center text-[13px] font-semibold ${FOCUS_RING}`}>
+        Ir al centro de ayuda
+      </Link>
+    </>
+  );
+}
+
 export function HelpAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  // #499/WU3: a PYME or INVERSOR gets the chat; everyone else keeps the FAQ view.
+  const role = useSession((state) => state.principal?.role ?? null);
+  const canChat = role === "PYME" || role === "INVERSOR";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -127,7 +150,7 @@ export function HelpAssistant() {
 
   return (
     <div className="fixed right-6 bottom-6 z-30 flex flex-col items-end gap-3">
-      {isOpen ? <Panel onClose={() => setIsOpen(false)} /> : null}
+      {isOpen ? <Panel onClose={() => setIsOpen(false)} canChat={canChat} /> : null}
 
       <button
         type="button"
