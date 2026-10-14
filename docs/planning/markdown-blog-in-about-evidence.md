@@ -2,8 +2,8 @@
 
 > Documento de cierre de Feature. Consolida la evidencia de la Feature [#498](https://github.com/reyduar/Vaqcrow/issues/498) ("Feature: Publish a Markdown Blog in About backed by docs/guides"), re-ejecuta las verificaciones locales que esta unidad puede correr en su árbol de trabajo y mapea cada criterio de aceptación de la Feature, citado textualmente, a su resultado y a la fuente de ese resultado. La bitácora de iteración que lo alimenta es [[odd/tasks/publish-a-markdown-blog|Bitácora: Blog en Markdown dentro de «Acerca de»]].
 
-> [!warning] Estado de entrega: la base está en `main`; la web y el artículo no
-> La Feature se entrega **encadenada a `main` en tres PRs** (decisión del owner, 2026-10-14). Está en `main` la **PR1** —migración `blog_post` + API— vía [#517](https://github.com/reyduar/Vaqcrow/pull/517), más sus dos correcciones de build ([#518](https://github.com/reyduar/Vaqcrow/pull/518) y [#519](https://github.com/reyduar/Vaqcrow/pull/519)). La **PR2 — la web (páginas, renderer y sección «Blog» en `/about`)** vive en la rama `Vaqcrow#498_Feat_…-02-web-blog` y **todavía no está mergeada**; la **PR3 — este artículo y esta evidencia** vive en la rama `…-03-article-and-evidence`. Por eso, en `main` **hoy no existen** `/blog` ni `/blog/[slug]` ni la sección «Blog» de `/about`: recién aparecen cuando la PR2 entrega. Este documento no reporta un estado mergeado que no existe.
+> [!success] Estado de entrega: la Feature está completa en `main`
+> La Feature se entregó **encadenada a `main` en tres PRs** (decisión del owner, 2026-10-14) y **las tres están mergeadas**: la PR1 —migración `blog_post` + API— vía [#517](https://github.com/reyduar/Vaqcrow/pull/517), con sus dos correcciones de build ([#518](https://github.com/reyduar/Vaqcrow/pull/518) y [#519](https://github.com/reyduar/Vaqcrow/pull/519)); la PR2 —la web (páginas, renderer y sección «Blog» en `/about`)— vía [#520](https://github.com/reyduar/Vaqcrow/pull/520); y la PR3 —el primer artículo, su seed y este documento— vía [#521](https://github.com/reyduar/Vaqcrow/pull/521). En `main` existen `/blog`, `/blog/[slug]` y la sección «Blog» de `/about`; en producción la API reconstruida ya sirve el artículo (`GET /blog/vaqcrow-sobre-stellar` → 200).
 
 > [!info] La web del Blog sólo se ve en producción, no en los previews de Vercel
 > `NEXT_PUBLIC_API_BASE_URL` es de producción: un deployment de preview no la tiene. Además, la API sólo acepta los orígenes de `CORS_ALLOWED_ORIGINS` —una lista exacta que, fuera de `local`, no tiene default (`cors-config.ts`)—, así que el navegador de un preview no puede llamar a la API. Sin backend, el puerto del Blog cae al objeto nulo y `/about` muestra el `BackendNotice` en lugar de la lista. Es un límite conocido y aceptado del entorno, no un defecto de la Feature.
@@ -19,9 +19,9 @@ Las seis preguntas abiertas del issue se resolvieron el 2026-10-14 (decisiones *
 | WU1 | Migración `blog_post` (tabla + RLS + grants) y su pgTAP | [#517](https://github.com/reyduar/Vaqcrow/pull/517) | en `main` |
 | WU2 | API (contrato, puertos, adaptadores, rutas) | [#517](https://github.com/reyduar/Vaqcrow/pull/517) | en `main` |
 | — | Correcciones de build de la API (`docs/` en el contexto y watch) | [#518](https://github.com/reyduar/Vaqcrow/pull/518), [#519](https://github.com/reyduar/Vaqcrow/pull/519) | en `main` |
-| WU3 | Web (lista, artículo, renderer, sección en `/about`) | PR2 — `…-02-web-blog` | abierta, no mergeada |
-| WU4 | Primer artículo + seed de `blog_post` + pgTAP del seed | PR3 — `…-03-article-and-evidence` | esta unidad |
-| WU5 | Este documento + sync de `demo-tasks-list.md` | PR3 — `…-03-article-and-evidence` | esta unidad |
+| WU3 | Web (lista, artículo, renderer, sección en `/about`) | [#520](https://github.com/reyduar/Vaqcrow/pull/520) | en `main` |
+| WU4 | Primer artículo + seed de `blog_post` + pgTAP del seed | [#521](https://github.com/reyduar/Vaqcrow/pull/521) | en `main` |
+| WU5 | Este documento + sync de `demo-tasks-list.md` | [#521](https://github.com/reyduar/Vaqcrow/pull/521) | en `main` |
 
 ## 2. Cómo leer esta evidencia
 
