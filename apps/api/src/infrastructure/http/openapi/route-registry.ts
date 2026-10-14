@@ -7,6 +7,8 @@ import {
   applicationAssessmentReadSchema,
   applicationManualReviewContextSchema,
   auditLogPageSchema,
+  blogPostListSchema,
+  blogPostSchema,
   campaignSnapshotSchema,
   changeUserRoleCommandSchema,
   contractInvocationSchema,
@@ -126,6 +128,22 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
     description: "AUTHENTICATED (any role). Unpublished or unknown ids are 404.",
     success: { 200: { description: "The campaign detail.", schema: campaignDetailSchema } },
     errors: [400, 404, 503]
+  },
+
+  // ---- Blog ----------------------------------------------------------------
+  "GET /blog": {
+    tag: "Blog",
+    summary: "List published blog articles",
+    description: "PUBLIC. One unpaginated list of published articles. Short-lived cache.",
+    success: { 200: { description: "The published articles.", schema: blogPostListSchema } },
+    errors: [503]
+  },
+  "GET /blog/:slug": {
+    tag: "Blog",
+    summary: "Read one published blog article",
+    description: "PUBLIC. Unknown or unpublished slugs are 404; a published row whose Markdown cannot be read is 503.",
+    success: { 200: { description: "The article with its front matter stripped.", schema: blogPostSchema } },
+    errors: [404, 503]
   },
 
   // ---- PyME ----------------------------------------------------------------

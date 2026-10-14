@@ -1,0 +1,4 @@
+# Placeholder so `docs/guides/blog/` exists for the API image COPY (#498/WU2).
+# Published articles are `<slug>.md` files in this directory, seeded by a
+# migration in `public.blog_post` (owner decision D3). Keep this file so an
+# otherwise-empty directory is still committed and the Dockerfile COPY resolves.

@@ -41,6 +41,13 @@ describe("resolveRoutePolicy", () => {
     expect(resolveRoutePolicy("HEAD", "/marketplace/campaigns/:campaignId/image")).toEqual({ kind: "public" });
   });
 
+  it("lists the public blog routes as public (#498/WU2)", () => {
+    expect(resolveRoutePolicy("GET", "/blog")).toEqual({ kind: "public" });
+    expect(resolveRoutePolicy("HEAD", "/blog")).toEqual({ kind: "public" });
+    expect(resolveRoutePolicy("GET", "/blog/:slug")).toEqual({ kind: "public" });
+    expect(resolveRoutePolicy("HEAD", "/blog/:slug")).toEqual({ kind: "public" });
+  });
+
   it("lists the notification routes as authenticated for every role", () => {
     const routes = [
       "GET /notifications",

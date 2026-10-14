@@ -41,6 +41,8 @@ import { SupabaseInvestorKycRepository } from "./infrastructure/adapters/supabas
 import { SupabasePymeDocumentRepository } from "./infrastructure/adapters/supabase-pyme-document-repository.js";
 import { SupabaseNotificationRepository } from "./infrastructure/adapters/supabase-notification-repository.js";
 import { SupabaseMarketplaceCampaignRepository } from "./infrastructure/adapters/supabase-marketplace-campaign-repository.js";
+import { SupabaseBlogPostRepository } from "./infrastructure/adapters/supabase-blog-post-repository.js";
+import { FileSystemBlogContentSource, resolveGuidesRoot } from "./infrastructure/adapters/filesystem-blog-content-source.js";
 import { SupabaseCampaignDetailRepository } from "./infrastructure/adapters/supabase-campaign-detail-repository.js";
 import { SupabasePortfolioRepository } from "./infrastructure/adapters/supabase-portfolio-repository.js";
 import { SupabaseReportsRepository } from "./infrastructure/adapters/supabase-reports-repository.js";
@@ -223,6 +225,13 @@ const rateTableRepository = new SupabaseRateTableRepository(supabase);
 // `marketplace_campaign` view as service_role. It carries no PII and only
 // published (confirmed vault, open campaign) rows.
 const marketplaceCampaignRepository = new SupabaseMarketplaceCampaignRepository(supabase);
+
+// The public blog (#498/WU2; owner decisions D2/D3): `public.blog_post` maps a
+// stable slug to its Markdown source file plus the listing metadata, and the API
+// serves the Markdown bundled into its image (`docs/guides/blog/`, copied in the
+// Dockerfile). Publishing an article is a PR + deploy; there is no admin CRUD.
+const blogPostRepository = new SupabaseBlogPostRepository(supabase);
+const blogContentSource = new FileSystemBlogContentSource({ guidesRoot: resolveGuidesRoot() });
 
 // The campaign detail (#422/WU1; public since #485): reads the joined
 // `marketplace_campaign_detail` view as service_role. No PII; published rows only.
@@ -458,6 +467,9 @@ const app = buildApp({
   // The PyME dashboard (#434/WU1): the verified principal's own user id is the
   // owner, and only that owner's campaigns are read.
   myCampaigns: { myCampaigns: myCampaignsRepository, now: () => new Date(), explorerBaseUrl: config.stellar.explorerUrl },
+  // The public blog (#498/WU2): published `blog_post` rows plus the Markdown
+  // bundled in the image. Read-only, no session, no PII.
+  blog: { posts: blogPostRepository, source: blogContentSource },
   // The PyME Freighter wallet connection (#407/T1b): a signed, single-use
   // challenge proves account ownership before the key is stored on the profile.
   // SEP-53 verification lives in `StellarWalletSignature` (infrastructure/).

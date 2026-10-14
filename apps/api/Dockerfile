@@ -74,6 +74,12 @@ COPY --from=build /app/packages/ai/package.json ./packages/ai/
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/
 
+# The blog Markdown the API serves at runtime (#498/WU2, owner decision D2). The
+# body lives in the repository, so it is copied straight from the build context
+# (the monorepo root) — not from the build stage — to `docs/guides/blog` under
+# /app, where `resolveGuidesRoot()` finds it via the workspace manifest below.
+COPY docs/guides/blog ./docs/guides/blog
+
 # The deps stage installed with devDependencies, because the TypeScript build
 # needs them. Production dependencies are therefore reinstalled from scratch
 # here instead of copying the deps node_modules wholesale.
