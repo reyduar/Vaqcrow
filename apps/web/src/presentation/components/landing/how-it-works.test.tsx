@@ -17,6 +17,15 @@ describe("「Cómo funciona」 — La traza", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Cómo funciona" })).toBeTruthy();
   });
 
+  it("announces the section with its eyebrow above the title (#512)", () => {
+    render(<HowItWorks />);
+
+    const eyebrow = screen.getByText("El recorrido completo");
+    expect(eyebrow.className).toContain("bg-brand-accent-tint");
+    // Same treatment as the guides' eyebrow, and it sits directly above the h2.
+    expect(eyebrow.nextElementSibling?.tagName).toBe("H2");
+  });
+
   it("renders the linear trace in order, with the two branches as the last fork's outcomes", () => {
     render(<HowItWorks />);
 

@@ -8,6 +8,7 @@ import {
   IoEllipseOutline,
   IoGlobeOutline,
   IoHelpCircleOutline,
+  IoMapOutline,
   IoPersonAddOutline,
   IoPersonCircleOutline,
   IoReceiptOutline,
@@ -165,6 +166,13 @@ export function HowItWorks() {
     <section id="como-funciona" aria-labelledby="how-t" className="border-t border-border">
       <div className="mx-auto flex w-full max-w-[1264px] flex-col gap-14 px-8 py-24">
         <div className="flex max-w-[760px] flex-col gap-4">
+          {/* Eyebrow (owner request, 2026-10-13; #512): the guides' treatment
+              (`guide-hero.tsx`), naming what the section shows without repeating
+              the title or borrowing the word «guía», which is its own surface. */}
+          <span className="inline-flex w-fit items-center gap-1 rounded-pill bg-brand-accent-tint px-2.5 py-1 text-xs font-semibold text-brand-accent-text">
+            <IoMapOutline aria-hidden="true" focusable="false" className="text-[14px]" />
+            El recorrido completo
+          </span>
           <h2 id="how-t" className="m-0 text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-balance">
             Cómo funciona
           </h2>
