@@ -170,6 +170,24 @@ describe("CampaignDetail (detail sections)", () => {
     ).toBeInTheDocument();
   });
 
+  it("wraps the funding badge row so the TESTNET trust badge never runs past the card (#501)", async () => {
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail() }) });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+    const aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+
+    const status = within(aside).getByText("Fondeo abierto");
+    const testnet = within(aside).getByText("TESTNET · Activos sin valor económico");
+
+    // Both badges share one row, and that row wraps: `justify-between` without
+    // `flex-wrap` is what pushed the long TESTNET label past the card's edge.
+    const row = status.closest("div");
+    expect(row).toBe(testnet.closest("div"));
+    expect(row?.className).toContain("flex-wrap");
+    // §2: a trust badge is never truncated — the full sentence stays the label.
+    expect(testnet).toBeVisible();
+  });
+
   it("links the vault to the explorer in the aside when the API sends its URL (#438/WU5)", async () => {
     const VAULT = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
     const url = `https://explorer.example/contract/${VAULT}`;

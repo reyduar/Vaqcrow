@@ -447,7 +447,10 @@ function FundingAside({
   return (
     <aside aria-label="Aportar a la campaña" className="flex min-w-0 flex-[1_1_340px] flex-col gap-4 lg:sticky lg:top-24">
       <div className="flex flex-col gap-4 rounded-card border border-border bg-raised p-6">
-        <div className="flex items-center justify-between gap-2">
+        {/* #501: this row wraps. `TESTNET · Activos sin valor económico` is a trust
+            badge (§2), so it must stay fully readable — never truncated — and the
+            row makes room instead of running past the card's edge. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="transaction" label={STATUS_LABEL[detail.status]} tone={STATUS_TONE[detail.status]} lang="es" />
           <Badge variant="testnet" label={microcopy.testnetBadge} lang="es" size="compact" />
         </div>
