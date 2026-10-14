@@ -13,6 +13,8 @@ Este documento convierte el backlog canónico de GitHub en una secuencia humana 
 
 ## Comenzar aquí
 
+> **Estado al 2026-10-14: 243 `Done`, 4 `Backlog` y 2 `In review` (249 ítems).** Verificado en el Project canónico `Vaqcrow-TFM` #4 el 2026-10-14. De las seis unidades de mejora posteriores a `v1.1.0` ([[#Mejoras posteriores a v1.1.0|Mejoras posteriores a v1.1.0]]), cuatro quedaron en `main`: [#502](#^issue-502) ([PR #504](https://github.com/reyduar/Vaqcrow/pull/504)), [#497](#^issue-497) ([PR #505](https://github.com/reyduar/Vaqcrow/pull/505)), [#500](#^issue-500) ([PR #508](https://github.com/reyduar/Vaqcrow/pull/508)) y [#501](#^issue-501) ([PR #509](https://github.com/reyduar/Vaqcrow/pull/509)); [#498](#^issue-498) y [#499](#^issue-499) siguen en `Backlog`, esperando que el owner responda sus preguntas abiertas. El pulido del header y de la sección abrió cuatro unidades de seguimiento, inventariadas más abajo: [#506](#^issue-506) (la versión de regla que citaban las guías), [#510](#^issue-510) (el nav centrado), [#512](#^issue-512) (la etiqueta de la sección «Cómo funciona») y [#514](#^issue-514) (el estado activo de un item con fragmento).
+>
 > **Estado al 2026-10-13: 238 `Done`, 6 `Backlog` y 1 `In review` (245 ítems).** Verificado en el Project canónico `Vaqcrow-TFM` #4 el 2026-10-13. [#495](https://github.com/reyduar/Vaqcrow/issues/495) (reset guardado de datos de la demo) quedó en `main` vía [PR #496](https://github.com/reyduar/Vaqcrow/pull/496). El owner abrió seis unidades de mejora posteriores a `v1.1.0`, inventariadas en [[#Mejoras posteriores a v1.1.0|Mejoras posteriores a v1.1.0]]: [#497](#^issue-497) («Cómo funciona» con el workflow completo), [#498](#^issue-498) (Blog en Markdown), [#499](#^issue-499) (asistente de ayuda con wiki compilada estilo Karpathy, solo para usuarios logueados), [#500](#^issue-500) («Guía del inversor» en el header público), [#501](#^issue-501) (desbordes de texto y CTA de Explorar como botón primario) y [#502](#^issue-502) (skill OWASP Top 10). De ellas, [#502](#^issue-502) quedó en `main` vía [PR #504](https://github.com/reyduar/Vaqcrow/pull/504) y [#497](#^issue-497) está `In review` vía [PR #505](https://github.com/reyduar/Vaqcrow/pull/505). Siguen abiertas además [#490](https://github.com/reyduar/Vaqcrow/issues/490) y [#491](https://github.com/reyduar/Vaqcrow/issues/491), con su calendario.
 >
 > **Estado al 2026-10-12: el tablero queda prácticamente cerrado (236 `Done`, 2 `Backlog`), y lo abierto es trabajo posterior a la fecha de la demo.** Verificado en el Project canónico `Vaqcrow-TFM` #4 el 2026-10-12. El 2026-10-12 se cerró la consola de administración —Epic [#375](#^issue-375), Feature [#390](#^issue-390) (mergeada vía [PR #482](https://github.com/reyduar/Vaqcrow/pull/482)) y sus Tasks [#391](#^issue-391)–[#393](#^issue-393)— y el MVP quedó tageado `v1.0.0` con el paquete de evidencia de [#33](#^issue-33). Sobre eso se entregaron cuatro Tasks de UI, una unit de foundation y la Feature del detalle público, todas ya en `main`: [#478](https://github.com/reyduar/Vaqcrow/issues/478) (favicon, [PR #484](https://github.com/reyduar/Vaqcrow/pull/484)), [#479](https://github.com/reyduar/Vaqcrow/issues/479) (cursor de mano en botones, [PR #489](https://github.com/reyduar/Vaqcrow/pull/489)), [#480](https://github.com/reyduar/Vaqcrow/issues/480) (distinguir vacío de fallo de carga, [PR #483](https://github.com/reyduar/Vaqcrow/pull/483)), [#481](https://github.com/reyduar/Vaqcrow/issues/481) (detalle sintético desde la card destacada, [PR #486](https://github.com/reyduar/Vaqcrow/pull/486)), [#487](https://github.com/reyduar/Vaqcrow/issues/487) (OpenAPI 3.1 del API + Swagger UI publicada en GitHub Pages, [PR #488](https://github.com/reyduar/Vaqcrow/pull/488)) y [#485](https://github.com/reyduar/Vaqcrow/issues/485) (detalle de campaña **real** público y compartible, [PR #493](https://github.com/reyduar/Vaqcrow/pull/493)). Todo eso se cerró con el release **[`v1.1.0`](https://github.com/reyduar/Vaqcrow/releases/tag/v1.1.0)** (tag anotado sobre `fc868a03`). Los 2 ítems abiertos son trabajo **posterior** a la demo y no bloquean nada: dos pendientes de calendario — [#490](https://github.com/reyduar/Vaqcrow/issues/490), migrar la configuración de Railway a IaC antes del **2026-12-01**, y [#491](https://github.com/reyduar/Vaqcrow/issues/491), restaurar la demo tras el **reset de Testnet del 2026-12-16** (procedimiento en [Reset de Testnet — runbook](./testnet-reset-runbook.md)).
@@ -2769,17 +2771,17 @@ La siguiente Feature cuelga del Epic [#10](#^issue-10) (ya inventariado), no de 
 
 ## Mejoras posteriores a v1.1.0
 
-Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0`](https://github.com/reyduar/Vaqcrow/releases/tag/v1.1.0). No cuelgan de un Epic. Las prioridades las propuso el agente y el owner las aceptó. [#502](#^issue-502) ya entró ([PR #504](https://github.com/reyduar/Vaqcrow/pull/504)), así que [#498](#^issue-498) y [#499](#^issue-499) se evalúan con la skill de seguridad ya puesta.
+Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0`](https://github.com/reyduar/Vaqcrow/releases/tag/v1.1.0). No cuelgan de un Epic. Las prioridades las propuso el agente y el owner las aceptó. Cuatro ya están en `main` —[#502](#^issue-502) primero, como estaba previsto, y después [#497](#^issue-497), [#500](#^issue-500) y [#501](#^issue-501)—, y el pulido posterior abrió cuatro unidades de seguimiento: [#506](#^issue-506) (la versión de regla que citaban las guías), [#510](#^issue-510) (el nav centrado), [#512](#^issue-512) (la etiqueta de la sección de [#497](#^issue-497)) y [#514](#^issue-514) (el item del nav con fragmento).
 
 > [!question] Preguntas abiertas antes de implementar
-> [#498](#^issue-498) y [#499](#^issue-499) registran preguntas abiertas en su cuerpo; se responden en el issue antes de arrancar. Comparten una: si `docs/guides/storybook.md` (guía para desarrolladores) se publica en el Blog y entra en la wiki del asistente, o si los artículos públicos viven en una subcarpeta propia. Las de [#497](#^issue-497) quedaron respondidas: la sección se rediseñó como «La traza» y su texto vive en `docs/guides/como-funciona-vaqcrow.md`.
+> [#498](#^issue-498) y [#499](#^issue-499) siguen en `Backlog` y registran preguntas abiertas en su cuerpo; se responden en el issue antes de arrancar. Comparten una: si `docs/guides/storybook.md` (guía para desarrolladores) se publica en el Blog y entra en la wiki del asistente, o si los artículos públicos viven en una subcarpeta propia. Las de [#497](#^issue-497) quedaron respondidas: la sección se rediseñó como «La traza» y su texto vive en `docs/guides/como-funciona-vaqcrow.md`.
 
 ### #497 — Ampliar «Cómo funciona» de la landing al workflow completo
 
 ^issue-497
 
 - **Título original:** `Task: Expand the landing "How it works" section to the full end-to-end workflow`
-- **GitHub y estado:** [issue #497](https://github.com/reyduar/Vaqcrow/issues/497) · Tipo `Task` · Área `frontend` · Prioridad `Medium` · Workflow `In review` ([PR #505](https://github.com/reyduar/Vaqcrow/pull/505)).
+- **GitHub y estado:** [issue #497](https://github.com/reyduar/Vaqcrow/issues/497) · Tipo `Task` · Área `frontend` · Prioridad `Medium` · Workflow `Done` ([PR #505](https://github.com/reyduar/Vaqcrow/pull/505), mergeado el 2026-10-13).
 - **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#418](#^issue-418) y [#394](#^issue-394).
 - **Objetivo:** que `#como-funciona` cubra el workflow de punta a punta —onboarding de la PyME, registro con documentos, evaluación por IA, wallet Freighter, aprobación humana, bóveda, publicación, onboarding y aporte del inversor, regla All-or-Nothing, cobro de la PyME y distribución mensual— y explique en qué se basan las recompensas, verificado contra el cálculo del dominio. Se aparta de los cuatro pasos del template por decisión del owner: la sección se rediseñó como «La traza» —una traza continua del recorrido completo, con la bifurcación de la regla todo o nada— y su texto se lee en build desde `docs/guides/como-funciona-vaqcrow.md`, la fuente única de la sección, del centro de ayuda y del corpus del asistente.
 - **Orden:** independiente.
@@ -2816,7 +2818,7 @@ Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0
 ^issue-500
 
 - **Título original:** `Task: Add the investor guide link to the public landing header`
-- **GitHub y estado:** [issue #500](https://github.com/reyduar/Vaqcrow/issues/500) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #500](https://github.com/reyduar/Vaqcrow/issues/500) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `Done` ([PR #508](https://github.com/reyduar/Vaqcrow/pull/508) más su seguimiento [#510](#^issue-510) en [PR #511](https://github.com/reyduar/Vaqcrow/pull/511), mergeados el 2026-10-13). **Entrega:** la quinta entrada no entraba en el header. El owner decidió recuperar el ancho del selector de tema —colapsado a un trigger que abre un menú— y llevar el header a **ancho completo**; el nav queda centrado entre la marca y las acciones, y el header deja de alinearse con las secciones de abajo arriba de 1264 px (precio declarado). El presupuesto de ancho y la regla de medición del e2e quedaron documentados en `demo-navbar.tsx`.
 - **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#394](#^issue-394) y [#378](#^issue-378).
 - **Objetivo:** agregar «Guía del inversor» → `/investor-guide` a `PUBLIC_VIEW.nav` (`apps/web/src/application/navigation/shell-nav.ts`), en desktop y mobile; hoy solo aparece en el menú del `INVERSOR` logueado.
 - **Orden:** independiente.
@@ -2828,7 +2830,7 @@ Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0
 ^issue-501
 
 - **Título original:** `Task: Fix text overflow across screens and make the Explore card CTA a primary button`
-- **GitHub y estado:** [issue #501](https://github.com/reyduar/Vaqcrow/issues/501) · Tipo `Task` · Área `frontend` · Etiqueta `bug` · Prioridad `Medium` · Workflow `Backlog`.
+- **GitHub y estado:** [issue #501](https://github.com/reyduar/Vaqcrow/issues/501) · Tipo `Task` · Área `frontend` · Etiqueta `bug` · Prioridad `Medium` · Workflow `Done` ([PR #509](https://github.com/reyduar/Vaqcrow/pull/509), mergeado el 2026-10-14). **Entrega:** la fila de badges del aside del detalle envuelve (el badge de confianza nunca se trunca); se agregó `apps/web/e2e/no-overflow.spec.ts` (9 pantallas públicas × 375/768/1280, con los límites declarados); y «Ver evidencia y riesgo» es un botón primario **en todas** las cards —Explorar, el grid «PyMEs en campaña» y el card destacado— por decisión del owner, sin perder la semántica de link.
 - **Jerarquía y bloqueos:** sin padre ni bloqueos. Relacionada con [#414](#^issue-414) y [#422](#^issue-422).
 - **Objetivo:** corregir el badge «TESTNET · Activos sin valor económico» que se sale del card del detalle de campaña, auditar todas las pantallas a 375/768/1280 px y convertir «Ver evidencia y riesgo» de las cards de Explorar en un botón primario sin perder la semántica de link.
 - **Orden:** independiente.
@@ -2846,6 +2848,54 @@ Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0
 - **Orden:** cerrada; entró antes que [#498](#^issue-498) y [#499](#^issue-499), que ya se evalúan con la skill de seguridad puesta.
 
 **Rama propuesta.** `Vaqcrow#502_Technical_Add_an_OWASP_Top_10_security_skill_and_require_it_in_AGENTS_md_CLAUDE_md`.
+
+### #506 — La versión de regla de revenue share que citaban las guías
+
+^issue-506
+
+- **Título original:** `Task: Fix the revenue-share rule version cited in the investor and entrepreneur guides`
+- **GitHub y estado:** [issue #506](https://github.com/reyduar/Vaqcrow/issues/506) · Tipo `Task` · Área `docs` (también `frontend`) · Etiqueta `bug` · Prioridad `Medium` · Workflow `Done`. **Entrega:** el arreglo entró a `main` dentro de [PR #505](https://github.com/reyduar/Vaqcrow/pull/505) —se escribió mientras [#497](#^issue-497) estaba abierto y su merge ganó la carrera— y el [PR #507](https://github.com/reyduar/Vaqcrow/pull/507) de la rama propia se cerró sin merge.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Hallazgo de [#497](#^issue-497).
+- **Objetivo:** que las dos guías citen la versión canónica (`RS-2026-01`, fijada por `demo-ui.md` §10.2) en lugar del `rs-v1.2` de ejemplo del template, que no existe en el código, con `revenue-share-rule-version.test.ts` como guarda.
+- **Orden:** cerrada.
+
+**Rama propuesta.** `Vaqcrow#506_Task_Fix_the_revenue_share_rule_version_cited_in_the_investor_and_entrepreneur_guides`.
+
+### #510 — Centrar la navegación principal del header
+
+^issue-510
+
+- **Título original:** `Task: Centre the primary navigation in the header`
+- **GitHub y estado:** [issue #510](https://github.com/reyduar/Vaqcrow/issues/510) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `Done` ([PR #511](https://github.com/reyduar/Vaqcrow/pull/511), mergeado el 2026-10-14). **Entrega:** `@md:justify-center` en el `<nav>`; existe como rama propia porque el merge de [PR #508](https://github.com/reyduar/Vaqcrow/pull/508) corrió el push del centrado.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Seguimiento de [#500](#^issue-500).
+- **Objetivo:** que desde `@md` los links se centren en el espacio libre entre la marca y las acciones, sin tocar el disclosure móvil ni el presupuesto de ancho que mide `e2e/app-header.spec.ts`.
+- **Orden:** cerrada.
+
+**Rama propuesta.** `Vaqcrow#510_Task_Centre_the_primary_navigation_in_the_header`.
+
+### #512 — Etiqueta arriba del título de «Cómo funciona»
+
+^issue-512
+
+- **Título original:** `Task: Add an eyebrow above the 「Cómo funciona」 section title`
+- **GitHub y estado:** [issue #512](https://github.com/reyduar/Vaqcrow/issues/512) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `In review` ([PR #513](https://github.com/reyduar/Vaqcrow/pull/513)).
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Seguimiento de [#497](#^issue-497); la etiqueta de las guías ([#394](#^issue-394)) es el modelo.
+- **Objetivo:** una etiqueta arriba del título con el tratamiento de las guías (pill con tinte e ícono). Copy elegido por el agente, delegado por el owner: «El recorrido completo» —dice qué muestra la sección sin repetir el título visible ni usar la palabra «guía», que en esta app nombra otra superficie (`/investor-guide`, `/entrepreneur-guide`).
+- **Orden:** independiente.
+
+**Rama propuesta.** `Vaqcrow#512_Task_Add_an_eyebrow_above_the_Como_funciona_section_title`.
+
+### #514 — Resaltar el item del nav cuando su fragmento está seleccionado
+
+^issue-514
+
+- **Título original:** `Task: Highlight the Cómo funciona nav item when its section is selected`
+- **GitHub y estado:** [issue #514](https://github.com/reyduar/Vaqcrow/issues/514) · Tipo `Task` · Área `frontend` · Prioridad `Low` · Workflow `In review` ([PR #515](https://github.com/reyduar/Vaqcrow/pull/515)).
+- **Jerarquía y bloqueos:** sin padre ni bloqueos. Seguimiento de [#500](#^issue-500).
+- **Objetivo:** que «Cómo funciona» (`/#como-funciona`) se subraye al seleccionarse, igual que un link de ruta. **No es una regresión**: `isCurrentPath` rechaza todo href con `#` desde `aab98c6`, está fijado por un test y no existe scroll-spy; lo pedido es paridad, y el estado activo sigue siendo la URL. Agrega el puro `isCurrentLink(href, pathname, hash)` y `state/use-hash.ts` (fragmento con `useSyncExternalStore`). El scroll-spy quedó **fuera de alcance**, declinado por el owner.
+- **Orden:** independiente.
+
+**Rama propuesta.** `Vaqcrow#514_Task_Highlight_the_Como_funciona_nav_item_when_its_section_is_selected`.
 
 ## Discrepancias y exclusiones
 
