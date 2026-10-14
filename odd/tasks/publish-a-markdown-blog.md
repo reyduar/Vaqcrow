@@ -46,7 +46,7 @@ Del cuerpo de #498 (citas textuales de las acceptance criteria) más las decisio
 
 - [x] **WU1 — Migración `blog_post`.** Tabla + RLS + grants explícitos en una migración; probar en docker (`pnpm run test:db`), aplicar y verificar en el remoto — (S4).
 - [x] **WU2 — API.** Contrato en `packages/contracts`; puerto en `application/ports/`; adaptador que lee `docs/guides/blog/*.md` (bundleado en la imagen) con guarda anti path-traversal; front matter parseado; rutas `GET /blog` y `GET /blog/:slug`; tests funcionales — (S2, S3, S5, S7, S8, D2, D3).
-- [ ] **WU3 — Web.** `/blog` (lista), `/blog/[slug]` (layout de guía), renderer Markdown (`react-markdown` + `remark-gfm`, sin `rehype-raw`) por el gate de dependencias; sección «Blog» en `/about`; tests de componente — (S1, S2, S6, D4, D5, D6).
+- [x] **WU3 — Web.** `/blog` (lista), `/blog/[slug]` (layout de guía), renderer Markdown (`react-markdown` + `remark-gfm`, sin `rehype-raw`) por el gate de dependencias; sección «Blog» en `/about`; tests de componente — (S1, S2, S6, D4, D5, D6).
 - [ ] **WU4 — Primer artículo.** `docs/guides/blog/<slug>.md` en español, inspirado en EthicHub y adaptado a Stellar, con front matter y reglas de honestidad — (S10, D1).
 - [ ] **WU5 — Evidencia y cierre.** `docs/planning/<feature-slug>-evidence.md`, sync de `docs/planning/demo-tasks-list.md`, `pnpm run verify` — (S11).
 
@@ -59,6 +59,15 @@ Del cuerpo de #498 (citas textuales de las acceptance criteria) más las decisio
 - **A10 — Mishandling of Exceptional Conditions.** Falla cerrado: un archivo faltante o un error de I/O se resuelven a `unavailable`/`not_found`, nunca a un 200 vacío. **Sin hallazgo.**
 
 Pendiente para WU3: el renderer Markdown del web (no ejecutar HTML crudo sin sanitizar).
+
+**WU3 — Web** (2026-10-14), contra OWASP Top 10:2025:
+
+- **A05 — Injection (XSS).** `react-markdown` + `remark-gfm` **sin `rehype-raw`**: el HTML crudo del Markdown nunca se convierte en DOM (un test prueba que un `<script>` en el cuerpo queda inerte, sin elemento `script`); se conserva el `urlTransform` por defecto (descarta protocolos peligrosos como `javascript:`); sin `dangerouslySetInnerHTML`; links externos con `rel="noreferrer noopener"` + `target="_blank"`. **Sin hallazgo.**
+- **A03 — Injection.** El slug se percent-encode antes de la request; la API ya valida el slug y tiene su propia guarda anti-traversal (WU2). **Sin hallazgo.**
+- **A06 — Componentes vulnerables.** Dependencias agregadas por el gate cumplido (Context7, `/remarkjs/react-markdown`); lockfile actualizado; política de supply-chain de pnpm pasó. **Sin hallazgo.**
+- **A10 — Falla cerrada.** Cuerpo malformado → `unavailable`, 404 → `not_found`, transporte → `network`, sin backend → `not_configured`. **Sin hallazgo.**
+
+Riesgo residual declarado: las imágenes del Markdown cargan de hosts arbitrarios (superficie de tracking-pixel), mitigado porque el contenido es autoría del repo revisada por PR, no input de usuario. El cuerpo servido por la API **no** queda cubierto por el escaneo estático de copy prohibida (solo las etiquetas estáticas lo están).
 
 ## Verificación
 
@@ -77,6 +86,13 @@ Pendiente para WU3: el renderer Markdown del web (no ejecutar HTML crudo sin san
 - Prerequisito: `pnpm --filter @vaqcrow/contracts build` (la API resuelve `@vaqcrow/contracts` desde su `dist/`).
 - Guardas de drift actualizadas (autorizadas por el owner): `authorization.test.ts` (filas del Blog en la MATRIX + wiring) y `openapi.json` regenerado; tag `Blog` declarado en `TAG_LIST`.
 
+**WU3 — Web** (2026-10-14):
+
+- `pnpm --filter @vaqcrow/web test` → **PASS** (233 archivos / 2264 tests), re-corrido por el padre.
+- `pnpm --filter @vaqcrow/web build` → **PASS** (`/blog` estática, `/blog/[slug]` dinámica).
+- `pnpm run typecheck` → 8/8; `pnpm run lint` → 5/5 (0 errores; 2 warnings preexistentes ajenos); `pnpm run boundaries` → sin violaciones (1307 módulos).
+- RED→GREEN de los 11 archivos de test nuevos/actualizados (76 tests) contra módulos ausentes.
+
 ## Log
 
 - **L1 (2026-10-14, pedido original del owner, verbatim):** «Retomamos Vaqcrow. Leé Engram (topic handoff/next-session-497-516 y el resumen de la sesión 2026-10-13/14). Estado: main ya tiene adentro las mejoras posteriores a v1.1.0 —#502 (skill OWASP), #497 («La traza»), #500 + #510 (header), #501 (desbordes + CTA), #512 (etiqueta) y #514 (estado activo del nav con fragmento)—. Lo único abierto es el PR #516 (sincronización de docs/planning/demo-tasks-list.md con el tablero), listo para mergear. El workspace quedó limpio: solo main más la rama del PR #516. Primero: 1) verificá si #516 se mergeó, sincronizá main y borrá la rama si corresponde; 2) lo único trabado son #498 (Blog) y #499 (asistente RAG): necesitan que el owner responda sus preguntas abiertas —recordáselas, y en particular la que comparten: si docs/guides/storybook.md (guía para desarrolladores) se publica en el Blog y entra en la wiki del asistente, o si los artículos públicos viven en una subcarpeta propia; 3) proponé por dónde arrancar. No implementes nada sin que el owner elija. Contexto ya registrado: la sección «Cómo funciona» es la excepción acordada al template y su texto vive en docs/guides/como-funciona-vaqcrow.md, leído en build; el header es ancho completo y el nav está centrado. Regla de la casa: creá siempre la rama desde main explícito — el owner mergea rápido y dos veces un push a una rama en review quedó fuera del merge.»
@@ -85,3 +101,4 @@ Pendiente para WU3: el renderer Markdown del web (no ejecutar HTML crudo sin san
 - **L4 (2026-10-14).** **WU1 entregada** (commit WU1): migración `supabase/migrations/20261014120000_create_blog_post.sql` + test pgTAP `supabase/tests/blog_post.sql` (39 tests). Local RED→GREEN; remoto aplicado y verificado; historial remoto alineado al repo (ver Verificación). El apply vía MCP genera su propia versión, así que todo `apply_migration` de esta Feature se repara después a la versión del archivo (procedimiento a repetir en las migraciones siguientes, si las hay).
 - **L5 (2026-10-14).** **WU2 entregada** (commit WU2): contratos `blog.ts`; ports `blog-post-repository-port` y `blog-content-source-port`; parser puro de front matter; use cases `list-blog-posts` y `get-blog-post`; adaptadores `SupabaseBlogPostRepository` y `FileSystemBlogContentSource` (con `resolveGuidesRoot`); rutas públicas `GET /blog` y `GET /blog/:slug`; wiring en `build-app.ts`/`index.ts`; `Dockerfile` (`COPY docs/guides/blog`); `railway.json` (watch pattern `/docs/guides/blog/**`) y `docs/guides/blog/.gitkeep`. WU2 se implementó **delegando a un writer** (backstop de contexto, sesión larga); el owner autorizó ampliar las superficies para cerrar las guardas de drift (`authorization.test.ts`, `openapi.json`, `TAG_LIST`). Verificación y evaluación de seguridad arriba.
 - **L6 (2026-10-14).** **El deploy de la API en Railway (PR #517) falló:** `.dockerignore` excluía `docs/` entero, así que el `COPY docs/guides/blog` de WU2 no encontraba la ruta en el contexto de build (`CopyIgnoredFile`). Arreglado re-incluyendo solo el subárbol del blog en `.dockerignore` (`docs/*` + `!docs/guides` + `docs/guides/*` + `!docs/guides/blog`), dejando el resto de `docs/` fuera del contexto. Reproducido **RED→GREEN** con un sondeo de contexto (`COPY docs/guides/blog` en un Dockerfile mínimo, construido con la raíz del repo como contexto): antes `not found`, después copia OK.
+- **L7 (2026-10-14).** **WU3 entregada** (rama `…-02-web-blog`, PR2): web público del Blog — `BlogPort` + `HttpBlogGateway` + `createBlogPort`/`createBrowserBlogPort` (null-object cuando falta `NEXT_PUBLIC_API_BASE_URL`), hooks SWR `useBlogPosts`/`useBlogPost`, renderer `MarkdownBody` (`react-markdown` + `remark-gfm`, **sin** `rehype-raw`), páginas `/blog` y `/blog/[slug]` con el layout de guía, y la sección «Blog» en «Acerca de». Dependencias agregadas por el gate cumplido (soporte usado: **Context7, `/remarkjs/react-markdown`**): `react-markdown@10.1.0`, `remark-gfm@4.0.1`. Implementada delegando a un writer (backstop de contexto). Decisión del owner: los **tags** del front matter se muestran como chips (D6 sigue: fecha sí, firma no; tags ≠ byline). Verificación y evaluación de seguridad arriba.
