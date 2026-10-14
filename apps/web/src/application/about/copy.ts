@@ -119,6 +119,21 @@ export const ABOUT_COPY = Object.freeze({
       })
     ] as const)
   }),
+  blog: Object.freeze({
+    headingId: "blog-t",
+    eyebrow: "Blog",
+    title: "Blog",
+    intro: "Artículos sobre el producto, la tecnología y cómo funciona Vaqcrow.",
+    loading: "Cargando artículos",
+    emptyTitle: "Todavía no hay artículos publicados",
+    emptyBody: "Cuando publiquemos el primero, va a aparecer acá.",
+    errorTitle: "No pudimos cargar el blog",
+    errorMessage: "El servicio no respondió. Ningún dato se modificó.",
+    retry: "Reintentar",
+    seeAll: "Ver todos los artículos",
+    /** D6: the only visible date metadata is the publication date. */
+    publishedLabel: "Publicado el"
+  }),
   creator: Object.freeze({
     sectionId: "creador",
     headingId: "cr-t",

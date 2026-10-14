@@ -6,6 +6,7 @@ import { INVESTOR_GUIDE } from "../guides/investor-guide";
 import { TERMS_COPY } from "../legal/terms";
 import { parseHowItWorks } from "../landing/how-it-works";
 import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides/read-guide-source";
+import { BLOG_COPY } from "../blog/copy";
 import { ABOUT_COPY } from "./copy";
 
 /**
@@ -46,9 +47,20 @@ const TERMS_TEXT = collectStrings(TERMS_COPY).join("\n");
  * public copy too: it runs through the same denylist as the copy above.
  */
 const HOW_IT_WORKS_TEXT = collectStrings(parseHowItWorks(readGuideSource(HOW_IT_WORKS_GUIDE))).join("\n");
-const PUBLIC_TEXT = [ABOUT_TEXT, ENTREPRENEUR_TEXT, INVESTOR_TEXT, HELP_TEXT, TERMS_TEXT, HOW_IT_WORKS_TEXT].join(
-  "\n"
-);
+/**
+ * Feature #498: the Blog's static labels (the About section's copy rides inside
+ * `ABOUT_COPY`; these are the listing/article page labels).
+ */
+const BLOG_TEXT = collectStrings(BLOG_COPY).join("\n");
+const PUBLIC_TEXT = [
+  ABOUT_TEXT,
+  ENTREPRENEUR_TEXT,
+  INVESTOR_TEXT,
+  HELP_TEXT,
+  TERMS_TEXT,
+  HOW_IT_WORKS_TEXT,
+  BLOG_TEXT
+].join("\n");
 
 /**
  * The exact template sentences/phrases that contain a denylist stem without
@@ -150,6 +162,16 @@ describe("About copy (#394)", () => {
       "mailto:contact@vaqcrow.com",
       "https://github.com/reyduar"
     ]);
+  });
+});
+
+describe("Blog copy (#498)", () => {
+  it("pins the About Blog section heading id and the listing labels", () => {
+    expect(ABOUT_COPY.blog.headingId).toBe("blog-t");
+    expect(ABOUT_COPY.blog.title).toBe("Blog");
+    expect(ABOUT_COPY.blog.seeAll).toBe("Ver todos los artículos");
+    expect(BLOG_COPY.list.title).toBe("Blog");
+    expect(BLOG_COPY.article.notFoundTitle).toBe("No encontramos este artículo");
   });
 });
 
