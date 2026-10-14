@@ -8,6 +8,7 @@ import { INVESTOR_GUIDE } from "../guides/investor-guide";
 import { TERMS_COPY } from "../legal/terms";
 import { parseHowItWorks } from "../landing/how-it-works";
 import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides/read-guide-source";
+import { BLOG_COPY } from "../blog/copy";
 import { ABOUT_COPY } from "./copy";
 
 /**
@@ -80,6 +81,11 @@ const TERMS_TEXT = collectStrings(TERMS_COPY).join("\n");
  */
 const HOW_IT_WORKS_TEXT = collectStrings(parseHowItWorks(readGuideSource(HOW_IT_WORKS_GUIDE))).join("\n");
 /**
+ * Feature #498: the Blog's static labels (the About section's copy rides inside
+ * `ABOUT_COPY`; these are the listing/article page labels).
+ */
+const BLOG_TEXT = collectStrings(BLOG_COPY).join("\n");
+/**
  * Feature #498: every Blog article is public copy. The body ships as a
  * `docs/guides/blog/*.md` file served by the API (owner decisions D2/D3), so it
  * never lands in a web bundle — but its words run through the same denylist as
@@ -95,6 +101,7 @@ const PUBLIC_TEXT = [
   HELP_TEXT,
   TERMS_TEXT,
   HOW_IT_WORKS_TEXT,
+  BLOG_TEXT,
   BLOG_ARTICLE_TEXT
 ].join("\n");
 
@@ -213,6 +220,16 @@ describe("About copy (#394)", () => {
       "mailto:contact@vaqcrow.com",
       "https://github.com/reyduar"
     ]);
+  });
+});
+
+describe("Blog copy (#498)", () => {
+  it("pins the About Blog section heading id and the listing labels", () => {
+    expect(ABOUT_COPY.blog.headingId).toBe("blog-t");
+    expect(ABOUT_COPY.blog.title).toBe("Blog");
+    expect(ABOUT_COPY.blog.seeAll).toBe("Ver todos los artículos");
+    expect(BLOG_COPY.list.title).toBe("Blog");
+    expect(BLOG_COPY.article.notFoundTitle).toBe("No encontramos este artículo");
   });
 });
 

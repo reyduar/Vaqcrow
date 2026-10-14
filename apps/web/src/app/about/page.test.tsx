@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { SWRConfig } from "swr";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ABOUT_COPY } from "@/application/about/copy";
 import { disclosures } from "@/application/trust/disclosures";
 import { SessionStoreProvider } from "@/state/session-store-provider";
@@ -17,11 +18,18 @@ import AboutPage from "./page";
 /** The creator CTA's owner-decided destination (template left it `#`). */
 const CREATOR_PROFILE_HREF = "https://www.linkedin.com/in/arielduarte";
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 function renderPage() {
+  // A fresh SWR cache per render: the Blog section (#498) fetches through SWR.
   return render(
-    <SessionStoreProvider port={new FakeAuthSession()}>
-      <AboutPage />
-    </SessionStoreProvider>
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <SessionStoreProvider port={new FakeAuthSession()}>
+        <AboutPage />
+      </SessionStoreProvider>
+    </SWRConfig>
   );
 }
 
@@ -102,5 +110,17 @@ describe("/about", () => {
       expect(coin).toHaveAttribute("aria-hidden", "true");
       expect(coin.className).toContain("pointer-events-none");
     }
+  });
+
+  // Feature #498 / D4: the Blog is linked only from «Acerca de» (never the header
+  // or footer). With no backend wired up the section stays honest instead of
+  // inventing a list.
+  it("renders the Blog section linking to /blog", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
+    renderPage();
+
+    expect(screen.getByRole("heading", { level: 2, name: ABOUT_COPY.blog.title })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: ABOUT_COPY.blog.seeAll })).toHaveAttribute("href", "/blog");
+    expect(await screen.findByText("Esta instancia no tiene configurada la API")).toBeInTheDocument();
   });
 });
