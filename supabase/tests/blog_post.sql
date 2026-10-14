@@ -76,24 +76,27 @@ select is(has_table_privilege('service_role', 'public.blog_post', 'delete'), tru
 
 set local role service_role;
 
+-- A fixture slug, deliberately NOT the seeded article's slug
+-- (`vaqcrow-sobre-stellar`, added by the WU4 seed migration): the fixture proves
+-- the insert path without colliding with real data.
 insert into public.blog_post (slug, source_path, title, summary, published_at)
 values (
-  'vaqcrow-sobre-stellar',
-  'blog/vaqcrow-sobre-stellar.md',
+  'fixture-post',
+  'blog/fixture-post.md',
   'Vaqcrow sobre Stellar',
   'Cómo Vaqcrow financia PyMEs con una bóveda Soroban en Testnet.',
   now()
 );
 
 select is(
-  (select count(*)::int from public.blog_post where slug = 'vaqcrow-sobre-stellar'),
+  (select count(*)::int from public.blog_post where slug = 'fixture-post'),
   1,
   'a published post is stored with its slug and source path'
 );
 
 select throws_ok(
   $$insert into public.blog_post (slug, source_path, title, summary)
-    values ('vaqcrow-sobre-stellar', 'blog/duplicado.md', 'Duplicado', 'Otro')$$,
+    values ('fixture-post', 'blog/duplicado.md', 'Duplicado', 'Otro')$$,
   '23505', null,
   'the same slug cannot be inserted twice'
 );
