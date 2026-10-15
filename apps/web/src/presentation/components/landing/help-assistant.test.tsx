@@ -128,6 +128,29 @@ describe("HelpAssistant (Feature #418, WU4)", () => {
     }
   );
 
+  it.each(["PYME", "INVERSOR"] as const)(
+    "keeps the FAQ quick links and «Ir al centro de ayuda» next to the chat for a signed-in %s (#559)",
+    async (role) => {
+      await renderAssistant(role);
+      fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
+
+      const panel = within(screen.getByRole("dialog"));
+      expect(panel.getByRole("button", { name: ASSISTANT_COPY.send })).toBeInTheDocument();
+      expect(panel.getByRole("link", { name: "¿Qué es el revenue share?" })).toHaveAttribute("href", "/help");
+      expect(panel.getByRole("link", { name: "¿Vaqcrow guarda mis fondos?" })).toHaveAttribute("href", "/help");
+      expect(panel.getByRole("link", { name: "¿Qué es real y qué es simulado?" })).toHaveAttribute(
+        "href",
+        "#limites"
+      );
+      expect(panel.getByRole("link", { name: "Ir al centro de ayuda" })).toHaveAttribute("href", "/help");
+      // The anonymous greeting and its disabled field stay out of the chat view:
+      // the only question field is the chat's own, enabled one.
+      expect(panel.queryByText(/Todavía no estoy conectado/)).toBeNull();
+      expect(panel.getByLabelText(ASSISTANT_COPY.inputLabel)).not.toBeDisabled();
+      expect(panel.queryByPlaceholderText("Escribir pregunta · próximamente")).toBeNull();
+    }
+  );
+
   it("keeps an anonymous visitor on the FAQ view (S2)", async () => {
     await renderAssistant(null);
     fireEvent.click(screen.getByRole("button", { name: TOGGLE }));
