@@ -62,6 +62,13 @@ describe("resolveRoutePolicy", () => {
     });
   });
 
+  it("restricts the company post-submission reads to PYME (#530/T1/T2)", () => {
+    expect(resolveRoutePolicy("GET", "/sme-requests/mine")).toEqual({ kind: "roles", roles: ["PYME"] });
+    expect(resolveRoutePolicy("HEAD", "/sme-requests/mine")).toEqual({ kind: "roles", roles: ["PYME"] });
+    expect(resolveRoutePolicy("GET", "/pyme-documents/mine")).toEqual({ kind: "roles", roles: ["PYME"] });
+    expect(resolveRoutePolicy("HEAD", "/pyme-documents/mine")).toEqual({ kind: "roles", roles: ["PYME"] });
+  });
+
   it("lists the notification routes as authenticated for every role", () => {
     const routes = [
       "GET /notifications",

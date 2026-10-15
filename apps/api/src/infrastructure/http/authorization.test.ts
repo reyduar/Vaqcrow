@@ -27,6 +27,11 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/sme-requests", ["PYME"]],
   ["GET", "/sme-requests", ["ADMIN"]],
   ["GET", "/sme-requests/:applicationId", ["PYME"]],
+  // The PyME's own company post-submission state (#530/T1/T2): only a PyME reads
+  // its own application and its document metadata; the owner is the verified
+  // principal.
+  ["GET", "/sme-requests/mine", ["PYME"]],
+  ["GET", "/pyme-documents/mine", ["PYME"]],
   // Application completeness check (#402/T1a): declared-data check for the PyME.
   ["POST", "/completeness-check", ["PYME"]],
   ["POST", "/businesses", ["PYME"]],
@@ -213,6 +218,8 @@ function buildFullApp(auth?: AuthDependency): {
     portfolio: stub,
     reports: stub,
     myCampaigns: stub,
+    myApplication: stub,
+    myDocuments: stub,
     adminApplicationEvidence: stub,
     adminUsers: stub,
     adminAuditLog: stub,

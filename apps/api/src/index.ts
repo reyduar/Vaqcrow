@@ -509,6 +509,11 @@ const app = buildApp({
   // The PyME dashboard (#434/WU1): the verified principal's own user id is the
   // owner, and only that owner's campaigns are read.
   myCampaigns: { myCampaigns: myCampaignsRepository, now: () => new Date(), explorerBaseUrl: config.stellar.explorerUrl },
+  // The company post-submission state (#530/T1/T2): the verified principal's own
+  // user id is the owner. The application read reuses the SME-request repository;
+  // the documents read exposes metadata only, never a storage object path.
+  myApplication: { repository: smeRequestRepository },
+  myDocuments: { documents: pymeDocumentRepository },
   // The public blog (#498/WU2): published `blog_post` rows plus the Markdown
   // bundled in the image. Read-only, no session, no PII.
   blog: { posts: blogPostRepository, source: blogContentSource },

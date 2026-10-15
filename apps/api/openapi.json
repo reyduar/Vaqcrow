@@ -1395,6 +1395,200 @@
         }
       }
     },
+    "/sme-requests/mine": {
+      "get": {
+        "tags": [
+          "PyME"
+        ],
+        "summary": "Read the caller's own application id and state",
+        "description": "PYME-only. Returns the owner's latest application and its real review state, or `application: null` when there is none. The owner is the verified principal, resolved server-side. Requires role: PYME.",
+        "operationId": "getSmeRequestsMine",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PYME"
+        ],
+        "responses": {
+          "200": {
+            "description": "`{ application }`; null when the caller owns none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "application": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "applicationId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "awaiting_assessment",
+                                "human_review",
+                                "approved",
+                                "changes_requested",
+                                "rejected"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "applicationId",
+                            "state"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "application"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pyme-documents/mine": {
+      "get": {
+        "tags": [
+          "PyME"
+        ],
+        "summary": "List the caller's own uploaded documents (metadata only)",
+        "description": "PYME-only. Metadata only; the storage object path never crosses the wire. The owner is the verified principal, resolved server-side. Requires role: PYME.",
+        "operationId": "getPymeDocumentsMine",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "PYME"
+        ],
+        "responses": {
+          "200": {
+            "description": "`{ documents }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "documentId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "sales-declarations",
+                              "cuit",
+                              "articles-of-incorporation",
+                              "photo"
+                            ]
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "contentType": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "documentId",
+                          "kind",
+                          "name",
+                          "sizeBytes",
+                          "contentType",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "documents"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/businesses": {
       "post": {
         "tags": [

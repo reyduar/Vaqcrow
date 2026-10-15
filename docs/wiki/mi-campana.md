@@ -4,7 +4,7 @@ type: pantalla
 screen: /company
 sources:
   - freighter-and-testnet-walkthrough.md
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # Mi campaña (`/company`)
@@ -14,6 +14,7 @@ Es el área de la PyME. Reúne el estado de la bóveda de su campaña y las dist
 ## Qué puede hacer la PyME acá
 
 - **Registrar su PyME.** Mientras todavía no tiene una empresa registrada, aparece el botón «Registrar mi PyME», que abre el wizard.
+- **Ver lo enviado.** Una vez que envió su solicitud (y en cualquier estado posterior: en revisión, aprobada, rechazada o con cambios pedidos) el botón «Registrar mi PyME» desaparece y en su lugar puede abrir «Ver lo enviado», un resumen **de solo lectura** con la empresa, la solicitud y sus ventas declaradas, y los documentos cargados. No se puede editar ni reenviar desde acá.
 - **Declarar ventas** de cada mes y enviar la declaración.
 - **Revisar y firmar** la distribución calculada del período.
 - **Ver la bóveda en el explorador** y, en «Distribuciones», el hash de cada distribución.

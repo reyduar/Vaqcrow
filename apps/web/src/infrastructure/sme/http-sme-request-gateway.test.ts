@@ -1,6 +1,6 @@
 import type { SmeRequest } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
-import type { HttpClientPort } from "@/application/ports/http-client-port";
+import { HttpClientError, type HttpClientPort } from "@/application/ports/http-client-port";
 import { HttpSmeRequestGateway } from "./http-sme-request-gateway";
 
 const REQUEST: SmeRequest = {
@@ -21,6 +21,12 @@ const PERIOD = {
 
 function client(body: unknown, status = 200) {
   const send = vi.fn().mockResolvedValue({ status, body });
+  return { port: { send } as unknown as HttpClientPort, send };
+}
+
+/** Mirrors the `HttpClientPort` contract: a failure rejects with a sanitized `HttpClientError`. */
+function failing(error: HttpClientError) {
+  const send = vi.fn().mockRejectedValue(error);
   return { port: { send } as unknown as HttpClientPort, send };
 }
 
@@ -68,5 +74,59 @@ describe("HttpSmeRequestGateway", () => {
   it("rejects a read without the application review state", async () => {
     const missingState = client({ request: REQUEST, salesPeriods: [PERIOD] });
     await expect(new HttpSmeRequestGateway(missingState.port).load(APPLICATION_ID)).rejects.toThrow();
+  });
+
+  it("reads the caller's own application from GET /sme-requests/mine", async () => {
+    const { port, send } = client({ application: { applicationId: APPLICATION_ID, state: "human_review" } });
+
+    const outcome = await new HttpSmeRequestGateway(port).loadMine();
+
+    expect(send).toHaveBeenCalledWith({ method: "GET", path: "/sme-requests/mine" });
+    expect(outcome).toEqual({ ok: true, application: { applicationId: APPLICATION_ID, state: "human_review" } });
+  });
+
+  it("resolves the caller owning no application as a null application", async () => {
+    const { port } = client({ application: null });
+
+    expect(await new HttpSmeRequestGateway(port).loadMine()).toEqual({ ok: true, application: null });
+  });
+
+  it("never trusts a malformed success body", async () => {
+    // A leaked field (`objectPath`), a non-uuid id and a stray key are all refused.
+    await expect(new HttpSmeRequestGateway(client({ application: { applicationId: APPLICATION_ID, state: "human_review", objectPath: "s3://x" } }).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unavailable" }
+    );
+    await expect(new HttpSmeRequestGateway(client({ application: { applicationId: "not-a-uuid", state: "draft" } }).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unavailable" }
+    );
+    await expect(new HttpSmeRequestGateway(client({ application: { applicationId: APPLICATION_ID, state: "invented" } }).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unavailable" }
+    );
+    await expect(new HttpSmeRequestGateway(client({ notTheContract: true }).port).loadMine()).resolves.toEqual({
+      ok: false,
+      code: "unavailable"
+    });
+  });
+
+  it("maps 401 and 403 to the session's unauthenticated outcome", async () => {
+    await expect(new HttpSmeRequestGateway(failing(new HttpClientError("http", 401)).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unauthenticated" }
+    );
+    await expect(new HttpSmeRequestGateway(failing(new HttpClientError("http", 403)).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unauthenticated" }
+    );
+  });
+
+  it("maps every other non-200 to unavailable and a transport failure to network", async () => {
+    await expect(new HttpSmeRequestGateway(failing(new HttpClientError("http", 404)).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unavailable" }
+    );
+    await expect(new HttpSmeRequestGateway(failing(new HttpClientError("http", 503)).port).loadMine()).resolves.toEqual(
+      { ok: false, code: "unavailable" }
+    );
+    await expect(new HttpSmeRequestGateway(failing(new HttpClientError("network")).port).loadMine()).resolves.toEqual({
+      ok: false,
+      code: "network"
+    });
   });
 });
