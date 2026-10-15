@@ -21,7 +21,7 @@ S6. El estado que decide el botón es el real del servidor y está disponible ta
 | T2 | API: `GET /pyme-documents/mine` — owner-scoped, metadata de los documentos (sin `objectPath`). Reusa `PymeDocumentRepositoryPort.listByOwner`. | S4, S5 | delegado (worker) | hecho | f25697a |
 | T3 | Web: gateway + `useMyApplication`; resolver el `applicationId` desde el principal (no sólo del submit en sesión). | S6 | delegado (worker) | hecho | 7cf50ae |
 | T4 | Web: ocultar «Registrar mi PyME» según el estado real. | S1, S2, S3 | delegado (worker) | hecho | 7cf50ae |
-| T5 | Web: «Ver lo enviado» read-only (empresa + solicitud + ventas + documentos). | S1, S4 | inline | pendiente | |
+| T5 | Web: «Ver lo enviado» read-only (empresa + solicitud + ventas + documentos). | S1, S4 | delegado (worker) | hecho | 48da2a0 |
 | T6 | Evidencia: `docs/planning/company-post-submission-state-evidence.md`. | S1–S6 | inline | pendiente | |
 
 ## Log
@@ -59,3 +59,10 @@ L6 — WU2a entregada (2026-10-15), commit `7cf50ae` (`feat(web): drive the /com
 - Advisories (ninguna exige corrección): (1) flash transitorio del botón en el primer paint mientras `mine` está pendiente — deliberado, #480 «desconocido ≠ rechazo»; (2) `mine.state` gana sobre el id en sesión — inalcanzable hoy (ningún writer setea `draft`); (3) un `mine` fallido re-ofrece el botón — inofensivo, `POST /sme-requests` es idempotente; (4) el hook colapsa los códigos de error a `undefined` (igual que `useSmeRequestState`); (5) el prop `applicationId` (sólo test) causa una lectura extra.
 - Seguridad (OWASP Top 10:2025): cambio sobre una lectura auth-gated, identidad sólo del token, parse estricto, sin superficie de servidor nueva → **no findings**.
 - Gate: `pnpm run verify` exit 0 (web 2331 tests).
+
+L7 — WU2b entregada (2026-10-15), commit `48da2a0` (`feat(web): read-only view of the submitted application (#530)`):
+
+- T5 por worker delegado: `MyDocumentsPort` + adapter contra `GET /pyme-documents/mine`, view-model puro (`submitted-data.ts`), hook `useMyDocuments`, panel read-only **inline** (`company-submitted-data.tsx`, mismo patrón que `company-declare-sales`/`company-sign-distribution`) y la acción «Ver lo enviado» en `CompanyWorkspace`, exactamente cuando «Registrar mi PyME» se oculta.
+- Verificación independiente (`gentle-ai-verify`, assess `high`): S4 y S1-contrato **met**, sin blockers. 27 sondas quedaron en `apps/web/src/verifier-wu2b/`. Confirmó: panel read-only (sin inputs), banda de IA estructuralmente ausente, **ningún storage path renderizado** ni con un port que lo filtra en runtime, degradación por bloque independiente (una lectura caída no vacía la vista ni inventa dato), wire sin identidad de cliente.
+- Advisories (ninguna exige corrección): (1) abrir el panel re-lee la solicitud porque su clave SWR difiere de la del banner — una lectura extra; (2) copy del objetivo difiere del wizard («Objetivo» vs «Meta de financiamiento (ARS)») — owner-pending; (3) con el panel abierto se reemplaza el cuerpo de `/company`, igual que el wizard.
+- Gate: `pnpm run verify` exit 0 (web 2392 tests).
