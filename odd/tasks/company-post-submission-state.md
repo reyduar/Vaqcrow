@@ -22,7 +22,7 @@ S6. El estado que decide el botón es el real del servidor y está disponible ta
 | T3 | Web: gateway + `useMyApplication`; resolver el `applicationId` desde el principal (no sólo del submit en sesión). | S6 | delegado (worker) | hecho | 7cf50ae |
 | T4 | Web: ocultar «Registrar mi PyME» según el estado real. | S1, S2, S3 | delegado (worker) | hecho | 7cf50ae |
 | T5 | Web: «Ver lo enviado» read-only (empresa + solicitud + ventas + documentos). | S1, S4 | delegado (worker) | hecho | 48da2a0 |
-| T6 | Evidencia: `docs/planning/company-post-submission-state-evidence.md`. | S1–S6 | inline | pendiente | |
+| T6 | Evidencia: `docs/planning/company-post-submission-state-evidence.md`. | S1–S6 | inline | hecho | 3733b77 |
 
 ## Log
 
@@ -66,3 +66,9 @@ L7 — WU2b entregada (2026-10-15), commit `48da2a0` (`feat(web): read-only view
 - Verificación independiente (`gentle-ai-verify`, assess `high`): S4 y S1-contrato **met**, sin blockers. 27 sondas quedaron en `apps/web/src/verifier-wu2b/`. Confirmó: panel read-only (sin inputs), banda de IA estructuralmente ausente, **ningún storage path renderizado** ni con un port que lo filtra en runtime, degradación por bloque independiente (una lectura caída no vacía la vista ni inventa dato), wire sin identidad de cliente.
 - Advisories (ninguna exige corrección): (1) abrir el panel re-lee la solicitud porque su clave SWR difiere de la del banner — una lectura extra; (2) copy del objetivo difiere del wizard («Objetivo» vs «Meta de financiamiento (ARS)») — owner-pending; (3) con el panel abierto se reemplaza el cuerpo de `/company`, igual que el wizard.
 - Gate: `pnpm run verify` exit 0 (web 2392 tests).
+
+L8 — T6 entregada (2026-10-15), commit `3733b77` (`docs(evidence): company state after submission (#530)`):
+
+- Evidencia: `docs/planning/company-post-submission-state-evidence.md` (español, estructura de un hermano), con los 3 criterios del issue #530 **verbatim** y su verificación, los cambios (API/web/contratos), las decisiones del owner y los límites — incluido que el PR #538 sigue abierto y que no hay chequeo contra Testnet.
+- Docs alineados por el DoD: `AGENTS.md`/`CLAUDE.md` (gemelos byte-idénticos: la regla del botón pasa a «mientras no tenga ninguna solicitud» y se nombra «Ver lo enviado») y `docs/wiki/mi-campana.md` (corpus del asistente).
+- `pnpm run verify` exit 0; `diff AGENTS.md CLAUDE.md` sin diferencias.
