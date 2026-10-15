@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,15 @@ const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 beforeEach(() => push.mockClear());
+
+// #557: the production default reads Horizon. Stub the adapter so no test here
+// can reach the network and so the default wiring itself is observable.
+const { horizonBalance } = vi.hoisted(() => ({
+  horizonBalance: { getBalance: vi.fn().mockResolvedValue({ ok: true, balanceXlm: "777.0000000" }) }
+}));
+vi.mock("@/infrastructure/wallet/horizon-wallet-balance-adapter", () => ({
+  HorizonWalletBalanceAdapter: { create: () => horizonBalance }
+}));
 
 const SWR_ISOLATED = { provider: () => new Map(), dedupingInterval: 0 } as const;
 
@@ -212,5 +221,29 @@ describe("Portfolio container", () => {
     renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: BALANCE });
 
     expect(await screen.findByRole("button", { name: "Retirar mi aporte" })).toBeInTheDocument();
+  });
+
+  it("reads the connected account's balance from Horizon by default (#557)", async () => {
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY) });
+
+    expect(await screen.findByText("777,0000000 XLM")).toBeInTheDocument();
+    expect(horizonBalance.getBalance).toHaveBeenCalledWith(CONNECTED_KEY);
+  });
+
+  it("re-reads the balance when the investor returns to the tab after Friendbot (#557)", async () => {
+    const getBalance = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, balanceXlm: "0.0000000" })
+      .mockResolvedValue({ ok: true, balanceXlm: "10000.0000000" });
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: { getBalance } });
+    expect(await screen.findByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
+
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(await screen.findByText("10.000,0000000 XLM")).toBeInTheDocument();
+    expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
   });
 });

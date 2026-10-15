@@ -14,8 +14,8 @@ const UNFUNDED_BALANCE_XLM = "0.0000000";
  * Live balance for the wallet card (Feature #557), read from Horizon
  * `GET /accounts/{id}` over plain HTTP: the boundary rule
  * `web-never-imports-server-stellar-sdk` keeps the Stellar SDK out of the
- * browser bundle. It replaces the deterministic `SimulatedWalletBalanceAdapter`
- * that always reported `0.0000000` even after Friendbot funded the account.
+ * browser bundle. It replaces the deterministic simulated adapter (#406/#407),
+ * which always reported `0.0000000` even after Friendbot funded the account.
  *
  * A 404 means the account was never funded, which is a real zero balance and
  * keeps the funding guide's warning. Any other non-200 status or a malformed

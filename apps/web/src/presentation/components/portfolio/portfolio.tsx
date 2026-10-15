@@ -11,8 +11,9 @@ import type { PortfolioSortMode } from "@/application/portfolio/sort";
 import { createBrowserPortfolioPort } from "@/infrastructure/portfolio/create-portfolio-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
-import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
+import { HorizonWalletBalanceAdapter } from "@/infrastructure/wallet/horizon-wallet-balance-adapter";
 import { usePortfolio } from "@/state/use-portfolio";
+import { useRefreshOnReturn } from "@/state/use-refresh-on-return";
 import { BackendNotice } from "../backend-notice";
 import { ErrorState } from "../error-state";
 import { PageHeading } from "../page-heading";
@@ -41,7 +42,7 @@ export interface PortfolioProps {
   readonly port?: PortfolioPort | null;
   /** Injectable for tests; production builds the browser wallet port lazily. */
   readonly connection?: WalletConnectionPort;
-  /** Injectable for tests; production uses the deterministic demo balance. */
+  /** Injectable for tests; production reads the balance from Testnet Horizon (#557). */
   readonly balance?: WalletBalancePort;
   /** Injectable for tests; production uses the real Freighter adapter. */
   readonly wallet?: WalletPort;
@@ -50,7 +51,7 @@ export interface PortfolioProps {
 export function Portfolio({ port, connection, balance, wallet: injectedWallet }: PortfolioProps) {
   const [resolvedPort] = useState<PortfolioPort | null>(() => port ?? null);
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
-  const [defaultBalance] = useState<WalletBalancePort>(() => new SimulatedWalletBalanceAdapter());
+  const [defaultBalance] = useState<WalletBalancePort>(() => HorizonWalletBalanceAdapter.create());
   const [defaultWallet] = useState<WalletPort>(() => new FreighterWallet());
   const connectionPort = connection ?? defaultConnection;
   const balancePort = balance ?? defaultBalance;
@@ -83,6 +84,15 @@ export function Portfolio({ port, connection, balance, wallet: injectedWallet }:
       active = false;
     };
   }, [readWallet]);
+
+  // #557: Friendbot opens in another tab; coming back re-reads the wallet so the
+  // card and the funding warning reflect the newly funded balance.
+  useRefreshOnReturn(() => {
+    void (async () => {
+      const loaded = await readWallet();
+      if (loaded !== null) setWallet(loaded);
+    })();
+  });
 
   const handleConnected = useCallback(() => {
     void (async () => {

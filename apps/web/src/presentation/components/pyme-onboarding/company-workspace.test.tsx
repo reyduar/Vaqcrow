@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +11,15 @@ import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway"
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeWallet, FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
 import { CompanyWorkspace, captureApplicationIdOnSubmit } from "./company-workspace";
+
+// #557: the production default reads Horizon. Stub the adapter so no test here
+// can reach the network and so the default wiring itself is observable.
+const { horizonBalance } = vi.hoisted(() => ({
+  horizonBalance: { getBalance: vi.fn().mockResolvedValue({ ok: true, balanceXlm: "777.0000000" }) }
+}));
+vi.mock("@/infrastructure/wallet/horizon-wallet-balance-adapter", () => ({
+  HorizonWalletBalanceAdapter: { create: () => horizonBalance }
+}));
 
 const PUBLIC_KEY = "GBXK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ2345677Q2M";
 const APPLICATION_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
@@ -137,6 +146,36 @@ describe("CompanyWorkspace", () => {
       "href",
       `https://stellar.expert/explorer/testnet/account/${PUBLIC_KEY}`
     );
+  });
+
+  it("reads the linked account's balance from Horizon by default (#557)", async () => {
+    const connection = new FakeWalletConnection();
+    connection.seedConnection(PUBLIC_KEY);
+    render(<CompanyWorkspace kyc={new FakeKyc()} connection={connection} myCampaigns={okMyCampaigns()} />);
+
+    const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
+    expect(await within(card).findByText("777,0000000 XLM")).toBeInTheDocument();
+    expect(horizonBalance.getBalance).toHaveBeenCalledWith(PUBLIC_KEY);
+  });
+
+  it("re-reads the balance when the PyME returns to the tab after Friendbot (#557)", async () => {
+    const connection = new FakeWalletConnection();
+    connection.seedConnection(PUBLIC_KEY);
+    const balance = new FakeWalletBalance();
+    render(
+      <CompanyWorkspace kyc={new FakeKyc()} connection={connection} balance={balance} myCampaigns={okMyCampaigns()} />
+    );
+    const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
+    expect(within(card).getByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
+
+    balance.seedBalance("10000.0000000");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(await within(card).findByText("10.000,0000000 XLM")).toBeInTheDocument();
+    expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
   });
 
   it("offers «Conectar Freighter» in the funds guide while no wallet is linked", () => {

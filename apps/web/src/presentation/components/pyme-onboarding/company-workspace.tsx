@@ -25,8 +25,9 @@ import { createBrowserSmeRequestGateway } from "@/infrastructure/sme/default-gat
 import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
-import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
+import { HorizonWalletBalanceAdapter } from "@/infrastructure/wallet/horizon-wallet-balance-adapter";
 import { useMyApplication } from "@/state/use-my-application";
+import { useRefreshOnReturn } from "@/state/use-refresh-on-return";
 import { useSmeRequestState } from "@/state/use-sme-request";
 import { FOCUS_RING } from "../auth-field";
 import { CompanyApplicationState } from "../company/company-application-state";
@@ -79,7 +80,7 @@ export interface CompanyWorkspaceProps {
   readonly connection?: WalletConnectionPort;
   /** Freighter signer the funds guide connects with; injectable for tests. */
   readonly walletPort?: WalletPort;
-  /** Injectable for tests; production uses the deterministic demo balance. */
+  /** Injectable for tests; production reads the balance from Testnet Horizon (#557). */
   readonly balance?: WalletBalancePort;
   /** Injectable for tests; production builds the browser dashboard port lazily. */
   readonly myCampaigns?: MyCampaignsPort;
@@ -110,8 +111,10 @@ export interface CompanyWorkspaceProps {
  *
  * The card (Feature #406, Task #407 / T1c) reflects the wallet the PyME linked
  * in the wizard: the connection is read from the API and, when it exists, the
- * account's balance is read behind `WalletBalancePort` (deterministic, so no
- * pull-request verification touches Horizon). Connecting and replacing the key
+ * account's balance is read behind `WalletBalancePort` — from Testnet Horizon
+ * since #557, re-read whenever the PyME returns to the tab (Friendbot opens in a
+ * new one); tests inject a double, so no pull-request verification touches
+ * Horizon. Connecting and replacing the key
  * stay in the wizard's step 4; `Desconectar` only clears this card's local view,
  * and is refused while the account is frozen.
  *
@@ -151,7 +154,7 @@ export function CompanyWorkspace({
   const [submittedOpen, setSubmittedOpen] = useState(false);
   const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
-  const [defaultBalance] = useState<WalletBalancePort>(() => new SimulatedWalletBalanceAdapter());
+  const [defaultBalance] = useState<WalletBalancePort>(() => HorizonWalletBalanceAdapter.create());
   const [defaultSmeGateway] = useState<SmeRequestGateway | null>(() => createBrowserSmeRequestGateway());
   const [wallet, setWallet] = useState<LoadedWallet | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -194,6 +197,21 @@ export function CompanyWorkspace({
       active = false;
     };
   }, [connectionPort, balancePort]);
+
+  // #557: after Friendbot funds the account in another tab, coming back re-reads
+  // the balance so the card and the funds guide stop saying «sin saldo».
+  const linkedPublicKey = wallet?.publicKey ?? null;
+  useRefreshOnReturn(() => {
+    if (linkedPublicKey === null) return;
+    void (async () => {
+      const stateBalance = await balancePort.getBalance(linkedPublicKey);
+      setWallet((current) =>
+        current === null || current.publicKey !== linkedPublicKey
+          ? current
+          : { ...current, balanceXlm: stateBalance.ok ? stateBalance.balanceXlm : null }
+      );
+    })();
+  });
 
   // The funds guide's primary action (#531): the same connect → challenge →
   // sign → store sequence the wizard's review step uses, then the account's
