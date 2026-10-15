@@ -70,4 +70,11 @@ describe("/company", () => {
     const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
     expect(within(guide).getByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
   });
+
+  it("mounts the floating help assistant, whose toggle opens its chat", async () => {
+    await renderAs("PYME", "/company", <CompanyPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir ayuda" }));
+    expect(screen.getByRole("dialog", { name: "Asistente de ayuda" })).toBeInTheDocument();
+  });
 });

@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { IoStorefrontOutline } from "react-icons/io5";
+import { IoDocumentTextOutline, IoStorefrontOutline } from "react-icons/io5";
 import type { ApplicationReviewState } from "@vaqcrow/contracts";
+import { canRegisterCompany } from "@/application/company/can-register-company";
+import { SUBMITTED_DATA_COPY } from "@/application/company/submitted-data";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
 import {
   connectAndStoreWallet,
   walletAccountExplorerUrl,
   walletConnectFailureCopy
 } from "@/application/pyme-onboarding/wallet-connection";
+import type { BusinessPort } from "@/application/ports/business-port";
 import type { KycPort } from "@/application/ports/kyc-port";
 import type { MyCampaignsPort } from "@/application/ports/my-campaigns-port";
+import type { MyDocumentsPort } from "@/application/ports/my-documents-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { UploadPort } from "@/application/ports/upload-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
@@ -22,10 +26,12 @@ import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-p
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
+import { useMyApplication } from "@/state/use-my-application";
 import { useSmeRequestState } from "@/state/use-sme-request";
 import { FOCUS_RING } from "../auth-field";
 import { CompanyApplicationState } from "../company/company-application-state";
 import { CompanyDashboardContainer } from "../company/company-dashboard";
+import { CompanySubmittedData } from "../company/company-submitted-data";
 import { CompanyTestnetFunds } from "../company/company-testnet-funds";
 import { PageHeading } from "../page-heading";
 import { WalletCard } from "../wallet-card";
@@ -45,8 +51,8 @@ interface LoadedWallet {
 /**
  * Wraps a gateway so the application id returned by `submit` is captured at its
  * creation boundary (Feature #434, WU5 / B1), without the wizard knowing. `load`
- * is forwarded unchanged; a `null` gateway stays `null` so the wizard still sees
- * «no backend».
+ * and `loadMine` are forwarded unchanged; a `null` gateway stays `null` so the
+ * wizard still sees «no backend».
  */
 export function captureApplicationIdOnSubmit(
   gateway: SmeRequestGateway | null,
@@ -55,6 +61,7 @@ export function captureApplicationIdOnSubmit(
   if (gateway === null) return null;
   return {
     load: (id) => gateway.load(id),
+    loadMine: () => gateway.loadMine(),
     submit: async (request) => {
       const result = await gateway.submit(request);
       onCaptured(result.applicationId);
@@ -91,6 +98,10 @@ export interface CompanyWorkspaceProps {
   readonly applicationId?: string | null;
   /** Injectable for tests; production builds the session-aware browser gateway. */
   readonly smeRequestGateway?: SmeRequestGateway | null;
+  /** Injectable for tests; the «Ver lo enviado» panel builds the browser company port when absent. */
+  readonly business?: BusinessPort | null;
+  /** Injectable for tests; the «Ver lo enviado» panel builds the browser documents port when absent. */
+  readonly documents?: MyDocumentsPort | null;
 }
 
 /**
@@ -109,14 +120,19 @@ export interface CompanyWorkspaceProps {
  * connected, shows the account's balance plus whether it still needs Testnet
  * XLM for the vault deploy — Friendbot is only secondary help. The banner reads
  * the PyME's own review state from `GET /sme-requests/:id`
- * (`useSmeRequestState`) for the application id captured from the wizard's
- * send. A returning PyME with no in-session submit has no id and sees no banner
- * until an owner-scoped read exists (WU5 advisory).
+ * (`useSmeRequestState`) for the resolved application id.
  *
- * «Registrar mi PyME» always shows today: the "only while the PyME has no
- * registered company" rule needs the company registry (#398's later unit) and
- * is intentionally not implemented here. Opening the wizard never changes the
- * URL — the wizard lives inside `/company` and «Volver» restores this view.
+ * Feature #530 (T3/T4) resolves that id owner-scoped: the in-session captured id
+ * wins, else the id from `GET /sme-requests/mine` (`useMyApplication`), so a
+ * returning PyME in a fresh session (S6) sees its real state. «Registrar mi
+ * PyME» is then shown only for «Sin enviar» (`canRegisterCompany`): no
+ * application, an unknown read, or a `draft`. Every other state — in review
+ * (S1), approved (S2), `changes_requested`/`rejected` (S3) — hides it.
+ * Feature #530 (T5/S1/S4) then offers «Ver lo enviado» instead: it opens the
+ * read-only `CompanySubmittedData` panel over the persisted facts, which
+ * replaces this body while open and returns to it on close. Opening the wizard
+ * never changes the URL — the wizard lives inside `/company` and «Volver»
+ * restores this view.
  */
 export function CompanyWorkspace({
   kyc = defaultKyc,
@@ -127,9 +143,12 @@ export function CompanyWorkspace({
   myCampaigns,
   applicationState,
   applicationId,
-  smeRequestGateway
+  smeRequestGateway,
+  business,
+  documents
 }: CompanyWorkspaceProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [submittedOpen, setSubmittedOpen] = useState(false);
   const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
   const [defaultBalance] = useState<WalletBalancePort>(() => new SimulatedWalletBalanceAdapter());
@@ -144,13 +163,14 @@ export function CompanyWorkspace({
   const balancePort = balance ?? defaultBalance;
   const smeGateway = smeRequestGateway === undefined ? defaultSmeGateway : smeRequestGateway;
 
-  // The id is captured at its creation boundary: the wizard's send returns it,
-  // and the wrapped gateway records it without the wizard knowing. The read is
-  // provider-free (`useSmeRequestState`). A returning PyME with no in-session submit has no id and sees no
-  // banner until an owner-scoped read exists (WU5 advisory).
-  const effectiveApplicationId = capturedApplicationId ?? applicationId ?? null;
+  // The id is resolved owner-scoped (Feature #530, S6): the in-session captured
+  // id wins, else the id of the PyME's own application read from the API — so a
+  // returning PyME in a fresh session sees the right state without submitting
+  // again. The banner read (`useSmeRequestState`) then loads that id.
+  const mine = useMyApplication(smeGateway, true);
+  const effectiveApplicationId = capturedApplicationId ?? mine?.applicationId ?? applicationId ?? null;
   const readState = useSmeRequestState(smeGateway, effectiveApplicationId);
-  const resolvedState = applicationState === undefined ? readState : applicationState;
+  const resolvedState = applicationState === undefined ? (mine?.state ?? readState) : applicationState;
 
   const captureGateway = useMemo<SmeRequestGateway | null>(
     () => captureApplicationIdOnSubmit(smeGateway, setCapturedApplicationId),
@@ -206,20 +226,46 @@ export function CompanyWorkspace({
     );
   }
 
+  // «Ver lo enviado» (Feature #530, T5/S1/S4): the read-only view of what was
+  // persisted. It replaces the normal `/company` body while open and returns to
+  // it on close, exactly like the wizard.
+  if (submittedOpen) {
+    return (
+      <CompanySubmittedData
+        applicationId={effectiveApplicationId}
+        smeRequestGateway={smeGateway}
+        onClose={() => setSubmittedOpen(false)}
+        {...(business !== undefined ? { business } : {})}
+        {...(documents !== undefined ? { documents } : {})}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeading
         title={COPY.title}
         subtitle={COPY.subtitle}
         action={
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className={`inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand-accent px-5 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
-          >
-            <IoStorefrontOutline aria-hidden="true" focusable="false" className="text-lg" />
-            {COPY.registerCompany}
-          </button>
+          canRegisterCompany(resolvedState) ? (
+            <button
+              type="button"
+              onClick={() => setWizardOpen(true)}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand-accent px-5 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
+            >
+              <IoStorefrontOutline aria-hidden="true" focusable="false" className="text-lg" />
+              {COPY.registerCompany}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSubmittedOpen(true)}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-control border border-control px-5 text-[15px] font-semibold whitespace-nowrap text-text-primary hover:bg-page-surface ${FOCUS_RING}`}
+            >
+              <IoDocumentTextOutline aria-hidden="true" focusable="false" className="text-lg" />
+              {SUBMITTED_DATA_COPY.openLabel}
+            </button>
+          )
         }
       />
       {resolvedState === undefined ? null : <CompanyApplicationState state={resolvedState} />}
