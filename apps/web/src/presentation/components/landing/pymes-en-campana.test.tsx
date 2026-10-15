@@ -71,13 +71,23 @@ function renderGrid(port: MarketplacePort) {
 }
 
 describe("PymesEnCampana (Feature #418, WU2)", () => {
-  it("renders the grid ordered by earliest close, excluding the featured campaign", async () => {
+  it("renders every published campaign ordered by earliest close, the hero's one included (#533)", async () => {
     renderGrid(okPort([REPUESTOS, FEATURED, CAFE, GOMERIA]));
 
     await screen.findByRole("heading", { level: 2, name: "PyMEs en campaña" });
     const gridHeadings = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-    expect(gridHeadings).toEqual(["Gomería Los Andes", "Café Tostadero del Paraná", "Repuestos del Oeste SRL"]);
-    expect(screen.queryByRole("heading", { name: "Fábrica Destacada SRL" })).not.toBeInTheDocument();
+    // Soonest close first, capped at three — and the featured one is eligible.
+    expect(gridHeadings).toEqual(["Gomería Los Andes", "Café Tostadero del Paraná", "Fábrica Destacada SRL"]);
+  });
+
+  it("shows a published campaign in the grid even when it is the one the hero features", async () => {
+    renderGrid(okPort([FEATURED]));
+
+    await screen.findByRole("heading", { level: 2, name: "PyMEs en campaña" });
+    expect(screen.getByRole("heading", { level: 3, name: "Fábrica Destacada SRL" })).toBeInTheDocument();
+    // The empty state means "no published campaign at all", never "the only one
+    // is featured above" (#533).
+    expect(screen.queryByText("Todavía no hay campañas publicadas")).not.toBeInTheDocument();
   });
 
   it("shows a neutral landing empty state when no campaign is published", async () => {

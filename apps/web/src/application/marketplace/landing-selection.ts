@@ -9,7 +9,9 @@ import type { MarketplaceCard } from "@/application/ports/marketplace-port";
  * `fundedPercentBps`, then (only on a tie) a campaign that actually has a
  * photo, then the earliest close date. When there is no campaign the featured
  * slot falls back to the simulated example, which is a presentation concern
- * and is not modelled here. The grid is everything else, soonest to close.
+ * and is not modelled here. The grid is every published campaign, soonest to
+ * close — the featured one included (#533): the hero's card is its own island
+ * and never removes a live campaign from 「PyMEs en campaña」.
  */
 
 /** An unparseable `closeDate` ranks last, never first: it cannot honestly win "earliest". */
@@ -38,16 +40,10 @@ export function selectFeatured(cards: readonly MarketplaceCard[]): MarketplaceCa
 }
 
 /**
- * Up to `count` grid cards — the featured campaign excluded, soonest close
- * first. Returns a fresh array; the input is never sorted or mutated.
+ * Up to `count` grid cards, soonest close first. Every published campaign is
+ * eligible, the featured one included (#533). Returns a fresh array; the input
+ * is never sorted or mutated.
  */
-export function selectGrid(
-  cards: readonly MarketplaceCard[],
-  featuredId: string | null,
-  count = 3
-): readonly MarketplaceCard[] {
-  return cards
-    .filter((card) => card.campaignId !== featuredId)
-    .sort((a, b) => closeDateMs(a) - closeDateMs(b))
-    .slice(0, count);
+export function selectGrid(cards: readonly MarketplaceCard[], count = 3): readonly MarketplaceCard[] {
+  return [...cards].sort((a, b) => closeDateMs(a) - closeDateMs(b)).slice(0, count);
 }
