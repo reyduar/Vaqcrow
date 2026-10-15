@@ -98,42 +98,46 @@ describe("selectFeatured", () => {
 });
 
 describe("selectGrid", () => {
-  const featured = card({ campaignId: "featured", fundedPercentBps: 9_000 });
+  const featured = card({ campaignId: "featured", fundedPercentBps: 9_000, closeDate: "2030-11-15T00:00:00.000Z" });
   const first = card({ campaignId: "first", closeDate: "2030-10-01T00:00:00.000Z" });
   const second = card({ campaignId: "second", closeDate: "2030-11-01T00:00:00.000Z" });
   const third = card({ campaignId: "third", closeDate: "2030-12-01T00:00:00.000Z" });
   const fourth = card({ campaignId: "fourth", closeDate: "2031-01-01T00:00:00.000Z" });
 
-  it("excludes the featured campaign and sorts the rest by earliest close date", () => {
-    const selection = selectGrid([second, featured, fourth, first, third], "featured");
+  it("keeps every published campaign, the featured one included (#533), soonest close first", () => {
+    const selection = selectGrid([second, featured, fourth, first, third]);
 
-    expect(selection.map((entry) => entry.campaignId)).toEqual(["first", "second", "third"]);
+    expect(selection.map((entry) => entry.campaignId)).toEqual(["first", "second", "featured"]);
+  });
+
+  it("returns the only published campaign even when the hero features it (#533)", () => {
+    const selection = selectGrid([featured]);
+
+    expect(selection.map((entry) => entry.campaignId)).toEqual(["featured"]);
   });
 
   it("caps the grid at three cards by default", () => {
-    const selection = selectGrid([fourth, third, second, first], null);
+    const selection = selectGrid([fourth, third, second, first]);
 
     expect(selection).toHaveLength(3);
     expect(selection.map((entry) => entry.campaignId)).toEqual(["first", "second", "third"]);
   });
 
   it("honours an explicit count", () => {
-    const selection = selectGrid([fourth, third, second, first], null, 2);
+    const selection = selectGrid([fourth, third, second, first], 2);
 
     expect(selection.map((entry) => entry.campaignId)).toEqual(["first", "second"]);
   });
 
-  it("keeps every card when there is no featured campaign", () => {
-    const selection = selectGrid([second, first], null);
-
-    expect(selection.map((entry) => entry.campaignId)).toEqual(["first", "second"]);
+  it("returns an empty grid for an empty list", () => {
+    expect(selectGrid([])).toEqual([]);
   });
 
   it("does not mutate its input", () => {
     const cards = [second, first];
     const snapshot = [...cards];
 
-    selectGrid(cards, null);
+    selectGrid(cards);
 
     expect(cards).toEqual(snapshot);
   });

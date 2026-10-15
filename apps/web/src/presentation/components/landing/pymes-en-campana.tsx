@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { IoArrowForwardOutline } from "react-icons/io5";
-import { selectFeatured, selectGrid } from "@/application/marketplace/landing-selection";
+import { selectGrid } from "@/application/marketplace/landing-selection";
 import { marketplaceCardViews, type MarketplaceCardView } from "@/application/marketplace/view-model";
 import type { MarketplaceCard, MarketplacePort } from "@/application/ports/marketplace-port";
 import { createBrowserMarketplacePort } from "@/infrastructure/marketplace/create-marketplace-port";
@@ -21,8 +21,8 @@ import { Skeleton } from "../skeleton";
  * first, rendered inside the hero). It reuses the public `/explore` data path —
  * `createBrowserMarketplacePort()` + `useMarketplace` (SWR, one key shared with
  * the featured island, so the request is deduped) — never a new mechanism, and
- * derives the grid with the pure `landing-selection` module: the featured
- * campaign is excluded and the rest are shown soonest-to-close first.
+ * derives the grid with the pure `landing-selection` module: every published
+ * campaign, soonest-to-close first, the featured one included (#533).
  *
  * Loading and failure never throw: a failed read is surfaced with the same copy
  * `/explore` uses, and the grid simply has no cards.
@@ -142,9 +142,9 @@ export interface PymesEnCampanaProps {
 }
 
 /**
- * The grid island. It derives the featured campaign only to exclude it from the
- * grid — the featured card itself is the hero island's job — then renders the
- * 「PyMEs en campaña」 section.
+ * The grid island. It renders the 「PyMEs en campaña」 section from every
+ * published campaign; the featured card itself is the hero island's job, and it
+ * no longer removes a live campaign from the grid (#533).
  */
 export function PymesEnCampana({ marketplacePort }: PymesEnCampanaProps) {
   // Captured once: an omitted prop stays the browser port, and a test can still
@@ -152,8 +152,10 @@ export function PymesEnCampana({ marketplacePort }: PymesEnCampanaProps) {
   const [port] = useState(() => marketplacePort ?? createBrowserMarketplacePort());
   const marketplace = useMarketplace(port);
 
-  const featured = selectFeatured(marketplace.items);
-  const grid = selectGrid(marketplace.items, featured?.campaignId ?? null);
+  // Every published campaign is listed, the one the hero features included
+  // (#533): an empty grid must mean "nothing is live", never "the only live
+  // campaign is highlighted above".
+  const grid = selectGrid(marketplace.items);
 
   return (
     <CampaignGrid
