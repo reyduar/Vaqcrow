@@ -2,9 +2,12 @@
 
 import { useId, useState } from "react";
 import { IoAlertCircleOutline, IoOpenOutline, IoWalletOutline } from "react-icons/io5";
+// The funded/unfunded decision and the `?addr=` Friendbot rule are the same ones
+// `/company` already uses (issue #531); reused rather than re-implemented, so the
+// two surfaces cannot drift (issue #544). Only the wording is the portfolio's own.
+import { friendbotUrl, fundingState } from "@/application/company/funding";
 import {
   PORTFOLIO_WALLET_COPY,
-  TESTNET_FRIENDBOT_URL,
   TESTNET_LABORATORY_URL,
   walletConnectErrorMessage
 } from "@/application/portfolio/wallet-states";
@@ -15,15 +18,21 @@ import { Button } from "../button";
 import { WalletCard } from "../wallet-card";
 
 /**
- * The investor portfolio's wallet surface (Feature #426, WU4).
+ * The investor portfolio's wallet surface (Feature #426, WU4; reworked by issue
+ * #544).
  *
- * When a key is persisted it renders the existing connected `WalletCard`. When
- * there is none it renders a connect-mode card: `Conectar Freighter` runs the
- * same `connectAndStoreWallet` sequence the PyME onboarding uses (connect →
- * challenge → sign → store) and reports a not-installed, rejected, wrong-network
- * or persistence failure through the reused PyME copy, never a provider message.
- * The card always offers the Testnet-funds guide (Friendbot and Stellar
- * Laboratory) so a freshly created account can be funded.
+ * When a key is persisted it renders the existing connected `WalletCard` plus
+ * the Testnet-funds help; when there is none it renders a connect-mode card:
+ * `Conectar Freighter` runs the same `connectAndStoreWallet` sequence the PyME
+ * onboarding uses (connect → challenge → sign → store) and reports a
+ * not-installed, rejected, wrong-network or persistence failure through the
+ * reused PyME copy, never a provider message.
+ *
+ * The funds guide is gated on an address: Friendbot answers 400 without `addr`,
+ * so the disconnected state never links it, and the connected state offers a
+ * prefilled Friendbot link only while the account still needs XLM (the same
+ * rule `/company` uses). The honest framing stays: Testnet only, no economic
+ * value, Vaqcrow never custodies funds.
  *
  * Presentational + orchestration only: the container loads the connection and
  * the balance, and refreshes them through `onConnected`.
@@ -48,23 +57,53 @@ export interface PortfolioWalletCardProps {
   readonly onDisconnect: () => void;
 }
 
-function FundsGuide() {
+interface FundsGuideProps {
+  /** The connected account's public key, or `null`/absent while disconnected. */
+  readonly publicKey?: string | null;
+  /** The connected account's raw XLM balance, or `null` while it is unknown. */
+  readonly balanceXlm?: string | null;
+}
+
+/**
+ * The Testnet-funds help. Without an address (disconnected) it explains Testnet
+ * honestly and offers only the address-free Stellar Laboratory; a connected
+ * account either gets the funded note or the unfunded warning plus a Friendbot
+ * link prefilled with its public key.
+ */
+function FundsGuide({ publicKey = null, balanceXlm = null }: FundsGuideProps) {
+  const state = fundingState(publicKey, balanceXlm);
+  const canFundWithFriendbot = state === "unfunded" && publicKey !== null && publicKey !== "";
+
   return (
     <div className="flex flex-col gap-3 rounded-card bg-page-surface p-4">
       <div>
         <p className="m-0 text-[15px] font-semibold text-text-primary">{PORTFOLIO_WALLET_COPY.fundsTitle}</p>
         <p className="m-0 mt-1 text-sm leading-[1.5] text-text-secondary">{PORTFOLIO_WALLET_COPY.fundsBody}</p>
       </div>
+
+      {state === "funded" ? (
+        <p className="m-0 text-sm leading-[1.5] text-text-secondary">{PORTFOLIO_WALLET_COPY.fundsFundedNote}</p>
+      ) : null}
+
+      {state === "unfunded" ? (
+        <p className="m-0 flex items-center gap-2 text-sm font-semibold text-trust-caution">
+          <IoAlertCircleOutline aria-hidden="true" focusable="false" className="shrink-0 text-[18px]" />
+          {PORTFOLIO_WALLET_COPY.fundsUnfundedWarning}
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
-        <a
-          href={TESTNET_FRIENDBOT_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex h-10 items-center gap-1.5 rounded-control border border-control px-3.5 text-sm font-semibold text-text-primary hover:bg-canvas"
-        >
-          {PORTFOLIO_WALLET_COPY.friendbotLabel}
-          <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
-        </a>
+        {canFundWithFriendbot ? (
+          <a
+            href={friendbotUrl(publicKey)}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex h-10 items-center gap-1.5 rounded-control border border-control px-3.5 text-sm font-semibold text-text-primary hover:bg-canvas"
+          >
+            {PORTFOLIO_WALLET_COPY.friendbotLabel}
+            <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
+          </a>
+        ) : null}
         <a
           href={TESTNET_LABORATORY_URL}
           target="_blank"
@@ -75,6 +114,10 @@ function FundsGuide() {
           <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
         </a>
       </div>
+
+      {state === "unfunded" ? (
+        <p className="m-0 text-sm leading-[1.5] text-text-secondary">{PORTFOLIO_WALLET_COPY.fundsFriendbotHelp}</p>
+      ) : null}
     </div>
   );
 }
@@ -92,13 +135,16 @@ export function PortfolioWalletCard({
 
   if (wallet) {
     return (
-      <WalletCard
-        publicKey={wallet.publicKey}
-        frozen={wallet.frozen}
-        balanceXlm={wallet.balanceXlm}
-        explorerUrl={walletAccountExplorerUrl(wallet.publicKey)}
-        onDisconnect={onDisconnect}
-      />
+      <div className="flex flex-col gap-4">
+        <WalletCard
+          publicKey={wallet.publicKey}
+          frozen={wallet.frozen}
+          balanceXlm={wallet.balanceXlm}
+          explorerUrl={walletAccountExplorerUrl(wallet.publicKey)}
+          onDisconnect={onDisconnect}
+        />
+        <FundsGuide publicKey={wallet.publicKey} balanceXlm={wallet.balanceXlm} />
+      </div>
     );
   }
 
