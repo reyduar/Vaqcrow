@@ -1,19 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { CompanyTestnetFunds, friendbotUrl } from "./company-testnet-funds";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { CompanyTestnetFunds } from "./company-testnet-funds";
 
 const PUBLIC_KEY = "GBXK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ2345677Q2M";
 
-describe("friendbotUrl", () => {
-  it("returns the generic Friendbot URL when no public key is known", () => {
-    expect(friendbotUrl(null)).toBe("https://friendbot.stellar.org");
-    expect(friendbotUrl()).toBe("https://friendbot.stellar.org");
-  });
-
-  it("prefills the public key as the addr query when one is known", () => {
-    expect(friendbotUrl(PUBLIC_KEY)).toBe(`https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`);
-  });
-});
+/** Friendbot may never be the primary action: it is explanatory help at most. */
+function expectNoFriendbotButton(): void {
+  expect(screen.queryByRole("button", { name: /friendbot/i })).not.toBeInTheDocument();
+  expect(screen.queryByText("Fondear con Friendbot")).not.toBeInTheDocument();
+}
 
 describe("CompanyTestnetFunds", () => {
   it("renders the guide text and the non-custodial note", () => {
@@ -21,24 +16,81 @@ describe("CompanyTestnetFunds", () => {
 
     expect(screen.getByRole("heading", { name: "Fondear tu wallet con XLM de prueba" })).toBeInTheDocument();
     expect(screen.getByText(/Vaqcrow no custodia fondos ni mueve dinero/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sólo XLM de Testnet, sin valor económico/i)).toBeInTheDocument();
+    expect(screen.getByText(/sin valor económico/i)).toBeInTheDocument();
   });
 
-  it("links to the generic Friendbot when no public key is known", () => {
-    render(<CompanyTestnetFunds publicKey={null} />);
+  describe("disconnected", () => {
+    it("offers «Conectar Freighter» as the primary action and no Friendbot button", () => {
+      render(<CompanyTestnetFunds publicKey={null} onConnect={vi.fn()} />);
 
-    expect(screen.getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
-      "href",
-      "https://friendbot.stellar.org"
-    );
+      expect(screen.getByRole("button", { name: "Conectar Freighter" })).toBeEnabled();
+      expectNoFriendbotButton();
+    });
+
+    it("calls onConnect when the action is pressed", () => {
+      const onConnect = vi.fn();
+      render(<CompanyTestnetFunds publicKey={null} onConnect={onConnect} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Conectar Freighter" }));
+
+      expect(onConnect).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the connecting label and disables the action while connecting", () => {
+      render(<CompanyTestnetFunds publicKey={null} onConnect={vi.fn()} connecting />);
+
+      const button = screen.getByRole("button", { name: /Conectando/ });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("surfaces a connect failure as an alert", () => {
+      render(
+        <CompanyTestnetFunds
+          publicKey={null}
+          onConnect={vi.fn()}
+          error="No pudimos conectar Freighter. Probá de nuevo."
+        />
+      );
+
+      expect(screen.getByRole("alert")).toHaveTextContent("No pudimos conectar Freighter. Probá de nuevo.");
+    });
   });
 
-  it("prefills the connected public key in the Friendbot link", () => {
-    render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} />);
+  describe("connected and funded", () => {
+    it("shows the balance and that it can pay for the vault, with no connect action", () => {
+      render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="12.5000000" />);
 
-    const link = screen.getByRole("link", { name: /Friendbot/i });
-    expect(link).toHaveAttribute("href", `https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`);
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+      expect(screen.getByText("Saldo de tu cuenta")).toBeInTheDocument();
+      expect(screen.getByText("12,5000000 XLM")).toBeInTheDocument();
+      expect(screen.getByText(/ya tiene XLM de Testnet para pagar la creación de la bóveda/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Conectar Freighter" })).not.toBeInTheDocument();
+      expectNoFriendbotButton();
+    });
+
+    it("does not offer the Friendbot link when nothing needs funding", () => {
+      render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="12.5000000" />);
+
+      expect(screen.queryByRole("link", { name: /friendbot/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("connected and unfunded", () => {
+    it("shows the balance and warns that Testnet XLM is needed", () => {
+      render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="0.0000000" />);
+
+      expect(screen.getByText("0,0000000 XLM")).toBeInTheDocument();
+      expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
+    });
+
+    it("offers Friendbot only as a secondary link, prefilled and never a primary action", () => {
+      render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="0.0000000" />);
+
+      const link = screen.getByRole("link", { name: /friendbot/i });
+      expect(link).toHaveAttribute("href", `https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`);
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+      expectNoFriendbotButton();
+    });
   });
 });

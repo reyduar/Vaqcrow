@@ -6,7 +6,11 @@ import type { ApplicationReviewState } from "@vaqcrow/contracts";
 import { canRegisterCompany } from "@/application/company/can-register-company";
 import { SUBMITTED_DATA_COPY } from "@/application/company/submitted-data";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
-import { walletAccountExplorerUrl } from "@/application/pyme-onboarding/wallet-connection";
+import {
+  connectAndStoreWallet,
+  walletAccountExplorerUrl,
+  walletConnectFailureCopy
+} from "@/application/pyme-onboarding/wallet-connection";
 import type { BusinessPort } from "@/application/ports/business-port";
 import type { KycPort } from "@/application/ports/kyc-port";
 import type { MyCampaignsPort } from "@/application/ports/my-campaigns-port";
@@ -15,10 +19,12 @@ import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway"
 import type { UploadPort } from "@/application/ports/upload-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
+import type { WalletPort } from "@/application/ports/wallet-port";
 import { SimulatedKycAdapter } from "@/infrastructure/kyc/simulated-kyc-adapter";
 import { createBrowserSmeRequestGateway } from "@/infrastructure/sme/default-gateway";
 import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
+import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
 import { useMyApplication } from "@/state/use-my-application";
 import { useSmeRequestState } from "@/state/use-sme-request";
@@ -33,6 +39,8 @@ import { PymeOnboardingWizard } from "./pyme-onboarding-wizard";
 
 const COPY = ROLE_HOME_COPY.PYME;
 const defaultKyc: KycPort = new SimulatedKycAdapter();
+/** The Freighter signer the funds guide connects with; module scope keeps it stable across renders. */
+const defaultWallet: WalletPort = new FreighterWallet();
 
 interface LoadedWallet {
   readonly publicKey: string;
@@ -69,6 +77,8 @@ export interface CompanyWorkspaceProps {
   readonly upload?: UploadPort;
   /** Injectable for tests; production builds the browser wallet port lazily. */
   readonly connection?: WalletConnectionPort;
+  /** Freighter signer the funds guide connects with; injectable for tests. */
+  readonly walletPort?: WalletPort;
   /** Injectable for tests; production uses the deterministic demo balance. */
   readonly balance?: WalletBalancePort;
   /** Injectable for tests; production builds the browser dashboard port lazily. */
@@ -105,9 +115,11 @@ export interface CompanyWorkspaceProps {
  * stay in the wizard's step 4; `Desconectar` only clears this card's local view,
  * and is refused while the account is frozen.
  *
- * WU5 adds the application-state banner (D6) and the Testnet funds guide (D5):
- * the guide points at Friendbot so the PyME funds its own wallet, and the
- * banner reads the PyME's own review state from `GET /sme-requests/:id`
+ * WU5 adds the application-state banner (D6) and the Testnet funds guide (D5);
+ * #531 reworks the guide so its primary action connects Freighter and, once
+ * connected, shows the account's balance plus whether it still needs Testnet
+ * XLM for the vault deploy — Friendbot is only secondary help. The banner reads
+ * the PyME's own review state from `GET /sme-requests/:id`
  * (`useSmeRequestState`) for the resolved application id.
  *
  * Feature #530 (T3/T4) resolves that id owner-scoped: the in-session captured id
@@ -126,6 +138,7 @@ export function CompanyWorkspace({
   kyc = defaultKyc,
   upload,
   connection,
+  walletPort,
   balance,
   myCampaigns,
   applicationState,
@@ -141,9 +154,12 @@ export function CompanyWorkspace({
   const [defaultBalance] = useState<WalletBalancePort>(() => new SimulatedWalletBalanceAdapter());
   const [defaultSmeGateway] = useState<SmeRequestGateway | null>(() => createBrowserSmeRequestGateway());
   const [wallet, setWallet] = useState<LoadedWallet | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [capturedApplicationId, setCapturedApplicationId] = useState<string | null>(null);
   const uploadPort = upload ?? defaultUpload;
   const connectionPort = connection ?? defaultConnection;
+  const walletSigner = walletPort ?? defaultWallet;
   const balancePort = balance ?? defaultBalance;
   const smeGateway = smeRequestGateway === undefined ? defaultSmeGateway : smeRequestGateway;
 
@@ -178,6 +194,26 @@ export function CompanyWorkspace({
       active = false;
     };
   }, [connectionPort, balancePort]);
+
+  // The funds guide's primary action (#531): the same connect → challenge →
+  // sign → store sequence the wizard's review step uses, then the account's
+  // balance is read so the guide can say whether it can pay for the vault
+  // deploy. A failure is shown sanitized; the connection is never faked.
+  async function connectWallet(): Promise<void> {
+    if (connecting) return;
+    setConnecting(true);
+    setConnectError(null);
+    const outcome = await connectAndStoreWallet(walletSigner, connectionPort);
+    if (!outcome.ok) {
+      setConnectError(walletConnectFailureCopy(outcome));
+      setConnecting(false);
+      return;
+    }
+    const { publicKey, frozen } = outcome.connection;
+    const stateBalance = await balancePort.getBalance(publicKey);
+    setWallet({ publicKey, frozen, balanceXlm: stateBalance.ok ? stateBalance.balanceXlm : null });
+    setConnecting(false);
+  }
 
   if (wizardOpen) {
     return (
@@ -239,10 +275,19 @@ export function CompanyWorkspace({
           frozen={wallet.frozen}
           balanceXlm={wallet.balanceXlm}
           explorerUrl={walletAccountExplorerUrl(wallet.publicKey)}
-          onDisconnect={() => setWallet(null)}
+          onDisconnect={() => {
+            setWallet(null);
+            setConnectError(null);
+          }}
         />
       ) : null}
-      <CompanyTestnetFunds publicKey={wallet?.publicKey ?? null} />
+      <CompanyTestnetFunds
+        publicKey={wallet?.publicKey ?? null}
+        balanceXlm={wallet?.balanceXlm ?? null}
+        onConnect={() => void connectWallet()}
+        connecting={connecting}
+        error={connectError}
+      />
       <CompanyDashboardContainer {...(myCampaigns ? { port: myCampaigns } : {})} />
     </div>
   );
