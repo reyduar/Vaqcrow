@@ -76,6 +76,80 @@ describe("AiStep", () => {
     });
   });
 
+  it("renders a spinner in the completeness loading line and adds no live region of its own", async () => {
+    const port = new FakeAiEvaluation();
+    const releaseEvaluation = port.holdNextEvaluate();
+    const completeness = new FakeCompleteness();
+    const releaseCheck = completeness.holdNextCheck();
+    renderStep(port, completeness);
+
+    const section = screen.getByRole("heading", { name: "Información completa" }).closest("section");
+    expect(section).not.toBeNull();
+    const loading = within(section as HTMLElement)
+      .getByText("Revisando faltantes y anomalías…")
+      .closest("p") as HTMLElement;
+    expect(loading).not.toBeNull();
+    expect(loading).toHaveAttribute("aria-busy", "true");
+
+    // A visible, decorative spinner makes the wait read as «working», without
+    // becoming a second live region that competes with the step's status.
+    const spinner = loading.querySelector("svg");
+    expect(spinner).not.toBeNull();
+    expect(spinner).toHaveClass("animate-spin");
+    expect(spinner).toHaveAttribute("aria-hidden", "true");
+    expect(within(section as HTMLElement).queryByRole("status")).not.toBeInTheDocument();
+
+    await act(async () => {
+      releaseCheck();
+    });
+    await act(async () => {
+      releaseEvaluation();
+    });
+  });
+
+  it("hides the actions until the completeness check settles, then reveals them", async () => {
+    const port = new FakeAiEvaluation();
+    const completeness = new FakeCompleteness();
+    const releaseCheck = completeness.holdNextCheck();
+    renderStep(port, completeness);
+
+    // The simulated band resolves on its own while the real completeness check
+    // is still in flight: the actions must not be reachable yet.
+    expect(await screen.findByText("Riesgo medio")).toBeInTheDocument();
+    expect(screen.getByText("Revisando faltantes y anomalías…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continuar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Corregir datos/ })).not.toBeInTheDocument();
+
+    await act(async () => {
+      releaseCheck();
+    });
+
+    expect(await screen.findByRole("button", { name: /Continuar/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Corregir datos/ })).toBeInTheDocument();
+  });
+
+  it("keeps Continuar usable for an incomplete result once the check settles", async () => {
+    const completeness = new FakeCompleteness();
+    completeness.seedResult({ complete: false, findings: [gapFinding()] });
+    const releaseCheck = completeness.holdNextCheck();
+    const { onContinue } = renderStep(new FakeAiEvaluation(), completeness);
+
+    expect(await screen.findByText("Riesgo medio")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continuar/ })).not.toBeInTheDocument();
+
+    await act(async () => {
+      releaseCheck();
+    });
+
+    // Gating on «the read finished», never on its verdict: an incomplete result
+    // still warns and never blocks (owner decision #402 D2).
+    const continueButton = await screen.findByRole("button", { name: /Continuar/ });
+    expect(continueButton).toBeEnabled();
+    expect(screen.getByText(/Podés enviar la solicitud igual/)).toBeInTheDocument();
+    fireEvent.click(continueButton);
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the heading and the subtitle, with no simulated marker before the band lands", () => {
     const port = new FakeAiEvaluation();
     port.holdNextEvaluate();

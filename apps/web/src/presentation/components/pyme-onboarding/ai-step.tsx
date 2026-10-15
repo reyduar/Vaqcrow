@@ -35,6 +35,12 @@ import { CompletenessFindings } from "./completeness-findings";
  * incomplete result warns without blocking: the human review in step 4 decides.
  * «Corregir datos» leaves the evidence untouched and returns to step 2;
  * «Continuar» goes to step 4.
+ *
+ * The band is simulated and lands almost instantly, so it is not the wait the
+ * person sees; the real wait is the parallel completeness check over the
+ * uploaded documents. The actions are therefore gated on the check having
+ * *settled* — complete, incomplete or failed — never on its verdict: an
+ * incomplete result still warns and never blocks (#402 D2).
  */
 
 const BAND_TONES: Readonly<Record<AiRiskBand, string>> = {
@@ -71,6 +77,10 @@ export function AiStep({
   const [phase, setPhase] = useState<AiPhase>("busy");
   const [result, setResult] = useState<AiEvaluationResult | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Whether the parallel completeness check has finished its read. The band is
+  // simulated and resolves almost instantly, so the actions must wait for this
+  // one too — otherwise «Continuar» is reachable while the real work runs.
+  const [completenessSettled, setCompletenessSettled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,9 +155,13 @@ export function AiStep({
 
       {/* Mounted in parallel with the AI evaluation so its result is ready when
           the band lands, and so the step never shows a fabricated gap. */}
-      <CompletenessFindings port={completenessPort} input={completenessInput} />
+      <CompletenessFindings
+        port={completenessPort}
+        input={completenessInput}
+        onSettled={() => setCompletenessSettled(true)}
+      />
 
-      {phase === "done" && result ? (
+      {phase === "done" && result && completenessSettled ? (
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
