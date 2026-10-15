@@ -46,20 +46,24 @@ describe("AC1 — Friendbot is never a primary action", () => {
 });
 
 describe("AC2 — honest balance + funding statement", () => {
-  it("funded shows balance + can-pay, no warning", () => {
+  it("funded points at the wallet card and says it can pay, with no warning", () => {
     render(<CompanyTestnetFunds publicKey={KEY} balanceXlm="12.5000000" />);
-    expect(screen.getByText("12,5000000 XLM")).toBeTruthy();
+    expect(screen.getByText(/Mirá tu saldo disponible en la tarjeta de wallet, arriba/)).toBeTruthy();
+    // #531: the guide never repeats the number — the wallet card owns it.
+    expect(screen.queryByText("12,5000000 XLM")).toBeNull();
     expect(screen.getByText(/ya tiene XLM de Testnet para pagar/i)).toBeTruthy();
     expect(screen.queryByText(/todavía no tiene XLM/i)).toBeNull();
   });
-  it("unfunded shows balance + warning, no funded claim", () => {
+  it("unfunded warns, with no funded claim", () => {
     render(<CompanyTestnetFunds publicKey={KEY} balanceXlm="0.0000000" />);
     expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeTruthy();
     expect(screen.queryByText(/ya tiene XLM de Testnet para pagar/i)).toBeNull();
   });
   it("connected with unknown balance never fabricates a number", () => {
     render(<CompanyTestnetFunds publicKey={KEY} balanceXlm={null} />);
-    expect(screen.getByText("—")).toBeTruthy();
+    // The guide renders no number at all, so nothing can be fabricated here.
+    expect(screen.queryByText("—")).toBeNull();
+    expect(screen.queryByText("0,0000000 XLM")).toBeNull();
     expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeTruthy();
   });
 });

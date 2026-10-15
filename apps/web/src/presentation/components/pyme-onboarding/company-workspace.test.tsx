@@ -167,7 +167,9 @@ describe("CompanyWorkspace", () => {
     const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
     fireEvent.click(within(guide).getByRole("button", { name: "Conectar Freighter" }));
 
-    expect(await within(guide).findByText("12,5000000 XLM")).toBeInTheDocument();
+    expect(
+      await within(guide).findByText(/Mirá tu saldo disponible en la tarjeta de wallet, arriba/)
+    ).toBeInTheDocument();
     expect(within(guide).getByText(/ya tiene XLM de Testnet para pagar la creación de la bóveda/i)).toBeInTheDocument();
   });
 
@@ -196,7 +198,9 @@ describe("CompanyWorkspace", () => {
     renderWorkspace(connection);
 
     const guide = await screen.findByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
-    expect(await within(guide).findByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(
+      await within(guide).findByText(/Mirá tu saldo disponible en la tarjeta de wallet, arriba/)
+    ).toBeInTheDocument();
     expect(within(guide).getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
       "href",
       `https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`

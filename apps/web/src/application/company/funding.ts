@@ -35,7 +35,8 @@ export const TESTNET_FUNDS_COPY = Object.freeze({
   connect: "Conectar Freighter",
   connecting: "Conectando…",
   disconnectedHint: "Conectá tu wallet para ver su saldo y saber si puede pagar la creación de la bóveda.",
-  balanceLabel: "Saldo de tu cuenta",
+  // The number itself lives in the wallet card above; the guide never repeats it (#531).
+  balancePointer: "Mirá tu saldo disponible en la tarjeta de wallet, arriba.",
   fundedNote: "Tu cuenta ya tiene XLM de Testnet para pagar la creación de la bóveda.",
   unfundedWarning: "Tu cuenta todavía no tiene XLM de Testnet: sin saldo no se puede crear la bóveda.",
   friendbotHelp: "Friendbot fondea una cuenta de Testnet una sola vez, con su dirección pública y nunca con la clave privada.",
