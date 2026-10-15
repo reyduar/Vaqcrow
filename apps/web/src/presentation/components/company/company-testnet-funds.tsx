@@ -1,45 +1,49 @@
-import { IoGitNetworkOutline, IoOpenOutline } from "react-icons/io5";
+"use client";
+
+import { IoAlertCircleOutline, IoGitNetworkOutline, IoOpenOutline, IoWalletOutline } from "react-icons/io5";
+import { formatXlmAmount } from "@/application/company/format";
+import { friendbotUrl, fundingState, TESTNET_FUNDS_COPY } from "@/application/company/funding";
+import { Button, buttonClasses } from "../button";
 
 /**
- * Testnet funds guide (Feature #434, WU5, owner decision D5): a short text and
- * a link to Friendbot so the PyME funds its **own** wallet. Vaqcrow is
- * non-custodial and never moves funds; this component never performs the
- * funding — it only points at the public Friendbot service and states the
- * limit.
+ * Testnet funds guide of `/company` (Feature #434, WU5; reworked by issue #531).
  *
- * The template's PyME mode does not design this guide, so the copy is neutral,
- * honest Spanish and owner-pending. The link is prefilled with the connected
- * public key when one is known; Friendbot requires a public address (G), never
- * a secret, and only Testnet XLM (no economic value) is involved.
+ * The owner found that the old bare «Fondear con Friendbot» link landed on
+ * Friendbot's own 400 page whenever the account already had the starting
+ * balance, and never reflected whether the wallet was connected or funded. The
+ * guide now has one primary action — connect Freighter — and, once connected,
+ * shows the account's balance and says whether it can pay for the vault deploy.
+ * Friendbot stays as explanatory, secondary help, offered only while the account
+ * still needs funds and prefilled with the public key it requires.
+ *
+ * Presentational only: the container (`CompanyWorkspace`) owns the connection,
+ * the balance and the connect sequence and passes them down. Vaqcrow is
+ * non-custodial and never moves funds; only Testnet XLM (no economic value) is
+ * involved. The template does not design this guide, so the copy is neutral,
+ * honest Spanish (owner-pending) and lives in `application/company/funding.ts`.
  */
 export interface CompanyTestnetFundsProps {
   /** The connected wallet's public key, or `null` when none is linked yet. */
   readonly publicKey?: string | null;
+  /** The connected wallet's raw XLM balance; `null` while it is unknown. */
+  readonly balanceXlm?: string | null;
+  /** Connects Freighter; only rendered while no wallet is connected. */
+  readonly onConnect?: () => void;
+  /** `true` while the connect sequence runs: the primary action is busy. */
+  readonly connecting?: boolean;
+  /** Sanitized connect-failure message, or `null`. */
+  readonly error?: string | null;
 }
 
-export const TESTNET_FUNDS_COPY = Object.freeze({
-  title: "Fondear tu wallet con XLM de prueba",
-  body: "Tu wallet necesita XLM de Testnet para operar. Vaqcrow no custodia fondos ni mueve dinero: vos fondeás tu propia cuenta.",
-  friendbot: "Fondear con Friendbot",
-  genericHint: "Abrí Friendbot y pegá la dirección pública de tu wallet (empieza con G).",
-  prefilledHint: "El enlace ya incluye tu dirección pública. Abrila para fondearla.",
-  noValue: "Sólo XLM de Testnet, sin valor económico. Friendbot pide una dirección pública, nunca una clave privada."
-});
-
-/**
- * The public Friendbot URL: prefilled with the wallet's public key when one is
- * known, generic otherwise. `https://friendbot.stellar.org` without `addr`
- * returns a 400, so the generic form is only a starting point the person
- * completes with their own address.
- */
-export function friendbotUrl(publicKey?: string | null): string {
-  return publicKey === undefined || publicKey === null || publicKey === ""
-    ? "https://friendbot.stellar.org"
-    : `https://friendbot.stellar.org/?addr=${encodeURIComponent(publicKey)}`;
-}
-
-export function CompanyTestnetFunds({ publicKey = null }: CompanyTestnetFundsProps) {
-  const prefilled = publicKey !== null && publicKey !== "";
+export function CompanyTestnetFunds({
+  publicKey = null,
+  balanceXlm = null,
+  onConnect,
+  connecting = false,
+  error = null
+}: CompanyTestnetFundsProps) {
+  const state = fundingState(publicKey, balanceXlm);
+  const balance = balanceXlm === null ? "—" : formatXlmAmount(balanceXlm);
 
   return (
     <section
@@ -50,25 +54,66 @@ export function CompanyTestnetFunds({ publicKey = null }: CompanyTestnetFundsPro
         <IoGitNetworkOutline aria-hidden="true" focusable="false" className="text-[20px] text-text-secondary" />
         <h2 className="m-0 text-[17px] font-[650]">{TESTNET_FUNDS_COPY.title}</h2>
         <span className="inline-flex h-[22px] items-center rounded-pill border border-page-border px-2.5 text-xs font-[650] tracking-[0.04em] text-text-secondary">
-          TESTNET
+          {TESTNET_FUNDS_COPY.badge}
         </span>
       </header>
 
       <p className="m-0 text-sm leading-normal text-text-secondary">{TESTNET_FUNDS_COPY.body}</p>
 
-      <a
-        href={friendbotUrl(publicKey)}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="inline-flex h-11 w-fit items-center gap-1.5 rounded-control bg-brand-accent px-4 text-sm font-semibold text-on-accent hover:bg-brand-accent-hover"
-      >
-        {TESTNET_FUNDS_COPY.friendbot}
-        <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
-      </a>
+      {state === "disconnected" ? (
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="primary"
+            isLoading={connecting}
+            loadingLabel={TESTNET_FUNDS_COPY.connecting}
+            {...(onConnect ? { onPress: onConnect } : {})}
+          >
+            <IoWalletOutline aria-hidden="true" focusable="false" className="text-[18px]" />
+            {TESTNET_FUNDS_COPY.connect}
+          </Button>
+          <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.disconnectedHint}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div>
+            <div className="text-[13px] font-medium">{TESTNET_FUNDS_COPY.balanceLabel}</div>
+            <div aria-live="polite" className="mt-0.5 text-[22px] leading-[1.2] font-bold tracking-[-0.02em]">
+              {balance}
+            </div>
+          </div>
+          {state === "funded" ? (
+            <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.fundedNote}</p>
+          ) : (
+            <p className="m-0 flex items-center gap-2 text-[13px] leading-[1.5] font-semibold text-trust-caution">
+              <IoAlertCircleOutline aria-hidden="true" focusable="false" className="shrink-0 text-[16px]" />
+              {TESTNET_FUNDS_COPY.unfundedWarning}
+            </p>
+          )}
+        </div>
+      )}
 
-      <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">
-        {prefilled ? TESTNET_FUNDS_COPY.prefilledHint : TESTNET_FUNDS_COPY.genericHint}
-      </p>
+      {error ? (
+        <p role="alert" className="m-0 flex items-center gap-2 text-sm font-semibold text-trust-critical">
+          <IoAlertCircleOutline aria-hidden="true" focusable="false" className="shrink-0 text-[18px]" />
+          {error}
+        </p>
+      ) : null}
+
+      {state === "unfunded" ? (
+        <div className="flex flex-col gap-2">
+          <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.friendbotHelp}</p>
+          <a
+            href={friendbotUrl(publicKey)}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={`inline-flex w-fit items-center gap-1.5 ${buttonClasses("secondary")}`}
+          >
+            {TESTNET_FUNDS_COPY.friendbotLink}
+            <IoOpenOutline aria-hidden="true" focusable="false" className="text-[15px]" />
+          </a>
+        </div>
+      ) : null}
+
       <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.noValue}</p>
     </section>
   );

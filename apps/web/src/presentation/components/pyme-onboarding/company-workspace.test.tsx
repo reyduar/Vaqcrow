@@ -5,7 +5,7 @@ import type { ApplicationReviewState, SmeRequest } from "@vaqcrow/contracts";
 import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { FakeKyc } from "@/test/fake-kyc";
-import { FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
+import { FakeWallet, FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
 import { CompanyWorkspace, captureApplicationIdOnSubmit } from "./company-workspace";
 
 const PUBLIC_KEY = "GBXK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ2345677Q2M";
@@ -135,24 +135,65 @@ describe("CompanyWorkspace", () => {
     );
   });
 
-  it("shows the Testnet funds guide with the generic Friendbot link while no wallet is linked", () => {
+  it("offers «Conectar Freighter» in the funds guide while no wallet is linked", () => {
     renderWorkspace();
 
-    expect(screen.getByRole("heading", { name: "Fondear tu wallet con XLM de prueba" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
-      "href",
-      "https://friendbot.stellar.org"
-    );
-    expect(screen.getByText(/Vaqcrow no custodia fondos ni mueve dinero/i)).toBeInTheDocument();
+    const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
+    expect(within(guide).getByRole("heading", { name: "Fondear tu wallet con XLM de prueba" })).toBeInTheDocument();
+    expect(within(guide).getByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
+    expect(within(guide).queryByRole("link", { name: /Friendbot/i })).not.toBeInTheDocument();
+    expect(within(guide).getByText(/Vaqcrow no custodia fondos ni mueve dinero/i)).toBeInTheDocument();
   });
 
-  it("prefills the connected public key in the Friendbot link", async () => {
+  it("connects Freighter from the funds guide and then shows the funded balance", async () => {
+    const wallet = new FakeWallet();
+    wallet.seedAccount(PUBLIC_KEY);
+    const balance = new FakeWalletBalance();
+    balance.seedBalance("12.5000000");
+    render(
+      <CompanyWorkspace
+        kyc={new FakeKyc()}
+        walletPort={wallet}
+        connection={new FakeWalletConnection()}
+        balance={balance}
+        myCampaigns={okMyCampaigns()}
+      />
+    );
+
+    const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
+    fireEvent.click(within(guide).getByRole("button", { name: "Conectar Freighter" }));
+
+    expect(await within(guide).findByText("12,5000000 XLM")).toBeInTheDocument();
+    expect(within(guide).getByText(/ya tiene XLM de Testnet para pagar la creación de la bóveda/i)).toBeInTheDocument();
+  });
+
+  it("shows the sanitized connect failure when Freighter is not available", async () => {
+    render(
+      <CompanyWorkspace
+        kyc={new FakeKyc()}
+        walletPort={new FakeWallet()}
+        connection={new FakeWalletConnection()}
+        balance={new FakeWalletBalance()}
+        myCampaigns={okMyCampaigns()}
+      />
+    );
+
+    const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
+    fireEvent.click(within(guide).getByRole("button", { name: "Conectar Freighter" }));
+
+    expect(await within(guide).findByRole("alert")).toHaveTextContent(
+      "No encontramos Freighter en este navegador."
+    );
+  });
+
+  it("shows the connected balance and prefills Friendbot while the account is unfunded", async () => {
     const connection = new FakeWalletConnection();
     connection.seedConnection(PUBLIC_KEY);
     renderWorkspace(connection);
 
-    await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
-    expect(screen.getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
+    const guide = await screen.findByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
+    expect(await within(guide).findByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(within(guide).getByRole("link", { name: /Friendbot/i })).toHaveAttribute(
       "href",
       `https://friendbot.stellar.org/?addr=${PUBLIC_KEY}`
     );

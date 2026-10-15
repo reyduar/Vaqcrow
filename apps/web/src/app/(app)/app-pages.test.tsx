@@ -66,7 +66,8 @@ describe("/company", () => {
   it("has no connect-wallet popup", async () => {
     await renderAs("PYME", "/company", <CompanyPage />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Conectá tu wallet/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Conectar Freighter/)).not.toBeInTheDocument();
+    // #531: the funds guide's connect action is inline, never a popup.
+    const guide = screen.getByRole("region", { name: "Guía para fondear tu wallet de Testnet" });
+    expect(within(guide).getByRole("button", { name: "Conectar Freighter" })).toBeInTheDocument();
   });
 });
