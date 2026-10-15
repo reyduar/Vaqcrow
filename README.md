@@ -28,9 +28,11 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 - **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado, `packages/ai`, el workspace Rust `contracts/` (`campaign-vault` y `campaign-factory`) y migraciones Supabase para solicitud de PyME, evaluación, decisiones humanas, distribución de revenue share y persistencia de campañas.
 - **Producto por roles:** la app es un producto con la forma exacta del template de diseño, con tres roles —`PYME`, `INVERSOR` y `ADMIN`— y **autenticación real**: Supabase Auth con email y contraseña, roles verificados en el servidor y RLS por rol. Cada rol tiene su área (ver [Módulos por rol](#módulos-por-rol)); el recorrido vertical (solicitud, evaluación, decisión humana, fondeo, ventas, distribución) queda encadenado por los identificadores que cada paso produce.
 - **El recorrido completo, explicado:** [Cómo funciona Vaqcrow](./docs/guides/como-funciona-vaqcrow.md) recorre una campaña de punta a punta —de la solicitud de la PyME al reparto mensual del revenue share— y aclara en cada tramo qué es real en Stellar Testnet y qué es simulado. Es la fuente única de la sección «Cómo funciona» de la landing y del corpus de ayuda.
+- **Blog público:** «Acerca de» abre un **Blog** cuyos artículos son archivos Markdown en `docs/guides/blog/` —el mismo corpus que alimenta al asistente—, mapeados por la tabla `blog_post` y servidos por la API; la web los renderiza como página propia (`/blog`, `/blog/[slug]`). Nace para difundir, en español, cómo se cruzan las **finanzas y la tecnología** en Vaqcrow: la primera pieza explica el producto y su bóveda en Stellar, y las que sigan se escriben y revisan por PR como cualquier otra fuente.
+- **Asistente de ayuda anclado a una wiki:** un asistente que responde **solo** desde una **wiki compilada** (`docs/wiki/`) —recuperación aumentada **sin embeddings**, con el método *LLM-Wiki* de Karpathy: navega un índice y lee las páginas que ese índice señala—. Está disponible para usuarios logueados (`PYME`/`INVERSOR`) a los que un admin habilita el acceso, **cita** la página de la que sale cada respuesta y no inventa: fuera de alcance declina y, si ninguna página cubre la pregunta, lo dice. La wiki se compila por PR y sus invariantes estructurales están fijados por tests.
 - **IA real:** la evaluación usa el proveedor `opencode-go` detrás de un adaptador reemplazable en `packages/ai`; sigue siendo asesora y no aprueba, no calcula obligaciones ni mueve fondos.
 - **Stellar y custodia:** Freighter y Stellar Testnet están implementados, y el fondeo se custodia en un contrato Soroban (una bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso permissionless al vencer). La plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME; la persona usuaria firma aportes, retiros y reembolsos con Freighter.
-- **Pruebas:** **403 archivos** de test unitarios y de componentes —**6.161 casos**— seleccionados por `pnpm run test` (Vitest + Testing Library; medido el 2026-10-13), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
+- **Pruebas:** **434 archivos** de test unitarios y de componentes —**6.472 casos**— seleccionados por `pnpm run test` (Vitest + Testing Library; medido el 2026-10-14), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
 - **Notificaciones:** campana in-app y email transaccional por la API de Resend detrás de un puerto y un adaptador, con las pruebas del PR usando un doble.
 - **Diseño (fuente de verdad):** el template de **Claude Design** en `docs/design/template/` —14 pantallas `.dc.html`, cada una con los dos temas en el mismo archivo— reemplazó al proyecto de Google Stitch el 01/10/2026. Se comparte en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. El directorio está fuera del repositorio a propósito (`.gitignore`) y su HTML generado nunca es implementación autoritativa de producción; el detalle está en [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md). El handoff vive en `docs/design/design_handoff_vaqcrow/` (`README.md`, `brief/`, `screens/`): es la fuente visual y de comportamiento del producto por roles, y **lo que el template no diseña se registra como pregunta abierta, no se inventa**. La única excepción acordada es la sección «Cómo funciona» de la landing, rediseñada fuera del template (owner, 13/10/2026) porque sus cuatro pasos no alcanzaban para explicar la operación: el template sigue siendo la fuente de verdad en todo lo demás, y las reglas de confianza de `demo-ui.md` §2 siguen prevaleciendo.
 
@@ -43,10 +45,10 @@ La app tiene tres roles con autenticación real. `PYME` e `INVERSOR` se eligen a
 
 | Rol | Área | Módulos |
 |---|---|---|
-| Público | Sin sesión | Landing (`/`), Explorar PyMEs (`/explore`), Acerca de, Guía de inversión, Guía para emprendedores, Ayuda (el asistente RAG es futuro: «Próximamente») |
-| **PYME** | `/company` | Onboarding («Registrar mi PyME») y Mi campaña (bóvedas, distribuciones, ventas declaradas, aportantes) |
-| **INVERSOR** | `/portfolio`, `/reports` | Detalle de PyME (`/campaigns/[id]`), Mi portafolio, Informes |
-| **ADMIN** | `/admin` | Cola de PyMEs, revisión y decisión humana, evidencia por solicitud, usuarios y auditoría |
+| Público | Sin sesión | Landing (`/`), Explorar PyMEs (`/explore`), Acerca de (con el **Blog**: `/blog`, `/blog/[slug]`), Guía de inversión, Guía para emprendedores, Ayuda (preguntas frecuentes) |
+| **PYME** | `/company` | Onboarding («Registrar mi PyME»), Mi campaña (bóvedas, distribuciones, ventas declaradas, aportantes) y el **asistente de ayuda** (si un admin le habilita el acceso) |
+| **INVERSOR** | `/portfolio`, `/reports` | Detalle de PyME (`/campaigns/[id]`), Mi portafolio, Informes y el **asistente de ayuda** (si un admin le habilita el acceso) |
+| **ADMIN** | `/admin` | Cola de PyMEs, revisión y decisión humana, evidencia por solicitud, usuarios (roles y **acceso al asistente**) y auditoría |
 
 - **Rutas siempre en inglés**; la UI en español.
 - El ingreso redirige por el **rol verificado**, no por el selector del formulario; el selector «Soy PyME / Soy inversor» debe coincidir con ese rol o el ingreso se rechaza.
@@ -81,6 +83,8 @@ El objetivo de la demo es mostrar este recorrido sin ocultar qué es real, qué 
 | Fondeo y distribución | **Transacciones reales en Stellar Testnet**, sin valor económico |
 | Confirmación | **Real y asíncrona**: Soroban RPC para la bóveda y Horizon para cuentas, pagos y distribución |
 | Cálculo de revenue share | **Real, determinístico** y ajeno al LLM |
+| Blog | **Real**: artículos Markdown en `docs/guides/blog/`, revisados por PR y servidos por la API; el cuerpo vive en el repo, no en la base |
+| Asistente de ayuda | **Real**: LLM anclado a la wiki compilada (`docs/wiki/`), con guardias en código; cita la página y no persiste el texto de la conversación |
 
 **Regla de presentación:** el dinero en ARS y su conversión a activo Stellar siguen **simulados** (no hay corredor real: Vaqcrow no mueve ARS ni cripto de terceros). Una simulación demuestra UX, contratos de integración y control del flujo; no demuestra disponibilidad, legalidad, SLA, costos ni calidad de un proveedor real.
 
@@ -96,6 +100,8 @@ Guardrails obligatorios:
 - no calcular montos, porcentajes, redondeos u obligaciones financieras;
 - no construir decisiones finales, firmar ni transferir fondos;
 - ante timeout o salida inválida, derivar el caso a revisión manual.
+
+El **asistente de ayuda** usa el mismo proveedor con otro contrato, y sus guardias también viven en el código: responde **solo** desde la wiki compilada (`docs/wiki/`), en **turno único**; fuera de alcance declina con una respuesta fija; si ninguna página cubre la pregunta contesta «no tengo documentación» **sin** llegar a llamar al modelo de respuesta; una cita fuera de las páginas recuperadas, una salida inválida o una respuesta vacía terminan en esa misma respuesta fija (con **un** reintento); y una falla del proveedor es `503`, nunca una respuesta inventada. **No da consejo de inversión, no aprueba nada y no mueve fondos.** La conversación no se persiste: solo queda una marca de tiempo por usuario, para el tope de uso.
 
 ## Decisión de arquitectura
 
@@ -127,21 +133,23 @@ Dos vistas de **despliegue**: qué corre en la máquina de desarrollo con el per
 
 ```mermaid
 graph TB
-    subgraph HOST["Host (tu máquina)"]
-        BROWSER["Navegador<br/>Freighter en la extensión"]
+    subgraph HOST["Host — tu máquina"]
+        BROWSER["Navegador + Freighter (extensión)<br/>la clave privada nunca sale del navegador"]
         WEB["Web Next.js — next dev<br/>:3001"]
         KEYSTORE["Keystore de la Stellar CLI<br/>identidad vaqcrow-platform"]
     end
 
-    subgraph DOCKER["Contenedores Docker (Docker Desktop)"]
+    subgraph DOCKER["Docker Desktop — contenedores"]
         API["API Fastify — contenedor<br/>apps/api/Dockerfile · :3000"]
+        DOCS["docs/ empaquetado en la imagen<br/>guides/ (blog) · wiki/"]
         SUPABASE["Supabase local (CLI)<br/>Auth + Postgres + Storage · :54321"]
         QUICKSTART["Stellar Quickstart (opt-in)<br/>Soroban RPC + Horizon · :8000"]
     end
 
-    BROWSER -->|"abre http://localhost:3001"| WEB
-    BROWSER -->|"firma de la persona usuaria: la clave nunca sale del navegador"| WEB
+    BROWSER -->|"http://localhost:3001"| WEB
+    BROWSER -->|"firma de la persona: la clave nunca sale del navegador"| WEB
     WEB -->|"NEXT_PUBLIC_API_BASE_URL=http://localhost:3000"| API
+    API -.->|"sirve el blog y el corpus del asistente"| DOCS
     API -->|"host.docker.internal:54321"| SUPABASE
     API -.->|"STELLAR_NETWORK=local, bóveda opt-in (Perfiles de entorno §11)"| QUICKSTART
     KEYSTORE -.->|"generate-docker-env.sh lee la clave de plataforma sin imprimirla"| API
@@ -159,17 +167,18 @@ graph TB
     end
 
     subgraph VERCEL["Vercel — despliegue de la web"]
-        WEB["Build de Next.js<br/>NEXT_PUBLIC_API_BASE_URL horneada en build time"]
+        WEB["Landing · Explorar · Blog · Áreas por rol · /admin<br/>NEXT_PUBLIC_API_BASE_URL horneada en build time"]
     end
 
     subgraph RAILWAY["Railway — despliegue de la API"]
-        API["Fastify + Node.js — APP_ENV=demo<br/>autorización por rol · IA en 2 pasos · cálculo"]
+        API["Fastify + Node.js — APP_ENV=demo<br/>autorización por rol · evaluación IA en 2 pasos<br/>blog · asistente de ayuda · cálculo de distribución"]
+        DOCS["docs/ empaquetado en la imagen<br/>guides/ (blog) · wiki/ (asistente)"]
         SIGNER["platform-signer.ts<br/>único uso de STELLAR_PLATFORM_SECRET_KEY"]
     end
 
     subgraph SUPABASE["Supabase remoto"]
         AUTH["Auth — roles PYME · INVERSOR · ADMIN"]
-        DB[("PostgreSQL + RLS — espejo de la cadena")]
+        DB[("PostgreSQL + RLS — espejo de la cadena<br/>blog_post · acceso al asistente · uso")]
         STORAGE["Storage privado<br/>documentos y fotos"]
     end
 
@@ -181,20 +190,21 @@ graph TB
     end
 
     subgraph EXT["Servicios externos"]
-        LLM["Proveedor LLM — evaluación asesora"]
+        LLM["Proveedor LLM<br/>evaluación asesora · asistente de ayuda"]
         RESEND["Resend — email transaccional"]
     end
 
-    USER -->|"https://vaqcrow-web-nine.vercel.app"| WEB
+    USER -->|"https://www.vaqcrow.com"| WEB
     WEB -->|"HTTPS + CORS"| API
     WEB -->|"pide firmar la invocación"| FREIGHTER
-    FREIGHTER -->|"firma de la persona usuaria: aporte / retiro / reembolso"| WEB
+    FREIGHTER -->|"firma de la persona: aporte / retiro / reembolso"| WEB
     WEB -->|"sesión (cookies @supabase/ssr)"| AUTH
     WEB -->|"invocación firmada"| API
     AUTH -->|"identidad verificada"| API
+    API -.->|"sirve el blog y el corpus del asistente"| DOCS
     API --> DB
     API -->|"documentos no confiables (subida mediada)"| STORAGE
-    API -->|"evaluación"| LLM
+    API -->|"evaluación y asistente"| LLM
     API -->|"notificaciones"| RESEND
     API -->|"sendTransaction y consulta de estado"| RPC
     API -->|"cuentas clásicas y pagos"| HORIZON
@@ -220,22 +230,24 @@ graph LR
     end
 
     subgraph WEB["apps/web — Next.js"]
-        PUBLIC["Público<br/>Landing · Explorar PyMEs · Acerca de · Ayuda · Guías"]
+        PUBLIC["Público<br/>Landing · Explorar PyMEs · Acerca de + Blog · Guías · Ayuda (FAQ)"]
         PYMEAREA["Área PyME<br/>Onboarding PyME · Mi campaña"]
         INVAREA["Área inversor<br/>Detalle PyME · Mi portafolio · Informes"]
-        ADMINAREA["/admin<br/>PyMEs · Revisión · Evidencia · Usuarios"]
+        CHAT["Asistente de ayuda<br/>flotante + /help<br/>solo logueados habilitados"]
+        ADMINAREA["/admin<br/>PyMEs · Revisión · Evidencia<br/>Usuarios: roles · acceso al asistente"]
     end
 
     subgraph SB["Supabase"]
         AUTH["Auth<br/>roles PYME · INVERSOR · ADMIN"]
-        DB[("PostgreSQL + RLS<br/>auditoría · notificaciones")]
+        DB[("PostgreSQL + RLS<br/>auditoría · notificaciones<br/>blog_post · acceso · uso")]
         STORAGE["Storage privado<br/>documentos y fotos"]
     end
 
-    API["apps/api — Fastify<br/>autorización por rol · IA consultiva en 2 pasos<br/>decisión humana · cálculo de distribución<br/>platform-signer: solo factory.deploy / CreateAccount"]
+    API["apps/api — Fastify<br/>autorización por rol · IA consultiva en 2 pasos<br/>blog · asistente anclado a la wiki<br/>decisión humana · cálculo de distribución<br/>platform-signer: solo factory.deploy / CreateAccount"]
+    DOCS["docs/ empaquetado en la imagen<br/>guides/ (blog) · wiki/ (asistente)"]
 
     subgraph EXT["Servicios externos"]
-        LLM["Proveedor LLM"]
+        LLM["Proveedor LLM<br/>evaluación · asistente"]
         RESEND["Resend — email"]
     end
 
@@ -250,9 +262,12 @@ graph LR
     PYME --> PYMEAREA
     INV --> INVAREA
     ADMIN --> ADMINAREA
+    PYME --> CHAT
+    INV --> CHAT
     WEB -->|"sesión"| AUTH
     WEB -->|"HTTPS + txs firmadas en Freighter"| API
     AUTH -->|"identidad verificada"| API
+    API -.->|"sirve el blog y el corpus"| DOCS
     API --> DB
     API -->|"documentos no confiables"| STORAGE
     API --> LLM
@@ -276,6 +291,8 @@ Vaqcrow **nunca** custodia claves ni recibe o mueve dinero de terceros: la clave
 | Notificaciones | Campana in-app y email por la API de Resend detrás de un puerto y adaptador |
 | Stellar | Stellar SDK, Freighter, Horizon y Testnet para firma no custodial, envío y confirmación; **contratos de Stellar (Rust) para la custodia del fondeo** |
 | IA | Proveedor LLM `opencode-go`, detrás de un adaptador reemplazable y con salida estructurada |
+| Asistente de ayuda | Wiki compilada en `docs/wiki/` (método *LLM-Wiki* de Karpathy, **sin embeddings**) más el mismo proveedor LLM, con las guardias en código |
+| Blog | Artículos Markdown en `docs/guides/blog/` renderizados por la web (`react-markdown` + `remark-gfm`); la tabla `blog_post` mapea cada slug a su archivo |
 | Pruebas | Vitest y Testing Library para unidad, dominio y UI; Playwright para el recorrido crítico en navegador |
 | Workspace y CI | pnpm, Turborepo; GitHub Actions con lockfile congelado y gates de pull request |
 
@@ -395,6 +412,8 @@ Cada Feature o Task de implementación incluye contexto, objetivo, requisitos fu
 - [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md) — template de Claude Design, flujos, estados, accesibilidad y pendientes de diseño.
 - [Cómo funciona Vaqcrow](./docs/guides/como-funciona-vaqcrow.md) — el recorrido completo de una campaña, etapa por etapa, de la solicitud de la PyME al reparto mensual, y el encuadre crowdfunding / crowdequity / crowdlending.
 - [Storybook y los dos temas](./docs/guides/storybook.md) — taller de componentes, temas claro/oscuro y qué está cubierto.
+- [Evidencia del Blog](./docs/planning/markdown-blog-in-about-evidence.md) — el Blog público, la tabla `blog_post` y el primer artículo, con su verificación.
+- [Esquema de la wiki del asistente](./docs/wiki/schema.md) — el contrato con el que se compila y se mantiene el corpus del asistente.
 
 ## Límites y decisiones abiertas
 
@@ -405,8 +424,17 @@ Lo que sigue abierto, con honestidad:
 - **Reset de Testnet del 16/12/2026.** Invalida las direcciones de contrato: obliga a redesplegar la fábrica y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`; el procedimiento está documentado y todavía no se ejercitó.
 - **Bordes conocidos:** `contributions_incomplete` tras un retiro total, un id de campaña malformado que responde `503`, el feed de ventas en memoria que se pierde al reiniciar la API y `scripts/` fuera de ESLint.
 - **Diseño pendiente:** las pantallas del template que la app todavía no tiene como ruta y las variantes móviles por ruta.
+- **Blog:** publicar un artículo nuevo es un merge (el cuerpo vive en el repo) seguido de un **redeploy de la API**, que es la que sirve el Markdown; la primera pieza está publicada y el resto se escribe por PR.
+- **Asistente de ayuda:** responde en **turno único** y **sin streaming** (la respuesta completa tarda del orden de 8-10 s, con el indicador mientras tanto); solo lo ven los usuarios logueados a los que un admin habilita el acceso, y solo en el asistente flotante (landing) y en `/help`. La wiki crece por PRs: si ninguna página cubre un tema, el asistente **lo dice** en vez de inventarlo.
 - **Decisiones de producción abiertas:** clasificación jurídica del instrumento, cumplimiento regulatorio/AML/KYC real, corredor ARS↔activo Stellar (no validado), privacidad y tratamiento de datos, verificación de ventas y cobranza reales, y auditoría/controles de emergencia del contrato. El detalle está en [el plan del producto real](./docs/planning/product.md).
 
 ## Licencia
 
 Este repositorio se distribuye bajo la [licencia MIT](./LICENSE).
+
+## Autor
+
+Vaqcrow es un proyecto de **Ariel Duarte** ([@reyduar](https://github.com/reyduar)), desarrollado como Trabajo de Fin de Máster (TFM) del **Máster en Desarrollo con IA**.
+
+- GitHub: [@reyduar](https://github.com/reyduar)
+- Repositorio: [reyduar/Vaqcrow](https://github.com/reyduar/Vaqcrow)
