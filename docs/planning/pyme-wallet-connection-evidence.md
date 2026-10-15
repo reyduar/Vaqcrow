@@ -167,6 +167,7 @@ El assess de T2 (#408) cerró en `medium`/`under_budget` (bitácora T2).
 > 2. La revisión RDD nativa de T1c quedó incompleta por transporte (`opencode_task_output_empty`), sin inventar una aprobación (§5.2).
 > 3. No se comprobó la conexión con Freighter real ni contra el proyecto Supabase remoto mediante un navegador (§5.7).
 > 4. El saldo continúa provisto por `SimulatedWalletBalanceAdapter`; una lectura real de Horizon por `fetch` queda como trabajo posterior (§5.3).
+>    *Nota 2026-10-15:* resuelto por la Feature #557, que lee el saldo real de Horizon de Testnet y elimina el adaptador simulado; ver [[docs/planning/real-testnet-wallet-balance-evidence|Evidencia del saldo real de Testnet]].
 > 5. Estas limitaciones no autorizan a afirmar un merge en `main` ni una rehearsal remota.
 
 ## Addendum de reconciliación (2026-10-06)
