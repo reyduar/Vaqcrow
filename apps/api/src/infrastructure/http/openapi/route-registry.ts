@@ -28,7 +28,9 @@ import {
   investorKycSchema,
   investorReportSchema,
   marketplaceCampaignListSchema,
+  myApplicationReadSchema,
   myCampaignsSchema,
+  myDocumentsReadSchema,
   openCampaignCommandSchema,
   portfolioSummarySchema,
   prepareContractInvocationCommandSchema,
@@ -186,6 +188,20 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
     description: "PYME-only. A foreign owner is 404 (never 403).",
     success: { 200: { description: "The request, its sales periods and state.", schema: smeRequestReadSchema } },
     errors: OWNED_READ
+  },
+  "GET /sme-requests/mine": {
+    tag: "PyME",
+    summary: "Read the caller's own application id and state",
+    description: "PYME-only. Returns the owner's latest application and its real review state, or `application: null` when there is none. The owner is the verified principal, resolved server-side.",
+    success: { 200: { description: "`{ application }`; null when the caller owns none.", schema: myApplicationReadSchema } },
+    errors: AUTH
+  },
+  "GET /pyme-documents/mine": {
+    tag: "PyME",
+    summary: "List the caller's own uploaded documents (metadata only)",
+    description: "PYME-only. Metadata only; the storage object path never crosses the wire. The owner is the verified principal, resolved server-side.",
+    success: { 200: { description: "`{ documents }`.", schema: myDocumentsReadSchema } },
+    errors: AUTH
   },
   "POST /businesses": {
     tag: "PyME",

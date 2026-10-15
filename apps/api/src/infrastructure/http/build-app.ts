@@ -50,6 +50,10 @@ import { registerNotificationRoute } from "./routes/notification.route.js";
 import type { NotificationRouteDependencies } from "./routes/notification.route.js";
 import { registerMyCampaignsRoute } from "./routes/my-campaigns.route.js";
 import type { MyCampaignsRouteDependencies } from "./routes/my-campaigns.route.js";
+import { registerMyApplicationRoute } from "./routes/my-application.route.js";
+import type { MyApplicationRouteDependencies } from "./routes/my-application.route.js";
+import { registerMyDocumentsRoute } from "./routes/my-documents.route.js";
+import type { MyDocumentsRouteDependencies } from "./routes/my-documents.route.js";
 import { registerPortfolioRoute } from "./routes/portfolio.route.js";
 import type { PortfolioRouteDependencies } from "./routes/portfolio.route.js";
 import { registerReportsRoute } from "./routes/reports.route.js";
@@ -162,6 +166,10 @@ export function buildApp(dependencies: {
   readonly reports?: ReportsRouteDependencies | undefined;
   /** The PyME dashboard read model (#434/WU1). Omitted when unwired. */
   readonly myCampaigns?: MyCampaignsRouteDependencies | undefined;
+  /** The PyME's own application state (#530/T1). Omitted when unwired. */
+  readonly myApplication?: MyApplicationRouteDependencies | undefined;
+  /** The PyME's own document metadata (#530/T2). Omitted when unwired. */
+  readonly myDocuments?: MyDocumentsRouteDependencies | undefined;
   /** The public blog surface (#498/WU2). Omitted when unwired. */
   readonly blog?: BlogRouteDependencies | undefined;
   /** The help assistant (#499/WU2). Omitted when unwired. */
@@ -312,6 +320,12 @@ export function buildApp(dependencies: {
   }
   if (dependencies.myCampaigns) {
     registerMyCampaignsRoute(app, dependencies.myCampaigns);
+  }
+  if (dependencies.myApplication) {
+    registerMyApplicationRoute(app, dependencies.myApplication);
+  }
+  if (dependencies.myDocuments) {
+    registerMyDocumentsRoute(app, dependencies.myDocuments);
   }
   if (dependencies.blog !== undefined) {
     registerBlogRoute(app, dependencies.blog);
