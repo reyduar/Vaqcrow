@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { authHref } from "@/application/auth/auth-form";
 import { useSession } from "@/state/session-store-provider";
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -10,7 +11,7 @@ const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus
  * decision Q3.5, 2026-10-10). It is the landing's only client island: the hero
  * stays a server component and this reads the existing session store.
  *
- *   anonymous (signed-out) → `/signup`
+ *   anonymous (signed-out) → the PyME tab of `/signup` (`?role=pyme`; #532)
  *   PYME                   → `/company`
  *   INVERSOR               → hidden
  *   ADMIN                  → hidden (same "not a PyME action" reasoning; the
@@ -27,7 +28,7 @@ export function HeroAccountCta() {
   if (status === "loading") return null;
   if (status === "signed-in" && role !== "PYME") return null;
 
-  const href = status === "signed-in" ? "/company" : "/signup";
+  const href = status === "signed-in" ? "/company" : authHref("signup", "PYME");
 
   return (
     <Link

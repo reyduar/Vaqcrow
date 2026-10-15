@@ -144,12 +144,12 @@ describe("Home landing (Feature #418)", () => {
     expect(screen.getByText(disclosures.simulation.title)).toBeInTheDocument();
   });
 
-  it("sends an anonymous visitor to /signup from the role-aware CTA", async () => {
+  it("sends an anonymous visitor to the PyME tab of /signup from the role-aware CTA", async () => {
     const { landing } = await renderHome(null);
 
     expect(await landing.findByRole("link", { name: "Quiero financiar mi negocio" })).toHaveAttribute(
       "href",
-      "/signup"
+      "/signup?role=pyme"
     );
   });
 
