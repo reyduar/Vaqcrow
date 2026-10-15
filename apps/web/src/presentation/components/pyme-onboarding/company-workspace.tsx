@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IoStorefrontOutline } from "react-icons/io5";
 import type { ApplicationReviewState } from "@vaqcrow/contracts";
+import { canRegisterCompany } from "@/application/company/can-register-company";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
 import { walletAccountExplorerUrl } from "@/application/pyme-onboarding/wallet-connection";
 import type { KycPort } from "@/application/ports/kyc-port";
@@ -16,6 +17,7 @@ import { createBrowserSmeRequestGateway } from "@/infrastructure/sme/default-gat
 import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { SimulatedWalletBalanceAdapter } from "@/infrastructure/wallet/simulated-wallet-balance-adapter";
+import { useMyApplication } from "@/state/use-my-application";
 import { useSmeRequestState } from "@/state/use-sme-request";
 import { FOCUS_RING } from "../auth-field";
 import { CompanyApplicationState } from "../company/company-application-state";
@@ -37,8 +39,8 @@ interface LoadedWallet {
 /**
  * Wraps a gateway so the application id returned by `submit` is captured at its
  * creation boundary (Feature #434, WU5 / B1), without the wizard knowing. `load`
- * is forwarded unchanged; a `null` gateway stays `null` so the wizard still sees
- * «no backend».
+ * and `loadMine` are forwarded unchanged; a `null` gateway stays `null` so the
+ * wizard still sees «no backend».
  */
 export function captureApplicationIdOnSubmit(
   gateway: SmeRequestGateway | null,
@@ -47,6 +49,7 @@ export function captureApplicationIdOnSubmit(
   if (gateway === null) return null;
   return {
     load: (id) => gateway.load(id),
+    loadMine: () => gateway.loadMine(),
     submit: async (request) => {
       const result = await gateway.submit(request);
       onCaptured(result.applicationId);
@@ -97,14 +100,16 @@ export interface CompanyWorkspaceProps {
  * WU5 adds the application-state banner (D6) and the Testnet funds guide (D5):
  * the guide points at Friendbot so the PyME funds its own wallet, and the
  * banner reads the PyME's own review state from `GET /sme-requests/:id`
- * (`useSmeRequestState`) for the application id captured from the wizard's
- * send. A returning PyME with no in-session submit has no id and sees no banner
- * until an owner-scoped read exists (WU5 advisory).
+ * (`useSmeRequestState`) for the resolved application id.
  *
- * «Registrar mi PyME» always shows today: the "only while the PyME has no
- * registered company" rule needs the company registry (#398's later unit) and
- * is intentionally not implemented here. Opening the wizard never changes the
- * URL — the wizard lives inside `/company` and «Volver» restores this view.
+ * Feature #530 (T3/T4) resolves that id owner-scoped: the in-session captured id
+ * wins, else the id from `GET /sme-requests/mine` (`useMyApplication`), so a
+ * returning PyME in a fresh session (S6) sees its real state. «Registrar mi
+ * PyME» is then shown only for «Sin enviar» (`canRegisterCompany`): no
+ * application, an unknown read, or a `draft`. Every other state — in review
+ * (S1), approved (S2), `changes_requested`/`rejected` (S3) — hides it. Opening
+ * the wizard never changes the URL — the wizard lives inside `/company` and
+ * «Volver» restores this view.
  */
 export function CompanyWorkspace({
   kyc = defaultKyc,
@@ -128,13 +133,14 @@ export function CompanyWorkspace({
   const balancePort = balance ?? defaultBalance;
   const smeGateway = smeRequestGateway === undefined ? defaultSmeGateway : smeRequestGateway;
 
-  // The id is captured at its creation boundary: the wizard's send returns it,
-  // and the wrapped gateway records it without the wizard knowing. The read is
-  // provider-free (`useSmeRequestState`). A returning PyME with no in-session submit has no id and sees no
-  // banner until an owner-scoped read exists (WU5 advisory).
-  const effectiveApplicationId = capturedApplicationId ?? applicationId ?? null;
+  // The id is resolved owner-scoped (Feature #530, S6): the in-session captured
+  // id wins, else the id of the PyME's own application read from the API — so a
+  // returning PyME in a fresh session sees the right state without submitting
+  // again. The banner read (`useSmeRequestState`) then loads that id.
+  const mine = useMyApplication(smeGateway, true);
+  const effectiveApplicationId = capturedApplicationId ?? mine?.applicationId ?? applicationId ?? null;
   const readState = useSmeRequestState(smeGateway, effectiveApplicationId);
-  const resolvedState = applicationState === undefined ? readState : applicationState;
+  const resolvedState = applicationState === undefined ? (mine?.state ?? readState) : applicationState;
 
   const captureGateway = useMemo<SmeRequestGateway | null>(
     () => captureApplicationIdOnSubmit(smeGateway, setCapturedApplicationId),
@@ -176,14 +182,16 @@ export function CompanyWorkspace({
         title={COPY.title}
         subtitle={COPY.subtitle}
         action={
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className={`inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand-accent px-5 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
-          >
-            <IoStorefrontOutline aria-hidden="true" focusable="false" className="text-lg" />
-            {COPY.registerCompany}
-          </button>
+          canRegisterCompany(resolvedState) ? (
+            <button
+              type="button"
+              onClick={() => setWizardOpen(true)}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand-accent px-5 text-[15px] font-semibold whitespace-nowrap text-on-accent hover:bg-brand-accent-hover ${FOCUS_RING}`}
+            >
+              <IoStorefrontOutline aria-hidden="true" focusable="false" className="text-lg" />
+              {COPY.registerCompany}
+            </button>
+          ) : undefined
         }
       />
       {resolvedState === undefined ? null : <CompanyApplicationState state={resolvedState} />}

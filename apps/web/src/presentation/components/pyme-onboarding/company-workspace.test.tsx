@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 import type { ApplicationReviewState, SmeRequest } from "@vaqcrow/contracts";
@@ -173,7 +174,8 @@ describe("CompanyWorkspace", () => {
   it("renders the application state banner from the sme-request read", async () => {
     const gateway: SmeRequestGateway = {
       submit: vi.fn(),
-      load: vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "human_review" })
+      load: vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "human_review" }),
+      loadMine: vi.fn().mockResolvedValue({ ok: true, application: null })
     };
     render(
       <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
@@ -193,12 +195,100 @@ describe("CompanyWorkspace", () => {
   });
 });
 
+/**
+ * The post-submission state (Feature #530, S1/S2/S3/S6): «Registrar mi PyME» is
+ * only for «Sin enviar»; every real state resolved from the owner-scoped read
+ * hides it, including in a fresh session with no in-session submit.
+ */
+describe("CompanyWorkspace post-submission state (#530)", () => {
+  function gatewayWith(loadMine: SmeRequestGateway["loadMine"], load?: SmeRequestGateway["load"]): SmeRequestGateway {
+    return { submit: vi.fn(), load: load ?? vi.fn(), loadMine };
+  }
+
+  function renderCompany(gw: SmeRequestGateway, props: Partial<ComponentProps<typeof CompanyWorkspace>> = {}) {
+    render(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <CompanyWorkspace
+          kyc={new FakeKyc()}
+          connection={new FakeWalletConnection()}
+          balance={new FakeWalletBalance()}
+          myCampaigns={okMyCampaigns()}
+          smeRequestGateway={gw}
+          {...props}
+        />
+      </SWRConfig>
+    );
+  }
+
+  it("resolves the application from the owner-scoped read in a fresh session and hides the button (S6, S1)", async () => {
+    const load = vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "human_review" });
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "human_review" } }),
+      load
+    );
+
+    renderCompany(gw);
+
+    expect(await screen.findByRole("region", { name: "Estado de tu solicitud" })).toHaveTextContent("En revisión");
+    expect(screen.queryByRole("button", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+    await waitFor(() => expect(load).toHaveBeenCalledWith(APPLICATION_ID));
+  });
+
+  it("hides the button once the campaign is approved (S2)", async () => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "approved" } })
+    );
+    renderCompany(gw);
+
+    expect(await screen.findByRole("region", { name: "Estado de tu solicitud" })).toHaveTextContent("Aprobada");
+    expect(screen.queryByRole("button", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+  });
+
+  it.each(["changes_requested", "rejected"] as const)("hides the button for %s (S3)", async (state) => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state } })
+    );
+    renderCompany(gw);
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Estado de tu solicitud" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the button and the wizard while the PyME owns no application (Sin enviar, S3)", async () => {
+    const gw = gatewayWith(vi.fn().mockResolvedValue({ ok: true, application: null }));
+    renderCompany(gw);
+
+    await waitFor(() => expect(gw.loadMine).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar mi PyME" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Verificación de identidad" })).toBeInTheDocument();
+  });
+
+  it("keeps the button while the application is still a draft (Sin enviar)", async () => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "draft" } })
+    );
+    renderCompany(gw);
+
+    expect(await screen.findByRole("region", { name: "Estado de tu solicitud" })).toHaveTextContent("Sin enviar");
+    expect(screen.getByRole("button", { name: "Registrar mi PyME" })).toBeInTheDocument();
+  });
+
+  it("keeps the button when the owner-scoped read fails, never a service failure (#480)", async () => {
+    const gw = gatewayWith(vi.fn().mockResolvedValue({ ok: false, code: "unavailable" }));
+    renderCompany(gw);
+
+    await waitFor(() => expect(gw.loadMine).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Registrar mi PyME" })).toBeInTheDocument();
+  });
+});
+
 describe("captureApplicationIdOnSubmit", () => {
   it("records the application id the submit returned, then forwards the result", async () => {
     const onCaptured = vi.fn();
     const gateway: SmeRequestGateway = {
       submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: SME_REQUEST }),
-      load: vi.fn()
+      load: vi.fn(),
+      loadMine: vi.fn()
     };
     const wrapped = captureApplicationIdOnSubmit(gateway, onCaptured);
 
@@ -206,13 +296,16 @@ describe("captureApplicationIdOnSubmit", () => {
     expect(onCaptured).toHaveBeenCalledWith(APPLICATION_ID);
   });
 
-  it("stays null for a null gateway and forwards load unchanged", async () => {
+  it("stays null for a null gateway and forwards load and loadMine unchanged", async () => {
     expect(captureApplicationIdOnSubmit(null, vi.fn())).toBeNull();
 
     const load = vi.fn().mockResolvedValue({ request: SME_REQUEST, salesPeriods: [], state: "approved" });
-    const wrapped = captureApplicationIdOnSubmit({ submit: vi.fn(), load }, vi.fn());
+    const loadMine = vi.fn().mockResolvedValue({ ok: true, application: null });
+    const wrapped = captureApplicationIdOnSubmit({ submit: vi.fn(), load, loadMine }, vi.fn());
 
     await wrapped?.load(APPLICATION_ID);
+    await wrapped?.loadMine();
     expect(load).toHaveBeenCalledWith(APPLICATION_ID);
+    expect(loadMine).toHaveBeenCalledTimes(1);
   });
 });

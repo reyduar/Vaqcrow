@@ -25,6 +25,7 @@ function gateway(overrides: Partial<SmeRequestGateway> = {}): SmeRequestGateway 
   return {
     submit: vi.fn().mockResolvedValue(SAVED),
     load: vi.fn().mockResolvedValue({ request: REQUEST, salesPeriods: [], state: "awaiting_assessment" }),
+    loadMine: vi.fn(),
     ...overrides
   };
 }

@@ -33,6 +33,7 @@ function gateway(overrides: Partial<SmeRequestGateway> = {}): SmeRequestGateway 
   return {
     submit: vi.fn().mockResolvedValue({ applicationId: APPLICATION_ID, request: REQUEST }),
     load: vi.fn(),
+    loadMine: vi.fn(),
     ...overrides
   };
 }

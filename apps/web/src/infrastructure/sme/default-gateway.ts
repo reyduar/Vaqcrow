@@ -6,7 +6,9 @@ import { HttpSmeRequestGateway } from "./http-sme-request-gateway";
 
 /**
  * Builds the SME-request gateway from the API base URL and the session's
- * access token. `null` when no backend is configured.
+ * access token. `null` when no backend is configured, so a missing read stays
+ * "unknown" and never a service failure (#480); `GET /sme-requests/mine` is
+ * owner-scoped by the API from the same token.
  */
 export function createSmeRequestGateway(
   baseUrl: string | undefined,
