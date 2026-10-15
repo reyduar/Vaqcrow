@@ -4,10 +4,10 @@
  *
  * The wallet card shows a balance, but the balance must never make the demo
  * depend on a live Horizon endpoint during pull-request verification. The read
- * therefore sits behind this port: production uses a deterministic adapter and
- * tests inject a double. A live Horizon adapter is a later unit; the boundary
- * rule `web-never-imports-server-stellar-sdk` keeps the SDK out of the browser
- * bundle, so such an adapter would talk to Horizon over `fetch`, not the SDK.
+ * therefore sits behind this port: production reads Testnet Horizon over plain
+ * HTTP (`HorizonWalletBalanceAdapter`, Feature #557 — the boundary rule
+ * `web-never-imports-server-stellar-sdk` keeps the SDK out of the browser
+ * bundle) and tests inject a double.
  */
 
 /** Sanitized failure codes; the UI maps each to copy. */
