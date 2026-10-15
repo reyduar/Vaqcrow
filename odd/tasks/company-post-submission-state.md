@@ -19,8 +19,8 @@ S6. El estado que decide el botón es el real del servidor y está disponible ta
 |---|---|---|---|---|---|
 | T1 | API: `GET /sme-requests/mine` — owner-scoped, devuelve `{ application: { applicationId, state } \| null }`. Reusa `SmeRequestRepositoryPort.findByOwner` + `findReviewStateByApplicationId`. | S5, S6 | delegado (worker) | hecho | f25697a |
 | T2 | API: `GET /pyme-documents/mine` — owner-scoped, metadata de los documentos (sin `objectPath`). Reusa `PymeDocumentRepositoryPort.listByOwner`. | S4, S5 | delegado (worker) | hecho | f25697a |
-| T3 | Web: gateway + `useMyApplication`; resolver el `applicationId` desde el principal (no sólo del submit en sesión). | S6 | inline | pendiente | |
-| T4 | Web: ocultar «Registrar mi PyME» según el estado real. | S1, S2, S3 | inline | pendiente | |
+| T3 | Web: gateway + `useMyApplication`; resolver el `applicationId` desde el principal (no sólo del submit en sesión). | S6 | delegado (worker) | hecho | 7cf50ae |
+| T4 | Web: ocultar «Registrar mi PyME» según el estado real. | S1, S2, S3 | delegado (worker) | hecho | 7cf50ae |
 | T5 | Web: «Ver lo enviado» read-only (empresa + solicitud + ventas + documentos). | S1, S4 | inline | pendiente | |
 | T6 | Evidencia: `docs/planning/company-post-submission-state-evidence.md`. | S1–S6 | inline | pendiente | |
 
@@ -51,3 +51,11 @@ L4 — WU1 entregada (2026-10-15), commit `f25697a` (`feat(api): owner-scoped re
 - Gate: `pnpm run verify` exit 0. El primer intento falló por 2 imports sin usar en los tests nuevos; corregidos antes de commitear.
 
 L5 — Aprendizajes: `apps/api/openapi.json` es un artefacto **commiteado** generado por `openapi:generate`; `openapi.test.ts` falla si el registry diverge → toda ruta nueva lo regenera en el mismo cambio. `ApplicationId` es un tipo branded: los fixtures se arman con `parseApplicationId`.
+
+L6 — WU2a entregada (2026-10-15), commit `7cf50ae` (`feat(web): drive the /company state from the owner's application (#530)`):
+
+- T3/T4 por un worker delegado, reanudado tras la decisión del owner: **opción A** (sumar los 4 tests que construyen el gateway como literal) + outcome de `loadMine` como **result union** (mi spec era taquigráfica). Aprendizaje: un miembro **requerido** en un port rompe el `typecheck` en TODOS los dobles literales del repo, porque `apps/web/tsconfig.json` incluye `src/**/*` y typechequea los tests.
+- Verificación independiente (`gentle-ai-verify`, risk-assess `high`): S1-hide/S2/S3/S6 **met**, sin blockers. 21 sondas propias quedaron como regresión en `apps/web/src/verifier-wu2a/`.
+- Advisories (ninguna exige corrección): (1) flash transitorio del botón en el primer paint mientras `mine` está pendiente — deliberado, #480 «desconocido ≠ rechazo»; (2) `mine.state` gana sobre el id en sesión — inalcanzable hoy (ningún writer setea `draft`); (3) un `mine` fallido re-ofrece el botón — inofensivo, `POST /sme-requests` es idempotente; (4) el hook colapsa los códigos de error a `undefined` (igual que `useSmeRequestState`); (5) el prop `applicationId` (sólo test) causa una lectura extra.
+- Seguridad (OWASP Top 10:2025): cambio sobre una lectura auth-gated, identidad sólo del token, parse estricto, sin superficie de servidor nueva → **no findings**.
+- Gate: `pnpm run verify` exit 0 (web 2331 tests).
