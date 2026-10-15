@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { IoAlertCircleOutline, IoRemoveCircleOutline } from "react-icons/io5";
+import { useEffect, useId, useRef, useState } from "react";
+import { IoAlertCircleOutline, IoRemoveCircleOutline, IoSyncOutline } from "react-icons/io5";
 import { COMPLETENESS_COPY, completenessErrorMessage, completenessNotice, findingLabel } from "@/application/pyme-onboarding/completeness";
 import type {
   CompletenessCheckInput,
@@ -21,8 +21,10 @@ import type {
  * «Continuar» stays enabled and the human reviewer decides.
  *
  * Accessibility: each finding is a visible label plus its API `detail`, with an
- * icon; no meaning is carried by colour alone. The section has no live region,
- * so it never competes with the step's single analysis status.
+ * icon; no meaning is carried by colour alone. The loading line carries a
+ * visible, `aria-hidden` spinner so the wait reads as «working», but the section
+ * still has no live region, so it never competes with the step's single analysis
+ * status.
  */
 
 type CompletenessPhase = "loading" | "done" | "error";
@@ -38,14 +40,37 @@ export interface CompletenessFindingsProps {
   readonly port: CompletenessCheckPort;
   /** Stable across renders; the wizard captures it at step 2's submit. */
   readonly input: CompletenessCheckInput;
+  /**
+   * Called exactly once when the phase leaves `loading` — whether it lands
+   * `done` or `error` — so the parent can gate its actions on «the read
+   * finished», never on the verdict (an incomplete result still warns without
+   * blocking). Optional and backward-compatible: omitting it changes nothing.
+   */
+  readonly onSettled?: () => void;
 }
 
-export function CompletenessFindings({ port, input }: CompletenessFindingsProps) {
+export function CompletenessFindings({ port, input, onSettled }: CompletenessFindingsProps) {
   const titleId = useId();
   const [state, setState] = useState<CompletenessState>({ phase: "loading", result: null, errorCode: null });
+  // Keep the latest callback without making it a dependency: the check must run
+  // once per (port, input) pair, never again because the parent re-rendered.
+  const onSettledRef = useRef(onSettled);
+  const settledRef = useRef(false);
+
+  useEffect(() => {
+    onSettledRef.current = onSettled;
+  });
 
   useEffect(() => {
     let cancelled = false;
+    // Report the settled read in the same microtask as the phase change, so the
+    // parent's actions and the result commit together. The ref guard keeps the
+    // contract «invoked exactly once» even if the effect re-runs.
+    const settle = () => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      onSettledRef.current?.();
+    };
     // State is set only from the async callback (never synchronously in the
     // effect body): the initial state is already the loading state, and the
     // port/input pair is stable for the life of the step.
@@ -57,10 +82,12 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
             ? { phase: "done", result: outcome.result, errorCode: null }
             : { phase: "error", result: null, errorCode: outcome.code }
         );
+        settle();
       },
       () => {
         if (cancelled) return;
         setState({ phase: "error", result: null, errorCode: "network" });
+        settle();
       }
     );
     return () => {
@@ -81,7 +108,12 @@ export function CompletenessFindings({ port, input }: CompletenessFindingsProps)
       </h2>
 
       {phase === "loading" ? (
-        <p aria-busy="true" className="m-0 text-sm text-text-secondary">
+        <p aria-busy="true" className="m-0 flex items-center gap-2.5 text-sm text-text-secondary">
+          <IoSyncOutline
+            aria-hidden="true"
+            focusable="false"
+            className="shrink-0 animate-spin text-[18px] text-brand-accent-text motion-reduce:animate-none"
+          />
           {COMPLETENESS_COPY.loading}
         </p>
       ) : null}
