@@ -58,11 +58,12 @@ describe("CompanyTestnetFunds", () => {
   });
 
   describe("connected and funded", () => {
-    it("shows the balance and that it can pay for the vault, with no connect action", () => {
+    it("points at the wallet card for the balance and says it can pay, with no connect action", () => {
       render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="12.5000000" />);
 
-      expect(screen.getByText("Saldo de tu cuenta")).toBeInTheDocument();
-      expect(screen.getByText("12,5000000 XLM")).toBeInTheDocument();
+      expect(screen.getByText(/Mirá tu saldo disponible en la tarjeta de wallet, arriba/)).toBeInTheDocument();
+      // #531: the guide never repeats the number — the wallet card shows it.
+      expect(screen.queryByText("12,5000000 XLM")).not.toBeInTheDocument();
       expect(screen.getByText(/ya tiene XLM de Testnet para pagar la creación de la bóveda/i)).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Conectar Freighter" })).not.toBeInTheDocument();
       expectNoFriendbotButton();
@@ -76,10 +77,11 @@ describe("CompanyTestnetFunds", () => {
   });
 
   describe("connected and unfunded", () => {
-    it("shows the balance and warns that Testnet XLM is needed", () => {
+    it("warns that Testnet XLM is needed, without repeating the balance", () => {
       render(<CompanyTestnetFunds publicKey={PUBLIC_KEY} balanceXlm="0.0000000" />);
 
-      expect(screen.getByText("0,0000000 XLM")).toBeInTheDocument();
+      expect(screen.getByText(/Mirá tu saldo disponible en la tarjeta de wallet, arriba/)).toBeInTheDocument();
+      expect(screen.queryByText("0,0000000 XLM")).not.toBeInTheDocument();
       expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
     });
 

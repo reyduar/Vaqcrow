@@ -1,7 +1,6 @@
 "use client";
 
 import { IoAlertCircleOutline, IoGitNetworkOutline, IoOpenOutline, IoWalletOutline } from "react-icons/io5";
-import { formatXlmAmount } from "@/application/company/format";
 import { friendbotUrl, fundingState, TESTNET_FUNDS_COPY } from "@/application/company/funding";
 import { Button, buttonClasses } from "../button";
 
@@ -12,7 +11,8 @@ import { Button, buttonClasses } from "../button";
  * Friendbot's own 400 page whenever the account already had the starting
  * balance, and never reflected whether the wallet was connected or funded. The
  * guide now has one primary action — connect Freighter — and, once connected,
- * shows the account's balance and says whether it can pay for the vault deploy.
+ * points at the wallet card above for the balance and says whether the account
+ * can pay for the vault deploy.
  * Friendbot stays as explanatory, secondary help, offered only while the account
  * still needs funds and prefilled with the public key it requires.
  *
@@ -43,7 +43,6 @@ export function CompanyTestnetFunds({
   error = null
 }: CompanyTestnetFundsProps) {
   const state = fundingState(publicKey, balanceXlm);
-  const balance = balanceXlm === null ? "—" : formatXlmAmount(balanceXlm);
 
   return (
     <section
@@ -74,13 +73,8 @@ export function CompanyTestnetFunds({
           <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.disconnectedHint}</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          <div>
-            <div className="text-[13px] font-medium">{TESTNET_FUNDS_COPY.balanceLabel}</div>
-            <div aria-live="polite" className="mt-0.5 text-[22px] leading-[1.2] font-bold tracking-[-0.02em]">
-              {balance}
-            </div>
-          </div>
+        <div aria-live="polite" className="flex flex-col gap-2">
+          <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.balancePointer}</p>
           {state === "funded" ? (
             <p className="m-0 text-[13px] leading-[1.5] text-text-secondary">{TESTNET_FUNDS_COPY.fundedNote}</p>
           ) : (
