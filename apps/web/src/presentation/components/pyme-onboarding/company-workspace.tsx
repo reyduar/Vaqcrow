@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { IoStorefrontOutline } from "react-icons/io5";
+import { IoDocumentTextOutline, IoStorefrontOutline } from "react-icons/io5";
 import type { ApplicationReviewState } from "@vaqcrow/contracts";
 import { canRegisterCompany } from "@/application/company/can-register-company";
+import { SUBMITTED_DATA_COPY } from "@/application/company/submitted-data";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
 import { walletAccountExplorerUrl } from "@/application/pyme-onboarding/wallet-connection";
+import type { BusinessPort } from "@/application/ports/business-port";
 import type { KycPort } from "@/application/ports/kyc-port";
 import type { MyCampaignsPort } from "@/application/ports/my-campaigns-port";
+import type { MyDocumentsPort } from "@/application/ports/my-documents-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import type { UploadPort } from "@/application/ports/upload-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
@@ -22,6 +25,7 @@ import { useSmeRequestState } from "@/state/use-sme-request";
 import { FOCUS_RING } from "../auth-field";
 import { CompanyApplicationState } from "../company/company-application-state";
 import { CompanyDashboardContainer } from "../company/company-dashboard";
+import { CompanySubmittedData } from "../company/company-submitted-data";
 import { CompanyTestnetFunds } from "../company/company-testnet-funds";
 import { PageHeading } from "../page-heading";
 import { WalletCard } from "../wallet-card";
@@ -84,6 +88,10 @@ export interface CompanyWorkspaceProps {
   readonly applicationId?: string | null;
   /** Injectable for tests; production builds the session-aware browser gateway. */
   readonly smeRequestGateway?: SmeRequestGateway | null;
+  /** Injectable for tests; the «Ver lo enviado» panel builds the browser company port when absent. */
+  readonly business?: BusinessPort | null;
+  /** Injectable for tests; the «Ver lo enviado» panel builds the browser documents port when absent. */
+  readonly documents?: MyDocumentsPort | null;
 }
 
 /**
@@ -107,9 +115,12 @@ export interface CompanyWorkspaceProps {
  * returning PyME in a fresh session (S6) sees its real state. «Registrar mi
  * PyME» is then shown only for «Sin enviar» (`canRegisterCompany`): no
  * application, an unknown read, or a `draft`. Every other state — in review
- * (S1), approved (S2), `changes_requested`/`rejected` (S3) — hides it. Opening
- * the wizard never changes the URL — the wizard lives inside `/company` and
- * «Volver» restores this view.
+ * (S1), approved (S2), `changes_requested`/`rejected` (S3) — hides it.
+ * Feature #530 (T5/S1/S4) then offers «Ver lo enviado» instead: it opens the
+ * read-only `CompanySubmittedData` panel over the persisted facts, which
+ * replaces this body while open and returns to it on close. Opening the wizard
+ * never changes the URL — the wizard lives inside `/company` and «Volver»
+ * restores this view.
  */
 export function CompanyWorkspace({
   kyc = defaultKyc,
@@ -119,9 +130,12 @@ export function CompanyWorkspace({
   myCampaigns,
   applicationState,
   applicationId,
-  smeRequestGateway
+  smeRequestGateway,
+  business,
+  documents
 }: CompanyWorkspaceProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [submittedOpen, setSubmittedOpen] = useState(false);
   const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
   const [defaultBalance] = useState<WalletBalancePort>(() => new SimulatedWalletBalanceAdapter());
@@ -176,6 +190,21 @@ export function CompanyWorkspace({
     );
   }
 
+  // «Ver lo enviado» (Feature #530, T5/S1/S4): the read-only view of what was
+  // persisted. It replaces the normal `/company` body while open and returns to
+  // it on close, exactly like the wizard.
+  if (submittedOpen) {
+    return (
+      <CompanySubmittedData
+        applicationId={effectiveApplicationId}
+        smeRequestGateway={smeGateway}
+        onClose={() => setSubmittedOpen(false)}
+        {...(business !== undefined ? { business } : {})}
+        {...(documents !== undefined ? { documents } : {})}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeading
@@ -191,7 +220,16 @@ export function CompanyWorkspace({
               <IoStorefrontOutline aria-hidden="true" focusable="false" className="text-lg" />
               {COPY.registerCompany}
             </button>
-          ) : undefined
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSubmittedOpen(true)}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-control border border-control px-5 text-[15px] font-semibold whitespace-nowrap text-text-primary hover:bg-page-surface ${FOCUS_RING}`}
+            >
+              <IoDocumentTextOutline aria-hidden="true" focusable="false" className="text-lg" />
+              {SUBMITTED_DATA_COPY.openLabel}
+            </button>
+          )
         }
       />
       {resolvedState === undefined ? null : <CompanyApplicationState state={resolvedState} />}

@@ -2,8 +2,11 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import type { ComponentProps } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
-import type { ApplicationReviewState, SmeRequest } from "@vaqcrow/contracts";
+import type { ApplicationReviewState, MyDocument, SmeRequest, SmeRequestRead } from "@vaqcrow/contracts";
+import { AI_RISK_LABELS, AI_STEP_COPY } from "@/application/pyme-onboarding/ai-step";
+import type { BusinessPort, BusinessRecord } from "@/application/ports/business-port";
 import type { MyCampaigns, MyCampaignsPort } from "@/application/ports/my-campaigns-port";
+import type { MyDocumentsPort } from "@/application/ports/my-documents-port";
 import type { SmeRequestGateway } from "@/application/ports/sme-request-gateway";
 import { FakeKyc } from "@/test/fake-kyc";
 import { FakeWalletBalance, FakeWalletConnection } from "@/test/fake-wallet";
@@ -307,5 +310,132 @@ describe("captureApplicationIdOnSubmit", () => {
     await wrapped?.loadMine();
     expect(load).toHaveBeenCalledWith(APPLICATION_ID);
     expect(loadMine).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The read-only «Ver lo enviado» surface (Feature #530, T5/S1/S4): offered
+ * exactly when an application exists (i.e. when «Registrar mi PyME» is hidden),
+ * opening an inline read-only view of what was persisted, and returning to the
+ * normal `/company` view on close.
+ */
+describe("CompanyWorkspace «Ver lo enviado» (#530, T5)", () => {
+  const REQUEST_READ: SmeRequestRead = {
+    request: SME_REQUEST,
+    salesPeriods: [
+      { period: "2026-01", amountArs: 3_200_000, status: "reported", evidenceRef: "sales:1", simuladoLabel: "SIMULADO" }
+    ],
+    state: "human_review"
+  };
+
+  const BUSINESS: BusinessRecord = {
+    businessId: "b1e6c2a4-9f3d-4a7b-8c1e-5d2f6a9b0c31",
+    ownerUserId: "00000000-0000-4000-8000-000000000000",
+    name: "Panadería Horizonte",
+    cuit: "20123456789",
+    sector: "Alimentos",
+    city: "Córdoba",
+    description: "Panadería de barrio",
+    goalArs: 15_000_000,
+    revenueShare: 5,
+    createdAt: "2026-10-03T12:00:00.000Z",
+    updatedAt: "2026-10-03T12:00:00.000Z"
+  };
+
+  const DOCUMENT: MyDocument = {
+    documentId: "11111111-1111-4111-8111-111111111111",
+    kind: "cuit",
+    name: "constancia-cuit.pdf",
+    sizeBytes: 128_512,
+    contentType: "application/pdf",
+    createdAt: "2026-10-03T12:00:00.000Z"
+  };
+
+  function businessPort(): BusinessPort {
+    return {
+      getMyBusiness: vi.fn().mockResolvedValue({ ok: true, business: BUSINESS }),
+      createBusiness: vi.fn()
+    } as unknown as BusinessPort;
+  }
+
+  function documentsPort(): MyDocumentsPort {
+    return { listMine: vi.fn().mockResolvedValue({ ok: true, documents: [DOCUMENT] }) };
+  }
+
+  function gatewayWith(
+    loadMine: SmeRequestGateway["loadMine"],
+    load: SmeRequestGateway["load"] = vi.fn().mockResolvedValue(REQUEST_READ)
+  ): SmeRequestGateway {
+    return { submit: vi.fn(), load, loadMine };
+  }
+
+  function renderCompany(gw: SmeRequestGateway, props: Partial<ComponentProps<typeof CompanyWorkspace>> = {}) {
+    render(
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <CompanyWorkspace
+          kyc={new FakeKyc()}
+          connection={new FakeWalletConnection()}
+          balance={new FakeWalletBalance()}
+          myCampaigns={okMyCampaigns()}
+          smeRequestGateway={gw}
+          business={businessPort()}
+          documents={documentsPort()}
+          {...props}
+        />
+      </SWRConfig>
+    );
+  }
+
+  it("offers «Ver lo enviado» and hides «Registrar mi PyME» when an application exists (S1)", async () => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "human_review" } })
+    );
+
+    renderCompany(gw);
+
+    expect(await screen.findByRole("button", { name: "Ver lo enviado" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar mi PyME" })).not.toBeInTheDocument();
+  });
+
+  it("keeps «Registrar mi PyME» and offers no «Ver lo enviado» with no application (Sin enviar)", async () => {
+    const gw = gatewayWith(vi.fn().mockResolvedValue({ ok: true, application: null }));
+
+    renderCompany(gw);
+
+    await waitFor(() => expect(gw.loadMine).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Registrar mi PyME" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ver lo enviado" })).not.toBeInTheDocument();
+  });
+
+  it("opens the read-only panel and returns to the normal view on close", async () => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "human_review" } })
+    );
+    renderCompany(gw);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ver lo enviado" }));
+
+    const panel = screen.getByRole("region", { name: "Datos enviados de tu solicitud" });
+    expect(await within(panel).findByText("Panadería Horizonte")).toBeInTheDocument();
+    expect(within(panel).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Mi campaña" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Volver a Mi campaña" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Mi campaña" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Datos enviados de tu solicitud" })).not.toBeInTheDocument();
+  });
+
+  it("never presents the simulated AI risk band as submitted (S4)", async () => {
+    const gw = gatewayWith(
+      vi.fn().mockResolvedValue({ ok: true, application: { applicationId: APPLICATION_ID, state: "human_review" } })
+    );
+    renderCompany(gw);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ver lo enviado" }));
+    await screen.findByText("Panadería Horizonte");
+
+    expect(screen.queryByText(AI_STEP_COPY.riskLabel)).not.toBeInTheDocument();
+    for (const label of Object.values(AI_RISK_LABELS)) expect(screen.queryByText(label)).not.toBeInTheDocument();
+    expect(screen.queryByText(/banda de riesgo/i)).not.toBeInTheDocument();
   });
 });
