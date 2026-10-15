@@ -48,6 +48,12 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   // reachable by the PyME that owns one of them.
   "GET /sme-requests": only("ADMIN"),
   "GET /sme-requests/:applicationId": only("PYME"),
+  // The PyME's own company post-submission state (#530/T1/T2): only a PyME reads
+  // its own latest application and its document metadata. The owner is the
+  // verified principal, resolved server-side, never a request parameter; the
+  // documents route carries metadata only, never a storage object path.
+  "GET /sme-requests/mine": only("PYME"),
+  "GET /pyme-documents/mine": only("PYME"),
 
   "POST /businesses": only("PYME"),
   "GET /businesses/mine": only("PYME"),

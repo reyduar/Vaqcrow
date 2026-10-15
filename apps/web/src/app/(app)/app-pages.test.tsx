@@ -69,4 +69,11 @@ describe("/company", () => {
     expect(screen.queryByText(/Conectá tu wallet/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Conectar Freighter/)).not.toBeInTheDocument();
   });
+
+  it("mounts the floating help assistant, whose toggle opens its chat", async () => {
+    await renderAs("PYME", "/company", <CompanyPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir ayuda" }));
+    expect(screen.getByRole("dialog", { name: "Asistente de ayuda" })).toBeInTheDocument();
+  });
 });

@@ -282,6 +282,23 @@ export type {
 } from "./my-campaigns.js";
 
 export {
+  myApplicationReadSchema,
+  myApplicationSchema,
+  myDocumentSchema,
+  myDocumentsReadSchema,
+  parseMyApplicationRead,
+  parseMyDocumentsRead,
+  pymeDocumentKindSchema
+} from "./my-application.js";
+export type {
+  MyApplication,
+  MyApplicationRead,
+  MyDocument,
+  MyDocumentsRead,
+  PymeDocumentKind
+} from "./my-application.js";
+
+export {
   availableRangeSchema,
   investorReportSchema,
   parseInvestorReport,

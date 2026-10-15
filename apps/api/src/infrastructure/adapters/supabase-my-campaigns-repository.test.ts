@@ -28,7 +28,7 @@ const SUMMARY_ROW = {
   goal_ars: "5000000",
   total_stroops: "1250000",
   goal_stroops: "10000000",
-  contract_address: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+  vault_address: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
   state: "open",
   deadline: "2026-12-01T00:00:00.000Z",
   created_at: "2026-03-01T00:00:00.000Z",

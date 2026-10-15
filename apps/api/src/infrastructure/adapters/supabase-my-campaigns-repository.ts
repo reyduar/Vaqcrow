@@ -109,7 +109,7 @@ export class SupabaseMyCampaignsRepository implements MyCampaignsRepositoryPort 
       goalStroops: this.bigint(value["goal_stroops"]),
       state: this.campaignState(value["state"]),
       closeDate: this.text(value["deadline"]),
-      vaultAddress: this.text(value["contract_address"]),
+      vaultAddress: this.text(value["vault_address"]),
       hasImage: this.imageDescriptor(value) !== undefined,
       contributorsCount: this.count(value["contributors_count"]),
       ...(rateSnapshot === undefined ? {} : { rateSnapshot })

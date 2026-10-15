@@ -23,9 +23,11 @@ const REQUEST: SmeRequest = {
 
 const SUBMITTED = { applicationId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10", request: REQUEST };
 
+const MINE = { application: { applicationId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10", state: "human_review" } };
+
 /** Replaces `axios.create` with an instance whose `request` records every call. */
-function captureRequests() {
-  const request = vi.fn().mockResolvedValue({ status: 201, data: SUBMITTED });
+function captureRequests(response: unknown = { status: 201, data: SUBMITTED }) {
+  const request = vi.fn().mockResolvedValue(response);
   vi.spyOn(axios, "create").mockReturnValue({ request } as unknown as AxiosInstance);
   return request;
 }
@@ -58,6 +60,19 @@ describe("createSmeRequestGateway", () => {
     expect(call.method).toBe("POST");
     expect(call.url).toBe("/sme-requests");
     expect(call.headers).toEqual({ Authorization: "Bearer token-123" });
+  });
+
+  it("reads the owner-scoped application with the Bearer token from GET /sme-requests/mine", async () => {
+    const request = captureRequests({ status: 200, data: MINE });
+    const gateway = createSmeRequestGateway("https://api.example.test", async () => "token-123");
+
+    const outcome = await gateway!.loadMine();
+
+    const call = request.mock.calls[0]![0];
+    expect(call.method).toBe("GET");
+    expect(call.url).toBe("/sme-requests/mine");
+    expect(call.headers).toEqual({ Authorization: "Bearer token-123" });
+    expect(outcome).toEqual({ ok: true, application: MINE.application });
   });
 });
 

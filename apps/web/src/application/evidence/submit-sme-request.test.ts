@@ -18,7 +18,7 @@ const SAVED: SmeRequest = {
 };
 
 function gateway(submit: SmeRequestGateway["submit"]): SmeRequestGateway {
-  return { submit, load: vi.fn() };
+  return { submit, load: vi.fn(), loadMine: vi.fn() };
 }
 
 describe("buildSmeRequest", () => {
