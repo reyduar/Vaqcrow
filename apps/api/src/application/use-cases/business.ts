@@ -30,7 +30,8 @@ const DRAFT_KEYS: ReadonlySet<string> = new Set([
   "goalArs",
   "revenueShare",
   "deadline",
-  "campaignDurationDays"
+  "campaignDurationDays",
+  "useOfFunds"
 ]);
 
 const CUIT_PATTERN = /^[0-9]{11}$/;
@@ -78,6 +79,30 @@ function requiredString(
   }
   if (trimmed.length > maxLength) {
     errors.push({ field, code: "out_of_range" });
+    return undefined;
+  }
+  return trimmed;
+}
+
+const USE_OF_FUNDS_MAX_LENGTH = 2000;
+
+/**
+ * The PyME's declared use of funds (#577). Accepted but never required: the web
+ * requires it on new registrations, while the API keeps accepting a body without
+ * it so an older web never gets a 400 during a deploy. Absent, `null` or blank
+ * text means none; a longer text than the column's 2000-character check allows
+ * is `out_of_range`.
+ */
+function optionalUseOfFunds(value: unknown, errors: BusinessFieldError[]): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    errors.push({ field: "useOfFunds", code: "invalid" });
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  if (trimmed.length > USE_OF_FUNDS_MAX_LENGTH) {
+    errors.push({ field: "useOfFunds", code: "out_of_range" });
     return undefined;
   }
   return trimmed;
@@ -153,6 +178,8 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
     }
   }
 
+  const useOfFunds = optionalUseOfFunds(record["useOfFunds"], errors);
+
   if (errors.length > 0) {
     return { ok: false, fieldErrors: errors };
   }
@@ -168,7 +195,8 @@ export function validateBusinessDraft(body: unknown): BusinessValidation {
       goalArs: goalArs as number,
       revenueShare: revenueShare as number,
       ...(deadline === undefined ? {} : { deadline }),
-      ...(campaignDurationDays === undefined ? {} : { campaignDurationDays })
+      ...(campaignDurationDays === undefined ? {} : { campaignDurationDays }),
+      ...(useOfFunds === undefined ? {} : { useOfFunds })
     }
   };
 }

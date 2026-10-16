@@ -18,6 +18,7 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     sector: "Alimentos",
     city: "Rosario",
     description: "Panificados artesanales.",
+    useOfFunds: null,
     foundedAt: "2021-05-01T00:00:00.000Z",
     goalArs: 9_450_000,
     raisedArs: 5_954_000,

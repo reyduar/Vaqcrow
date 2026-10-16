@@ -77,17 +77,27 @@ describe("submittedDataView", () => {
     expect(view(ALL_READY).map((entry) => entry.key)).toEqual(["company", "request", "sales", "documents"]);
   });
 
-  it("shapes the persisted company into name, sector, city and goal", () => {
-    const company = block(view(ALL_READY), "company");
+  it("shapes the persisted company into name, sector, city, goal and use of funds", () => {
+    const company = block(
+      view({ ...ALL_READY, business: ok({ ...BUSINESS, useOfFunds: "Un horno rotativo y capital de trabajo" }) }),
+      "company"
+    );
 
     expect(company.state).toBe("ready");
     expect(company.fields).toEqual([
       { label: SUBMITTED_DATA_COPY.fields.name, value: "Panadería Horizonte" },
       { label: SUBMITTED_DATA_COPY.fields.sector, value: "Alimentos" },
       { label: SUBMITTED_DATA_COPY.fields.city, value: "Córdoba" },
-      { label: SUBMITTED_DATA_COPY.fields.goal, value: "ARS 15.000.000" }
+      { label: SUBMITTED_DATA_COPY.fields.goal, value: "ARS 15.000.000" },
+      { label: "Destino de los fondos", value: "Un horno rotativo y capital de trabajo" }
     ]);
     expect(company.message).toBeNull();
+  });
+
+  it("reads Sin dato for a company registered before the use of funds existed (#577)", () => {
+    const company = block(view(ALL_READY), "company");
+
+    expect(company.fields.at(-1)).toEqual({ label: "Destino de los fondos", value: "Sin dato" });
   });
 
   it("shapes the request into reference, total and period", () => {

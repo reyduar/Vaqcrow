@@ -25,6 +25,8 @@ export type ReviewSlot = (context: AdminReviewContext, reload: () => void) => Re
 export interface ReviewSlots {
   readonly kyc?: ReviewSlot;
   readonly assessment?: ReviewSlot;
+  /** The PyME's declared use of funds (#577), after the AI recommendation. */
+  readonly useOfFunds?: ReviewSlot;
   readonly decision?: ReviewSlot;
   readonly deployment?: ReviewSlot;
 }
@@ -84,6 +86,7 @@ export function ReviewView({ applicationId, port, slots = {} }: ReviewViewProps)
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-5">
             {slots.kyc?.(context, reload)}
             {slots.assessment?.(context, reload)}
+            {slots.useOfFunds?.(context, reload)}
           </div>
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
             {slots.decision?.(context, reload)}

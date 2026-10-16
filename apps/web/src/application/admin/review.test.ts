@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AdminReviewCompany } from "@/application/ports/admin-review-port";
-import { adminReviewPath, reviewHeaderFor } from "./review";
+import { USE_OF_FUNDS_COPY, adminReviewPath, reviewHeaderFor, useOfFundsText } from "./review";
 
 const APPLICATION_ID = "22222222-2222-4222-8222-222222222222";
 
@@ -61,5 +61,21 @@ describe("reviewHeaderFor", () => {
     });
     expect(header.subline).toBe(`Alimentos · ${APPLICATION_ID} · enviada el 11/09/2026`);
     expect(header.state.label).toBe("Rechazada");
+  });
+});
+
+describe("useOfFundsText (#577)", () => {
+  it("titles the block with the wizard's own label", () => {
+    expect(USE_OF_FUNDS_COPY.title).toBe("Destino de los fondos");
+  });
+
+  it("returns the company's declared use of funds, trimmed", () => {
+    expect(useOfFundsText({ ...COMPANY, useOfFunds: "  Un horno rotativo  " })).toBe("Un horno rotativo");
+  });
+
+  it("reads the honest Sin dato without a company, without the field or with blank text", () => {
+    expect(useOfFundsText(null)).toBe("Sin dato");
+    expect(useOfFundsText(COMPANY)).toBe("Sin dato");
+    expect(useOfFundsText({ ...COMPANY, useOfFunds: "   " })).toBe("Sin dato");
   });
 });

@@ -219,3 +219,21 @@ describe("campaign detail Testnet transparency (#438/WU3)", () => {
     expect(campaignDetailSchema.safeParse({ ...DETAIL, vaultExplorerUrl: "nope" }).success).toBe(false);
   });
 });
+
+describe("campaign detail use of funds (#577)", () => {
+  it("accepts a declared use of funds and trims it", () => {
+    expect(campaignDetailSchema.parse({ ...DETAIL, useOfFunds: "  Un segundo horno  " }).useOfFunds).toBe(
+      "Un segundo horno"
+    );
+  });
+
+  it("accepts an explicit null (the honest sin dato) and an absent field (an API that predates it)", () => {
+    expect(campaignDetailSchema.parse({ ...DETAIL, useOfFunds: null }).useOfFunds).toBeNull();
+    expect(campaignDetailSchema.parse(without({ ...DETAIL, useOfFunds: "x" }, "useOfFunds")).useOfFunds).toBeUndefined();
+  });
+
+  it("rejects a blank or non-string use of funds", () => {
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, useOfFunds: "   " }).success).toBe(false);
+    expect(campaignDetailSchema.safeParse({ ...DETAIL, useOfFunds: 42 }).success).toBe(false);
+  });
+});

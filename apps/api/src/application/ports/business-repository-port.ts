@@ -40,6 +40,12 @@ export interface BusinessDraft {
    * registered before the wizard captured it fall back to `deadline`.
    */
   readonly campaignDurationDays?: CampaignDurationDays | null;
+  /**
+   * What the PyME will use the funds for ("Destino de los fondos", #577), as
+   * trimmed free text of at most 2000 characters. `null` or absent means none:
+   * businesses registered before the wizard captured it carry no value.
+   */
+  readonly useOfFunds?: string | null;
 }
 
 export interface BusinessRecord extends BusinessDraft {

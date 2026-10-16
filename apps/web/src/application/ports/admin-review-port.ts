@@ -34,6 +34,12 @@ export interface AdminReviewCompany {
   readonly revenueShare: number;
   /** ISO 8601 deadline the PyME declared, or `null` when none. */
   readonly deadline: string | null;
+  /**
+   * What the PyME will use the funds for («Destino de los fondos», #577).
+   * Absent when it declared none (a company registered before the wizard
+   * asked for it) — never invented.
+   */
+  readonly useOfFunds?: string;
 }
 
 /** One uploaded document; `objectPath` is the private viewer key, never a public URL. */

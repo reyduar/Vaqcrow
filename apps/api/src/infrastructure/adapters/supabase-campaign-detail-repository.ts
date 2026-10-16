@@ -66,6 +66,8 @@ export class SupabaseCampaignDetailRepository implements CampaignDetailRepositor
       sector: this.text(value["sector"]),
       city: this.text(value["city"]),
       description: this.text(value["description"]),
+      // Nullable (#577): businesses registered before the column carry none.
+      useOfFunds: this.optionalText(value["use_of_funds"]),
       foundedAt: this.text(value["founded_at"]),
       goalArs: this.bigint(value["goal_ars"]),
       totalStroops: this.bigint(value["total_stroops"]),

@@ -18,6 +18,8 @@ export function businessDraftFromRegistration(values: RegistrationValues): Busin
     sector: values.sector,
     city: values.city.trim(),
     description: values.desc.trim(),
+    // Step 2 validation requires it (#577); the API accepts but never requires it.
+    useOfFunds: values.useOfFunds.trim(),
     goalArs: parseAmount(values.goal),
     revenueShare: parseAmount(values.rs),
     // Step 2 validation requires a duration, so this is never null on a send.

@@ -21,6 +21,7 @@ function detail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     sector: "Alimentos",
     city: "Rosario",
     description: "Panificados artesanales para comercios de cercanía.",
+    useOfFunds: null,
     foundedAt: "2021-05-01T12:00:00.000Z",
     goalArs: 9_450_000,
     raisedArs: 5_954_000,
@@ -285,8 +286,21 @@ describe("CampaignDetail (detail sections)", () => {
 
     expect(screen.getAllByText(/Sin dato/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/ARS 0\b/)).not.toBeInTheDocument();
-    // The sales evidence and the uses of funds are not persisted: no invented section values.
+    // A campaign without a declared use of funds keeps the honest fallback (#577).
     expect(screen.getByRole("heading", { level: 2, name: "Destino de los fondos" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Destino de los fondos" })).getByText(/Sin dato/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Evidencia de ventas" })).toBeInTheDocument();
+  });
+
+  it("renders the declared use of funds as plain text, never as markup (#577)", async () => {
+    const useOfFunds = "Un horno rotativo <b>y</b> capital de trabajo";
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail({ useOfFunds }) }) });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+
+    const section = screen.getByRole("region", { name: "Destino de los fondos" });
+    expect(within(section).getByText(useOfFunds)).toBeInTheDocument();
+    expect(section.querySelector("b")).toBeNull();
+    expect(within(section).queryByText(/Sin dato/)).not.toBeInTheDocument();
   });
 });

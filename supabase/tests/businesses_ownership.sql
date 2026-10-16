@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(53);
 
 -- PyME company model and per-row ownership (Feature #398, Task #399 / T3a,
 -- owner decision 5 = option A). This unit is the database foundation only; the
@@ -45,6 +45,18 @@ select col_type_is(
 select col_is_null(
   'public', 'businesses', 'campaign_duration_days',
   'campaign_duration_days is nullable for businesses registered before U13'
+);
+select has_column(
+  'public', 'businesses', 'use_of_funds',
+  'businesses has a use_of_funds column (#577)'
+);
+select col_type_is(
+  'public', 'businesses', 'use_of_funds', 'text',
+  'use_of_funds is text'
+);
+select col_is_null(
+  'public', 'businesses', 'use_of_funds',
+  'use_of_funds is nullable for businesses registered before #577'
 );
 select has_column('public', 'businesses', 'created_at', 'businesses has a created_at column');
 select has_column('public', 'businesses', 'updated_at', 'businesses has an updated_at column');
@@ -271,6 +283,28 @@ select throws_ok(
   $$update public.businesses set campaign_duration_days = 0 where name = 'Plazo Treinta'$$,
   '23514', null,
   'an update cannot set a campaign duration outside 30, 60 or 90 days'
+);
+
+-- Use of funds (#577): free text up to 2000 characters; NULL stays allowed for
+-- businesses registered before the wizard captured it.
+insert into public.businesses (
+  owner_user_id, name, cuit, sector, city, description, goal_ars, revenue_share,
+  use_of_funds
+) values (
+  'e1111111-1111-4111-8111-111111111111', 'Destino Largo', '20123456706',
+  'Alimentos', 'CABA', 'Panadería artesanal de barrio', 5000000, 5, repeat('a', 2000)
+);
+
+select is(
+  (select char_length(use_of_funds) from public.businesses where name = 'Destino Largo'),
+  2000,
+  'a use of funds of exactly 2000 characters is accepted'
+);
+
+select throws_ok(
+  $$update public.businesses set use_of_funds = repeat('a', 2001) where name = 'Destino Largo'$$,
+  '23514', null,
+  'a use of funds longer than 2000 characters is rejected'
 );
 
 insert into public.application_review (application_id, state, last_correlation_id)

@@ -24,6 +24,7 @@ const DRAFT: BusinessDraft = {
   sector: "Alimentos",
   city: "Córdoba",
   description: DEMO_VALUES.desc,
+  useOfFunds: DEMO_VALUES.useOfFunds,
   goalArs: 15000000,
   revenueShare: 4.5,
   campaignDurationDays: 60
@@ -361,7 +362,7 @@ describe("ReviewStep company persistence", () => {
 
     const sentDraft = business.creates[0]!;
     expect(Object.keys(sentDraft).sort()).toEqual(
-      ["campaignDurationDays", "city", "cuit", "description", "goalArs", "name", "revenueShare", "sector"].sort()
+      ["campaignDurationDays", "city", "cuit", "description", "goalArs", "name", "revenueShare", "sector", "useOfFunds"].sort()
     );
     expect(JSON.stringify(sentDraft)).not.toContain("owner");
   });

@@ -78,6 +78,25 @@ describe("HttpBusinessGateway.createBusiness", () => {
     expect(result).toEqual({ ok: true, business: { ...WIRE_BUSINESS, campaignDurationDays: 60 } });
   });
 
+  it("sends the use of funds and reads it back from the stored company (#577)", async () => {
+    const withUse = { ...DRAFT, useOfFunds: "Un horno rotativo y capital de trabajo" };
+    const { client, calls } = fakeClient({ post: { status: 201, data: { business: { ...WIRE_BUSINESS, ...withUse } } } });
+    const gateway = new HttpBusinessGateway(client, async () => "token-123");
+
+    const result = await gateway.createBusiness(withUse);
+
+    expect(calls[0]!.data).toEqual(withUse);
+    expect(result).toEqual({ ok: true, business: { ...WIRE_BUSINESS, useOfFunds: "Un horno rotativo y capital de trabajo" } });
+  });
+
+  it("omits the use of funds when the stored company has none and refuses a non-text one (#577)", async () => {
+    const withNull = fakeClient({ get: { status: 200, data: { business: { ...WIRE_BUSINESS, useOfFunds: null } } } });
+    const malformed = fakeClient({ get: { status: 200, data: { business: { ...WIRE_BUSINESS, useOfFunds: 42 } } } });
+
+    expect(await new HttpBusinessGateway(withNull.client).getMyBusiness()).toEqual({ ok: true, business: WIRE_BUSINESS });
+    expect(await new HttpBusinessGateway(malformed.client).getMyBusiness()).toEqual({ ok: false, code: "unavailable" });
+  });
+
   it("answers unavailable when the stored campaign duration is not 30, 60 or 90", async () => {
     const { client } = fakeClient({ post: { status: 201, data: { business: { ...WIRE_BUSINESS, campaignDurationDays: 45 } } } });
 

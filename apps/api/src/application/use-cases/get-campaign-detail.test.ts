@@ -94,6 +94,8 @@ describe("getCampaignDetail", () => {
         sector: "Alimentos",
         city: "CABA",
         description: "Panadería artesanal con tres locales.",
+        // A record without a declared use of funds is the honest "sin dato" (#577).
+        useOfFunds: null,
         foundedAt: "2024-03-01T00:00:00.000Z",
         goalArs: 1000,
         raisedArs: 250,
@@ -132,6 +134,19 @@ describe("getCampaignDetail", () => {
         }
       }
     });
+  });
+
+  it("passes the PyME's declared use of funds through (#577)", async () => {
+    const result = await getCampaignDetail(
+      {
+        repository: fakeRepository({ ok: true, value: record({ useOfFunds: "Un segundo horno y capital de trabajo" }) }),
+        explorerBaseUrl: EXPLORER
+      },
+      CAMPAIGN_ID,
+      NOW
+    );
+
+    expect(result.ok && result.value.useOfFunds).toBe("Un segundo horno y capital de trabajo");
   });
 
   it("neutralizes the human-decision actor: the public read never exposes the operator name (#485)", async () => {

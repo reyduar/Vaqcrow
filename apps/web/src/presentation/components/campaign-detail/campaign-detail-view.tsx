@@ -36,10 +36,11 @@ import { CampaignWithdraw } from "./campaign-withdraw";
  * `imageSrc`), and this file owns only the display formatting.
  *
  * The demo does not persist every field the template draws (the tagline beyond
- * `description`, the employee count, the percentage "usos de fondos", the sales
- * series — the account-private sales route is deliberately never fetched here).
- * Each of those renders the honest "Sin dato", never an invented value and
- * never a fabricated zero. The aside carries the contribution flow (WU3/WU4) and
+ * `description`, the employee count, the percentage breakdown of the "usos de
+ * fondos" — the PyME's own free-text use of funds is persisted since #577 — and
+ * the account-private sales route is deliberately never fetched here). Each of
+ * those renders the honest "Sin dato", never an invented value and never a
+ * fabricated zero. The aside carries the contribution flow (WU3/WU4) and
  * the "Retirar" action (WU5), both gated on a `funding` campaign and an investor
  * viewer; the withdraw action additionally needs a non-zero contribution.
  */
@@ -157,15 +158,21 @@ function AboutSection({ detail }: { readonly detail: CampaignDetail }) {
   );
 }
 
-function UsesSection() {
+/**
+ * The PyME's own words (#577), rendered as a plain text node — never as markup.
+ * A campaign whose PyME declared none keeps the honest fallback.
+ */
+function UsesSection({ detail }: { readonly detail: CampaignDetail }) {
+  const useOfFunds = detail.useOfFunds?.trim() ?? "";
   return (
     <section
       aria-labelledby="use-t"
       className="flex flex-col gap-4 rounded-control border border-border p-6"
     >
       <SectionHeading id="use-t">Destino de los fondos</SectionHeading>
-      <p className="m-0 text-base leading-relaxed text-text-secondary">
-        {`${SIN_DATO}. El destino de los fondos no está persistido para esta campaña, así que no se muestra un desglose.`}
+      <p className="m-0 max-w-[70ch] text-base leading-relaxed whitespace-pre-line text-pretty text-text-secondary">
+        {useOfFunds ||
+          `${SIN_DATO}. El destino de los fondos no está persistido para esta campaña, así que no se muestra un desglose.`}
       </p>
     </section>
   );
@@ -616,7 +623,7 @@ export function CampaignDetailView({
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-8">
           <CampaignImage detail={detail} />
           <AboutSection detail={detail} />
-          <UsesSection />
+          <UsesSection detail={detail} />
           <SalesEvidenceSection detail={detail} />
 
           <div className="grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>

@@ -20,6 +20,11 @@ export interface BusinessDraft {
   readonly sector: string;
   readonly city: string;
   readonly description: string;
+  /**
+   * What the PyME will use the funds for («Destino de los fondos», #577). The
+   * wizard always sends it; absent on a company registered before it existed.
+   */
+  readonly useOfFunds?: string;
   /** The financing goal in whole ARS, always greater than zero. */
   readonly goalArs: number;
   /** The revenue-share percentage, inclusive of 1 and 10. */

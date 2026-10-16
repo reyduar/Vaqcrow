@@ -137,6 +137,50 @@ describe("validateBusinessDraft campaignDurationDays (#410/U13)", () => {
   });
 });
 
+describe("validateBusinessDraft useOfFunds (#577)", () => {
+  it("accepts a use of funds, trims it and passes it through", () => {
+    expect(validateBusinessDraft({ ...draft, useOfFunds: "  Un segundo horno y capital de trabajo  " })).toEqual({
+      ok: true,
+      value: { ...draft, useOfFunds: "Un segundo horno y capital de trabajo" }
+    });
+  });
+
+  it("accepts a use of funds of exactly 2000 characters", () => {
+    const useOfFunds = "a".repeat(2000);
+    expect(validateBusinessDraft({ ...draft, useOfFunds })).toEqual({ ok: true, value: { ...draft, useOfFunds } });
+  });
+
+  it("accepts but does not require it: absent, null or blank leave it absent", () => {
+    expect(validateBusinessDraft(draft)).toEqual({ ok: true, value: draft });
+    expect(validateBusinessDraft({ ...draft, useOfFunds: null })).toEqual({ ok: true, value: draft });
+    expect(validateBusinessDraft({ ...draft, useOfFunds: "   " })).toEqual({ ok: true, value: draft });
+  });
+
+  it("rejects a use of funds longer than 2000 characters as out_of_range", () => {
+    expect(validateBusinessDraft({ ...draft, useOfFunds: "a".repeat(2001) })).toEqual({
+      ok: false,
+      fieldErrors: [{ field: "useOfFunds", code: "out_of_range" }]
+    });
+  });
+
+  it.each([
+    ["a number", 42],
+    ["an object", { text: "horno" }]
+  ])("rejects %s as invalid", (_name, useOfFunds) => {
+    expect(validateBusinessDraft({ ...draft, useOfFunds })).toEqual({
+      ok: false,
+      fieldErrors: [{ field: "useOfFunds", code: "invalid" }]
+    });
+  });
+
+  it("keeps the required description rule unchanged", () => {
+    expect(validateBusinessDraft({ ...draft, description: "  ", useOfFunds: "Un segundo horno" })).toEqual({
+      ok: false,
+      fieldErrors: [{ field: "description", code: "required" }]
+    });
+  });
+});
+
 describe("createBusiness", () => {
   it("creates the company for the authenticated owner, never for a body-supplied id", async () => {
     const repo = repository();

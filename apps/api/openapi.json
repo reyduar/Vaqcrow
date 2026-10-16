@@ -441,6 +441,17 @@
                       "type": "string",
                       "minLength": 1
                     },
+                    "useOfFunds": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "foundedAt": {
                       "type": "string",
                       "format": "date-time",
@@ -1595,7 +1606,7 @@
           "PyME"
         ],
         "summary": "Register (or update) the PyME company",
-        "description": "PYME-only. Body validated inline (`name, cuit, sector, city, description, goalArs, revenueShare, deadline?, campaignDurationDays?`). Requires role: PYME.",
+        "description": "PYME-only. Body validated inline (`name, cuit, sector, city, description, goalArs, revenueShare, deadline?, campaignDurationDays?, useOfFunds?`). `useOfFunds` is optional free text (trimmed, at most 2000 characters; absent, null or blank stores none). Requires role: PYME.",
         "operationId": "postBusinesses",
         "security": [
           {
@@ -1659,7 +1670,7 @@
           "PyME"
         ],
         "summary": "Read the caller's own company",
-        "description": "PYME-only. 404 until a company is registered. Requires role: PYME.",
+        "description": "PYME-only. 404 until a company is registered. `useOfFunds` is omitted when the company declared none. Requires role: PYME.",
         "operationId": "getBusinessesMine",
         "security": [
           {
