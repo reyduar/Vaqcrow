@@ -80,13 +80,25 @@ function parseCompany(value: unknown): AdminReviewCompany | null | undefined {
   if (value === null) return null;
   const record = asRecord(value);
   if (!record) return undefined;
-  const { name, cuit, sector, city, description, goalArs, revenueShare, deadline } = record;
+  const { name, cuit, sector, city, description, goalArs, revenueShare, deadline, useOfFunds } = record;
   if (typeof name !== "string" || typeof cuit !== "string" || typeof sector !== "string") return undefined;
   if (typeof city !== "string" || typeof description !== "string") return undefined;
   if (typeof goalArs !== "number" || !Number.isFinite(goalArs)) return undefined;
   if (typeof revenueShare !== "number" || !Number.isFinite(revenueShare)) return undefined;
   if (deadline !== undefined && deadline !== null && typeof deadline !== "string") return undefined;
-  return { name, cuit, sector, city, description, goalArs, revenueShare, deadline: deadline ?? null };
+  // #577: absent/null for a company that declared none; anything but text is malformed.
+  if (useOfFunds !== undefined && useOfFunds !== null && typeof useOfFunds !== "string") return undefined;
+  return {
+    name,
+    cuit,
+    sector,
+    city,
+    description,
+    goalArs,
+    revenueShare,
+    deadline: deadline ?? null,
+    ...(typeof useOfFunds === "string" ? { useOfFunds } : {})
+  };
 }
 
 function parseDocument(value: unknown): AdminReviewDocument | undefined {

@@ -10,6 +10,7 @@ import { AssessmentSection } from "./assessment-section";
 import { DecisionSection } from "./decision-section";
 import { DeploymentSection } from "./deployment-section";
 import { KycSection } from "./kyc-section";
+import { UseOfFundsSection } from "./use-of-funds-section";
 import { ReviewView, type ReviewSlots } from "./review-view";
 
 export interface ApplicationReviewProps {
@@ -27,7 +28,7 @@ export interface ApplicationReviewProps {
  * its sections plugged in. One port serves both the context read and the
  * section writes, so they share the signed-in session. Section 1 (KYC/KYB) is
  * U3, section 2 (AI recommendation) U4, section 3 (human decision) U5 and the
- * deployment panel (D3) U6. The signed-in admin's display name only
+ * deployment panel (D3) U6; the «Destino de los fondos» block is #577. The signed-in admin's display name only
  * phrases the confirmation: the recorded actor always comes from the server.
  */
 export function ApplicationReview({
@@ -45,6 +46,7 @@ export function ApplicationReview({
         <KycSection context={context} reload={reload} port={resolvedPort} openWindow={openWindow} />
       ),
       assessment: (context) => <AssessmentSection context={context} />,
+      useOfFunds: (context) => <UseOfFundsSection context={context} />,
       decision: (context, reload) => (
         <DecisionSection context={context} reload={reload} port={resolvedPort} adminName={adminName} />
       ),

@@ -10,6 +10,7 @@ const DRAFT: BusinessDraft = {
   sector: "Alimentos",
   city: "Córdoba",
   description: DEMO_VALUES.desc,
+  useOfFunds: DEMO_VALUES.useOfFunds,
   goalArs: 15000000,
   revenueShare: 4.5,
   campaignDurationDays: 60
@@ -26,7 +27,13 @@ describe("businessDraftFromRegistration", () => {
     expect(draft.cuit).toBe("30712345678");
     expect(Object.keys(draft)).not.toContain("ownerUserId");
     expect(Object.keys(draft)).not.toContain("owner_user_id");
-    expect(Object.keys(draft)).toHaveLength(8);
+    expect(Object.keys(draft)).toHaveLength(9);
+  });
+
+  it("sends the use of funds trimmed (#577)", () => {
+    expect(
+      businessDraftFromRegistration({ ...DEMO_VALUES, useOfFunds: "  Un horno rotativo y capital de trabajo  " }).useOfFunds
+    ).toBe("Un horno rotativo y capital de trabajo");
   });
 
   it("sends the chosen campaign duration as whole days (#410/U13)", () => {

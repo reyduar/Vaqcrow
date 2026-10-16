@@ -17,7 +17,7 @@ Objetivo: que la PyME cuente en el paso 2 para qué necesita los fondos y que el
 |---|---|---|---|---|
 | T1 | S3, S4 (DB) | delegada (backstop de contexto) | hecho local (remoto pendiente) | migración + pgTAP |
 | T2 | S3, S4 (API/contrato) | delegada | hecho | API + contrato |
-| T3 | S2, S4, S5 (web) | delegada | pendiente | wizard, detalle, enviado, admin |
+| T3 | S2, S4, S5 (web) | delegada | hecho | wizard, detalle, enviado, admin |
 | T4 | S6 | parent + verificador independiente | pendiente | verify, remoto, evidencia |
 
 Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pasó el backstop de contexto (~150k). Hay riesgo alto (ítem 1: migración; ítem 3: contrato del detalle), así que va un verificador independiente.
@@ -45,4 +45,18 @@ Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pas�
   - RED: 7 tests de `business.test.ts`, 3 del repositorio de businesses, 2 del contrato, 2 de `get-campaign-detail.test.ts` y 3 del nuevo test del adapter de detalle.
   - GREEN: `pnpm --filter @vaqcrow/contracts exec vitest run` → 762/762; `pnpm --filter @vaqcrow/api test` → 3237/3237 (164 archivos); `pnpm --filter @vaqcrow/api run typecheck` → limpio.
   - OWASP Top 10:2025: sin hallazgos. A01: el owner sigue saliendo del principal, nunca del body. A06/A05: clave desconocida → 400, tipo y largo validados, sin eco de texto de Postgres. El texto se guarda tal cual y lo escapa quien lo renderiza (T3).
+- **L5** (2026-10-16) — T2 quedó en el commit `8d50c70`. T3 (web):
+  - **Paso 2.** Campo `useOfFunds`: textarea «Destino de los fondos» justo debajo de `desc`, con el mismo estilo. Placeholder «Para qué vas a usar el financiamiento: equipamiento, local, capital de trabajo…» y `maxLength` 2000 (`USE_OF_FUNDS_MAX_LENGTH`). Menos de 20 caracteres tras el trim → «Contanos para qué vas a usar los fondos: al menos 20 caracteres.» y bloquea el envío. Ejemplo demo: «Un horno rotativo para duplicar la producción y la seña de un segundo local en Nueva Córdoba.».
+    - El tope de 2000 lo pone `maxLength` y no un segundo mensaje, para no inventar copy.
+    - `businessDraftFromRegistration` envía `useOfFunds` con trim.
+  - **Detalle.** `CampaignDetail.useOfFunds: string | null`; el gateway mapea `wire.useOfFunds ?? null`, así funciona contra la API vieja. `UsesSection` muestra el texto como nodo de texto (`whitespace-pre-line`) o el fallback «Sin dato…» de siempre, sin cambios. El ejemplo ficticio queda en `null`, para no cambiar su salida.
+  - **«Ver lo enviado».** Fila «Destino de los fondos» al final del bloque Empresa, o «Sin dato».
+  - **Admin.** `AdminReviewCompany.useOfFunds?` (opcional, se omite si no hay valor) y `parseCompany` lo valida. El bloque `UseOfFundsSection` va en un slot nuevo `useOfFunds` de `ReviewView`, al final de la columna ancha, después de «2 · Recomendación de IA», y se conecta en `application-review.tsx`. Es slot y no parte del shell porque el test del shell fija «sin slots no se renderiza ninguna sección».
+  - **Fixtures.** Se actualizaron los que el cambio pedido mueve: «Revisá 9→10 campos», las claves del draft en `review-step.test.tsx` y el probe `verifier-wu2b` del bloque Empresa.
+  - RED observado: 8 tests del modelo del wizard, 4 del componente, 2 del detalle (gateway y vista), 2 de «Ver lo enviado» y 8 del admin (modelo, gateway y vista). Los tests de `business-persistence` y del gateway de businesses se escribieron en la misma tanda que su implementación, así que no se vio su RED por separado.
+  - GREEN:
+    - `pnpm --filter @vaqcrow/web test` → 2545/2545. Hubo un flake de timeout en `verifier-wu2a/in-session-submit.probes.test.tsx`; corrido solo, pasa.
+    - `typecheck` → limpio. `lint` → 0 errores y los 7 warnings previos.
+    - `pnpm run verify` → exit 0: depcruise sin violaciones, contracts 762, api 3237, web 2545, raíz 186.
+  - OWASP Top 10:2025: sin hallazgos. A03/A05 (inyección/XSS): el texto del usuario se renderiza solo como nodo de texto de React, sin `dangerouslySetInnerHTML`; hay tests con `<b>` literal en el detalle y en el admin. A01: el draft no lleva owner. LLM Top 10 2026: no aplica, el campo no entra a ningún prompt.
 

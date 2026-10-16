@@ -46,6 +46,21 @@ function presentOrMissing(value: string | undefined): string {
   return value === undefined || value.trim() === "" ? MISSING_BUSINESS_LABEL : value;
 }
 
+/**
+ * The «Destino de los fondos» block of the review (#577). The template does not
+ * design it: the title reuses the wizard's step-2 label, and a company that
+ * declared none reads the honest «Sin dato».
+ */
+export const USE_OF_FUNDS_COPY = Object.freeze({
+  title: "Destino de los fondos",
+  sinDato: "Sin dato"
+});
+
+/** The PyME's declared use of funds, or «Sin dato» without a company or a value. */
+export function useOfFundsText(company: Pick<AdminReviewCompany, "useOfFunds"> | null): string {
+  return company?.useOfFunds?.trim() || USE_OF_FUNDS_COPY.sinDato;
+}
+
 export function reviewHeaderFor(input: ReviewHeaderInput): ReviewHeader {
   const name = presentOrMissing(input.company?.name);
   const sector = presentOrMissing(input.company?.sector);

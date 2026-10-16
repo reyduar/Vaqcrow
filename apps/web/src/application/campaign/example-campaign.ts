@@ -31,6 +31,8 @@ export const EXAMPLE_CAMPAIGN_DETAIL: CampaignDetail = {
   sector: "Alimentos",
   city: "Córdoba",
   description: "Panificados artesanales para comercios de cercanía, con ventas estables durante todo el año.",
+  // The example keeps the honest «Sin dato» for the use of funds (#577).
+  useOfFunds: null,
   foundedAt: "2016-05-01T12:00:00.000Z",
   goalArs: 15_000_000,
   raisedArs: 9_450_000,

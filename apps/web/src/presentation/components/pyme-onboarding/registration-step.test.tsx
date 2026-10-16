@@ -76,6 +76,18 @@ describe("RegistrationStep copy and layout", () => {
       "placeholder",
       "Qué vendés, a quién y para qué necesitás el financiamiento"
     );
+    // #577: undesigned by the template; a textarea right below the description.
+    const useOfFunds = screen.getByLabelText("Destino de los fondos");
+    expect(useOfFunds.tagName).toBe("TEXTAREA");
+    expect(useOfFunds).toHaveAttribute(
+      "placeholder",
+      "Para qué vas a usar el financiamiento: equipamiento, local, capital de trabajo…"
+    );
+    expect(useOfFunds).toHaveAttribute("maxlength", "2000");
+    expect(
+      screen.getByLabelText("Breve descripción del negocio").compareDocumentPosition(useOfFunds) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(screen.getByLabelText("Meta de financiamiento (ARS)")).toHaveAttribute("placeholder", "15.000.000");
     expect(screen.getByLabelText("Revenue share propuesto (%)")).toHaveAttribute("placeholder", "4,5");
     expect(screen.getByText("Entre 1 % y 10 % de las ventas mensuales")).toBeInTheDocument();
@@ -139,13 +151,14 @@ describe("RegistrationStep validation", () => {
 
     submit();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 9 campos.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 10 campos.");
     expect(screen.getByRole("alert")).toHaveTextContent("Están marcados abajo.");
     expect(screen.getByText("Ingresá la razón social.")).toBeInTheDocument();
     expect(screen.getByText("El CUIT debe tener 11 dígitos.")).toBeInTheDocument();
     expect(screen.getByText("Elegí un rubro.")).toBeInTheDocument();
     expect(screen.getByText("Ingresá la ciudad.")).toBeInTheDocument();
     expect(screen.getByText("Contanos un poco más: al menos 20 caracteres.")).toBeInTheDocument();
+    expect(screen.getByText("Contanos para qué vas a usar los fondos: al menos 20 caracteres.")).toBeInTheDocument();
     expect(screen.getByText("Cargá al menos 6 de los 8 meses.")).toBeInTheDocument();
     expect(screen.getByText("La meta mínima es ARS 1.000.000.")).toBeInTheDocument();
     expect(screen.getByText("Debe estar entre 1 % y 10 %.")).toBeInTheDocument();
@@ -191,7 +204,27 @@ describe("RegistrationStep validation", () => {
     fireEvent.change(screen.getByLabelText("Razón social"), { target: { value: "Panadería Horizonte SRL" } });
     submit();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 8 campos.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Revisá 9 campos.");
+  });
+
+  it("blocks the send on a missing use of funds, links the error and clears it once long enough (#577)", () => {
+    const { onSubmit } = renderStep();
+    fillDemo();
+    const useOfFunds = screen.getByLabelText("Destino de los fondos");
+    fireEvent.change(useOfFunds, { target: { value: "" } });
+
+    submit();
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(useOfFunds).toHaveAttribute("aria-invalid", "true");
+    expect(useOfFunds).toHaveFocus();
+    expect(document.getElementById(useOfFunds.getAttribute("aria-describedby") as string)).toHaveTextContent(
+      "Contanos para qué vas a usar los fondos: al menos 20 caracteres."
+    );
+
+    fireEvent.change(useOfFunds, { target: { value: "Un horno rotativo y capital de trabajo" } });
+    expect(useOfFunds).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText("Contanos para qué vas a usar los fondos: al menos 20 caracteres.")).not.toBeInTheDocument();
   });
 
   it("links the missing campaign duration error to its select and clears it once chosen", () => {
@@ -224,6 +257,7 @@ describe("RegistrationStep demo values", () => {
     expect(screen.getByLabelText("Rubro")).toHaveValue("Alimentos");
     expect(screen.getByLabelText("Ciudad")).toHaveValue("Córdoba");
     expect(screen.getByLabelText("Breve descripción del negocio")).toHaveValue(DEMO_VALUES.desc);
+    expect(screen.getByLabelText("Destino de los fondos")).toHaveValue(DEMO_VALUES.useOfFunds);
     expect(screen.getByLabelText("Meta de financiamiento (ARS)")).toHaveValue("15.000.000");
     expect(screen.getByLabelText("Revenue share propuesto (%)")).toHaveValue("4,5");
     expect(screen.getByLabelText("Plazo de la campaña")).toHaveValue("60");

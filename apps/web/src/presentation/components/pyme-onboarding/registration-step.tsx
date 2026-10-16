@@ -15,6 +15,7 @@ import {
   REGISTRATION_COPY,
   SALES_MONTHS,
   SECTOR_OPTIONS,
+  USE_OF_FUNDS_MAX_LENGTH,
   registrationErrorSummary,
   salesAnomaly,
   salesMissing,
@@ -83,6 +84,7 @@ const FIELD_LABELS: Readonly<Record<RegistrationScalarField, string>> = Object.f
   sector: REGISTRATION_COPY.fields.sector.label,
   city: REGISTRATION_COPY.fields.city.label,
   desc: REGISTRATION_COPY.fields.desc.label,
+  useOfFunds: REGISTRATION_COPY.fields.useOfFunds.label,
   goal: REGISTRATION_COPY.fields.goal.label,
   rs: REGISTRATION_COPY.fields.rs.label,
   duration: REGISTRATION_COPY.fields.duration.label
@@ -345,6 +347,30 @@ export function RegistrationStep({ onSubmit = () => {}, upload = UNAVAILABLE_UPL
             className={textareaClass(Boolean(errorFor("desc")))}
           />
           {errorFor("desc") ? <ErrorRow id={errorId("desc")} message={errorFor("desc") as string} /> : null}
+        </div>
+
+        {/* #577: undesigned by the template; same idiom as the description, right below it. */}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor={controlId("useOfFunds")} className="text-sm font-semibold">
+            {FIELD_LABELS.useOfFunds}
+          </label>
+          <textarea
+            id={controlId("useOfFunds")}
+            ref={(element) => {
+              controls.current.useOfFunds = element;
+            }}
+            value={values.useOfFunds}
+            onChange={(event) => setField("useOfFunds", event.target.value)}
+            rows={4}
+            maxLength={USE_OF_FUNDS_MAX_LENGTH}
+            placeholder={REGISTRATION_COPY.fields.useOfFunds.placeholder}
+            aria-invalid={errorFor("useOfFunds") ? "true" : undefined}
+            aria-describedby={describedBy("useOfFunds")}
+            className={textareaClass(Boolean(errorFor("useOfFunds")))}
+          />
+          {errorFor("useOfFunds") ? (
+            <ErrorRow id={errorId("useOfFunds")} message={errorFor("useOfFunds") as string} />
+          ) : null}
         </div>
 
         <fieldset className="m-0 flex flex-col gap-3 border-none p-0">

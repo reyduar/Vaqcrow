@@ -34,6 +34,12 @@ export interface CampaignDetail {
   readonly city: string;
   /** `businesses.description`, the page's tagline copy. */
   readonly description: string;
+  /**
+   * `businesses.use_of_funds`, the «Destino de los fondos» copy (#577). `null`
+   * when the PyME declared none, or when an API that predates the field omits
+   * it — the honest «Sin dato».
+   */
+  readonly useOfFunds: string | null;
   readonly foundedAt: string;
   readonly goalArs: number;
   /** Snapshot conversion of the raised total; `null` when the campaign predates it. */

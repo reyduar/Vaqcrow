@@ -16,7 +16,7 @@
  * `odd/tasks/pyme-onboarding-wizard-and-document-upload.md`).
  */
 
-export type RegistrationField = "name" | "cuit" | "sector" | "city" | "desc" | "sales" | "goal" | "rs" | "duration";
+export type RegistrationField = "name" | "cuit" | "sector" | "city" | "desc" | "useOfFunds" | "sales" | "goal" | "rs" | "duration";
 
 /** All scalar fields except the sales group. */
 export type RegistrationScalarField = Exclude<RegistrationField, "sales">;
@@ -27,6 +27,12 @@ export interface RegistrationValues {
   readonly sector: string;
   readonly city: string;
   readonly desc: string;
+  /**
+   * What the PyME will use the funds for («Destino de los fondos», #577):
+   * required free text of at least 20 trimmed characters, capped at
+   * `USE_OF_FUNDS_MAX_LENGTH` by the textarea.
+   */
+  readonly useOfFunds: string;
   readonly sales: readonly string[];
   readonly goal: string;
   readonly rs: string;
@@ -87,6 +93,9 @@ export function durationLabel(raw: string): string {
   return DURATION_OPTIONS.find((option) => option.value === raw)?.label ?? "";
 }
 
+/** The API's and the column's limit for the use of funds (#577). */
+export const USE_OF_FUNDS_MAX_LENGTH = 2000;
+
 export const REGISTRATION_COPY = Object.freeze({
   heading: "Registrá tu PyME",
   subtitle:
@@ -114,6 +123,11 @@ export const REGISTRATION_COPY = Object.freeze({
       label: "Breve descripción del negocio",
       placeholder: "Qué vendés, a quién y para qué necesitás el financiamiento"
     }),
+    // #577: not designed by the template; same idiom as `desc`, right below it.
+    useOfFunds: Object.freeze({
+      label: "Destino de los fondos",
+      placeholder: "Para qué vas a usar el financiamiento: equipamiento, local, capital de trabajo…"
+    }),
     goal: Object.freeze({ label: "Meta de financiamiento (ARS)", placeholder: "15.000.000" }),
     rs: Object.freeze({
       label: "Revenue share propuesto (%)",
@@ -136,6 +150,8 @@ export const REGISTRATION_ERRORS: Readonly<Record<RegistrationField, string>> = 
   sector: "Elegí un rubro.",
   city: "Ingresá la ciudad.",
   desc: "Contanos un poco más: al menos 20 caracteres.",
+  // #577: owner-specified copy, not in the template.
+  useOfFunds: "Contanos para qué vas a usar los fondos: al menos 20 caracteres.",
   sales: "Cargá al menos 6 de los 8 meses.",
   goal: "La meta mínima es ARS 1.000.000.",
   rs: "Debe estar entre 1 % y 10 %.",
@@ -151,6 +167,7 @@ export const EMPTY_REGISTRATION_VALUES: RegistrationValues = Object.freeze({
   sector: "",
   city: "",
   desc: "",
+  useOfFunds: "",
   sales: EMPTY_SALES,
   goal: "",
   rs: "",
@@ -160,7 +177,8 @@ export const EMPTY_REGISTRATION_VALUES: RegistrationValues = Object.freeze({
 /**
  * Template line 350: the `fillDemo` values verbatim, month 4 left empty. The
  * 60-day duration is not in the template (#410/U13); the helper sets one so a
- * demo run never stops on the new required control.
+ * demo run never stops on the new required control. The use of funds is not in
+ * the template either (#577): an example in the same tone, for the same reason.
  */
 export const DEMO_VALUES: RegistrationValues = Object.freeze({
   name: "Panadería Horizonte SRL",
@@ -168,6 +186,7 @@ export const DEMO_VALUES: RegistrationValues = Object.freeze({
   sector: "Alimentos",
   city: "Córdoba",
   desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
+  useOfFunds: "Un horno rotativo para duplicar la producción y la seña de un segundo local en Nueva Córdoba.",
   goal: "15.000.000",
   rs: "4,5",
   duration: "60",
@@ -196,6 +215,9 @@ export function validateRegistration(values: RegistrationValues): RegistrationEr
   if (!values.sector) errors.push({ field: "sector", message: REGISTRATION_ERRORS.sector });
   if (!values.city.trim()) errors.push({ field: "city", message: REGISTRATION_ERRORS.city });
   if (values.desc.trim().length < 20) errors.push({ field: "desc", message: REGISTRATION_ERRORS.desc });
+  if (values.useOfFunds.trim().length < 20) {
+    errors.push({ field: "useOfFunds", message: REGISTRATION_ERRORS.useOfFunds });
+  }
   if (values.sales.filter((value) => value !== "").length < 6) {
     errors.push({ field: "sales", message: REGISTRATION_ERRORS.sales });
   }

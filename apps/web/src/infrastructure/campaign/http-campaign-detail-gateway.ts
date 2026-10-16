@@ -70,6 +70,8 @@ function toDetail(wire: CampaignDetailWire, imageBaseUrl: string): CampaignDetai
     sector: wire.sector,
     city: wire.city,
     description: wire.description,
+    // Optional on the wire: an API deployed before #577 omits it.
+    useOfFunds: wire.useOfFunds ?? null,
     foundedAt: wire.foundedAt,
     goalArs: wire.goalArs,
     raisedArs: wire.raisedArs,

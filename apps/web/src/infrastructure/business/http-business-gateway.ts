@@ -73,6 +73,7 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
     sector,
     city,
     description,
+    useOfFunds,
     goalArs,
     revenueShare,
     campaignDurationDays,
@@ -91,6 +92,9 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
   // it; any value other than 30, 60 or 90 is a malformed body.
   const duration = DURATIONS.find((days) => days === campaignDurationDays);
   if (campaignDurationDays !== undefined && campaignDurationDays !== null && duration === undefined) return undefined;
+  // #577: absent/null for a company registered before the wizard asked for it;
+  // anything but text is a malformed body.
+  if (useOfFunds !== undefined && useOfFunds !== null && typeof useOfFunds !== "string") return undefined;
 
   return {
     businessId,
@@ -100,6 +104,7 @@ function parseBusiness(data: unknown): BusinessRecord | undefined {
     sector,
     city,
     description,
+    ...(typeof useOfFunds === "string" ? { useOfFunds } : {}),
     goalArs,
     revenueShare,
     ...(duration === undefined ? {} : { campaignDurationDays: duration }),

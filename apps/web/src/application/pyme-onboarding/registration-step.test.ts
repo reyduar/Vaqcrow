@@ -15,6 +15,7 @@ import {
   validateRegistration,
   DURATION_OPTIONS,
   durationDays,
+  USE_OF_FUNDS_MAX_LENGTH,
   type RegistrationValues
 } from "./registration-step";
 
@@ -24,6 +25,7 @@ const VALID: RegistrationValues = {
   sector: "Alimentos",
   city: "Córdoba",
   desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
+  useOfFunds: "Un horno rotativo para duplicar la producción y la seña de un segundo local en Nueva Córdoba.",
   goal: "15.000.000",
   rs: "4,5",
   duration: "60",
@@ -72,6 +74,11 @@ describe("REGISTRATION_COPY", () => {
         label: "Breve descripción del negocio",
         placeholder: "Qué vendés, a quién y para qué necesitás el financiamiento"
       },
+      // #577: not designed by the template; same idiom as `desc`.
+      useOfFunds: {
+        label: "Destino de los fondos",
+        placeholder: "Para qué vas a usar el financiamiento: equipamiento, local, capital de trabajo…"
+      },
       goal: { label: "Meta de financiamiento (ARS)", placeholder: "15.000.000" },
       rs: { label: "Revenue share propuesto (%)", placeholder: "4,5", hint: "Entre 1 % y 10 % de las ventas mensuales" },
       // #410/U13: not in the template; owner-pending copy.
@@ -111,6 +118,7 @@ describe("REGISTRATION_ERRORS", () => {
       sector: "Elegí un rubro.",
       city: "Ingresá la ciudad.",
       desc: "Contanos un poco más: al menos 20 caracteres.",
+      useOfFunds: "Contanos para qué vas a usar los fondos: al menos 20 caracteres.",
       sales: "Cargá al menos 6 de los 8 meses.",
       goal: "La meta mínima es ARS 1.000.000.",
       rs: "Debe estar entre 1 % y 10 %.",
@@ -120,13 +128,15 @@ describe("REGISTRATION_ERRORS", () => {
 });
 
 describe("DEMO_VALUES", () => {
-  it("copies the template's fillDemo values verbatim, with the empty 4th month, plus a 60-day duration", () => {
+  it("copies the template's fillDemo values verbatim, with the empty 4th month, plus a 60-day duration and a use of funds", () => {
     expect(DEMO_VALUES).toEqual({
       name: "Panadería Horizonte SRL",
       cuit: "30-71234567-8",
       sector: "Alimentos",
       city: "Córdoba",
       desc: "Pan de masa madre y facturas para barrio y 22 cafeterías. Buscamos un horno rotativo y un segundo local.",
+      // #577: not in the template; an example in the same tone.
+      useOfFunds: "Un horno rotativo para duplicar la producción y la seña de un segundo local en Nueva Córdoba.",
       goal: "15.000.000",
       rs: "4,5",
       duration: "60",
@@ -143,6 +153,7 @@ describe("EMPTY_REGISTRATION_VALUES", () => {
       sector: "",
       city: "",
       desc: "",
+      useOfFunds: "",
       goal: "",
       rs: "",
       duration: "",
@@ -174,6 +185,8 @@ describe("validateRegistration", () => {
     ["sector", { sector: "" }, "Elegí un rubro."],
     ["city", { city: "  " }, "Ingresá la ciudad."],
     ["desc", { desc: "muy corto" }, "Contanos un poco más: al menos 20 caracteres."],
+    ["useOfFunds", { useOfFunds: "" }, "Contanos para qué vas a usar los fondos: al menos 20 caracteres."],
+    ["useOfFunds", { useOfFunds: "   un horno nuevo   " }, "Contanos para qué vas a usar los fondos: al menos 20 caracteres."],
     [
       "sales",
       { sales: ["1", "2", "3", "", "", "", "", ""] },
@@ -200,6 +213,13 @@ describe("validateRegistration", () => {
     expect(registrationValid(withValues({ rs: "10,1" }))).toBe(false);
   });
 
+  it("accepts a use of funds of exactly 20 trimmed characters, capped at the API's 2000 (#577)", () => {
+    expect(registrationValid(withValues({ useOfFunds: "  12345678901234567890  " }))).toBe(true);
+    expect(registrationValid(withValues({ useOfFunds: "a".repeat(USE_OF_FUNDS_MAX_LENGTH) }))).toBe(true);
+    // The textarea's maxLength enforces the cap; the model mirrors the API's limit.
+    expect(USE_OF_FUNDS_MAX_LENGTH).toBe(2000);
+  });
+
   it("counts six non-empty months as enough", () => {
     expect(registrationValid(withValues({ sales: ["1", "2", "3", "4", "5", "6", "", ""] }))).toBe(true);
   });
@@ -211,6 +231,7 @@ describe("validateRegistration", () => {
       sector: "",
       city: "",
       desc: "",
+      useOfFunds: "",
       sales: ["", "", "", "", "", "", "", ""],
       goal: "",
       rs: "",
@@ -222,6 +243,7 @@ describe("validateRegistration", () => {
       "sector",
       "city",
       "desc",
+      "useOfFunds",
       "sales",
       "goal",
       "rs",

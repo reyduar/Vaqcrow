@@ -80,6 +80,8 @@ export const SUBMITTED_DATA_COPY = Object.freeze({
     sector: "Sector",
     city: "Ciudad",
     goal: "Objetivo",
+    // #577: the wizard's own step-2 label, so the panel never drifts from it.
+    useOfFunds: "Destino de los fondos",
     reference: "Referencia",
     total: "Total solicitado",
     period: "Plazo"
@@ -121,7 +123,12 @@ function companyBlock(read: ReadOutcome<BusinessRecord>): SubmittedBlock {
       { label: SUBMITTED_DATA_COPY.fields.name, value: company.name },
       { label: SUBMITTED_DATA_COPY.fields.sector, value: company.sector },
       { label: SUBMITTED_DATA_COPY.fields.city, value: company.city },
-      { label: SUBMITTED_DATA_COPY.fields.goal, value: formatArsAmount(company.goalArs) }
+      { label: SUBMITTED_DATA_COPY.fields.goal, value: formatArsAmount(company.goalArs) },
+      // Plain text; a company registered before #577 has none: the honest Sin dato.
+      {
+        label: SUBMITTED_DATA_COPY.fields.useOfFunds,
+        value: company.useOfFunds?.trim() || SUBMITTED_DATA_COPY.sinDato
+      }
     ]
   };
 }

@@ -166,6 +166,26 @@ describe("HttpAdminReviewGateway.getContext", () => {
     expect(result.ok && result.context.company?.deadline).toBeNull();
   });
 
+  it("maps the company's declared use of funds, and omits a null or absent one (#577)", async () => {
+    const declared = await new HttpAdminReviewGateway(
+      fakeClient({ status: 200, data: { ...WIRE_CONTEXT, company: { ...COMPANY, useOfFunds: "Un horno rotativo" } } }).client
+    ).getContext(APPLICATION_ID);
+    const explicitNull = await new HttpAdminReviewGateway(
+      fakeClient({ status: 200, data: { ...WIRE_CONTEXT, company: { ...COMPANY, useOfFunds: null } } }).client
+    ).getContext(APPLICATION_ID);
+
+    expect(declared.ok && declared.context.company?.useOfFunds).toBe("Un horno rotativo");
+    expect(explicitNull.ok && explicitNull.context.company).not.toHaveProperty("useOfFunds");
+  });
+
+  it("refuses a company whose use of funds is not text (#577)", async () => {
+    const result = await new HttpAdminReviewGateway(
+      fakeClient({ status: 200, data: { ...WIRE_CONTEXT, company: { ...COMPANY, useOfFunds: 42 } } }).client
+    ).getContext(APPLICATION_ID);
+
+    expect(result).toEqual({ ok: false, code: "unavailable" });
+  });
+
   it("sends no Authorization header without a token provider", async () => {
     const { client, calls } = fakeClient({ status: 200, data: WIRE_CONTEXT });
     await new HttpAdminReviewGateway(client).getContext(APPLICATION_ID);

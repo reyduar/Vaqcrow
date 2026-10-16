@@ -120,7 +120,9 @@ describe("S4 view-model: only persisted facts, honest per block", () => {
       "Panadería Horizonte",
       "Alimentos",
       "Córdoba",
-      "ARS 15.000.000"
+      "ARS 15.000.000",
+      // #577: a company without a declared use of funds reads the honest Sin dato.
+      SUBMITTED_DATA_COPY.sinDato
     ]);
   });
 

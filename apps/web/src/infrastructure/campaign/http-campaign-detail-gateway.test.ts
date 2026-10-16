@@ -94,6 +94,33 @@ describe("HttpCampaignDetailGateway.get", () => {
     expect(result.detail.salesEvidence).toEqual(WIRE_DETAIL.salesEvidence);
   });
 
+  it("passes the declared use of funds through, and maps a null or an older API's absent field to null (#577)", async () => {
+    const declared = await new HttpCampaignDetailGateway(
+      fakeClient({ status: 200, data: { ...WIRE_DETAIL, useOfFunds: "Un horno rotativo" } }).client,
+      BASE
+    ).get(CAMPAIGN_ID);
+    const explicitNull = await new HttpCampaignDetailGateway(
+      fakeClient({ status: 200, data: { ...WIRE_DETAIL, useOfFunds: null } }).client,
+      BASE
+    ).get(CAMPAIGN_ID);
+    const absent = await new HttpCampaignDetailGateway(fakeClient({ status: 200, data: WIRE_DETAIL }).client, BASE).get(
+      CAMPAIGN_ID
+    );
+
+    expect(declared.ok && declared.detail.useOfFunds).toBe("Un horno rotativo");
+    expect(explicitNull.ok && explicitNull.detail.useOfFunds).toBeNull();
+    expect(absent.ok && absent.detail.useOfFunds).toBeNull();
+  });
+
+  it("refuses a blank use of funds as a malformed body (#577)", async () => {
+    const result = await new HttpCampaignDetailGateway(
+      fakeClient({ status: 200, data: { ...WIRE_DETAIL, useOfFunds: "   " } }).client,
+      BASE
+    ).get(CAMPAIGN_ID);
+
+    expect(result.ok).toBe(false);
+  });
+
   it("keeps a missing month's sales as null through the gateway", async () => {
     const { client } = fakeClient({ status: 200, data: { ...WIRE_DETAIL, imageUrl: null } });
     const gateway = new HttpCampaignDetailGateway(client, BASE);
