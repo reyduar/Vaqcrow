@@ -43,11 +43,11 @@ stellar contract invoke \
 
 Ya con el capital, cada mes la PyME declara sus ventas —en la demo, sintéticas— y el sistema calcula cuánto le toca a cada inversor **en proporción a lo que aportó**. El cálculo es determinístico y sale de una regla versionada; la IA no participa del reparto.
 
-Para el período que la demo usa de ejemplo, **RS-2026-01**, la regla aplica un 4,5 % sobre las ventas declaradas del mes:
+Para el período que la demo usa de ejemplo, **RS-2026-02**, la regla aplica un 4,5 % sobre las ventas declaradas del mes:
 
 | Pieza | Valor en la demo |
 |---|---|
-| Regla | `RS-2026-01` |
+| Regla | `RS-2026-02` |
 | Porcentaje | 4,5 % de las ventas del mes |
 | Reparto | Proporcional a cada aporte |
 | Quién calcula | El sistema, de forma determinística |

@@ -205,7 +205,11 @@ function derivationDeps(): Parameters<typeof deriveRevenueShareDistribution>[0] 
           }
         })
     },
-    salesData: { getPeriods: () => Promise.resolve({ ok: true as const, value: SALES }) }
+    salesData: { getPeriods: () => Promise.resolve({ ok: true as const, value: SALES }) },
+    // The accumulator (#580) is derived from the campaign's confirmed distributions. Nothing has
+    // been distributed yet in this scenario, so every contributor starts at 0n and the canonical
+    // split is unchanged by the cap.
+    distributions: { listByCampaign: () => Promise.resolve({ ok: true as const, value: [] }) }
   };
 }
 

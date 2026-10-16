@@ -140,6 +140,10 @@ function derivationFailureStatus(
     case "campaign_not_settled":
     case "decision_not_approved":
     case "contributions_incomplete":
+    case "obligation_completed":
+      // `obligation_completed` means every contributor already reached their cap (#580): like
+      // `contributions_incomplete`, that is a conflict with the case's current state, not a
+      // malformed or unprocessable request.
       return 409;
     case "no_eligible_period":
     case "invalid_sales_data":

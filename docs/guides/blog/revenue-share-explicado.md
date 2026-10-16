@@ -43,15 +43,16 @@ Antes de Vaqcrow, el financiamiento colectivo ya tenía tres caminos. Cada uno d
 
 Cada mes, la PyME declara cuánto vendió. Sobre esas ventas, el sistema aplica una regla y reparte el resultado entre los inversores.
 
-En la demo, la regla se llama **RS-2026-01** y aplica un **4,5 %** sobre las ventas declaradas del mes.
+En la demo, la regla se llama **RS-2026-02** y aplica un **4,5 %** sobre las ventas declaradas del mes.
 
 El reparto es **proporcional a lo que aportó cada uno**. Si dos personas pusieron la mitad cada una, a cada una le toca la mitad de lo que se reparte.
 
 | Pieza | Valor en la demo |
 |---|---|
-| Regla | `RS-2026-01` |
+| Regla | `RS-2026-02` |
 | Porcentaje | 4,5 % de las ventas del mes |
 | Reparto | Proporcional a cada aporte |
+| Tope por inversor | 1,5 veces lo que aportó cada uno |
 | Quién calcula | El sistema, siempre de la misma forma |
 | Quién firma | La PyME, en Freighter |
 
@@ -69,11 +70,17 @@ Como el reparto sale de las ventas, cuando las ventas bajan el reparto también 
 
 Si un mes la PyME vendió la mitad, se reparte la mitad. **No hay una cuota fija que haya que pagar igual.**
 
-## Qué vuelve, y qué no está fijado
+## Qué vuelve, y hasta cuándo
 
 Lo que vuelve es siempre un porcentaje de las ventas del mes, repartido entre los inversores según lo que aportó cada uno.
 
-La regla **no fija un total a devolver ni una fecha en la que el reparto termina**, y no acumula un contador de cuánto se devolvió hasta ahora. Por eso: si las ventas son bajas, lo que vuelve en el mes también es bajo. Lo que un inversor recibe a lo largo del tiempo depende de dos cosas —cuánto venda la PyME y qué proporción del total aportado le toca—, no de un monto pactado de antemano.
+El acuerdo **sí tiene un tope**. Cada inversor cobra hasta que lo que ya recibió llega a **1,5 veces lo que aportó**. Dicho fácil: si aportaste 100, el acuerdo devuelve hasta 150 —tus 100 de capital y 50 por encima—. Cuando un inversor llega a su tope, ese inversor deja de cobrar; cuando llegan todos, el acuerdo **termina** y no queda nada por firmar.
+
+Eso no cambia lo de siempre: si las ventas son bajas, lo que vuelve en el mes también es bajo. Lo que un inversor cobra mes a mes sigue dependiendo de cuánto venda la PyME y de qué proporción del total aportado le toca. El tope fija el final, no un monto igual cada mes.
+
+Conviene mirar el tope de frente, porque el tope **es el precio** del dinero y no una tasa de interés. Por eso, cuanto más rápido vende la PyME, antes alcanza el tope y **más caro le sale el dinero por año**. Del otro lado, lo que recibe el inversor **se corta en 1,5 veces lo aportado**: justamente eso es lo que impide que esto sea una parte de la empresa.
+
+Si las ventas son tan bajas que el tope nunca se alcanza, este tipo de financiamiento tiene un **plazo** —de 3 a 5 años— tras el cual el saldo que falta queda exigible. **La demo no lo implementa**: es un límite honesto de la demo, no una cobranza real.
 
 ## Qué es real y qué es simulado
 
@@ -88,4 +95,4 @@ La regla **no fija un total a devolver ni una fecha en la que el reparto termina
 
 ## En resumen
 
-En Vaqcrow el inversor aporta a la campaña de una PyME, y la PyME devuelve parte de ese capital con un 4,5 % de sus ventas mensuales, repartido en proporción a lo que aportó cada uno. La regla está versionada (`RS-2026-01`), el cálculo es determinístico y la IA no participa. La firma la hace siempre la PyME en Freighter: Vaqcrow no firma ni mueve fondos. Si se vende menos, vuelve menos. Nada de esto es una oferta de inversión ni una recomendación financiera.
+En Vaqcrow el inversor aporta a la campaña de una PyME, y la PyME devuelve parte de ese capital con un 4,5 % de sus ventas mensuales, repartido en proporción a lo que aportó cada uno. El acuerdo tiene un tope: cada inversor cobra hasta 1,5 veces lo que aportó, y al llegar ahí el acuerdo termina para él. La regla está versionada (`RS-2026-02`), el cálculo es determinístico y la IA no participa. La firma la hace siempre la PyME en Freighter: Vaqcrow no firma ni mueve fondos. Si se vende menos, vuelve menos. Nada de esto es una oferta de inversión ni una recomendación financiera.

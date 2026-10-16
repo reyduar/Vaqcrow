@@ -127,11 +127,29 @@ export const ENTREPRENEUR_GUIDE: Guide = Object.freeze({
       index: "06",
       title: "Después del financiamiento",
       body: "Cada mes declarás tus ventas. Vaqcrow calcula la distribución con la regla de tu campaña y vos la firmás en Freighter.",
+      terms: Object.freeze([
+        Object.freeze({
+          term: "Tope por inversor",
+          definition: "1,5 veces lo que aportó cada uno; al alcanzarlo, ese inversor deja de cobrar."
+        }),
+        Object.freeze({
+          term: "Fin del acuerdo",
+          definition: "Cuando todos los inversores llegan a su tope, no queda nada por distribuir."
+        }),
+        Object.freeze({
+          term: "Plazo de 3 a 5 años",
+          definition: "Si las ventas nunca alcanzan el tope, el saldo pendiente queda exigible al plazo. La demo no lo cobra."
+        }),
+        Object.freeze({
+          term: "El tope es el precio",
+          definition: "No es una tasa de interés: cuanto más rápido vendés, antes lo alcanzás y más caro te sale el dinero por año."
+        })
+      ]),
       workedExample: Object.freeze({
         salesLabel: "Ventas declaradas de agosto",
         salesTag: "SIMULADO",
         salesValue: "ARS 3.745.800,00",
-        ruleLabel: "Revenue share (regla RS-2026-01)",
+        ruleLabel: "Revenue share (regla RS-2026-02)",
         ruleValue: "× 4,5 %",
         resultLabel: "A distribuir entre aportantes",
         resultValue: "ARS 168.561,00",

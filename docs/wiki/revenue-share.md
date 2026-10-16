@@ -37,7 +37,7 @@ Eso, con una PyME argentina y una bóveda en Stellar, es lo que hace Vaqcrow.
 
 ## Cómo se calcula
 
-- La regla está versionada. En la demo se usa `RS-2026-01`.
+- La regla está versionada. En la demo se usa `RS-2026-02`.
 - Ese período aplica un **4,5 %** sobre las ventas declaradas del mes.
 - El reparto es **proporcional a lo que aportó cada inversor**.
 - El cálculo es determinístico y lo hace el sistema. La IA no participa del reparto.
@@ -59,11 +59,17 @@ Como el reparto sale de las ventas, cuando las ventas bajan el reparto también 
 
 Si la PyME vendió la mitad, se reparte la mitad. **No hay una cuota fija que haya que pagar igual.**
 
-## Qué vuelve, y qué no está fijado
+## Qué vuelve, y hasta cuándo
 
 Lo que vuelve es siempre un porcentaje de las ventas del mes, repartido entre los inversores según lo que aportó cada uno.
 
-La regla **no fija un total a devolver ni una fecha en la que el reparto termina**, y no acumula un contador de cuánto se devolvió hasta ahora. Por eso lo que un inversor recibe a lo largo del tiempo depende de dos cosas —cuánto venda la PyME y qué proporción del total aportado le toca—, no de un monto pactado de antemano.
+El acuerdo **sí tiene un total**. Cada inversor cobra hasta que lo que ya recibió llega a **1,5 veces lo que aportó**. Dicho fácil: si aportaste 100, el acuerdo devuelve hasta 150 —tus 100 de capital y 50 por encima—. Cuando un inversor llega a su tope, ese inversor deja de cobrar; cuando llegan todos, el acuerdo **termina** y no queda nada por firmar.
+
+El tope fija el final, no un monto igual cada mes: lo que un inversor cobra mes a mes sigue dependiendo de cuánto venda la PyME y de qué proporción del total aportado le toca.
+
+Si las ventas son tan bajas que el tope nunca se alcanza, este tipo de financiamiento tiene un **plazo** —de 3 a 5 años— tras el cual el saldo que falta queda exigible. **La demo no lo implementa**: es un límite honesto de la demo, no una cobranza real.
+
+Vale la pena mirar el tope de frente: el tope **es el precio**, no una tasa de interés. Cuanto más rápido vende la PyME, antes alcanza su tope y **más caro le sale el dinero por año**. Y lo que recibe el inversor **se corta en 1,5 veces lo aportado**: eso es lo que impide que esto sea una parte de la empresa.
 
 ## Por qué existe
 

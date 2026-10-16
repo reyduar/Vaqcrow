@@ -27,7 +27,9 @@ const COPY: Readonly<Record<DerivationFailureReason, string>> = {
   contributions_incomplete:
     "Los aportes confirmados que conoce el servicio no suman el total de la campaña, así que no se distribuye para no dejar a nadie sin cobrar. Consulte el aporte de cada inversor desde el paso de fondeo con su cuenta conectada.",
   obligation_rounds_to_zero:
-    "La obligación calculada es menor que la unidad mínima, así que no hay nada que distribuir."
+    "La obligación calculada es menor que la unidad mínima, así que no hay nada que distribuir.",
+  obligation_completed:
+    "El acuerdo de revenue share de esta campaña ya llegó a su tope: cada inversor cobró hasta 1,5 veces lo que aportó, y no queda nada por distribuir."
 };
 
 export function derivationFailureMessage(reason: DerivationFailureReason): string {

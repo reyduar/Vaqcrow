@@ -911,7 +911,7 @@ stateDiagram-v2
 | Confirmed | `Confirmada en Stellar Testnet` |
 | Failed | `La transacción no fue confirmada` |
 | Respaldo IA | `RESPUESTA DE RESPALDO · No corresponde a una llamada en vivo` |
-| Cálculo | `Cálculo determinístico según regla RS-2026-01` |
+| Cálculo | `Cálculo determinístico según regla RS-2026-02` |
 
 ### 10.3 Formato de datos
 
@@ -1288,7 +1288,7 @@ Create desktop screen 6 of 6 for route /demo/panel: the final evidence dashboard
 
 Use the fixed header with “Paso 6 de 6”. At top, show Panadería Horizonte SRL, “EMPRESA SINTÉTICA · SIMULADO”, human approval summary, Testnet project progress, and a compact complete journey timeline. Do not create a broad analytics dashboard. Use a 4/8 layout for summary and evidence, then a full-width deterministic calculation section.
 
-Sales block: add the next synthetic monthly period, label every value “SIMULADO”, and provide a small accessible chart plus table. Calculation block must explicitly show eligible sales, contractual revenue-share percentage, rule version “RS-2026-01”, integer/minimum-unit handling, rounding policy, recipient allocations, and balanced total. Put the sentence “Cálculo determinístico; la IA no calcula esta obligación” directly under the title.
+Sales block: add the next synthetic monthly period, label every value “SIMULADO”, and provide a small accessible chart plus table. Calculation block must explicitly show eligible sales, contractual revenue-share percentage, rule version “RS-2026-02”, integer/minimum-unit handling, rounding policy, recipient allocations, and balanced total. Put the sentence “Cálculo determinístico; la IA no calcula esta obligación” directly under the title.
 
 Distribution block: staged actions “Cargar ventas simuladas”, “Revisar cálculo”, “Firmar distribución en Freighter”, and “Ver evidencia en Testnet”. Reuse the non-custodial wallet and transaction review pattern for the SME signer. Show submitted as pending before confirmed. Final evidence area contains two distinct cards, “Fondeo” and “Distribución de revenue share”, each with state, amount, timestamp, full-copy hash control, operations summary, and external Testnet explorer link.
 

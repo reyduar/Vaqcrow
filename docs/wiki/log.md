@@ -2,6 +2,12 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-16 — ingest: tope del revenue share a 1,5× (#580)
+
+- Fuente citada: `blog/revenue-share-explicado.md` (Blog), junto con `como-funciona-vaqcrow.md`.
+- Página `revenue-share.md` (concepto): se reescribió la sección del tope con lo que la regla sí fija —cada inversor cobra hasta 1,5 veces lo aportado, el acuerdo termina al alcanzarlo y el plazo de 3 a 5 años queda declarado como límite no implementado en la demo—; se eliminó la frase que decía que no había un total a devolver ni una fecha de fin.
+- Versión de la regla actualizada a `RS-2026-02` en `revenue-share.md`, `distribucion-mensual.md` y las fuentes de `docs/guides/`.
+
 ## 2026-10-16 — ingest: revenue share en lenguaje llano (#579)
 
 - Fuente nueva citada: `blog/revenue-share-explicado.md` (Blog), junto con `como-funciona-vaqcrow.md`.

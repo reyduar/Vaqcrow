@@ -41,7 +41,7 @@ const wirePrepared = {
   // The API returns the case it derived the distribution for.
   campaignId: CAMPAIGN_ID,
   derivation: {
-    ruleVersion: "RS-2026-01",
+    ruleVersion: "RS-2026-02",
     rateBps: 450,
     period: "2026-08",
     salesArs: "3745800",
@@ -137,7 +137,8 @@ describe("HttpRevenueShareDistributionGateway.prepare", () => {
     [422, "no_eligible_period"],
     [422, "invalid_sales_data"],
     [422, "no_contributors"],
-    [422, "obligation_rounds_to_zero"]
+    [422, "obligation_rounds_to_zero"],
+    [409, "obligation_completed"]
   ])("maps a %i derivation_failed / %s refusal to its own typed reason", async (status, reason) => {
     const { port } = failing(new HttpClientError("http", status, undefined, "derivation_failed", reason));
 
