@@ -15,7 +15,7 @@ Objetivo: que `https://www.vaqcrow.com` sea el único origen de la web de punta 
 |---|---|---|---|---|
 | T1 | S4 | inline | hecho | docs alineados en esta rama |
 | T2 | S1, S2, S3 | owner (dashboards) | hecho | el owner configuró los tres (2026-10-16) |
-| T3 | S1–S3 | inline | hecho (salvo `APP_BASE_URL`) | ver L4 |
+| T3 | S1–S3 | inline | hecho | ver L4 y L6 |
 
 ## Log
 
@@ -29,3 +29,4 @@ Objetivo: que `https://www.vaqcrow.com` sea el único origen de la web de punta 
   - **S3 (`APP_BASE_URL`):** desde esta sesión no se puede leer. Hay evidencia indirecta: la API está arriba después del cambio, y con el email habilitado y un `APP_BASE_URL` inválido no arrancaría (fail-closed). El valor exacto queda confirmado por el owner.
   - Pendiente opcional: un alta real que confirme el email de punta a punta.
 - **L5** (2026-10-16) — `pnpm run verify` → exit 0 (`no dependency violations`). Es el criterio de aceptación del issue; el cambio es solo de docs.
+- **L6** (2026-10-16) — El owner hizo un alta real e informó, verbatim: «funciona el email de confirmación». Con eso queda cubierto el criterio de S2: el link del email lleva a `https://www.vaqcrow.com/account-confirmed`.
