@@ -47,6 +47,7 @@ test("the public header keeps its nav on one line at 1280 px, as in the template
     "Cómo funciona",
     "Para emprendedores",
     "Guía del inversor",
+    "Blog",
     "Acerca de"
   ]);
 
@@ -90,7 +91,7 @@ test("the public header still fits on one line at 1280 px when text renders wide
   await page.goto("/");
   const header = page.getByRole("banner").first();
   const nav = header.getByRole("navigation", { name: "Principal" });
-  await expect(nav.getByRole("link")).toHaveCount(5);
+  await expect(nav.getByRole("link")).toHaveCount(6);
 
   const normalSlack = await navSlack(page);
   testInfo.annotations.push({ type: "nav-slack-px", description: `normal: ${normalSlack}` });

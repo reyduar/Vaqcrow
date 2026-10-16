@@ -52,4 +52,4 @@ status: delivered
 - El PR **no está mergeado** al escribir esta evidencia: los resultados de arriba son comandos corridos en el árbol de trabajo, no un estado de `main`.
 - **Migración remota pendiente** (D2): `20261015200000` corrió solo en el stack local. Se aplica al proyecto remoto una vez que la API esté desplegada con el post. Después hay que verificar el historial de migraciones y la fila.
 - Advisory sin cambio: la copy de `/company` dice «Tu wallet necesita XLM de Testnet para crear la bóveda», pero la guía operativa dice que el despliegue lo firma y lo paga la plataforma. El post no repite ninguna de las dos afirmaciones.
-- Con «Blog», la nav pública pasa de cinco a seis entradas. Los tests no miden el ancho del header: hay que mirarlo en la web desplegada.
+- Con «Blog», la nav pública pasa de cinco a seis entradas. El ancho lo mide `e2e/app-header.spec.ts` a 1280 px, también con el texto ensanchado que replica el render de Linux: `pnpm --filter @vaqcrow/web run test:e2e` → 41/41 en local. La primera corrida del CI falló porque las specs e2e todavía esperaban cinco links; se corrigieron en el mismo PR.
