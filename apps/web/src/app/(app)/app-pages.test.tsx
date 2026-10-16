@@ -7,6 +7,7 @@ import { FakeAuthSession } from "@/test/fake-auth-session";
 import CompanyPage from "./company/page";
 import AppLayout from "./layout";
 import PortfolioPage from "./portfolio/page";
+import ReportsPage from "./reports/page";
 
 const { pathname } = vi.hoisted(() => ({ pathname: { current: "/portfolio" } }));
 vi.mock("next/navigation", () => ({
@@ -76,5 +77,17 @@ describe("/company", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Abrir ayuda" }));
     expect(screen.getByRole("dialog", { name: "Asistente de ayuda" })).toBeInTheDocument();
+  });
+});
+
+describe("the floating help assistant on every signed-in page (#570)", () => {
+  it.each([
+    ["INVERSOR", "/portfolio", <PortfolioPage key="portfolio" />],
+    ["INVERSOR", "/reports", <ReportsPage key="reports" />],
+    ["PYME", "/company", <CompanyPage key="company" />]
+  ] as const)("a %s on %s gets exactly one «Abrir ayuda» toggle", async (role, path, page) => {
+    await renderAs(role, path, page);
+
+    expect(screen.getAllByRole("button", { name: "Abrir ayuda" })).toHaveLength(1);
   });
 });
