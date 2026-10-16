@@ -53,7 +53,7 @@ graph TB
         LLM["LLM_PROVIDER — evaluación asesora"]
     end
 
-    USER -->|"abre https://vaqcrow-web-nine.vercel.app"| WEB_EDGE
+    USER -->|"abre https://www.vaqcrow.com"| WEB_EDGE
     WEB_EDGE --> WEB_CLIENT
 
     WEB_CLIENT -->|"1 · HTTPS + CORS"| API
@@ -80,7 +80,7 @@ graph TB
 
 ## 2. El recorrido de una request
 
-1. **Navegador → Vercel.** El navegador pide `https://vaqcrow-web-nine.vercel.app`. Vercel sirve un **build estático** de Next.js desde su Edge Network, además del código de cliente que se ejecuta en el navegador.
+1. **Navegador → Vercel.** El navegador pide `https://www.vaqcrow.com`, el dominio canónico; `vaqcrow.com` y `vaqcrow-web-nine.vercel.app` redirigen ahí con un 308 a nivel de dominio de Vercel (#565). Vercel sirve un **build estático** de Next.js desde su Edge Network, además del código de cliente que se ejecuta en el navegador.
 2. **Cliente → API.** El cliente usa el gateway configurado con `NEXT_PUBLIC_API_BASE_URL` para llamar por HTTPS a `https://api-production-c07f.up.railway.app`. El origen de producción de Vercel está en `CORS_ALLOWED_ORIGINS` de la API, así que el preflight y las llamadas se permiten. Si la variable no estuviera configurada, el port se construye como un **null object** que responde `not_configured`: la interfaz muestra un aviso calmo («Esta instancia no tiene configurada la API») en lugar de un fallo rojo, y **no inventa** una lista vacía (Issue #480).
 3. **API → servicios.** La API en Railway atiende la request y, según la ruta:
    - escribe y lee su **espejo** en **Supabase** (campañas, aportes, contactos de reembolso);

@@ -8,7 +8,7 @@ Plan de grabación (shot list) del recorrido por roles, para la brecha **«video
 
 ## Antes de grabar (checklist)
 
-- [ ] **Web arriba:** `https://vaqcrow-web-nine.vercel.app` (o el perfil docker local). API Railway `https://api-production-c07f.up.railway.app` con `/health` en 200.
+- [ ] **Web arriba:** `https://www.vaqcrow.com` (o el perfil docker local). API Railway `https://api-production-c07f.up.railway.app` con `/health` en 200.
 - [ ] **Freighter** instalada, en red **Testnet**, con cuenta para la PyME y para el inversor.
 - [ ] **Admin:** `vaqcrow.admin` (email y contraseña vienen de variables de entorno, nunca del repo).
 - [ ] **Cuentas frescas** para PyME e inversor en la corrida (o reusar las del ensayo).

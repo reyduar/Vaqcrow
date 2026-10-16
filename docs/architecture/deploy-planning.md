@@ -1232,7 +1232,7 @@ vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production
 
 | Servicio | Development | Production |
 |---|---|---|
-| Web (Vercel) | `vaqcrow-web-git-<rama>-…vercel.app` (preview, detrás de Vercel Authentication) | `vaqcrow-web-nine.vercel.app` |
+| Web (Vercel) | `vaqcrow-web-git-<rama>-…vercel.app` (preview, detrás de Vercel Authentication) | `www.vaqcrow.com` (`vaqcrow.com` y `vaqcrow-web-nine.vercel.app` redirigen ahí, #565) |
 | API (Railway) | `api-production-c07f.up.railway.app` | `api-production-c07f.up.railway.app` |
 | Supabase | `ppvlnwejajxpsmazvnbj.supabase.co` | `ppvlnwejajxpsmazvnbj.supabase.co` (mismo) |
 | Stellar Horizon | `horizon-testnet.stellar.org` | `horizon-testnet.stellar.org` |
