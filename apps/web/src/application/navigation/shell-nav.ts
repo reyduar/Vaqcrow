@@ -54,6 +54,11 @@ export function accountMenuLabel(displayName: string): string {
 
 const EXPLORE: ShellLink = { label: "Explorar PyMEs", href: "/explore" };
 const HOW_IT_WORKS: ShellLink = { label: "Cómo funciona", href: "/#como-funciona" };
+/**
+ * Owner decision, 2026-10-15 (#558): every role's nav links the Blog, always
+ * right before «Acerca de». The template does not draw this entry.
+ */
+const BLOG: ShellLink = { label: "Blog", href: "/blog" };
 const ABOUT: ShellLink = { label: "Acerca de", href: "/about" };
 /**
  * Avatar-menu entry (Feature #394 / WU5): `Vaqcrow Landing.dc.html:70`, placed
@@ -74,6 +79,7 @@ const PUBLIC_VIEW: ShellView = view({
     // easily as the entrepreneur one. The template does not draw this entry, and
     // it only fits because the theme control collapsed into a menu that same day.
     { label: "Guía del inversor", href: "/investor-guide" },
+    BLOG,
     ABOUT
   ]),
   menu: Object.freeze([]),
@@ -83,7 +89,7 @@ const PUBLIC_VIEW: ShellView = view({
 
 const VIEWS: Readonly<Record<PrincipalRole, ShellView>> = Object.freeze({
   INVERSOR: view({
-    nav: Object.freeze([EXPLORE, { label: "Mi portafolio", href: "/portfolio" }, ABOUT]),
+    nav: Object.freeze([EXPLORE, { label: "Mi portafolio", href: "/portfolio" }, BLOG, ABOUT]),
     menu: Object.freeze([
       { label: "Mi portafolio", href: "/portfolio", icon: "portfolio" },
       { label: "Guía del inversor", href: "/investor-guide", icon: "guide" },
@@ -94,7 +100,7 @@ const VIEWS: Readonly<Record<PrincipalRole, ShellView>> = Object.freeze({
     avatarSrc: "/avatar-inversor.png"
   }),
   PYME: view({
-    nav: Object.freeze([{ label: "Mi campaña", href: "/company" }, HOW_IT_WORKS, ABOUT]),
+    nav: Object.freeze([{ label: "Mi campaña", href: "/company" }, HOW_IT_WORKS, BLOG, ABOUT]),
     menu: Object.freeze([
       { label: "Mi campaña", href: "/company", icon: "portfolio" },
       { label: "Guía del emprendedor", href: "/entrepreneur-guide", icon: "guide" },

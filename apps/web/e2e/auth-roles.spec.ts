@@ -22,7 +22,7 @@ const ROLES = [
     confirmFirst: "Antes de conectar Freighter, confirmá tu cuenta con el enlace que te enviamos a tu correo.",
     home: "/portfolio",
     pageTitle: "Mi portafolio",
-    nav: ["Explorar PyMEs", "Mi portafolio", "Acerca de"],
+    nav: ["Explorar PyMEs", "Mi portafolio", "Blog", "Acerca de"],
     menu: ["Mi portafolio", "Guía del inversor", "Informes", "Centro de ayuda", "Cerrar sesión"],
     chip: "INVERSOR"
   },
@@ -37,7 +37,7 @@ const ROLES = [
     confirmFirst: "Antes de continuar, confirmá tu cuenta con el enlace que te enviamos a tu correo.",
     home: "/company",
     pageTitle: "Mi campaña",
-    nav: ["Mi campaña", "Cómo funciona", "Acerca de"],
+    nav: ["Mi campaña", "Cómo funciona", "Blog", "Acerca de"],
     menu: ["Mi campaña", "Guía del emprendedor", "Centro de ayuda", "Cerrar sesión"],
     chip: "PYME"
   }

@@ -2,6 +2,12 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-15 — ingest: Freighter y Friendbot (#558)
+
+- Fuente nueva: `blog/freighter-y-friendbot-paso-a-paso.md` (Blog), junto con `freighter-and-testnet-walkthrough.md`.
+- Página nueva `freighter-y-friendbot.md` (flujo): instalar Freighter en Chrome, crear la cuenta, pasar a Testnet, conectar en Vaqcrow y fondear con Friendbot, con una tabla para cuando el saldo no aparece. Indexada después de `freighter-y-firmas`.
+- Lint nuevo en la API (`wiki-corpus.test.ts`): índice ↔ archivos sin huérfanas, `type` del esquema y `sources` existentes en `docs/guides/`.
+
 ## 2026-10-14 — ingest inicial
 
 - Se compilaron 16 páginas desde 3 fuentes de `docs/guides/`: `como-funciona-vaqcrow.md`, `freighter-and-testnet-walkthrough.md` y `blog/vaqcrow-sobre-stellar.md`.

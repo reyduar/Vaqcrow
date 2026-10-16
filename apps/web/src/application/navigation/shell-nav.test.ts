@@ -19,6 +19,7 @@ describe("shellViewFor (owner decision D9)", () => {
       ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
       ["Guía del inversor", "/investor-guide"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     expect(view.menu).toEqual([]);
@@ -31,6 +32,7 @@ describe("shellViewFor (owner decision D9)", () => {
     expect(pairs(view.nav)).toEqual([
       ["Explorar PyMEs", "/explore"],
       ["Mi portafolio", "/portfolio"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     expect(pairs(view.menu)).toEqual([
@@ -48,6 +50,7 @@ describe("shellViewFor (owner decision D9)", () => {
     expect(pairs(view.nav)).toEqual([
       ["Mi campaña", "/company"],
       ["Cómo funciona", "/#como-funciona"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     expect(pairs(view.menu)).toEqual([
@@ -64,6 +67,15 @@ describe("shellViewFor (owner decision D9)", () => {
     expect(view.nav).toEqual(shellViewFor(null).nav);
     expect(view.menu).toEqual([]);
     expect(view.chip).toEqual({ label: "ADMIN", icon: "shield" });
+  });
+
+  it("every view shows «Blog» immediately before «Acerca de» (#558)", () => {
+    for (const role of [null, "INVERSOR", "PYME", "ADMIN"] as const) {
+      const nav = pairs(shellViewFor(role).nav);
+      const about = nav.findIndex(([label]) => label === "Acerca de");
+      expect(about).toBeGreaterThan(0);
+      expect(nav[about - 1]).toEqual(["Blog", "/blog"]);
+    }
   });
 
   it("no view links to /admin", () => {
