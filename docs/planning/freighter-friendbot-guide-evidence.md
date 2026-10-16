@@ -26,8 +26,8 @@ status: delivered
 | D1 | El post se publica con una migración de seed (`20261015200000`), además del `.md` | La API lista los posts desde `public.blog_post` y lee el cuerpo del Markdown que viene en su imagen. Es el mismo patrón que `20261014180000` (#498) |
 | D2 | El seed llega al remoto **recién cuando la API está desplegada con el `.md` nuevo** | Si llega antes, `/blog` en producción lista un post que todavía no se puede abrir |
 | D3 | Una constante `BLOG` antes de `ABOUT` en PUBLIC, INVERSOR y PYME; ADMIN reutiliza la nav pública | El pedido dice «todos los roles». El template no dibuja la entrada: es una decisión del owner (2026-10-15) |
-| D5 | Links del navbar con 4 px de padding por lado (antes 8) | Con seis entradas, el header de 1280 px no entraba en Linux con texto más ancho (−31 px). Lo eligió el owner entre tres opciones, sin tocar etiquetas |
 | D4 | Lint del corpus de la wiki como test de la API (`wiki-corpus.test.ts`) | El router solo acepta ids que estén en el índice: una página sin indexar nunca puede respaldar una respuesta |
+| D5 | Links del navbar con 4 px de padding por lado (antes 8) | Con seis entradas, el header de 1280 px no entraba en Linux con texto más ancho (−31 px). Lo eligió el owner entre tres opciones, sin tocar etiquetas |
 
 ## Cambios
 
