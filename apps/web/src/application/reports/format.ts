@@ -5,11 +5,6 @@
  * as "Sin dato" — this module never turns an absence into a zero.
  */
 
-const XLM_FORMATTER = new Intl.NumberFormat("es-AR", {
-  minimumFractionDigits: 7,
-  maximumFractionDigits: 7
-});
-
 const ARS_FORMATTER = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 
 // UTC keeps the rendered day deterministic across environments: the API sends a
@@ -22,17 +17,8 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("es-AR", {
   timeZone: "UTC"
 });
 
-/** Canonical XLM (7 decimals) -> `1.250,0000000 XLM`. */
-export function formatXlmAmount(xlm: string): string {
-  const value = Number(xlm);
-  return Number.isFinite(value) ? `${XLM_FORMATTER.format(value)} XLM` : xlm;
-}
-
-/** Canonical XLM (7 decimals) -> `1.250,0000000` (the chart's bar-top label). */
-export function formatXlmValue(xlm: string): string {
-  const value = Number(xlm);
-  return Number.isFinite(value) ? XLM_FORMATTER.format(value) : xlm;
-}
+/** XLM amounts use the single 2-decimal display formatter (#572). */
+export { formatXlmAmount, formatXlmValue } from "../format/xlm";
 
 /** `3902100` -> `"ARS 3.902.100"`. */
 export function formatArsAmount(value: number): string {

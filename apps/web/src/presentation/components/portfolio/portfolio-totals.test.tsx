@@ -12,7 +12,7 @@ describe("PortfolioTotals", () => {
     render(<PortfolioTotals totals={totals()} />);
 
     expect(screen.getByText("Total aportado")).toBeInTheDocument();
-    expect(screen.getByText("250,0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("250,00 XLM")).toBeInTheDocument();
     expect(screen.getByText("En 3 campañas")).toBeInTheDocument();
   });
 
@@ -25,7 +25,7 @@ describe("PortfolioTotals", () => {
     render(<PortfolioTotals totals={totals()} />);
 
     expect(screen.getByText("Distribuciones recibidas")).toBeInTheDocument();
-    expect(screen.getByText("4,1200000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("4,12 XLM")).toBeInTheDocument();
     expect(screen.getByText("Calculadas para períodos simulados")).toBeInTheDocument();
   });
 
@@ -33,6 +33,6 @@ describe("PortfolioTotals", () => {
     render(<PortfolioTotals totals={totals({ totalDistributionsXlm: null })} />);
 
     expect(screen.getByText("Sin dato")).toBeInTheDocument();
-    expect(screen.queryByText("0,0000000 XLM")).not.toBeInTheDocument();
+    expect(screen.queryByText("0,00 XLM")).not.toBeInTheDocument();
   });
 });

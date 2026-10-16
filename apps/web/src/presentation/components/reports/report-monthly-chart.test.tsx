@@ -34,7 +34,7 @@ describe("ReportMonthlyChart", () => {
     expect(within(table).getByRole("columnheader", { name: "Estado" })).toBeInTheDocument();
     expect(within(table).getByText("abril 2026")).toBeInTheDocument();
     expect(within(table).getAllByText("Sin distribución").length).toBeGreaterThan(0);
-    expect(within(table).getByText("4,1200000 XLM")).toBeInTheDocument();
-    expect(within(table).getByText("4,0850000 XLM")).toBeInTheDocument();
+    expect(within(table).getByText("4,12 XLM")).toBeInTheDocument();
+    expect(within(table).getByText("4,09 XLM")).toBeInTheDocument();
   });
 });

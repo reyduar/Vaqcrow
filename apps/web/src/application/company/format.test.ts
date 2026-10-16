@@ -17,13 +17,13 @@ describe("company format", () => {
     expect(formatArsAmount(168_561)).toBe("ARS 168.561");
   });
 
-  it("formats a canonical XLM string with exactly seven fraction digits", () => {
-    expect(formatXlmAmount("1.2500000")).toBe("1,2500000 XLM");
-    expect(formatXlmValue("4.0850000")).toBe("4,0850000");
+  it("formats a canonical XLM string with exactly 2 fraction digits (#572)", () => {
+    expect(formatXlmAmount("1.2500000")).toBe("1,25 XLM");
+    expect(formatXlmValue("4.0850000")).toBe("4,09");
   });
 
   it("marks the XLM conversion as approximate", () => {
-    expect(formatApproxXlmAmount("1.2500000")).toBe("≈ 1,2500000 XLM");
+    expect(formatApproxXlmAmount("1.2500000")).toBe("≈ 1,25 XLM");
   });
 
   it("keeps a non-numeric XLM string unchanged rather than inventing a number", () => {

@@ -3,15 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_HOME_COPY } from "@/application/navigation/shell-nav";
+import { xlmToArs } from "@/application/format/ars";
 import type { PortfolioPort } from "@/application/ports/portfolio-port";
+import type { RatePort } from "@/application/ports/rate-port";
 import type { WalletBalancePort } from "@/application/ports/wallet-balance-port";
 import type { WalletConnectionPort } from "@/application/ports/wallet-connection-port";
 import type { WalletPort } from "@/application/ports/wallet-port";
 import type { PortfolioSortMode } from "@/application/portfolio/sort";
 import { createBrowserPortfolioPort } from "@/infrastructure/portfolio/create-portfolio-port";
+import { createBrowserRatePort } from "@/infrastructure/rates/create-rate-port";
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { HorizonWalletBalanceAdapter } from "@/infrastructure/wallet/horizon-wallet-balance-adapter";
+import { useCurrentRate } from "@/state/use-current-rate";
 import { usePortfolio } from "@/state/use-portfolio";
 import { useRefreshOnReturn } from "@/state/use-refresh-on-return";
 import { BackendNotice } from "../backend-notice";
@@ -46,13 +50,17 @@ export interface PortfolioProps {
   readonly balance?: WalletBalancePort;
   /** Injectable for tests; production uses the real Freighter adapter. */
   readonly wallet?: WalletPort;
+  /** Injectable for tests; production reads `GET /rates/current` (#572). */
+  readonly rates?: RatePort;
 }
 
-export function Portfolio({ port, connection, balance, wallet: injectedWallet }: PortfolioProps) {
+export function Portfolio({ port, connection, balance, wallet: injectedWallet, rates }: PortfolioProps) {
   const [resolvedPort] = useState<PortfolioPort | null>(() => port ?? null);
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
   const [defaultBalance] = useState<WalletBalancePort>(() => HorizonWalletBalanceAdapter.create());
   const [defaultWallet] = useState<WalletPort>(() => new FreighterWallet());
+  const [defaultRates] = useState<RatePort>(() => createBrowserRatePort());
+  const rate = useCurrentRate(rates ?? defaultRates);
   const connectionPort = connection ?? defaultConnection;
   const balancePort = balance ?? defaultBalance;
   const walletPort = injectedWallet ?? defaultWallet;
@@ -122,7 +130,7 @@ export function Portfolio({ port, connection, balance, wallet: injectedWallet }:
       ) : (
         <PortfolioView
           summary={state.summary}
-          wallet={wallet}
+          wallet={wallet === null ? null : { ...wallet, balanceArs: xlmToArs(wallet.balanceXlm, rate) }}
           walletPort={walletPort}
           connectionPort={connectionPort}
           onConnected={handleConnected}

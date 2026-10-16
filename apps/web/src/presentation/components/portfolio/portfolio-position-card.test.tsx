@@ -44,7 +44,7 @@ describe("PortfolioPositionCard", () => {
     expect(screen.getByText("Alimentos · Córdoba")).toBeInTheDocument();
     expect(screen.getByText("SIMULADO")).toBeInTheDocument();
     expect(screen.getByText("Mi aporte")).toBeInTheDocument();
-    expect(screen.getByText("250,0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("250,00 XLM")).toBeInTheDocument();
     expect(screen.getByText("63 % de la meta")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Progreso de Panadería Horizonte SRL" })).toBeInTheDocument();
     expect(screen.getByText("Fondeo abierto")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("PortfolioPositionCard", () => {
     expect(vaultLink).toHaveAttribute("rel", "noreferrer noopener");
 
     const list = screen.getByRole("list", { name: "Tus transacciones de aporte" });
-    expect(list).toHaveTextContent("150,0000000 XLM");
+    expect(list).toHaveTextContent("150,00 XLM");
     expect(list).toHaveTextContent("01/10/2026");
     expect(screen.getByTitle(HASH_A)).toBeInTheDocument();
     const txLink = screen.getByRole("link", {
@@ -142,9 +142,9 @@ describe("PortfolioPositionCard", () => {
       })
     );
 
-    expect(screen.getByRole("list", { name: "Tus transacciones de aporte" })).toHaveTextContent("100,0000000 XLM");
+    expect(screen.getByRole("list", { name: "Tus transacciones de aporte" })).toHaveTextContent("100,00 XLM");
     expect(
-      screen.getByText("Aportes anteriores sin hash registrado: 250,0000000 XLM · Sin dato")
+      screen.getByText("Aportes anteriores sin hash registrado: 250,00 XLM · Sin dato")
     ).toBeInTheDocument();
   });
 

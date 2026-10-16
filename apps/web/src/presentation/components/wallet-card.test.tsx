@@ -31,17 +31,33 @@ describe("WalletCard", () => {
     expect(screen.getByRole("heading", { name: "Freighter conectada de forma no custodial" })).toBeInTheDocument();
     expect(screen.getByText("STELLAR TESTNET")).toBeInTheDocument();
     expect(screen.getByText("Saldo disponible")).toBeInTheDocument();
-    expect(screen.getByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("0,00 XLM")).toBeInTheDocument();
     expect(screen.getByText("Activo de prueba sin valor económico")).toBeInTheDocument();
     expect(screen.getByText("GBXK…7Q2M")).toBeInTheDocument();
     // The full key stays available to assistive tech.
     expect(screen.getByText(PUBLIC_KEY)).toBeInTheDocument();
   });
 
-  it("formats the balance in es-AR with 7 fraction digits, as the template does", () => {
+  it("formats the balance in es-AR with 2 fraction digits (#572)", () => {
     renderCard({ balanceXlm: "4120.5" });
 
-    expect(screen.getByText("4.120,5000000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("4.120,50 XLM")).toBeInTheDocument();
+  });
+
+  it("shows the simulated ARS equivalent under the balance with a contiguous SIMULADO badge (#572)", () => {
+    renderCard({ balanceXlm: "10000.1234567", balanceArs: 4_666_724n });
+
+    const equivalent = screen.getByText("≈ ARS 4.666.724");
+    expect(equivalent).toBeInTheDocument();
+    // demo-ui.md §2: the SIMULADO badge sits next to the synthetic value itself.
+    expect(equivalent.parentElement).toHaveTextContent("SIMULADO");
+  });
+
+  it("shows no ARS label while the equivalent is unknown, never a made-up value", () => {
+    renderCard({ balanceXlm: "10000", balanceArs: null });
+
+    expect(screen.queryByText(/ARS/)).not.toBeInTheDocument();
+    expect(screen.queryByText("SIMULADO")).not.toBeInTheDocument();
   });
 
   it("links to the Stellar Testnet explorer in a new tab", () => {

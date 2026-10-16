@@ -100,7 +100,7 @@ describe("Reports container", () => {
 
     const contributed = (await screen.findByText("Aportado en el período")).closest("dl") as HTMLElement;
     expect(within(contributed).getByText("TESTNET")).toBeInTheDocument();
-    expect(within(contributed).getByText("850,0000000 XLM")).toBeInTheDocument();
+    expect(within(contributed).getByText("850,00 XLM")).toBeInTheDocument();
 
     const confirmed = screen.getByText("Distribuciones confirmadas").closest("dl") as HTMLElement;
     expect(within(confirmed).getByText("SIMULADO")).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("Reports container", () => {
     // A `none` month is honest in both the XLM and Estado cells (never a zero).
     expect(within(table).getAllByText("Sin distribución").length).toBeGreaterThan(0);
     expect(within(table).getByText("Pendiente de confirmación")).toBeInTheDocument();
-    expect(within(table).getByText("4,0850000 XLM")).toBeInTheDocument();
+    expect(within(table).getByText("4,09 XLM")).toBeInTheDocument();
   });
 
   it("shows the sales block's own error state and retries just that block", async () => {

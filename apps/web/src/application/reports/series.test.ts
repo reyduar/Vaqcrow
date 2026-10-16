@@ -32,9 +32,9 @@ describe("toChartSeries", () => {
     expect(april!.heightPercent).toBe(8);
   });
 
-  it("formats the XLM cell with seven decimals", () => {
+  it("formats the XLM cell with 2 decimals (#572)", () => {
     const [, may] = toChartSeries(SERIES);
-    expect(may!.displayValue).toBe("3,2100000 XLM");
+    expect(may!.displayValue).toBe("3,21 XLM");
   });
 
   it("scales the tallest month to 88% and never above it", () => {

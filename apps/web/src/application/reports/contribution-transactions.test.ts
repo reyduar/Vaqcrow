@@ -34,13 +34,13 @@ describe("toContributionTransactionRows", () => {
     expect(rows[0]).toEqual({
       date: "02/09/2026",
       pyme: "Café Tostadero del Paraná",
-      amount: "100,0000000 XLM",
+      amount: "100,00 XLM",
       transactionHash: HASH,
       explorerUrl: `https://explorer.example/tx/${HASH}`,
       vaultAddress: VAULT,
       vaultExplorerUrl: null
     });
-    expect(rows[1]!.amount).toBe("250,5000000 XLM");
+    expect(rows[1]!.amount).toBe("250,50 XLM");
     expect(rows[1]!.vaultExplorerUrl).toBe(`https://explorer.example/contract/${VAULT}`);
   });
 

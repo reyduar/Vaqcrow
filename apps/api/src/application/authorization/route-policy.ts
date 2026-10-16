@@ -120,6 +120,9 @@ const ROUTE_POLICIES: Readonly<Record<string, RoutePolicy>> = {
   "POST /campaigns": only("ADMIN"),
   "POST /admin/rates": only("ADMIN"),
   "GET /admin/rates/current": only("ADMIN"),
+  // The current rate without its admin metadata (#572): any signed-in role reads
+  // it for the simulated ARS equivalent of the wallet balance.
+  "GET /rates/current": AUTHENTICATED,
   "GET /campaigns/:campaignId": AUTHENTICATED,
   "GET /campaigns/:campaignId/transactions/:hash": AUTHENTICATED,
   "POST /campaigns/:campaignId/invocations": AUTHENTICATED,

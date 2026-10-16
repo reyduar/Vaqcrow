@@ -36,10 +36,10 @@ function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition
 describe("toPositionTransactionRows", () => {
   it("formats each observed contribution's own amount and UTC date, keeping the API order (oldest first)", () => {
     expect(toPositionTransactionRows(position())).toEqual([
-      { transactionHash: HASH_A, amount: "250,0000000 XLM", date: "01/10/2026", explorerUrl: null },
+      { transactionHash: HASH_A, amount: "250,00 XLM", date: "01/10/2026", explorerUrl: null },
       {
         transactionHash: HASH_B,
-        amount: "100,0000000 XLM",
+        amount: "100,00 XLM",
         date: "08/10/2026",
         explorerUrl: `https://explorer.example/tx/${HASH_B}`
       }
@@ -62,7 +62,7 @@ describe("unhashedContributionLine", () => {
 
   it("discloses the exact unhashed remainder of a mixed position, computed in stroops, never a zero", () => {
     expect(unhashedContributionLine(position({ contributionXlm: "350.1000001" }))).toBe(
-      "Aportes anteriores sin hash registrado: 0,1000001 XLM · Sin dato"
+      "Aportes anteriores sin hash registrado: 0,10 XLM · Sin dato"
     );
     expect(
       unhashedContributionLine(
@@ -74,7 +74,7 @@ describe("unhashedContributionLine", () => {
           ]
         })
       )
-    ).toBe("Aportes anteriores sin hash registrado: 0,1000000 XLM · Sin dato");
+    ).toBe("Aportes anteriores sin hash registrado: 0,10 XLM · Sin dato");
   });
 
   it("states the gap without a number when an amount cannot be read exactly", () => {

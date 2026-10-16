@@ -78,6 +78,8 @@ const MATRIX: ReadonlyArray<readonly [string, string, Allowed]> = [
   ["POST", "/admin/invitations/accept", "any"],
   ["POST", "/campaigns", ["ADMIN"]],
   ["GET", "/admin/rates/current", ["ADMIN"]],
+  // The current rate without its admin metadata (#572): any signed-in role.
+  ["GET", "/rates/current", "any"],
   ["POST", "/admin/rates", ["ADMIN"]],
   ["GET", "/campaigns/:campaignId", "any"],
   ["GET", "/campaigns/:campaignId/transactions/:hash", "any"],

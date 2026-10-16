@@ -26,6 +26,10 @@ import { createBrowserUploadPort } from "@/infrastructure/upload/create-upload-p
 import { createBrowserWalletConnectionPort } from "@/infrastructure/wallet/create-wallet-connection-port";
 import { FreighterWallet } from "@/infrastructure/wallet/freighter-wallet";
 import { HorizonWalletBalanceAdapter } from "@/infrastructure/wallet/horizon-wallet-balance-adapter";
+import { createBrowserRatePort } from "@/infrastructure/rates/create-rate-port";
+import { useCurrentRate } from "@/state/use-current-rate";
+import { xlmToArs } from "@/application/format/ars";
+import type { RatePort } from "@/application/ports/rate-port";
 import { useMyApplication } from "@/state/use-my-application";
 import { useRefreshOnReturn } from "@/state/use-refresh-on-return";
 import { useSmeRequestState } from "@/state/use-sme-request";
@@ -82,6 +86,8 @@ export interface CompanyWorkspaceProps {
   readonly walletPort?: WalletPort;
   /** Injectable for tests; production reads the balance from Testnet Horizon (#557). */
   readonly balance?: WalletBalancePort;
+  /** Injectable for tests; production reads `GET /rates/current` (#572). */
+  readonly rates?: RatePort;
   /** Injectable for tests; production builds the browser dashboard port lazily. */
   readonly myCampaigns?: MyCampaignsPort;
   /**
@@ -143,6 +149,7 @@ export function CompanyWorkspace({
   connection,
   walletPort,
   balance,
+  rates,
   myCampaigns,
   applicationState,
   applicationId,
@@ -155,6 +162,8 @@ export function CompanyWorkspace({
   const [defaultUpload] = useState<UploadPort>(() => createBrowserUploadPort());
   const [defaultConnection] = useState<WalletConnectionPort>(() => createBrowserWalletConnectionPort());
   const [defaultBalance] = useState<WalletBalancePort>(() => HorizonWalletBalanceAdapter.create());
+  const [defaultRates] = useState<RatePort>(() => createBrowserRatePort());
+  const rate = useCurrentRate(rates ?? defaultRates);
   const [defaultSmeGateway] = useState<SmeRequestGateway | null>(() => createBrowserSmeRequestGateway());
   const [wallet, setWallet] = useState<LoadedWallet | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -292,6 +301,7 @@ export function CompanyWorkspace({
           publicKey={wallet.publicKey}
           frozen={wallet.frozen}
           balanceXlm={wallet.balanceXlm}
+          balanceArs={xlmToArs(wallet.balanceXlm, rate)}
           explorerUrl={walletAccountExplorerUrl(wallet.publicKey)}
           onDisconnect={() => {
             setWallet(null);

@@ -226,7 +226,7 @@ describe("Portfolio container", () => {
   it("reads the connected account's balance from Horizon by default (#557)", async () => {
     renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY) });
 
-    expect(await screen.findByText("777,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("777,00 XLM")).toBeInTheDocument();
     expect(horizonBalance.getBalance).toHaveBeenCalledWith(CONNECTED_KEY);
   });
 
@@ -236,14 +236,34 @@ describe("Portfolio container", () => {
       .mockResolvedValueOnce({ ok: true, balanceXlm: "0.0000000" })
       .mockResolvedValue({ ok: true, balanceXlm: "10000.0000000" });
     renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: { getBalance } });
-    expect(await screen.findByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("0,00 XLM")).toBeInTheDocument();
     expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
 
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    expect(await screen.findByText("10.000,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("10.000,00 XLM")).toBeInTheDocument();
     expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the balance's simulated ARS equivalent at the current rate (#572)", async () => {
+    const getBalance = vi.fn().mockResolvedValue({ ok: true, balanceXlm: "3.0000000" });
+    // 1.400 ARS per USD (scaled by 10^6), 3 XLM per USD: 3 XLM ≈ 1.400 ARS.
+    const rates = { getCurrent: vi.fn().mockResolvedValue({ ok: true, rate: { usdToArs: 1_400_000_000n, stroopsPerUsd: 30_000_000n } }) };
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: { getBalance }, rates });
+
+    const equivalent = await screen.findByText("≈ ARS 1.400");
+    // The page has other SIMULADO badges; this one sits next to the ARS value.
+    expect(equivalent.parentElement).toHaveTextContent("SIMULADO");
+  });
+
+  it("hides the ARS equivalent when no rate is in effect", async () => {
+    const getBalance = vi.fn().mockResolvedValue({ ok: true, balanceXlm: "3.0000000" });
+    const rates = { getCurrent: vi.fn().mockResolvedValue({ ok: false, code: "not_found" }) };
+    renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: { getBalance }, rates });
+
+    expect(await screen.findByText("3,00 XLM")).toBeInTheDocument();
+    expect(screen.queryByText(/≈ ARS/)).not.toBeInTheDocument();
   });
 });

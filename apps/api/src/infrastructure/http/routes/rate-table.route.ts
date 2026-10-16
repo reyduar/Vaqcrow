@@ -20,6 +20,23 @@ export function registerRateTableRoute(app: FastifyInstance, dependencies: RateT
     return reply.code(result.error.code === "already_exists" ? 409 : 503).send({ code: result.error.code === "already_exists" ? "already_exists" : "unavailable" });
   });
 
+  // The current rate for signed-in PyMEs and investors (#572): the web shows a
+  // simulated ARS equivalent next to the XLM balance. Only the rate itself is
+  // exposed, never the admin metadata (author, source). No rate in effect is a
+  // 404, never a made-up value; any other failure is a sanitized 503.
+  app.get("/rates/current", async (_request, reply) => {
+    const result = await dependencies.repository.findCurrent(new Date().toISOString());
+    if (result.ok) {
+      const rate = result.value;
+      return reply.code(200).send({
+        rate: { version: rate.version, effectiveAt: rate.effectiveAt, usdToArs: rate.usdToArs.toString(), stroopsPerUsd: rate.stroopsPerUsd.toString() }
+      });
+    }
+    return result.error.code === "not_found"
+      ? reply.code(404).send({ code: "not_found" })
+      : reply.code(503).send({ code: "unavailable" });
+  });
+
   app.get("/admin/rates/current", async (_request, reply) => {
     const result = await dependencies.repository.findCurrent(new Date().toISOString());
     if (result.ok) return reply.code(200).send({ rate: wire(result.value) });
