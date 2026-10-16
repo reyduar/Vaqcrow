@@ -37,7 +37,7 @@ Eso, con una PyME argentina y una bóveda en Stellar, es lo que hace Vaqcrow.
 
 ## Cómo se calcula
 
-- La regla está versionada. En la demo se usa `RS-2026-01`.
+- La regla está versionada. En la demo se usa `RS-2026-02`.
 - Ese período aplica un **4,5 %** sobre las ventas declaradas del mes.
 - El reparto es **proporcional a lo que aportó cada inversor**.
 - El cálculo es determinístico y lo hace el sistema. La IA no participa del reparto.
