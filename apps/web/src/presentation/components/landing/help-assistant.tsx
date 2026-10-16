@@ -43,6 +43,11 @@ import { BrandIsotipo } from "../brand-isotipo";
  * anonymous visitor, and an `ADMIN`, keeps the view above unchanged. The role is
  * read through `useSession`, so the panel only ever shows what the verified
  * principal permits.
+ *
+ * #559 (owner, 2026-10-15): the chat view keeps the FAQ quick links and the
+ * «Ir al centro de ayuda» footer link — the same `QuickLinks` / `HelpCenterLink`
+ * the anonymous view renders, never a copy. The panel body scrolls inside a
+ * viewport-bound height so the chat input stays reachable at phone width.
  */
 
 const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring";
@@ -66,12 +71,41 @@ function QuickLink({ label, href }: { readonly label: string; readonly href: str
   );
 }
 
+function QuickLinks() {
+  return (
+    <>
+      {QUICK_LINKS.map((link) => (
+        <QuickLink key={link.label} label={link.label} href={link.href} />
+      ))}
+    </>
+  );
+}
+
+function HelpCenterLink() {
+  return (
+    <Link href="/help" className={`text-center text-[13px] font-semibold ${FOCUS_RING}`}>
+      Ir al centro de ayuda
+    </Link>
+  );
+}
+
+/** The signed-in view (#499/WU3, #559): the chat, then the same quick links and help-center link. */
+function ChatPanelBody() {
+  return (
+    <>
+      <AssistantChat />
+      <QuickLinks />
+      <HelpCenterLink />
+    </>
+  );
+}
+
 function Panel({ onClose, canChat }: { readonly onClose: () => void; readonly canChat: boolean }) {
   return (
     <div
       role="dialog"
       aria-label="Asistente de ayuda"
-      className="flex w-[340px] max-w-[calc(100vw-48px)] flex-col overflow-hidden rounded-[20px] border border-border bg-raised text-text-primary shadow-[0_24px_48px_-12px_rgba(17,17,17,0.3)]"
+      className="flex max-h-[calc(100dvh-120px)] w-[340px] max-w-[calc(100vw-48px)] flex-col overflow-hidden rounded-[20px] border border-border bg-raised text-text-primary shadow-[0_24px_48px_-12px_rgba(17,17,17,0.3)]"
     >
       <div className="flex items-center justify-between gap-2 bg-brand-accent px-4 py-[14px] text-on-accent">
         <div className="flex items-center gap-2.5">
@@ -95,8 +129,8 @@ function Panel({ onClose, canChat }: { readonly onClose: () => void; readonly ca
         </button>
       </div>
 
-      <div className="flex flex-col gap-2.5 p-4">
-        {canChat ? <AssistantChat /> : <AnonymousPanelBody />}
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto p-4">
+        {canChat ? <ChatPanelBody /> : <AnonymousPanelBody />}
       </div>
     </div>
   );
@@ -110,9 +144,7 @@ function AnonymousPanelBody() {
         Hola. Todavía no estoy conectado, pero estas respuestas te pueden servir:
       </div>
 
-      {QUICK_LINKS.map((link) => (
-        <QuickLink key={link.label} label={link.label} href={link.href} />
-      ))}
+      <QuickLinks />
 
       <label className="mt-1 flex h-11 items-center gap-2 rounded-control border border-dashed border-control pr-1.5 pl-3">
         <span className="sr-only">Escribí tu pregunta</span>
@@ -124,9 +156,7 @@ function AnonymousPanelBody() {
         <IoSendOutline aria-hidden="true" focusable="false" className="text-lg text-text-secondary" />
       </label>
 
-      <Link href="/help" className={`text-center text-[13px] font-semibold ${FOCUS_RING}`}>
-        Ir al centro de ayuda
-      </Link>
+      <HelpCenterLink />
     </>
   );
 }
