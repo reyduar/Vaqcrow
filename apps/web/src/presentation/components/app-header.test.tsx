@@ -79,6 +79,7 @@ describe("AppHeader signed out", () => {
       ["Cómo funciona", "/#como-funciona"],
       ["Para emprendedores", "/entrepreneur-guide"],
       ["Guía del inversor", "/investor-guide"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/login");
@@ -159,6 +160,7 @@ describe("AppHeader INVERSOR", () => {
     expect(navLinks()).toEqual([
       ["Explorar PyMEs", "/explore"],
       ["Mi portafolio", "/portfolio"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     const nav = screen.getByRole("navigation", { name: "Principal" });
@@ -260,6 +262,7 @@ describe("AppHeader PYME", () => {
     expect(navLinks()).toEqual([
       ["Mi campaña", "/company"],
       ["Cómo funciona", "/#como-funciona"],
+      ["Blog", "/blog"],
       ["Acerca de", "/about"]
     ]);
     expect(
