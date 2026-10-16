@@ -130,16 +130,19 @@ export class SupabaseCampaignRepository
       if (error) return { ok: false, error: this.toError(error, input.correlationId) };
       if (!data) return this.resolveUnappliedReconciliation(input.campaignId);
 
-      // A zero-stroop entry means "never contributed yet" (an investor who
-      // has only connected, or one who just withdrew/was refunded back to
-      // zero) — there is nothing to mirror, and the table's own
-      // `campaign_contribution_amount_stroops_check` (`amount_stroops > 0`)
-      // refuses the row outright. Writing was previously unconditional here,
-      // so a zero contribution failed the whole reconcile as `unavailable`
-      // (Task #248/T4's live suite against the real schema).
+      // A zero-stroop entry means the investor holds nothing in the vault:
+      // either they only connected and never contributed, or they withdrew or
+      // were refunded back to zero. The table refuses a zero
+      // (`campaign_contribution_amount_stroops_check`, Task #248/T4), so a zero
+      // is never written. Instead, any mirrored row for that investor is
+      // deleted (#571), so a fully withdrawn or refunded campaign leaves the
+      // portfolio. When there is no row (the investor never contributed), the
+      // delete matches nothing.
       for (const contribution of input.snapshot.contributions) {
-        if (contribution.amountStroops <= 0n) continue;
-        const written = await this.writeContribution(input.campaignId, contribution, input.correlationId);
+        const written =
+          contribution.amountStroops <= 0n
+            ? await this.deleteContribution(input.campaignId, contribution, input.correlationId)
+            : await this.writeContribution(input.campaignId, contribution, input.correlationId);
         if (!written.ok) return written;
       }
 
@@ -255,6 +258,29 @@ export class SupabaseCampaignRepository
     const existing = await this.findById(campaignId);
     if (!existing.ok) return existing;
     return { ok: true, value: { campaign: existing.value, applied: false } };
+  }
+
+  /**
+   * Removes an investor's mirrored contribution once the chain reports it back
+   * at zero (#571). The `last_observed_at` guard matches the one `writeContribution`
+   * uses: a delayed zero read never erases a contribution observed after it. A
+   * replay finds no row and deletes nothing. The refund contact cascades with
+   * the row; the contribution transaction hashes stay (they reference
+   * `campaign`).
+   */
+  private async deleteContribution(
+    campaignId: string,
+    contribution: Omit<CampaignContributionRecord, "campaignId">,
+    correlationId: CorrelationId
+  ): Promise<CampaignRepositoryResult<void>> {
+    const { error } = await this.client
+      .from(CONTRIBUTION_TABLE)
+      .delete()
+      .eq("campaign_id", campaignId)
+      .eq("investor_account_id", contribution.investorAccountId)
+      .lte("last_observed_at", contribution.lastObservedAt);
+
+    return error ? { ok: false, error: this.toError(error, correlationId) } : { ok: true, value: undefined };
   }
 
   private async writeContribution(

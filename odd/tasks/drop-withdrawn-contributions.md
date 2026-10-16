@@ -15,7 +15,7 @@ Objetivo: que un aporte retirado o reembolsado por completo desaparezca de «Mis
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
 | T1 | S4 | inline | hecho local (remoto pendiente) | ver L3 |
-| T2 | S2 | inline | pendiente | adaptador `reconcile` |
+| T2 | S2 | inline | hecho | ver L4 |
 | T3 | S3 | inline | pendiente | `getInvestorPortfolio` + wiring |
 | T4 | S5 | inline + verificador independiente | pendiente | verify, remoto, evidencia |
 
@@ -30,3 +30,4 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no
   - `service_role` tiene SELECT, INSERT y UPDATE sobre `campaign_contribution`, pero no DELETE (`20260923183356_create_campaign_persistence.sql:102`).
   - El test «never writes a contribution row for a zero-amount entry» fija el comportamiento viejo. Su parte de «no insertar un 0» sigue valiendo; la de «no tocar la tabla» cambia por decisión del owner.
 - **L3** (2026-10-16) — T1: migración `20261016143937_allow_withdrawn_contribution_delete.sql`, creada con `supabase migration new`, que hace `grant delete … to service_role`. Test pgTAP `supabase/tests/campaign_contribution_withdraw.sql`, con 8 asserts: DELETE solo para `service_role`; borrar el aporte de A deja intacto el de B, arrastra el contacto de reembolso de A, conserva el hash y saca la posición de `investor_portfolio_position`. RED: el assert 1 falló (`have: false`) y el DELETE como `service_role` dio `permission denied for table campaign_contribution`. Un error en el fixture (total mayor que la meta) se corrigió antes de la corrida RED válida. GREEN después de `supabase migration up --local`: 47/47 junto a `campaign_persistence.sql`.
+- **L4** (2026-10-16) — T2: `SupabaseCampaignRepository.reconcile`. Un `0` llama a `deleteContribution`, que hace `delete` con `campaign_id` + `investor_account_id` + `last_observed_at <= observación`, con el mismo guard que `writeContribution`. El cliente fake ahora registra `.delete()`. El test viejo «never writes a contribution row for a zero-amount entry» se reemplaza por la regla nueva: borra, nunca inserta un 0 y solo actualiza la fila de la campaña. Se suman dos tests: un error del delete sale saneado, y un snapshot sin inversor no toca `campaign_contribution`, que es el comportamiento previo. RED: fallaron 2 de los 25 (los de la regla nueva). GREEN: 25/25. Suite de la API: 3200/3200. No hay tests de integración sobre reconcile.

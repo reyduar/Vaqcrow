@@ -56,6 +56,8 @@ interface RecordedCalls {
   readonly tables: string[];
   readonly insert: unknown[];
   readonly update: unknown[];
+  /** One entry per `.delete()` call (it takes no payload). */
+  readonly delete: number[];
   readonly upsert: Array<readonly [payload: unknown, options: unknown]>;
   readonly is: Array<readonly [column: string, value: unknown]>;
   readonly not: Array<readonly [column: string, operator: string, value: unknown]>;
@@ -75,7 +77,7 @@ function fakeError(code: string): FakePostgrestError {
 
 function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: SupabaseClient; calls: RecordedCalls } {
   let cursor = 0;
-  const calls: RecordedCalls = { tables: [], insert: [], update: [], upsert: [], is: [], not: [], eq: [], lte: [], order: [] };
+  const calls: RecordedCalls = { tables: [], insert: [], update: [], delete: [], upsert: [], is: [], not: [], eq: [], lte: [], order: [] };
 
   function nextResult(): Promise<{ data: unknown; error: FakePostgrestError | null }> {
     const step = steps[cursor++];
@@ -92,6 +94,10 @@ function createFakeSupabaseClient(steps: readonly FakeStep[]): { client: Supabas
       },
       update: (payload: unknown) => {
         calls.update.push(payload);
+        return self;
+      },
+      delete: () => {
+        calls.delete.push(calls.tables.length);
         return self;
       },
       upsert: (payload: unknown, options: unknown) => {
@@ -563,21 +569,18 @@ describe("SupabaseCampaignRepository", () => {
     expect(calls.lte).toContainEqual(["last_observed_at", SNAPSHOT.observedAt]);
   });
 
-  it("never writes a contribution row for a zero-amount entry (nothing contributed yet — Task #248/T4's live suite found this against the real schema: `campaign_contribution_amount_stroops_check` requires `amount_stroops > 0`, so persisting a zero-amount row for an investor who has merely connected and never contributed used to fail the whole reconcile with a check-constraint violation)", async () => {
-    const zeroSnapshot: ChainCampaignSnapshot = {
-      state: "open",
-      totalStroops: 0n,
-      observedAt: "2026-09-23T18:05:00.000Z",
-      contributions: [
-        {
-          investorAccountId: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-          amountStroops: 0n,
-          lastObservedAt: "2026-09-23T18:05:00.000Z"
-        }
-      ]
-    };
+  const ZERO_INVESTOR = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+  const zeroSnapshot: ChainCampaignSnapshot = {
+    state: "open",
+    totalStroops: 0n,
+    observedAt: "2026-09-23T18:05:00.000Z",
+    contributions: [{ investorAccountId: ZERO_INVESTOR, amountStroops: 0n, lastObservedAt: "2026-09-23T18:05:00.000Z" }]
+  };
+
+  it("deletes the investor's contribution row when the chain reports zero — a full withdraw or refund (#571) — and never writes a zero amount (the table requires `amount_stroops > 0`, Task #248/T4)", async () => {
     const { client, calls } = createFakeSupabaseClient([
-      { data: persistedCampaign({ total_stroops: "0", last_reconciled_at: zeroSnapshot.observedAt }), error: null }
+      { data: persistedCampaign({ total_stroops: "0", last_reconciled_at: zeroSnapshot.observedAt }), error: null },
+      { data: null, error: null }
     ]);
 
     const result = await new SupabaseCampaignRepository(client).reconcile({
@@ -589,10 +592,54 @@ describe("SupabaseCampaignRepository", () => {
     });
 
     expect(result).toMatchObject({ ok: true, value: { applied: true } });
-    // Only the `campaign` table is touched — `campaign_contribution` never
-    // sees an insert or an update for the zero-amount entry.
-    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.tables).toEqual(["campaign", "campaign_contribution"]);
+    expect(calls.delete).toHaveLength(1);
+    // Scoped to this campaign and investor, and only when the stored row was
+    // observed no later than this read, so a delayed zero never erases a newer
+    // contribution. A replay finds no row and deletes nothing.
+    expect(calls.eq).toContainEqual(["campaign_id", CAMPAIGN_ID]);
+    expect(calls.eq).toContainEqual(["investor_account_id", ZERO_INVESTOR]);
+    expect(calls.lte).toContainEqual(["last_observed_at", zeroSnapshot.observedAt]);
     expect(calls.insert).toEqual([]);
+    expect(calls.update).toHaveLength(1); // the campaign row only
+  });
+
+  it("reports a failed delete of a withdrawn contribution as a sanitized error", async () => {
+    const { client } = createFakeSupabaseClient([
+      { data: persistedCampaign({ total_stroops: "0", last_reconciled_at: zeroSnapshot.observedAt }), error: null },
+      { data: null, error: fakeError("42501") }
+    ]);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const result = await new SupabaseCampaignRepository(client).reconcile({
+      campaignId: CAMPAIGN_ID,
+      expectedState: "open",
+      snapshot: zeroSnapshot,
+      reconciliationStatus: "in_sync",
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("sensitive");
+    error.mockRestore();
+  });
+
+  it("leaves contribution rows alone when the snapshot names no investor", async () => {
+    const { client, calls } = createFakeSupabaseClient([
+      { data: persistedCampaign({ total_stroops: "0", last_reconciled_at: zeroSnapshot.observedAt }), error: null }
+    ]);
+
+    const result = await new SupabaseCampaignRepository(client).reconcile({
+      campaignId: CAMPAIGN_ID,
+      expectedState: "open",
+      snapshot: { ...zeroSnapshot, contributions: [] },
+      reconciliationStatus: "in_sync",
+      correlationId: CORRELATION_ID
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { applied: true } });
+    expect(calls.tables).toEqual(["campaign"]);
+    expect(calls.delete).toEqual([]);
   });
 
   it("updates a refund contact after a duplicate key without logging its PII", async () => {
