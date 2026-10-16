@@ -14,10 +14,10 @@ Objetivo: que un aporte retirado o reembolsado por completo desaparezca de «Mis
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
-| T1 | S4 | inline | hecho local (remoto pendiente) | ver L3 |
+| T1 | S4 | inline | hecho | ver L3 y L7 |
 | T2 | S2 | inline | hecho | ver L4 |
 | T3 | S3 | inline | hecho | ver L5 |
-| T4 | S5 | inline + verificador independiente | pendiente | verify, remoto, evidencia |
+| T4 | S5 | inline + verificador independiente | hecho (falta el recorrido en Testnet) | ver L6 y L7 |
 
 Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no son paralelas. Por riesgo alto (ítem 1: borra datos guardados) va un verificador independiente al final de la feature.
 
@@ -53,3 +53,7 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no
     3. Para quien nunca aportó, el DELETE es un no-op de más por lectura. Es inofensivo.
     4. El reconcile no es atómico entre tablas: si el delete falla, la campaña ya avanzó. El guard `lte` deja que la siguiente lectura lo cure.
     5. Hay milisegundos de desfase entre `readCampaign` y `readContribution`; lo cubre el mismo guard.
+- **L7** (2026-10-16) — El owner autorizó la migración remota («si»). **Antes del merge** (D7), confirmé el estado: `service_role` sin DELETE y la última versión en `20261015200000`. La apliqué con el MCP `apply_migration`; quedó registrada como `20261016145504` y alineé la versión a `20261016143937` en `supabase_migrations.schema_migrations`.
+  - Verificado en el remoto: `service_role` tiene DELETE además de SELECT/INSERT/UPDATE; `anon` y `authenticated` siguen sin privilegios; RLS sigue activo con 0 políticas; `campaign_refund_contact_contribution_fkey` mantiene `confdeltype = c` (cascade).
+  - La evidencia está en `docs/planning/drop-withdrawn-contributions-evidence.md`.
+  - **Pendiente:** el PR y el recorrido real en Testnet (aportar → retirar todo → recargar `/portfolio`).

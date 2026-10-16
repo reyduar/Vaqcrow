@@ -85,7 +85,9 @@ El retiro sí ocurría en la red: el saldo volvía a subir. Pero la copia guarda
 - **Reconcile no atómico:** se actualiza la fila de la campaña antes del delete del aporte. Si el delete falla, la siguiente lectura lo vuelve a intentar gracias al guard `lte`.
 - **Costo:** para un inversor conectado que nunca aportó, cada lectura del detalle hace un DELETE que no borra nada.
 - **Advisory ambiental:** `supabase/tests/portfolio.sql`, test 49, cuenta sin filtro sobre la base local con datos de demo. Ya fallaba en la base y no lo toca este cambio.
+- **Migración remota aplicada antes del merge (D7, 2026-10-16):**
+  - Se aplicó con el MCP de Supabase y la versión del historial se alineó de `20261016145504` a `20261016143937`.
+  - En el remoto, `service_role` tiene DELETE; `anon` y `authenticated` no tienen privilegios; RLS sigue activo con 0 políticas; el FK de `campaign_refund_contact` sigue con cascade.
 - **Pendiente al escribir esta evidencia:**
-  - la migración remota, que va antes del merge (D7);
-  - el PR;
+  - el PR (no está mergeado: los resultados de arriba son del árbol de trabajo y del remoto, no de `main`);
   - el recorrido real en Testnet: aportar, retirar todo y recargar `/portfolio`.
