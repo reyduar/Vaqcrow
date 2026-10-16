@@ -178,6 +178,21 @@ describe("CompanyWorkspace", () => {
     expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
   });
 
+  it("shows the balance's simulated ARS equivalent at the current rate (#572)", async () => {
+    const connection = new FakeWalletConnection();
+    connection.seedConnection(PUBLIC_KEY);
+    const balance = new FakeWalletBalance();
+    balance.seedBalance("3.0000000");
+    const rates = { getCurrent: vi.fn().mockResolvedValue({ ok: true, rate: { usdToArs: 1_400_000_000n, stroopsPerUsd: 30_000_000n } }) };
+    render(
+      <CompanyWorkspace kyc={new FakeKyc()} connection={connection} balance={balance} myCampaigns={okMyCampaigns()} rates={rates} />
+    );
+
+    const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
+    expect(await within(card).findByText("≈ ARS 1.400")).toBeInTheDocument();
+    expect(within(card).getByText("SIMULADO")).toBeInTheDocument();
+  });
+
   it("offers «Conectar Freighter» in the funds guide while no wallet is linked", () => {
     renderWorkspace();
 

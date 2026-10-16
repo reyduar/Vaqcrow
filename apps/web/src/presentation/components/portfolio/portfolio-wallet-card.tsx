@@ -42,6 +42,8 @@ export interface PortfolioWallet {
   readonly publicKey: string;
   readonly frozen: boolean;
   readonly balanceXlm: string | null;
+  /** The balance's simulated ARS equivalent (#572); absent or `null` hides the label. */
+  readonly balanceArs?: bigint | null;
 }
 
 export interface PortfolioWalletCardProps {
@@ -140,6 +142,7 @@ export function PortfolioWalletCard({
           publicKey={wallet.publicKey}
           frozen={wallet.frozen}
           balanceXlm={wallet.balanceXlm}
+          balanceArs={wallet.balanceArs ?? null}
           explorerUrl={walletAccountExplorerUrl(wallet.publicKey)}
           onDisconnect={onDisconnect}
         />

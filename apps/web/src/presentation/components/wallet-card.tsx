@@ -9,6 +9,7 @@ import {
   IoOpenOutline,
   IoWalletOutline
 } from "react-icons/io5";
+import { formatApproxArs } from "@/application/format/ars";
 import { formatXlmAmount } from "@/application/format/xlm";
 import { shortPublicKey } from "@/application/pyme-onboarding/review-step";
 import { FOCUS_RING } from "./auth-field";
@@ -36,6 +37,12 @@ export interface WalletCardProps {
    * unavailable.
    */
   readonly balanceXlm: string | null;
+  /**
+   * The balance's simulated ARS equivalent at the current rate (#572), in whole
+   * ARS; `null` or omitted while the balance or the rate is unknown, which
+   * hides the label rather than showing a made-up value.
+   */
+  readonly balanceArs?: bigint | null;
   /** Caller-supplied Stellar Testnet account URL. */
   readonly explorerUrl: string;
   /** Disconnect action; never called while frozen. */
@@ -54,7 +61,7 @@ function formatBalanceXlm(balanceXlm: string | null): string {
   return formatXlmAmount(balanceXlm);
 }
 
-export function WalletCard({ publicKey, frozen, balanceXlm, explorerUrl, onDisconnect }: WalletCardProps) {
+export function WalletCard({ publicKey, frozen, balanceXlm, balanceArs = null, explorerUrl, onDisconnect }: WalletCardProps) {
   const headingId = useId();
   const frozenReasonId = useId();
   const [copyState, setCopyState] = useState<CopyState>("idle");
@@ -103,6 +110,18 @@ export function WalletCard({ publicKey, frozen, balanceXlm, explorerUrl, onDisco
         <div aria-live="polite" className="mt-0.5 text-[clamp(32px,4vw,44px)] leading-[1.1] font-bold tracking-[-0.03em]">
           {balance}
         </div>
+        {balanceArs === null ? null : (
+          // The ARS↔asset conversion is simulated (demo-ui.md §2): the SIMULADO
+          // badge sits right next to the converted value, in the card's own
+          // white chip style (the shared badge's dark text would not read on
+          // the purple surface).
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[15px] font-semibold">
+            <span>{formatApproxArs(balanceArs)}</span>
+            <span className="inline-flex h-[22px] items-center rounded-pill border border-dashed border-white px-2 text-[11px] font-[650] tracking-[0.04em]">
+              SIMULADO
+            </span>
+          </div>
+        )}
         <div className="mt-1 text-[13px]">Activo de prueba sin valor económico</div>
       </div>
 

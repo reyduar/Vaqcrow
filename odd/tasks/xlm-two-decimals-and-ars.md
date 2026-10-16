@@ -16,7 +16,7 @@ Objetivo: que todo monto en XLM se lea con 2 decimales y que «Saldo disponible�
 |---|---|---|---|---|
 | T1 | S2 | inline | hecho | ver L3 |
 | T2 | S3 | inline | hecho | ver L4 |
-| T3 | S4 | inline | pendiente | puerto/gateway web + label |
+| T3 | S4 | inline | hecho | ver L5 |
 | T4 | S5 | inline | pendiente | verify + evidencia |
 
 Ruta inline: no se dispara ningún writer, porque las unidades se encadenan.
@@ -47,3 +47,13 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan.
   - GREEN: ruta 7/7, API 3220/3220, lint y typecheck limpios.
   - Las menciones de `/admin/rates/current` en `docs/` están en evidencias históricas, que no se tocan.
   - OWASP Top 10:2025, A01: solo lectura, autenticada, y sin metadatos de admin. **Sin hallazgos.**
+- **L5** (2026-10-16) — T3, en la web:
+  - **Conversión:** `application/ports/rate-port.ts` (`XlmArsRate` con bigint) y `application/format/ars.ts` (`xlmToArs` con enteros y truncado; `formatApproxArs` → «≈ ARS 4.666.724»). Da `null` si falta la cotización, el saldo es `null`, el formato es inválido (`1e3`, `-1`, más de 7 decimales) o `stroopsPerUsd` es `0`.
+  - **Gateway:** `infrastructure/rates/http-rate-gateway.ts` sobre `GET /rates/current`, con el Bearer del principal. 404 → `not_found`; 401/403 → `unauthenticated`; otro status → `unavailable`; un cuerpo mal formado → `unavailable`; un fallo de transporte → `network`. `create-rate-port.ts` usa el null object si no hay base URL.
+  - **Hook:** `state/use-current-rate.ts` lee la cotización una vez por montaje; si algo falla, devuelve `null`.
+  - **Tarjeta:** `WalletCard` recibe `balanceArs` y muestra «≈ ARS …» con la pastilla `SIMULADO` pegada, en blanco punteado. Si el valor es `null`, no muestra nada.
+  - **Contenedores:** `Portfolio` (le pasa `balanceArs` a `PortfolioWallet`) y `CompanyWorkspace`; los dos aceptan un `rates` inyectable y por defecto usan el puerto del browser, como sus otros puertos.
+  - **RED:** los 4 archivos nuevos no existían; el label de `WalletCard` y los dos contenedores fallaron. Los tests de «sin label» pasaban, porque describen el comportamiento previo.
+  - En `portfolio.test` el assert de `SIMULADO` se acotó al contenedor del label, porque la página tiene otros badges `SIMULADO`.
+  - **GREEN:** web 2521/2521; typecheck limpio; lint con 0 errores y 7 warnings, todos previos y en archivos ajenos (`verifier-wu2b/…`).
+  - **OWASP Top 10:2025:** sin hallazgos. A01: la lectura va con el token del principal. A05/A08: el cuerpo se valida antes de convertirlo a `BigInt`. A10: un fallo nunca se muestra como un valor.

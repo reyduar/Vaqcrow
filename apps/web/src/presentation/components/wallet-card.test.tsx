@@ -44,6 +44,22 @@ describe("WalletCard", () => {
     expect(screen.getByText("4.120,50 XLM")).toBeInTheDocument();
   });
 
+  it("shows the simulated ARS equivalent under the balance with a contiguous SIMULADO badge (#572)", () => {
+    renderCard({ balanceXlm: "10000.1234567", balanceArs: 4_666_724n });
+
+    const equivalent = screen.getByText("≈ ARS 4.666.724");
+    expect(equivalent).toBeInTheDocument();
+    // demo-ui.md §2: the SIMULADO badge sits next to the synthetic value itself.
+    expect(equivalent.parentElement).toHaveTextContent("SIMULADO");
+  });
+
+  it("shows no ARS label while the equivalent is unknown, never a made-up value", () => {
+    renderCard({ balanceXlm: "10000", balanceArs: null });
+
+    expect(screen.queryByText(/ARS/)).not.toBeInTheDocument();
+    expect(screen.queryByText("SIMULADO")).not.toBeInTheDocument();
+  });
+
   it("links to the Stellar Testnet explorer in a new tab", () => {
     renderCard();
 
