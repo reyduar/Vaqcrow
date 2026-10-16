@@ -15,10 +15,10 @@ Objetivo: que la PyME cuente en el paso 2 para qué necesita los fondos y que el
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
-| T1 | S3, S4 (DB) | delegada (backstop de contexto) | hecho local (remoto pendiente) | migración + pgTAP |
+| T1 | S3, S4 (DB) | delegada (backstop de contexto) | hecho | `6eb1017`; remoto en L7 |
 | T2 | S3, S4 (API/contrato) | delegada | hecho | API + contrato |
 | T3 | S2, S4, S5 (web) | delegada | hecho | wizard, detalle, enviado, admin |
-| T4 | S6 | parent + verificador independiente | pendiente | verify, remoto, evidencia |
+| T4 | S6 | parent + verificador independiente | hecho (falta verlo desplegado) | L6, L7 |
 
 Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pasó el backstop de contexto (~150k). Hay riesgo alto (ítem 1: migración; ítem 3: contrato del detalle), así que va un verificador independiente.
 
@@ -70,3 +70,8 @@ Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pas�
   - **Advisories:**
     1. Ningún test de la API sigue `useOfFunds` de punta a punta en el contexto de revisión del admin; hoy funciona porque el record pasa entero.
     2. El escaneo de términos prohibidos no cubre esta copy; se leyó a mano y no tiene ninguno.
+- **L7** (2026-10-16) — El owner autorizó la migración remota («si»). Se aplicó **antes** del merge, con el MCP de Supabase y el cuerpo del archivo (`sha256` `3c2542bf1d062784…`), y la versión se alineó a `20261016165845`.
+  - Estado previo: la columna no existía, la vista tenía 30 columnas terminadas en `sales_months` y la última versión era `20261016143937`.
+  - Verificado después: la columna es `text` nullable con su check; la vista termina en `use_of_funds` con `security_invoker`; solo `service_role` puede leerla; `businesses` sigue con RLS.
+  - La API desplegada (vieja) respondió 200 en la lista y en el detalle.
+  - Evidencia en `docs/planning/business-use-of-funds-evidence.md`.
