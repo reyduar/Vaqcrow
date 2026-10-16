@@ -38,8 +38,8 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   1200 px desktop row) 8 px between the brand and its badges (template 12),
  *   16 px from them to the nav (template 24) and 8 px from the nav to the
  *   actions (template 24; the nav's own free width sits there, so the visible
- *   gap is larger). Links use 8 px side padding and no gap (template: 12 px
- *   plus a 4 px gap; text to text 16 px). Below `@6xl` the gaps stay at the
+ *   gap is larger). Links use 4 px side padding and no gap (template: 12 px
+ *   plus a 4 px gap; text to text 8 px) since the sixth entry, «Blog» (#558). Below `@6xl` the gaps stay at the
  *   template's values, so a scrolling nav never runs into the theme control.
  * - **Where the fifth entry's width came from (#500, 2026-10-13).** Two owner
  *   decisions gave the public header room for «Guía del inversor» without
@@ -58,6 +58,11 @@ import { BrandIsotipo } from "./brand-isotipo";
  *   is stricter than any real platform — it already failed this header once.
  *   A longer nav label or a wider control eats that slack, and the spec fails
  *   first.
+ * - **Where the sixth entry's width came from (#558, 2026-10-15).** With «Blog»
+ *   and 8 px padding the spec kept 9 px on macOS but the CI runner fell 31 px
+ *   short with the wider text. The owner chose tighter links (padding 8 → 4 px,
+ *   no label changes): measured again at **102 px** normal and **57 px** wider
+ *   on macOS.
  * - **Testnet badge.** Defaults to the canonical `microcopy.testnetBadge`;
  *   the role-aware header passes the
  *   template's `TESTNET` through `testnetLabel` (`demo-ui.md` §2: "Badge
@@ -172,7 +177,7 @@ export function DemoNavbar({
                 key={`${item.href}-${index}`}
                 href={item.href}
                 {...(item.current ? { "aria-current": "page" as const } : {})}
-                className={`flex h-11 items-center whitespace-nowrap text-sm ${singleLineNav ? "px-2" : "px-3"} ${
+                className={`flex h-11 items-center whitespace-nowrap text-sm ${singleLineNav ? "px-1" : "px-3"} ${
                   item.current
                     ? "border-b-2 border-brand-accent font-semibold text-text-primary"
                     : "font-medium text-text-secondary hover:text-text-primary"

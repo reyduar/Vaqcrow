@@ -26,6 +26,7 @@ status: delivered
 | D1 | El post se publica con una migración de seed (`20261015200000`), además del `.md` | La API lista los posts desde `public.blog_post` y lee el cuerpo del Markdown que viene en su imagen. Es el mismo patrón que `20261014180000` (#498) |
 | D2 | El seed llega al remoto **recién cuando la API está desplegada con el `.md` nuevo** | Si llega antes, `/blog` en producción lista un post que todavía no se puede abrir |
 | D3 | Una constante `BLOG` antes de `ABOUT` en PUBLIC, INVERSOR y PYME; ADMIN reutiliza la nav pública | El pedido dice «todos los roles». El template no dibuja la entrada: es una decisión del owner (2026-10-15) |
+| D5 | Links del navbar con 4 px de padding por lado (antes 8) | Con seis entradas, el header de 1280 px no entraba en Linux con texto más ancho (−31 px). Lo eligió el owner entre tres opciones, sin tocar etiquetas |
 | D4 | Lint del corpus de la wiki como test de la API (`wiki-corpus.test.ts`) | El router solo acepta ids que estén en el índice: una página sin indexar nunca puede respaldar una respuesta |
 
 ## Cambios
@@ -52,4 +53,4 @@ status: delivered
 - El PR **no está mergeado** al escribir esta evidencia: los resultados de arriba son comandos corridos en el árbol de trabajo, no un estado de `main`.
 - **Migración remota pendiente** (D2): `20261015200000` corrió solo en el stack local. Se aplica al proyecto remoto una vez que la API esté desplegada con el post. Después hay que verificar el historial de migraciones y la fila.
 - Advisory sin cambio: la copy de `/company` dice «Tu wallet necesita XLM de Testnet para crear la bóveda», pero la guía operativa dice que el despliegue lo firma y lo paga la plataforma. El post no repite ninguna de las dos afirmaciones.
-- Con «Blog», la nav pública pasa de cinco a seis entradas. El ancho lo mide `e2e/app-header.spec.ts` a 1280 px, también con el texto ensanchado que replica el render de Linux: `pnpm --filter @vaqcrow/web run test:e2e` → 41/41 en local. La primera corrida del CI falló porque las specs e2e todavía esperaban cinco links; se corrigieron en el mismo PR.
+- Con «Blog», la nav pública pasa de cinco a seis entradas. El ancho lo mide `e2e/app-header.spec.ts` a 1280 px, también con el texto ensanchado que replica el render de Linux: `pnpm --filter @vaqcrow/web run test:e2e` → 41/41 en local. La primera corrida del CI falló porque las specs e2e todavía esperaban cinco links. La segunda falló de verdad: con el texto ensanchado, al nav le faltaban 31 px en Linux. Por decisión del owner, el padding de los links bajó de 8 a 4 px por lado, sin cambiar ningún texto (`demo-navbar.tsx`). Medido en macOS: 102 px de margen con texto normal y 57 px con texto ensanchado.
