@@ -263,6 +263,35 @@ describe("CampaignContribution: after signing", () => {
     // Signing is never reported as confirmed by the UI.
     expect(screen.queryByText(/confirmada por la red|está confirmada\./i)).not.toBeInTheDocument();
   });
+
+  it("clears the amount after a successful contribution, ready for a new one (#569)", async () => {
+    renderFlow();
+    await loadedHeading();
+    const cta = await enabledCta();
+
+    fireEvent.change(screen.getByLabelText(/Monto del aporte/), { target: { value: "15" } });
+    fireEvent.click(cta);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Firmar en Freighter" }));
+
+    await screen.findByRole("button", { name: "Aportar de nuevo" });
+    await waitFor(() => expect(screen.getByLabelText(/Monto del aporte/)).toHaveValue(""));
+  });
+
+  it("keeps the typed amount when the contribution fails, so a retry needs no retyping", async () => {
+    renderFlow({ gateway: createGateway({ submitInvocation: vi.fn().mockRejectedValue(new Error("rpc down")) }) });
+    await loadedHeading();
+    const cta = await enabledCta();
+
+    fireEvent.change(screen.getByLabelText(/Monto del aporte/), { target: { value: "15" } });
+    fireEvent.click(cta);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Firmar en Freighter" }));
+
+    // The review stays open with its error; the field keeps the amount.
+    expect(await within(dialog).findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Monto del aporte/)).toHaveValue("15");
+  });
 });
 
 describe("CampaignContribution: the simulated KYC interstitial", () => {
