@@ -245,4 +245,38 @@ describe("GET /portfolio", () => {
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ code: "unavailable" });
   });
+  it("leaves out a campaign the vault reports fully withdrawn (#571)", async () => {
+    const reconcile = vi.fn(async () => ({ ok: false as const, error: { code: "unavailable" as const } }));
+    app = buildAppAs("INVERSOR", {
+      portfolio: {
+        ...deps({ positions: async () => ({ ok: true as const, value: [POSITION] }) }),
+        vault: {
+          campaigns: { findById: vi.fn(async () => ({ ok: false as const, error: { code: "unavailable" as const } })), reconcile },
+          chain: {
+            readCampaign: async () => ({
+              ok: true as const,
+              value: {
+                state: "funding" as const,
+                totalStroops: 0n,
+                goalStroops: 10_000_000n,
+                deadline: new Date("2026-12-01T00:00:00.000Z"),
+                smeAccountId: ACCOUNT,
+                tokenContractId: VAULT,
+                observedAt: new Date("2026-10-16T12:00:00.000Z")
+              }
+            }),
+            readContribution: async () => ({ ok: true as const, value: 0n })
+          }
+        }
+      }
+    });
+
+    const response = await app.inject({ method: "GET", url: "/portfolio" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      contributions: [],
+      totals: { totalContributedXlm: "0.0000000", campaignCount: 0 }
+    });
+  });
 });

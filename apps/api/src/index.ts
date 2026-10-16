@@ -495,7 +495,12 @@ const app = buildApp({
     wallets: walletRepository,
     portfolio: portfolioRepository,
     now: () => new Date(),
-    explorerBaseUrl: config.stellar.explorerUrl
+    explorerBaseUrl: config.stellar.explorerUrl,
+    // Open and refundable positions are re-read from their vault (#571), so a
+    // fully withdrawn or refunded campaign leaves the portfolio. Without the
+    // campaign group there is no vault reader, and the stored positions are
+    // served as they are.
+    ...(campaign === undefined ? {} : { vault: { campaigns: campaign.campaigns, chain: campaign.chain } })
   },
   // The investor report (#430/WU1): every authenticated role reads the report
   // and its independently fetched sales block, always scoped to the verified

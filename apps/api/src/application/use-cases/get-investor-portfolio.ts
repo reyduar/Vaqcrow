@@ -1,5 +1,5 @@
 import { portfolioDistributionSchema, portfolioSummarySchema } from "@vaqcrow/contracts";
-import type { PortfolioDistribution, PortfolioPosition, PortfolioSummary } from "@vaqcrow/contracts";
+import type { CorrelationId, PortfolioDistribution, PortfolioPosition, PortfolioSummary } from "@vaqcrow/contracts";
 import { contractExplorerUrl, transactionExplorerUrl } from "../explorer-url.js";
 import type {
   PortfolioContributionTransactionRecord,
@@ -7,7 +7,10 @@ import type {
   PortfolioPositionRecord,
   PortfolioRepositoryPort
 } from "../ports/portfolio-repository-port.js";
+import type { CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import { toChainCampaignSnapshot, type CampaignVaultChainPort } from "../ports/campaign-vault-chain-port.js";
 import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
+import { reconcileCampaign } from "./reconcile-campaign.js";
 
 /**
  * The investor's portfolio read model (#426, WU1).
@@ -24,6 +27,15 @@ import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
  * (`total_stroops * usd_to_ars / (stroops_per_usd * RATE_SCALE)`). A missing
  * rate snapshot yields `raisedArs: null`, and no confirmed distribution yields
  * `totalDistributionsXlm: null` — "sin dato", never a fabricated zero.
+ *
+ * Positions that can still change on chain — an `open` campaign (withdraw) or a
+ * `refundable` one (refund) — are checked against the vault when the `vault`
+ * dependency is wired (#571). The chain is the truth: a position the vault
+ * reports at zero is left out of the list, the total and the count, and any
+ * other amount replaces the stored one. Each read is also reconciled into the
+ * mirror, so the stale row is deleted, but that is best-effort and the response
+ * does not depend on it. When the vault cannot be read, the stored position is
+ * used: a down RPC never turns the portfolio into a 503.
  */
 
 /** ARS per USD scale, matching `campaign-guardrails.ts`. Duplicated because use cases never import each other. */
@@ -41,6 +53,15 @@ export interface GetInvestorPortfolioDependencies {
    * which turns every explorer link into `null`. The hashes are still returned.
    */
   readonly explorerBaseUrl: string | undefined;
+  /**
+   * The campaign vault reader and mirror (#571). Absent when the API runs
+   * without the campaign group (no factory configured), in which case the
+   * stored positions are served as they are.
+   */
+  readonly vault?: {
+    readonly campaigns: Pick<CampaignRepositoryPort, "findById" | "reconcile">;
+    readonly chain: Pick<CampaignVaultChainPort, "readCampaign" | "readContribution">;
+  };
 }
 
 export type GetInvestorPortfolioResult =
@@ -49,7 +70,7 @@ export type GetInvestorPortfolioResult =
 
 export async function getInvestorPortfolio(
   dependencies: GetInvestorPortfolioDependencies,
-  input: { readonly userId: string }
+  input: { readonly userId: string; readonly correlationId?: CorrelationId }
 ): Promise<GetInvestorPortfolioResult> {
   const key = await dependencies.wallets.readPublicKey(input.userId);
   if (!key.ok) return { ok: false, error: { code: "unavailable" } };
@@ -70,15 +91,73 @@ export async function getInvestorPortfolio(
     return { ok: false, error: { code: "unavailable" } };
   }
 
+  const verified =
+    dependencies.vault === undefined || input.correlationId === undefined
+      ? positions.value
+      : await verifyPositions(dependencies.vault, account, positions.value, input.correlationId);
+
   try {
     const links = explorerLinks(dependencies.explorerBaseUrl);
     return {
       ok: true,
-      value: toSummary(positions.value, distributions.value, transactions.value, links, dependencies.now())
+      value: toSummary(verified, distributions.value, transactions.value, links, dependencies.now())
     };
   } catch {
     return { ok: false, error: { code: "unavailable" } };
   }
+}
+
+/**
+ * Re-reads every `open` or `refundable` position from its vault, in parallel.
+ * A position at zero on chain is dropped; any other amount replaces the stored
+ * one. A settled position cannot change and is kept as stored.
+ */
+async function verifyPositions(
+  vault: NonNullable<GetInvestorPortfolioDependencies["vault"]>,
+  account: string,
+  positions: readonly PortfolioPositionRecord[],
+  correlationId: CorrelationId
+): Promise<readonly PortfolioPositionRecord[]> {
+  const checked = await Promise.all(
+    positions.map(async (position): Promise<PortfolioPositionRecord | null> => {
+      if (position.state === "settled") return position;
+
+      let campaign: Awaited<ReturnType<typeof vault.chain.readCampaign>>;
+      let contribution: Awaited<ReturnType<typeof vault.chain.readContribution>>;
+      try {
+        [campaign, contribution] = await Promise.all([
+          vault.chain.readCampaign(position.vaultAddress),
+          vault.chain.readContribution(position.vaultAddress, account)
+        ]);
+      } catch {
+        return position;
+      }
+      if (!campaign.ok || !contribution.ok) return position;
+
+      // Heals the mirror (a zero deletes the stored row); its outcome does not
+      // change what the chain just reported.
+      try {
+        await reconcileCampaign(vault.campaigns, {
+          campaignId: position.campaignId,
+          snapshot: toChainCampaignSnapshot(campaign.value, [
+            {
+              investorAccountId: account,
+              amountStroops: contribution.value,
+              lastObservedAt: campaign.value.observedAt.toISOString()
+            }
+          ]),
+          correlationId
+        });
+      } catch {
+        // Best-effort: the next read reconciles again.
+      }
+
+      if (contribution.value <= 0n) return null;
+      return { ...position, contributionStroops: contribution.value };
+    })
+  );
+
+  return checked.filter((position): position is PortfolioPositionRecord => position !== null);
 }
 
 interface ExplorerLinks {
