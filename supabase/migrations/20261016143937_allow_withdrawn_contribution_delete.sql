@@ -1,0 +1,25 @@
+-- A fully withdrawn or refunded contribution leaves the mirror (Feature #571).
+--
+-- `campaign_contribution` mirrors each investor's running contribution as the
+-- vault reports it. A withdraw (while funding) or a refund (after a failed
+-- campaign) brings that running value back to zero, and the table refuses a
+-- zero (`amount_stroops > 0`). Until now the API's reconcile skipped the zero,
+-- so the stale row kept the campaign in the investor's portfolio, in «Total
+-- aportado» and in the campaign count, with «Retirar mi aporte» still offered.
+-- The reconcile now deletes that investor's row when the chain reports zero,
+-- so service_role (the API's only database role) needs DELETE on the table.
+--
+-- What the delete touches:
+-- - `campaign_refund_contact` goes with the row (`on delete cascade`, from
+--   `20260923183356`): after a full withdraw or refund there is nothing left to
+--   refund. The cascade runs as the table owner, so no DELETE grant on that
+--   table is needed or given.
+-- - `campaign_contribution_transaction` (the contribution hashes) references
+--   `campaign`, not this table, and is kept.
+--
+-- anon and authenticated still have no privilege at all on the table; RLS stays
+-- enabled with zero policies.
+--
+-- Reversal: revoke delete on public.campaign_contribution from service_role;
+
+grant delete on public.campaign_contribution to service_role;
