@@ -365,3 +365,13 @@ Corrida final de `pnpm run verify` sobre `5eac715` (2026-10-03, orquestador, ár
 ## Próximo paso
 
 PR de #381 contra la rama de #378; después, el owner decide el cierre de la Feature #378. Antes de llevar #369 + #378 a `main`: resolver R1-002 con #398 (o que el owner lo acepte) y entregar #438 en el mismo merge. Hacer un alta real contra el proyecto remoto para observar la entrega de Resend y ejercitar ingreso y cierre de sesión.
+
+## #556 — página de cuenta confirmada (2026-10-15, Epic #555)
+
+Hallazgo del segundo test manual, verbatim: «cuando confirmamos un usuario deberiamos de tener una ruta donde se resuelva una pagina que diga usuario confirmado con exito, gracias por registrarte, un boton que te rediriga al login page.»
+
+- `emailRedirectTo` pasa de `<origen>/login` a `<origen>/account-confirmed` (`ACCOUNT_CONFIRMED_PATH`). La página es pública (fuera del `matcher` de `proxy.ts`), no muestra el correo y tiene un botón «Ir a ingresar» → `/login`. Como el template no la diseña, reutiliza las superficies de éxito/crítico y el botón primario de la vista «Cuenta creada». Queda como pregunta abierta para el owner, en #556.
+- Cuando la confirmación falla (enlace vencido o reutilizado), Supabase redirige con `error`/`error_code`. En ese caso la página muestra «No pudimos confirmar tu cuenta» en vez de anunciar un éxito que no ocurrió. Esos parámetros solo se chequean por presencia y nunca se renderizan.
+- Local: `supabase/config.toml` agrega `/account-confirmed` a `additional_redirect_urls`. Remoto: el patrón `/**` que ya está en la allow-list cubre la ruta (`docs/architecture/environments.md` §13), así que el operador no tiene que hacer nada.
+- RED: `auth-pages.test.tsx` falló porque la página no existía, y `auth-screen.test.tsx` falló porque esperaba `/account-confirmed` y recibía `/login`. GREEN: 48/48 en los dos archivos. `pnpm run verify` → exit 0 (web 2499, API 3179, `no dependency violations`).
+- Seguridad (OWASP Top 10:2025; LLM 2026 no aplica): **sin hallazgos**. A01: la ruta destino es un path fijo del mismo origen, así que no hay redirect abierto. A05: los parámetros de error no se renderizan. A07: la verificación del token la sigue haciendo Supabase Auth, y la página no autentica nada.

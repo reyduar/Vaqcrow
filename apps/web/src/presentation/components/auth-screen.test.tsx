@@ -266,7 +266,7 @@ describe("AuthScreen signup", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Conectá tu wallet" })).toBeInTheDocument();
   });
 
-  it("sends the trimmed name, role and the login page as the confirmation target", async () => {
+  it("sends the trimmed name, role and the account-confirmed page as the confirmation target (#556)", async () => {
     const fake = renderScreen("signup", "PYME");
     const signUp = vi.spyOn(fake, "signUp");
     fillSignup("  Panadería La Espiga S.R.L.  ");
@@ -278,7 +278,7 @@ describe("AuthScreen signup", () => {
       role: "PYME",
       displayName: "Panadería La Espiga S.R.L.",
       email: EMAIL,
-      emailRedirectTo: `${window.location.origin}/login`
+      emailRedirectTo: `${window.location.origin}/account-confirmed`
     });
   });
 

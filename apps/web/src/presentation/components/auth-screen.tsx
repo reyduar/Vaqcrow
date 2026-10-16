@@ -33,6 +33,7 @@ import {
   type AuthErrorMessage,
   type AuthMode
 } from "@/application/auth/auth-form";
+import { ACCOUNT_CONFIRMED_PATH } from "@/application/auth/account-confirmed";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/application/auth/sign-up-input";
 import type { AccountRole, AuthErrorCode } from "@/application/ports/auth-session-port";
 import { disclosures } from "@/application/trust/disclosures";
@@ -143,7 +144,7 @@ export function AuthScreen({ mode, initialRole, returnTo }: AuthScreenProps) {
       displayName: name.trim(),
       email,
       password,
-      emailRedirectTo: `${window.location.origin}/login`
+      emailRedirectTo: `${window.location.origin}${ACCOUNT_CONFIRMED_PATH}`
     });
     if (!result.ok) {
       fail(authErrorMessage("signup", result.code));
