@@ -1,4 +1,7 @@
+import { parseCorrelationId } from "@vaqcrow/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { CampaignRecord, CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
+import type { CampaignVaultChainPort, VaultChainState } from "../ports/campaign-vault-chain-port.js";
 import type { PortfolioPositionRecord, PortfolioRepositoryPort } from "../ports/portfolio-repository-port.js";
 import type { WalletRepositoryPort } from "../ports/wallet-repository-port.js";
 import { getInvestorPortfolio } from "./get-investor-portfolio.js";
@@ -362,5 +365,195 @@ describe("getInvestorPortfolio", () => {
     );
 
     expect(result).toEqual({ ok: false, error: { code: "unavailable" } });
+  });
+});
+
+describe("getInvestorPortfolio — verifying open positions against the vault (#571)", () => {
+  const CORRELATION_ID = parseCorrelationId("923e4567-e89b-42d3-a456-426614174000");
+  const SECOND_VAULT = "CBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWHF";
+  const SECOND_POSITION: PortfolioPositionRecord = {
+    ...POSITION,
+    campaignId: SECOND_CAMPAIGN_ID,
+    name: "Panadería Norte",
+    contributionStroops: 3_000_000n,
+    vaultAddress: SECOND_VAULT
+  };
+  const OBSERVED_AT = new Date("2026-10-16T12:00:00.000Z");
+
+  function chainState(overrides: Partial<VaultChainState> = {}): VaultChainState {
+    return {
+      state: "funding",
+      totalStroops: 1_000_000n,
+      goalStroops: 10_000_000n,
+      deadline: new Date("2026-12-01T00:00:00.000Z"),
+      smeAccountId: ACCOUNT,
+      tokenContractId: VAULT,
+      observedAt: OBSERVED_AT,
+      ...overrides
+    };
+  }
+
+  /** The vault reports each contract's running contribution from `byVault`. */
+  function fakeChain(
+    byVault: Readonly<Record<string, bigint>>,
+    options: { readonly failVault?: string; readonly state?: Partial<VaultChainState> } = {}
+  ): Pick<CampaignVaultChainPort, "readCampaign" | "readContribution"> {
+    return {
+      readCampaign: vi.fn(async (address: string) =>
+        address === options.failVault
+          ? { ok: false as const, error: { code: "unavailable" as const } }
+          : { ok: true as const, value: chainState(options.state) }
+      ),
+      readContribution: vi.fn(async (address: string) => ({ ok: true as const, value: byVault[address] ?? 0n }))
+    };
+  }
+
+  function fakeCampaigns(reconcileOk = true): Pick<CampaignRepositoryPort, "findById" | "reconcile"> {
+    return {
+      findById: vi.fn(async () => ({
+        ok: true as const,
+        value: { state: "open", totalStroops: 2_500_000n } as CampaignRecord
+      })),
+      reconcile: vi.fn(async () =>
+        reconcileOk
+          ? { ok: true as const, value: { campaign: {} as CampaignRecord, applied: true } }
+          : { ok: false as const, error: { code: "unavailable" as const } }
+      )
+    };
+  }
+
+  function twoPositions() {
+    return fakePortfolio({ listPositions: async () => ({ ok: true as const, value: [POSITION, SECOND_POSITION] }) });
+  }
+
+  it("drops a campaign the investor fully withdrew from the list, the total and the count, and reconciles the zero into the mirror", async () => {
+    const campaigns = fakeCampaigns();
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: twoPositions(),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns, chain: fakeChain({ [VAULT]: 0n, [SECOND_VAULT]: 3_000_000n }) }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.contributions.map((position) => position.campaignId)).toEqual([SECOND_CAMPAIGN_ID]);
+    expect(result.value.totals).toMatchObject({ totalContributedXlm: "0.3000000", campaignCount: 1 });
+    expect(campaigns.reconcile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        campaignId: CAMPAIGN_ID,
+        correlationId: CORRELATION_ID,
+        snapshot: expect.objectContaining({
+          contributions: [{ investorAccountId: ACCOUNT, amountStroops: 0n, lastObservedAt: OBSERVED_AT.toISOString() }]
+        })
+      })
+    );
+  });
+
+  it("shows the vault's own amount after a partial withdraw", async () => {
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio(),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns: fakeCampaigns(), chain: fakeChain({ [VAULT]: 500_000n }) }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.totals).toMatchObject({ totalContributedXlm: "0.0500000", campaignCount: 1 });
+  });
+
+  it("still drops the withdrawn campaign when the mirror reconcile fails, and answers 200", async () => {
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio(),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns: fakeCampaigns(false), chain: fakeChain({ [VAULT]: 0n }) }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { contributions: [], totals: { campaignCount: 0 } } });
+  });
+
+  it("keeps the stored position when the vault cannot be read, never failing the portfolio", async () => {
+    const campaigns = fakeCampaigns();
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio(),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns, chain: fakeChain({}, { failVault: VAULT }) }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { totals: { totalContributedXlm: "0.1500000", campaignCount: 1 } } });
+    expect(campaigns.reconcile).not.toHaveBeenCalled();
+  });
+
+  it("does not read the vault for a settled position, which can no longer be withdrawn or refunded", async () => {
+    const chain = fakeChain({});
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio({ listPositions: async () => ({ ok: true as const, value: [{ ...POSITION, state: "settled" as const }] }) }),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns: fakeCampaigns(), chain }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { totals: { campaignCount: 1 } } });
+    expect(chain.readCampaign).not.toHaveBeenCalled();
+  });
+
+  it("verifies a refundable position too, so a full refund also leaves the portfolio", async () => {
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio({ listPositions: async () => ({ ok: true as const, value: [{ ...POSITION, state: "refundable" as const }] }) }),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: { campaigns: fakeCampaigns(), chain: fakeChain({ [VAULT]: 0n }, { state: { state: "refunding" } }) }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { contributions: [], totals: { campaignCount: 0 } } });
+  });
+  it("keeps the stored position when a vault read throws instead of returning an error", async () => {
+    const result = await getInvestorPortfolio(
+      {
+        wallets: fakeWallet(ACCOUNT),
+        portfolio: fakePortfolio(),
+        now: NOW,
+        explorerBaseUrl: EXPLORER,
+        vault: {
+          campaigns: fakeCampaigns(),
+          chain: {
+            readCampaign: async () => {
+              throw new Error("rpc down");
+            },
+            readContribution: async () => ({ ok: true as const, value: 0n })
+          }
+        }
+      },
+      { userId: USER_ID, correlationId: CORRELATION_ID }
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { totals: { campaignCount: 1 } } });
   });
 });

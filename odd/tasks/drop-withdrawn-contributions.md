@@ -16,7 +16,7 @@ Objetivo: que un aporte retirado o reembolsado por completo desaparezca de «Mis
 |---|---|---|---|---|
 | T1 | S4 | inline | hecho local (remoto pendiente) | ver L3 |
 | T2 | S2 | inline | hecho | ver L4 |
-| T3 | S3 | inline | pendiente | `getInvestorPortfolio` + wiring |
+| T3 | S3 | inline | hecho | ver L5 |
 | T4 | S5 | inline + verificador independiente | pendiente | verify, remoto, evidencia |
 
 Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no son paralelas. Por riesgo alto (ítem 1: borra datos guardados) va un verificador independiente al final de la feature.
@@ -31,3 +31,14 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no
   - El test «never writes a contribution row for a zero-amount entry» fija el comportamiento viejo. Su parte de «no insertar un 0» sigue valiendo; la de «no tocar la tabla» cambia por decisión del owner.
 - **L3** (2026-10-16) — T1: migración `20261016143937_allow_withdrawn_contribution_delete.sql`, creada con `supabase migration new`, que hace `grant delete … to service_role`. Test pgTAP `supabase/tests/campaign_contribution_withdraw.sql`, con 8 asserts: DELETE solo para `service_role`; borrar el aporte de A deja intacto el de B, arrastra el contacto de reembolso de A, conserva el hash y saca la posición de `investor_portfolio_position`. RED: el assert 1 falló (`have: false`) y el DELETE como `service_role` dio `permission denied for table campaign_contribution`. Un error en el fixture (total mayor que la meta) se corrigió antes de la corrida RED válida. GREEN después de `supabase migration up --local`: 47/47 junto a `campaign_persistence.sql`.
 - **L4** (2026-10-16) — T2: `SupabaseCampaignRepository.reconcile`. Un `0` llama a `deleteContribution`, que hace `delete` con `campaign_id` + `investor_account_id` + `last_observed_at <= observación`, con el mismo guard que `writeContribution`. El cliente fake ahora registra `.delete()`. El test viejo «never writes a contribution row for a zero-amount entry» se reemplaza por la regla nueva: borra, nunca inserta un 0 y solo actualiza la fila de la campaña. Se suman dos tests: un error del delete sale saneado, y un snapshot sin inversor no toca `campaign_contribution`, que es el comportamiento previo. RED: fallaron 2 de los 25 (los de la regla nueva). GREEN: 25/25. Suite de la API: 3200/3200. No hay tests de integración sobre reconcile.
+- **L5** (2026-10-16) — T3: `getInvestorPortfolio` suma la dependencia opcional `vault` (`campaigns` + `chain`) y recibe `correlationId` como input.
+  - `verifyPositions` lee en paralelo cada posición `open`/`refundable`: `readCampaign` + `readContribution` de la cuenta resuelta en el servidor. Si la red dice `0`, la posición se descarta; si dice otro monto, ese monto reemplaza al guardado. Una `settled` no se lee.
+  - Cada lectura se reconcilia con `reconcileCampaign`, que con el `0` borra la fila (T2). Es *best-effort*: si el reconcile falla o lanza una excepción, la respuesta no cambia.
+  - Si la red falla o lanza una excepción, se usa la posición guardada y no hay 503.
+  - **Cambio de diseño respecto de L2:** se filtra en memoria con lo que dice la red, en lugar de volver a leer la base. Así la campaña retirada desaparece aunque el reconcile no se aplique (por ejemplo, por un `state_conflict`).
+  - Importar `reconcileCampaign` desde otro caso de uso tiene precedente (`derive-revenue-share-distribution.ts:14`) y dependency-cruiser no lo prohíbe.
+  - La ruta pasa `parseCorrelationId(request.id)`, como las rutas de campaña. `index.ts` conecta `vault` solo si existe el grupo de campaña.
+  - **RED:** 4 de los 6 tests nuevos del caso de uso fallaron; los otros 2 (red caída, `settled`) describen el comportamiento previo. El test de la ruta también falló.
+  - **Excepción RED:** el test «a vault read throws» se escribió junto con su guard, así que no hay corrida RED observada.
+  - **GREEN:** caso de uso 20/20, ruta 11/11. Suite de la API 3208/3208, lint y typecheck limpios.
+  - Seguridad (OWASP Top 10:2025, A01): la cuenta sale del principal verificado y nunca del cliente; la ruta sigue siendo `INVERSOR`-only. A10: los fallos de la red caen en lo guardado y nunca se presentan como un 0.

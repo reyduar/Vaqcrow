@@ -1,3 +1,4 @@
+import { parseCorrelationId } from "@vaqcrow/contracts";
 import type { FastifyInstance } from "fastify";
 import {
   getInvestorPortfolio,
@@ -14,6 +15,10 @@ import {
  * portfolio. The use case resolves the Stellar account server-side from the
  * principal's stored profile key.
  *
+ * Open and refundable positions are checked against their vault when the
+ * campaign group is configured (#571), so a fully withdrawn or refunded
+ * campaign leaves the response even before its stored row is reconciled.
+ *
  * Every failure is a sanitized `{ code }`: a repository or key failure is a
  * `503 { code: "unavailable" }`, never a 200 with an empty but misleading
  * portfolio.
@@ -27,7 +32,12 @@ export function registerPortfolioRoute(app: FastifyInstance, dependencies: Portf
       return reply.code(401).send({ code: "unauthenticated" });
     }
 
-    const result = await getInvestorPortfolio(dependencies, { userId: principal.userId });
+    // The request id doubles as the correlation id of the vault reconciles the
+    // read may run (#571), as on the campaign routes.
+    const result = await getInvestorPortfolio(dependencies, {
+      userId: principal.userId,
+      correlationId: parseCorrelationId(request.id)
+    });
     if (!result.ok) {
       return reply.code(503).send({ code: "unavailable" });
     }
