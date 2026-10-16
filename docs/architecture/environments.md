@@ -217,6 +217,7 @@ En el dashboard de Supabase del proyecto de la demo:
 3. **Authentication → URL Configuration**:
    - **Site URL**: `https://vaqcrow-web-nine.vercel.app` (la URL de la web en Vercel que cita el `README.md`).
    - **Redirect URLs**: `https://vaqcrow-web-nine.vercel.app/**` y, si se corre la web en local contra el remoto, `http://localhost:3001/**`.
+   - El enlace del correo de confirmación apunta a `<origen>/account-confirmed` (`emailRedirectTo`, #556). El patrón `/**` ya cubre esa ruta, así que no hace falta otra entrada; sin un patrón que la cubra, Supabase manda al usuario a la Site URL. En el stack local, `supabase/config.toml` la lista explícitamente en `additional_redirect_urls`.
 4. Verificar: dar de alta una cuenta de prueba `PYME`/`INVERSOR` desde la web (o `POST /auth/v1/signup` con la clave publicable) y comprobar que llega el email desde `no-reply@vaqcrow.com` y que el login falla hasta confirmarlo.
 5. Si el correo no llega, mirar el remitente en los logs de Auth (`mail.send`): `noreply@mail.app.supabase.io` significa que el SMTP propio no está activo.
 
@@ -225,7 +226,7 @@ En el dashboard de Supabase del proyecto de la demo:
 La verificación del 2026-10-03 corrió en un preview de Vercel (`https://vaqcrow-<hash>-reyduars-projects.vercel.app`), no en producción. Para que un preview hable con el proyecto remoto:
 
 - **Variables:** `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` tienen que incluir el target **Preview** en Vercel, no sólo Production. Las `NEXT_PUBLIC_*` se incrustan al compilar: después de agregarlas hay que volver a desplegar el preview.
-- **Redirect URLs:** en **Authentication → URL Configuration** sumar `https://vaqcrow-*-reyduars-projects.vercel.app/**`; si no, el enlace del correo (`emailRedirectTo = <origen>/login`) cae en la Site URL.
+- **Redirect URLs:** en **Authentication → URL Configuration** sumar `https://vaqcrow-*-reyduars-projects.vercel.app/**`; si no, el enlace del correo (`emailRedirectTo = <origen>/account-confirmed`) cae en la Site URL.
 - **Resend:** verifica sólo el dominio remitente (`vaqcrow.com`); el origen del preview no importa para enviar.
 
 ### 13.3 Sembrar el superadmin

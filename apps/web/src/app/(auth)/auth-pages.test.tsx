@@ -3,11 +3,12 @@ import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { SessionStoreProvider } from "@/state/session-store-provider";
 import { FakeAuthSession } from "@/test/fake-auth-session";
+import AccountConfirmedPage from "./account-confirmed/page";
 import LoginPage from "./login/page";
 import SignupPage from "./signup/page";
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/account-confirmed" }));
 
 async function renderPage(
   page: (props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) => Promise<ReactElement>,
@@ -43,5 +44,19 @@ describe("auth routes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ingresar" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/explore"));
+  });
+
+  it("/account-confirmed confirms the account, thanks the user and links to /login (#556)", async () => {
+    await renderPage(AccountConfirmedPage, { code: "pkce-code" });
+    expect(screen.getByRole("heading", { level: 1, name: "Tu cuenta fue confirmada con éxito" })).toBeInTheDocument();
+    expect(screen.getByText("Gracias por registrarte en Vaqcrow. Ya podés ingresar con tu correo y tu contraseña.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir a ingresar" })).toHaveAttribute("href", "/login");
+  });
+
+  it("/account-confirmed never claims success when Supabase reports a failed confirmation (#556)", async () => {
+    await renderPage(AccountConfirmedPage, { error: "access_denied", error_code: "otp_expired" });
+    expect(screen.getByRole("heading", { level: 1, name: "No pudimos confirmar tu cuenta" })).toBeInTheDocument();
+    expect(screen.queryByText(/confirmada con éxito/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Ir a ingresar" })).toHaveAttribute("href", "/login");
   });
 });

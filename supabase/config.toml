@@ -37,7 +37,12 @@ port = 54324
 enabled = true
 # The web app (`pnpm dev:web:docker`) runs on :3001; confirmation links return there.
 site_url = "http://localhost:3001"
-additional_redirect_urls = ["http://localhost:3001", "http://127.0.0.1:3001"]
+additional_redirect_urls = [
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+  "http://localhost:3001/account-confirmed",
+  "http://127.0.0.1:3001/account-confirmed"
+]
 enable_signup = true
 
 [auth.email]
