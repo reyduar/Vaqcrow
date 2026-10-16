@@ -15,7 +15,7 @@ Objetivo: que todo monto en XLM se lea con 2 decimales y que «Saldo disponible�
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
 | T1 | S2 | inline | hecho | ver L3 |
-| T2 | S3 | inline | pendiente | ruta + política |
+| T2 | S3 | inline | hecho | ver L4 |
 | T3 | S4 | inline | pendiente | puerto/gateway web + label |
 | T4 | S5 | inline | pendiente | verify + evidencia |
 
@@ -38,3 +38,12 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan.
   - Se corrigió `not.toContain("0,0000000")`: como `"0,00"` también aparece dentro de `"1.000,00"`, pasó a `not.toMatch(/(^|[^\d.])0,00 XLM/)`.
   - Comportamiento previo: «shows the exact amount to sign…» en `campaign-withdraw.test.tsx`, con `9998.3398722` en el modal de firma.
   - Web 2506/2506, lint limpio.
+- **L4** (2026-10-16) — T2: `GET /rates/current` en `rate-table.route.ts`, que reutiliza `RateTableRepositoryPort.findCurrent`.
+  - Responde `{ rate: { version, effectiveAt, usdToArs, stroopsPerUsd } }`, sin `authorUserId` ni `source`.
+  - `not_found` → 404; cualquier otro error → 503 `unavailable`, saneado.
+  - Política `AUTHENTICATED`. Se registró en la matriz `authorization.test.ts` y en `openapi/route-registry.ts` (tag `Wallet`), y se regeneró `apps/api/openapi.json` con 60 paths.
+  - RED: 5/5 en rojo. Además, los gates de la matriz de autorización y de OpenAPI fallaron hasta registrar la ruta.
+  - El test del anónimo usa `buildApp` sin auth, porque `buildAppAs` agrega un bearer a todo pedido.
+  - GREEN: ruta 7/7, API 3220/3220, lint y typecheck limpios.
+  - Las menciones de `/admin/rates/current` en `docs/` están en evidencias históricas, que no se tocan.
+  - OWASP Top 10:2025, A01: solo lectura, autenticada, y sin metadatos de admin. **Sin hallazgos.**

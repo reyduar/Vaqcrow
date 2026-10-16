@@ -460,6 +460,14 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
     success: { 200: { description: "`{ rate }`." } },
     errors: [404, 503]
   },
+  "GET /rates/current": {
+    tag: "Wallet",
+    summary: "Read the current FX rate (public fields)",
+    description:
+      "AUTHENTICATED (any role). `{ rate: { version, effectiveAt, usdToArs, stroopsPerUsd } }` for the simulated ARS equivalent of the wallet balance (#572); never the author or the source. 404 when no rate is in effect.",
+    success: { 200: { description: "`{ rate }`." } },
+    errors: [401, 404, 503]
+  },
 
   // ---- Campaigns & Stellar invocations ------------------------------------
   "POST /campaigns": {

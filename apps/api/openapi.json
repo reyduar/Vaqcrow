@@ -5668,6 +5668,56 @@
         }
       }
     },
+    "/rates/current": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Read the current FX rate (public fields)",
+        "description": "AUTHENTICATED (any role). `{ rate: { version, effectiveAt, usdToArs, stroopsPerUsd } }` for the simulated ARS equivalent of the wallet balance (#572); never the author or the source. 404 when no rate is in effect.",
+        "operationId": "getRatesCurrent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`{ rate }`."
+          },
+          "401": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sanitized error envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/campaigns/{campaignId}": {
       "get": {
         "tags": [
