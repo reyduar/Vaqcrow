@@ -50,7 +50,9 @@ status: delivered
 
 ## Límites y notas
 
-- El PR **no está mergeado** al escribir esta evidencia: los resultados de arriba son comandos corridos en el árbol de trabajo, no un estado de `main`.
-- **Migración remota pendiente** (D2): `20261015200000` corrió solo en el stack local. Se aplica al proyecto remoto una vez que la API esté desplegada con el post. Después hay que verificar el historial de migraciones y la fila.
+- **Mergeado y desplegado (2026-10-16):** PR #563 → `b3e2229`, con el CI de `main` en verde (Playwright incluido). Railway terminó el deploy de `b3e2229` a las 02:52 UTC.
+- **Migración remota aplicada (D2), después del deploy:** `20261015200000` se aplicó con el MCP de Supabase y la versión del historial se alineó de `20261016025309` a `20261015200000`. Hay una sola fila, publicada y con el `source_path` correcto. `GET /blog` de la API desplegada lista el post y `GET /blog/freighter-y-friendbot-paso-a-paso` responde 200. En `https://www.vaqcrow.com/blog` el post aparece y se abre con su título, los pasos, la tabla y los enlaces externos con `noopener`.
+- **Hallazgo de entorno:** `CORS_ALLOWED_ORIGINS` acepta solo `https://www.vaqcrow.com`. En `vaqcrow-web-nine.vercel.app`, el origen que todavía nombran `docs/architecture/*.md`, el blog no carga.
+- ⚠️ Falta comprobar en la web que el asistente cite `freighter-y-friendbot`. Se deja al owner, porque hace falta enviar una pregunta desde una sesión con cuenta.
 - Advisory sin cambio: la copy de `/company` dice «Tu wallet necesita XLM de Testnet para crear la bóveda», pero la guía operativa dice que el despliegue lo firma y lo paga la plataforma. El post no repite ninguna de las dos afirmaciones.
 - Con «Blog», la nav pública pasa de cinco a seis entradas. El ancho lo mide `e2e/app-header.spec.ts` a 1280 px, también con el texto ensanchado que replica el render de Linux: `pnpm --filter @vaqcrow/web run test:e2e` → 41/41 en local. La primera corrida del CI falló porque las specs e2e todavía esperaban cinco links. La segunda falló de verdad: con el texto ensanchado, al nav le faltaban 31 px en Linux. Por decisión del owner, el padding de los links bajó de 8 a 4 px por lado, sin cambiar ningún texto (`demo-navbar.tsx`). Medido en macOS: 102 px de margen con texto normal y 57 px con texto ensanchado.
