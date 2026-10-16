@@ -17,7 +17,7 @@ Objetivo: que todo monto en XLM se lea con 2 decimales y que «Saldo disponible�
 | T1 | S2 | inline | hecho | ver L3 |
 | T2 | S3 | inline | hecho | ver L4 |
 | T3 | S4 | inline | hecho | ver L5 |
-| T4 | S5 | inline | pendiente | verify + evidencia |
+| T4 | S5 | inline | hecho (falta verlo desplegado) | ver L6 |
 
 Ruta inline: no se dispara ningún writer, porque las unidades se encadenan.
 
@@ -57,3 +57,4 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan.
   - En `portfolio.test` el assert de `SIMULADO` se acotó al contenedor del label, porque la página tiene otros badges `SIMULADO`.
   - **GREEN:** web 2521/2521; typecheck limpio; lint con 0 errores y 7 warnings, todos previos y en archivos ajenos (`verifier-wu2b/…`).
   - **OWASP Top 10:2025:** sin hallazgos. A01: la lectura va con el token del principal. A05/A08: el cuerpo se valida antes de convertirlo a `BigInt`. A10: un fallo nunca se muestra como un valor.
+- **L6** (2026-10-16) — T4: `pnpm run verify` → exit 0 (web 2521, API 3220, `no dependency violations`). Playwright `test:e2e` → 41/41. Evidencia escrita en `docs/planning/xlm-two-decimals-and-ars-evidence.md`. Risk: none. Es el cambio de formato pedido más un endpoint nuevo de solo lectura; ningún contrato existente se rompe, así que no hace falta un verificador independiente. **Pendiente:** el PR y ver el label en lo desplegado, que necesita una cotización vigente en el remoto.
