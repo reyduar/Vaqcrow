@@ -102,7 +102,7 @@ No se debe usar la base local como sustituto de la actualización remota.
 - Perfil docker (`APP_ENV=local`): permite `http://localhost:3001` y `http://127.0.0.1:3001` — cubre la web del contenedor sin configuración extra.
 - Perfil cloud (`APP_ENV=demo` u otro entorno no `local`): no permite ningún origen.
 
-Cuando la variable está seteada, la lista explícita reemplaza el default en todo entorno, incluido `local`. Para el perfil cloud hay que declarar el origen de Vercel; si además se corre la web en local contra `pnpm dev:api:cloud`, agregar `http://localhost:3001` a la lista.
+Cuando la variable está seteada, la lista explícita reemplaza el default en todo entorno, incluido `local`. Para el perfil cloud hay que declarar el origen canónico de la web, `https://www.vaqcrow.com` (#565). Los otros dominios de Vercel (`vaqcrow.com`, `vaqcrow-web-nine.vercel.app`) redirigen ahí antes de que el navegador llame a la API, así que no van en la lista; si además se corre la web en local contra `pnpm dev:api:cloud`, agregar `http://localhost:3001` a la lista.
 
 ## 9. Nota sobre Stellar
 
@@ -215,8 +215,8 @@ En el dashboard de Supabase del proyecto de la demo:
    El dominio `vaqcrow.com` ya está verificado en Resend. Con SMTP propio, revisá también **Authentication → Rate Limits** (el límite de emails por hora arranca bajo).
 2. **Authentication → Sign In / Providers → Email**: activar **Confirm email** (y dejar **Allow new users to sign up** activado).
 3. **Authentication → URL Configuration**:
-   - **Site URL**: `https://vaqcrow-web-nine.vercel.app` (la URL de la web en Vercel que cita el `README.md`).
-   - **Redirect URLs**: `https://vaqcrow-web-nine.vercel.app/**` y, si se corre la web en local contra el remoto, `http://localhost:3001/**`.
+   - **Site URL**: `https://www.vaqcrow.com`, el dominio canónico que cita el `README.md` (#565). `vaqcrow.com` y `vaqcrow-web-nine.vercel.app` redirigen ahí.
+   - **Redirect URLs**: `https://www.vaqcrow.com/**` y, si se corre la web en local contra el remoto, `http://localhost:3001/**`.
    - El enlace del correo de confirmación apunta a `<origen>/account-confirmed` (`emailRedirectTo`, #556). El patrón `/**` ya cubre esa ruta, así que no hace falta otra entrada; sin un patrón que la cubra, Supabase manda al usuario a la Site URL. En el stack local, `supabase/config.toml` la lista explícitamente en `additional_redirect_urls`.
 4. Verificar: dar de alta una cuenta de prueba `PYME`/`INVERSOR` desde la web (o `POST /auth/v1/signup` con la clave publicable) y comprobar que llega el email desde `no-reply@vaqcrow.com` y que el login falla hasta confirmarlo.
 5. Si el correo no llega, mirar el remitente en los logs de Auth (`mail.send`): `noreply@mail.app.supabase.io` significa que el SMTP propio no está activo.
@@ -303,7 +303,7 @@ Slice `email-config.ts` (`apps/api/src/application/config/email-config.ts`), opc
 |---|---|---|---|
 | `RESEND_API_KEY` | no | — | Su ausencia significa **email deshabilitado**, no mal configurado; se envuelve como `Secret` y no puede filtrarse a un log. |
 | `EMAIL_FROM` | no | `Vaqcrow <no-reply@vaqcrow.com>` | Una línea, con o sin nombre para mostrar; se rechaza CR/LF (inyección de headers). |
-| `APP_BASE_URL` | no en `local` | `http://localhost:3001` | Base absoluta de los links del email; se le quita la barra final. |
+| `APP_BASE_URL` | no en `local` | `http://localhost:3001` | Base absoluta de los links del email; se le quita la barra final. En Railway va el origen canónico, `https://www.vaqcrow.com` (#565). |
 
 **Regla fail-closed.** `EMAIL_FROM` y `APP_BASE_URL` sólo se validan cuando el slice está **habilitado** (hay `RESEND_API_KEY`). Fuera de `local` (`APP_ENV=demo` u otro), con el email habilitado, un `APP_BASE_URL` ausente o inválido **detiene el arranque** de la API en vez de armar links contra el loopback; en `local` el default de loopback es válido. Sin `RESEND_API_KEY`, el slice resuelve de forma indulgente y nunca condiciona el boot.
 
