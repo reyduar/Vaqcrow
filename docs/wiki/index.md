@@ -2,7 +2,7 @@
 
 Una línea por página, en el orden en que conviene leerlas. El enlace y el nombre del archivo son el id de la página.
 
-- [revenue-share](revenue-share.md): qué es el revenue share y cómo se reparte, en proporción al aporte.
+- [revenue-share](revenue-share.md): qué es el revenue share en simple y cómo se reparte, en proporción al aporte.
 - [todo-o-nada](todo-o-nada.md): la regla todo o nada y los dos caminos de la meta.
 - [alta-de-pyme](alta-de-pyme.md): el recorrido de la PyME desde crear su cuenta hasta enviar a revisión.
 - [aporte-del-inversor](aporte-del-inversor.md): cómo el inversor conecta su wallet y aporta, y cómo retira o reembolsa.

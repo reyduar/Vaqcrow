@@ -2,6 +2,12 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-16 — ingest: revenue share en lenguaje llano (#579)
+
+- Fuente nueva citada: `blog/revenue-share-explicado.md` (Blog), junto con `como-funciona-vaqcrow.md`.
+- Página ampliada `revenue-share.md` (concepto): explicación en lenguaje llano con una analogía cotidiana, un glosario que define cada término la primera vez que aparece, y el mes paso a paso; se conserva lo que ya era correcto.
+- Línea del índice reescrita para seguir describiendo el concepto sin pisar la de `distribucion-mensual.md`.
+
 ## 2026-10-15 — ingest: Freighter y Friendbot (#558)
 
 - Fuente nueva: `blog/freighter-y-friendbot-paso-a-paso.md` (Blog), junto con `freighter-and-testnet-walkthrough.md`.
