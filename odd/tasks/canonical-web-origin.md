@@ -28,3 +28,4 @@ Objetivo: que `https://www.vaqcrow.com` sea el único origen de la web de punta 
   - **S2 (Auth):** sonda de solo lectura con un token inválido. `GET /auth/v1/verify?type=signup&redirect_to=https://example.invalid/x` responde `303`, hacia `https://www.vaqcrow.com/#error=…otp_expired`: es la Site URL. Con `redirect_to=https://www.vaqcrow.com/account-confirmed` responde `303`, hacia esa misma ruta: el patrón de Redirect URLs la acepta.
   - **S3 (`APP_BASE_URL`):** desde esta sesión no se puede leer. Hay evidencia indirecta: la API está arriba después del cambio, y con el email habilitado y un `APP_BASE_URL` inválido no arrancaría (fail-closed). El valor exacto queda confirmado por el owner.
   - Pendiente opcional: un alta real que confirme el email de punta a punta.
+- **L5** (2026-10-16) — `pnpm run verify` → exit 0 (`no dependency violations`). Es el criterio de aceptación del issue; el cambio es solo de docs.
