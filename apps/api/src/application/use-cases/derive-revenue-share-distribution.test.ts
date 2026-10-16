@@ -8,6 +8,7 @@ import type {
   CampaignRepositoryPort
 } from "../ports/campaign-repository-port.js";
 import type { CampaignVaultChainPort } from "../ports/campaign-vault-chain-port.js";
+import type { RevenueShareDistributionRecord } from "../ports/revenue-share-distribution-repository-port.js";
 import type { SalesDataProviderPort } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 import {
@@ -97,6 +98,7 @@ function deps(
     decision?: unknown;
     request?: unknown;
     sales?: unknown;
+    distributions?: unknown;
   } = {}
 ): DeriveRevenueShareDistributionDeps {
   const mirror = ((overrides.campaign as { ok: true; value: CampaignRecord } | undefined)?.value ??
@@ -145,7 +147,11 @@ function deps(
     } as unknown as Pick<SmeRequestRepositoryPort, "findByApplicationId">,
     salesData: {
       getPeriods: vi.fn().mockResolvedValue(overrides.sales ?? { ok: true, value: series })
-    } as unknown as Pick<SalesDataProviderPort, "getPeriods">
+    } as unknown as Pick<SalesDataProviderPort, "getPeriods">,
+    distributions: {
+      // By default nothing has been distributed yet: every contributor starts at 0n.
+      listByCampaign: vi.fn().mockResolvedValue(overrides.distributions ?? { ok: true, value: [] })
+    } as unknown as DeriveRevenueShareDistributionDeps["distributions"]
   };
 }
 
@@ -171,7 +177,7 @@ describe("deriveRevenueShareDistribution", () => {
     expect(result.value.derivation.salesArs).toBe("3745800");
     expect(result.value.derivation.obligationArs).toBe("168561");
     expect(result.value.derivation.rateBps).toBe(450);
-    expect(result.value.derivation.ruleVersion).toBe("RS-2026-01");
+    expect(result.value.derivation.ruleVersion).toBe("RS-2026-02");
     expect(result.value.derivation.simulated).toBe(true);
   });
 
@@ -268,6 +274,124 @@ describe("deriveRevenueShareDistribution", () => {
     const second = await deriveRevenueShareDistribution(deps(), input);
 
     expect(second).toEqual(first);
+  });
+
+  describe("the 1.5× cap accumulator and the terminal state (#580)", () => {
+    /** A persisted distribution reduced to the two facts the accumulator reads. */
+    function distribution(
+      state: "submitted" | "confirmed" | "failed",
+      recipients: ReadonlyArray<{ readonly accountId: string; readonly amountStroops: bigint }>
+    ): RevenueShareDistributionRecord {
+      return { state, recipients } as unknown as RevenueShareDistributionRecord;
+    }
+
+    it("stops paying a contributor whose confirmed distributions already reached their cap", async () => {
+      // Investor A funded 600,000,000 stroops, so its cap is floor(600,000,000 × 3 / 2) =
+      // 900,000,000. It has already received the cap, so it has no capacity left and its whole
+      // pro-rata share is redistributed to B.
+      const result = await deriveRevenueShareDistribution(
+        deps({
+          distributions: {
+            ok: true,
+            value: [
+              distribution("confirmed", [{ accountId: INVESTOR_A, amountStroops: 900_000_000n }])
+            ]
+          }
+        }),
+        input
+      );
+
+      if (!result.ok) throw new Error("expected a derivation");
+      expect(result.value.recipients).toEqual([{ accountId: INVESTOR_B, amountStroops: 33_712_200n }]);
+    });
+
+    it("pays exactly the remainder of a partially consumed contributor cap", async () => {
+      // A's cap is 900,000,000 and it has received 890,000,000 → 10,000,000 left. Its truncated
+      // payment is exactly that remainder; the rest returns to the pool and B takes it.
+      const result = await deriveRevenueShareDistribution(
+        deps({
+          distributions: {
+            ok: true,
+            value: [
+              distribution("confirmed", [{ accountId: INVESTOR_A, amountStroops: 890_000_000n }])
+            ]
+          }
+        }),
+        input
+      );
+
+      if (!result.ok) throw new Error("expected a derivation");
+      expect(result.value.recipients).toEqual([
+        { accountId: INVESTOR_A, amountStroops: 10_000_000n },
+        { accountId: INVESTOR_B, amountStroops: 23_712_200n }
+      ]);
+    });
+
+    it("sums only confirmed distributions, ignoring submitted and failed ones", async () => {
+      // Both a `submitted` and a `failed` distribution carry the full cap for A. Neither has
+      // moved money, so neither counts and the split is unchanged.
+      const result = await deriveRevenueShareDistribution(
+        deps({
+          distributions: {
+            ok: true,
+            value: [
+              distribution("submitted", [{ accountId: INVESTOR_A, amountStroops: 900_000_000n }]),
+              distribution("failed", [{ accountId: INVESTOR_A, amountStroops: 900_000_000n }])
+            ]
+          }
+        }),
+        input
+      );
+
+      if (!result.ok) throw new Error("expected a derivation");
+      expect(result.value.recipients).toEqual([
+        { accountId: INVESTOR_A, amountStroops: 20_227_320n },
+        { accountId: INVESTOR_B, amountStroops: 13_484_880n }
+      ]);
+    });
+
+    it("ignores a recipient account that matches no contributor", async () => {
+      // A distribution whose recipient is not a contributor of the campaign (here the SME's own
+      // account) accrues nothing and does not change the split.
+      const result = await deriveRevenueShareDistribution(
+        deps({
+          distributions: {
+            ok: true,
+            value: [
+              distribution("confirmed", [{ accountId: SOURCE_ACCOUNT, amountStroops: 900_000_000n }])
+            ]
+          }
+        }),
+        input
+      );
+
+      if (!result.ok) throw new Error("expected a derivation");
+      expect(result.value.recipients).toEqual([
+        { accountId: INVESTOR_A, amountStroops: 20_227_320n },
+        { accountId: INVESTOR_B, amountStroops: 13_484_880n }
+      ]);
+    });
+
+    it("reports the agreement as completed once every contributor is capped", async () => {
+      // A's cap is 900,000,000 and B's is 600,000,000: both are at their cap, so there is nothing
+      // left to distribute and the derivation does not repeat an empty distribution.
+      const result = await deriveRevenueShareDistribution(
+        deps({
+          distributions: {
+            ok: true,
+            value: [
+              distribution("confirmed", [
+                { accountId: INVESTOR_A, amountStroops: 900_000_000n },
+                { accountId: INVESTOR_B, amountStroops: 600_000_000n }
+              ])
+            ]
+          }
+        }),
+        input
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "obligation_completed" } });
+    });
   });
 
   describe("typed failures", () => {
@@ -451,6 +575,7 @@ describe("deriveRevenueShareDistribution", () => {
       ["the request read", { request: { ok: false, error: { code: "unavailable" } } }],
       ["the sales feed", { sales: { ok: false, error: { code: "unavailable" } } }],
       ["the contributions read", { contributions: { ok: false, error: { code: "unavailable" } } }],
+      ["the distributions read", { distributions: { ok: false, error: { code: "unavailable" } } }],
       ["the chain read", { chain: { ok: false, error: { code: "unavailable" } } }],
       ["a chain read that finds no vault", { chain: { ok: false, error: { code: "not_found" } } }],
       ["the reconciliation", { reconcile: { ok: false, error: { code: "unavailable" } } }],

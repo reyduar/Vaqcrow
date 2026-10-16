@@ -16,6 +16,8 @@ import type { ApplicationReviewRepositoryPort } from "../ports/application-revie
 import type { CampaignRepositoryPort } from "../ports/campaign-repository-port.js";
 import type { CampaignVaultChainPort } from "../ports/campaign-vault-chain-port.js";
 import { toChainCampaignSnapshot } from "../ports/campaign-vault-chain-port.js";
+import type { RevenueShareDistributionCampaignReadPort } from "../ports/revenue-share-distribution-repository-port.js";
+import type { RevenueShareDistributionRecord } from "../ports/revenue-share-distribution-repository-port.js";
 import type { SalesDataProviderPort } from "../ports/sales-data-provider-port.js";
 import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-port.js";
 
@@ -46,14 +48,28 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
  *    limit taken from the persisted human decision. Investors therefore receive
  *    in the same proportion they funded. The derivation is labeled simulated.
  * 4. The stroops are allocated pro-rata by contribution (the engine's
- *    largest-remainder method, so the parts sum exactly). A zero allocation is
- *    dropped — a payment of nothing is not expressible on-chain — and the source
- *    account is never paid.
+ *    largest-remainder method, so the parts sum exactly), enforcing the rule's
+ *    per-contributor 1.5× cap: each contributor is capped at
+ *    `floor(contribution × 3 / 2)` and stops being paid once their confirmed
+ *    distributions reach it (#580). A zero allocation is dropped — a payment of
+ *    nothing is not expressible on-chain — and the source account is never paid.
+ * 5. When every contributor is at their cap the agreement is finished, and the
+ *    derivation reports that terminal state instead of re-deriving an empty
+ *    distribution.
  *
  * The chain cannot enumerate contributors, so the mirror's rows are the only
  * list available. The mirror is trusted only when it is complete: its
  * contributions must add up to the campaign total, otherwise the split would
  * silently shortchange an investor nobody reconciled (`contributions_incomplete`).
+ *
+ * Each contributor's accumulator is **derived, never stored** (`S4`): the
+ * campaign's distribution repository already persists one row per recipient with
+ * `(accountId, amountStroops)`, and `campaign_contribution.investor_account_id`
+ * and `revenue_share_distribution_recipient.account_id` are the same Stellar
+ * account id, so an exact string match is the join. The accumulator is the sum of
+ * the `confirmed` distributions whose recipient is the contributor, which is why
+ * no table, column or migration was added. Only `confirmed` counts: `submitted`
+ * has not moved money and `failed` never will.
  *
  * Every failure is a typed value; nothing is thrown.
  */
@@ -64,6 +80,13 @@ export interface DeriveRevenueShareDistributionDeps {
   readonly applicationReviews: Pick<ApplicationReviewRepositoryPort, "readLatestHumanDecision">;
   readonly smeRequests: Pick<SmeRequestRepositoryPort, "findByApplicationId">;
   readonly salesData: Pick<SalesDataProviderPort, "getPeriods">;
+  /**
+   * The campaign's distributions, read to derive each contributor's accumulator (#580): what has
+   * already been paid is the sum of the `confirmed` distributions whose recipient is that
+   * contributor. Read-only on purpose — the accumulator is derived from the existing ledger of
+   * recipient rows, so no table, column or migration is needed.
+   */
+  readonly distributions: Pick<RevenueShareDistributionCampaignReadPort, "listByCampaign">;
 }
 
 export type DeriveRevenueShareDistributionErrorCode =
@@ -78,6 +101,8 @@ export type DeriveRevenueShareDistributionErrorCode =
   | "no_contributors"
   | "contributions_incomplete"
   | "obligation_rounds_to_zero"
+  /** Every contributor reached their 1.5× cap, so the agreement is finished (S3.7). */
+  | "obligation_completed"
   | "unavailable";
 
 export interface DerivedRevenueShareDistribution {
@@ -202,17 +227,33 @@ export async function deriveRevenueShareDistribution(
 
   if (totalStroops === 0n) return fail("obligation_rounds_to_zero");
 
+  // Each contributor's accumulator (#580): what has already been paid to them, derived from the
+  // campaign's confirmed distributions. A failed read is `unavailable`, never a silent 0n — a
+  // zero accumulator is what would pay a capped contributor all over again.
+  const distributions = await deps.distributions.listByCampaign(input.campaignId);
+
+  if (!distributions.ok) return fail("unavailable");
+
+  const distributedByAccount = confirmedStroopsByAccount(distributions.value);
+
   const allocation = allocateRevenueShare({
+    rule: demoRevenueShareRule,
     obligationMinorUnits: totalStroops,
     contributors: funded.map((entry) => ({
       contributorId: entry.investorAccountId,
-      contributionMinorUnits: entry.amountStroops
+      contributionMinorUnits: entry.amountStroops,
+      distributedMinorUnits: distributedByAccount.get(entry.investorAccountId) ?? 0n
     }))
   });
 
   if (!allocation.ok) return fail("invalid_sales_data");
 
-  const recipients: DistributionRecipient[] = allocation.value
+  // The terminal state (S3.7): every contributor reached their 1.5× cap, so the agreement is
+  // finished. Say so instead of deriving an all-zero distribution a caller would read as "nothing
+  // this period".
+  if (allocation.value.agreementComplete) return fail("obligation_completed");
+
+  const recipients: DistributionRecipient[] = allocation.value.allocations
     .filter((entry) => entry.allocationMinorUnits > 0n && entry.contributorId !== input.sourceAccountId)
     .map((entry) => ({ accountId: entry.contributorId, amountStroops: entry.allocationMinorUnits }));
 
@@ -247,6 +288,33 @@ export async function deriveRevenueShareDistribution(
 interface ReportedPeriod {
   readonly period: string;
   readonly amountArs: number;
+}
+
+/**
+ * Each contributor's accumulator (#580), derived from the campaign's persisted
+ * distributions rather than stored as new state (`S4`). The repository returns one row per
+ * recipient with `(accountId, amountStroops)`, and the contributor id is that same Stellar
+ * account id, so an exact string match is the join; a recipient that matches no contributor
+ * simply is never read back. Only `confirmed` distributions count — `submitted` has not moved
+ * money and `failed` never will — which is why no table, column or migration was needed.
+ */
+function confirmedStroopsByAccount(
+  records: readonly RevenueShareDistributionRecord[]
+): ReadonlyMap<string, bigint> {
+  const totals = new Map<string, bigint>();
+
+  for (const record of records) {
+    if (record.state !== "confirmed") continue;
+
+    for (const recipient of record.recipients) {
+      totals.set(
+        recipient.accountId,
+        (totals.get(recipient.accountId) ?? 0n) + recipient.amountStroops
+      );
+    }
+  }
+
+  return totals;
 }
 
 /** `YYYY-MM` sorts lexicographically, so the greatest string is the latest month. */

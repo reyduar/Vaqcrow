@@ -30,7 +30,7 @@ const derivedRecipients: readonly DistributionRecipient[] = [
 ];
 
 const derivation: RevenueShareDerivation = {
-  ruleVersion: "RS-2026-01",
+  ruleVersion: "RS-2026-02",
   rateBps: 450,
   period: "2026-08",
   salesArs: "3745800",

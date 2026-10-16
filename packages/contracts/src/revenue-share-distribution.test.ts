@@ -84,7 +84,7 @@ const validPrepareCommand: {
 
 /** The canonical example: 2026-08, 3,745,800 ARS x 450 bps floor = 168,561 ARS. */
 const validDerivation = {
-  ruleVersion: "RS-2026-01",
+  ruleVersion: "RS-2026-02",
   rateBps: 450,
   period: "2026-08",
   salesArs: "3745800",
