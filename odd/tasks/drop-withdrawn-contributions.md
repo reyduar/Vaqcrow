@@ -42,3 +42,14 @@ Ruta inline: no se dispara ningún writer, porque las unidades se encadenan y no
   - **Excepción RED:** el test «a vault read throws» se escribió junto con su guard, así que no hay corrida RED observada.
   - **GREEN:** caso de uso 20/20, ruta 11/11. Suite de la API 3208/3208, lint y typecheck limpios.
   - Seguridad (OWASP Top 10:2025, A01): la cuenta sale del principal verificado y nunca del cliente; la ruta sigue siendo `INVERSOR`-only. A10: los fallos de la red caen en lo guardado y nunca se presentan como un 0.
+- **L6** (2026-10-16) — T4: `pnpm run verify` → exit 0 (web 2500, API 3208, contracts 759, `no dependency violations`). El verificador independiente revisó el candidato `871cefa` contra la base `7eb51b7`:
+  - **Veredictos:** S1, S2 y S3 PASS. S4 y S5 PARTIAL, solo porque faltaban la migración remota y la evidencia.
+  - **Probes propios en una copia aparte:** el guard usa el `lastObservedAt` de la contribución; si el update de la campaña no se aplica, no hay delete; las `settled` nunca se leen; sin `vault` la salida es idéntica a la base.
+  - **Invariante:** los tests de la base contra el código nuevo pasan 45/46. El único que falla es el del 0, reemplazado a propósito.
+  - **Bloqueante de entrega, aceptado:** ahora un `0` hace un DELETE, también para un inversor conectado que nunca aportó, en cada `GET /campaigns/:id?investor=`. Si la API sale antes del grant remoto, esas lecturas dan 42501 → 503, cuando en la base daban 200. **Orden:** el grant va al remoto **antes** del merge. Un grant de más no afecta a la API vieja. Es el orden inverso al del seed del blog.
+  - **Advisories:**
+    1. `portfolio.sql` test 49 cuenta sin filtro sobre la base local con datos de demo. Es ambiental y ya pasaba en la base.
+    2. El borrado también corrige otras vistas: `backers` en `marketplace_campaign_detail`, las vistas del reporte del inversor y las `my_campaigns` de la PyME. Va en la evidencia.
+    3. Para quien nunca aportó, el DELETE es un no-op de más por lectura. Es inofensivo.
+    4. El reconcile no es atómico entre tablas: si el delete falla, la campaña ya avanzó. El guard `lte` deja que la siguiente lectura lo cure.
+    5. Hay milisegundos de desfase entre `readCampaign` y `readContribution`; lo cubre el mismo guard.
