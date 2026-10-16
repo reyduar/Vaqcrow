@@ -1,4 +1,3 @@
-import { HelpAssistant } from "@/presentation/components/landing/help-assistant";
 import { CompanyWorkspace } from "@/presentation/components/pyme-onboarding/company-workspace";
 
 /**
@@ -10,15 +9,9 @@ import { CompanyWorkspace } from "@/presentation/components/pyme-onboarding/comp
  * There is no connect-wallet popup (owner decision): Freighter is required at
  * the wizard's review step.
  *
- * The floating help assistant (#535) is mounted here so a signed-in PyME can
- * ask about the platform without leaving the page; it is the same client island
- * the landing mounts and reuses its chat.
+ * The floating help assistant comes from the `(app)` layout, which mounts it on
+ * every signed-in page (#570; #535 first mounted it here).
  */
 export default function CompanyPage() {
-  return (
-    <>
-      <CompanyWorkspace />
-      <HelpAssistant />
-    </>
-  );
+  return <CompanyWorkspace />;
 }
