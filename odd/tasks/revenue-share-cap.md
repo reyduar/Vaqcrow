@@ -29,10 +29,10 @@ Objetivo: la obligación de revenue share termina para cada inversor cuando lo d
 ## Tasks
 
 - **T1** | S1,S2 | inline | Bitácora y su espejo en Engram — **hecho**.
-- **T2** | S3,S4 | delegated | Dominio: tope por aporte, truncado, redistribución, invariante nuevo, estado terminal y la versión de regla, con tests RED→GREEN — **en curso**.
-- **T3** | S4 | pendiente | API: derivar el acumulador de las distribuciones confirmadas y surfacear el estado terminal.
-- **T4** | S5,S6 | pendiente | Copia: las cuatro superficies, la versión citada y el párrafo de dilución de #579.
-- **T5** | S2,S6 | pendiente | Verificación (`pnpm run verify`, denylist, lint de corpus) y commits por unidad de trabajo.
+- **T2** | S3,S4 | delegated | Dominio: tope por aporte, truncado, redistribución, invariante nuevo, estado terminal y la versión de regla, con tests RED→GREEN — **hecho**. RED 14 fallas/129 pasan → GREEN 148; typecheck limpio; boundaries sin violaciones.
+- **T3** | S4 | delegated | API: derivar el acumulador de las distribuciones confirmadas y surfacear el estado terminal — **hecho**. RED 4 fallas/37 pasan → GREEN; API 3244 pasan (164 archivos); `obligation_completed` → 409. El worker frenó primero en el límite de superficies (el padre no había derivado que el tipo de dependencias rompe `revenue-share-distribution-sequence.test.ts`) y no improvisó: el padre corrigió la superficie y decidió la unidad.
+- **T4** | S5,S6 | delegated | Copia: las cuatro superficies, la versión citada y el párrafo de dilución de #579 — **hecho** (la última parte del párrafo de #579 queda para el issue, que es donde vive). Incluye retirar la frase que el tope volvió falsa, la tabla nueva del blog y las citas vivas fuera de la superficie original. El worker detectó un typo del padre (`vaqcrow-sobre-stellar.md`) y editó el archivo correcto.
+- **T5** | S2,S6 | inline + verifier | Verificación y commits por unidad de trabajo — **hecho**. `pnpm run verify` EXIT=0 en dos corridas (la primera falló por un `no-fallthrough` real que el lint encontró y el padre corrigió). Verificador independiente: **sin blockers**, con grilla exhaustiva + 5.000 casos de fuzz; sus probes quedaron commiteados como `packages/domain/src/revenue-share.cap.test.ts`.
 
 ## Log
 
@@ -46,4 +46,12 @@ Objetivo: la obligación de revenue share termina para cada inversor cuando lo d
 
 **L5 (deuda detectada).** El cuerpo de #580 afirma que el acumulador es estado nuevo. Verificado lo contrario en L3: el issue se corrige cuando se actualice.
 
-**Próximo paso.** Cerrar T2 (dominio) y seguir con T3 (API).
+**L6 (decisión del owner, 2026-10-16).** «Apilar #580 sobre #579 (recomendado)»: la rama de #580 se rebasó sobre `894f6c5`, así que #579 mergea antes y el PR de #580 queda encadenado. Motivo: el artículo de blog y la sección de wiki que la frase falsa habitaba sólo existían en la rama sin mergear de #579; si #580 mergeaba primero, #579 la reintroducía. El rebase salió **sin conflictos** (7 commits: 4 de #579 + 3 de #580, más el probe del verificador).
+
+**L7 (verificación independiente).** Verificador `gentle-ai-verify` sobre `894f6c5..`: **sin blockers**. Grilla exhaustiva y 5.000 casos de fuzz confirman que el tope se cumple por construcción (`min(tentativa, restante)` en cada pago), que el invariante `totalAllocated == min(obligation, Σrestante)` vale en sus dos ramas, que el acumulador cuenta sólo `confirmed` y une por igualdad exacta de string, y que el fallo de lectura es error, nunca cero. La verificación **no** cubrió: las fuentes externas de S2 (sin red), `test:db` (fallas preexistentes), el límite de períodos concurrentes, e2e ni UI renderizada.
+
+**L8 (advisories del verificador, sin resolver).** (a) Los documentos de `docs/planning/*-evidence.md` conservan descripciones en presente de la regla como `RS-2026-01`: el padre los dejó como registro histórico, y el verificador señala que la regla de alineación de `AGENTS.md` los vuelve obsoletos — es una decisión abierta, no un error. (b) `docs/wiki/revenue-share.md` dice «el acuerdo **sí tiene un total**» donde el blog dice «sí tiene un tope»: «total» es más laxo, aunque la frase siguiente lo acota. (c) `buildCappedAllocations` tiene un `break` defensivo inalcanzable; no es un defecto.
+
+**L9 (deuda del padre).** La delegación de T3 no pidió `lint` entre los comandos de verificación, y el `no-fallthrough` del mapa de estados pasó `test` y `typecheck` sin ser visto: lo encontró `pnpm run verify` recién en la corrida del padre. Lección: pedir siempre el gate completo a los writers, no un subconjunto.
+
+**Próximo paso.** Empujar la pila (#579 y después #580), corregir el cuerpo de #580 (el acumulador **no** es estado nuevo, L3), reescribir el párrafo de dilución de #579 (L4), y abrir los issues de los hallazgos: la contradicción de `AGENTS.md` con `/help`, el término prohibido en `docs/wiki/index.md:10`, y los `docs/planning/*-evidence.md` de L8a.
