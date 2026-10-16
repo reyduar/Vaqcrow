@@ -226,7 +226,7 @@ describe("Portfolio container", () => {
   it("reads the connected account's balance from Horizon by default (#557)", async () => {
     renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY) });
 
-    expect(await screen.findByText("777,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("777,00 XLM")).toBeInTheDocument();
     expect(horizonBalance.getBalance).toHaveBeenCalledWith(CONNECTED_KEY);
   });
 
@@ -236,14 +236,14 @@ describe("Portfolio container", () => {
       .mockResolvedValueOnce({ ok: true, balanceXlm: "0.0000000" })
       .mockResolvedValue({ ok: true, balanceXlm: "10000.0000000" });
     renderPortfolio({ port: okPort(), connection: connection(CONNECTED_KEY), balance: { getBalance } });
-    expect(await screen.findByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("0,00 XLM")).toBeInTheDocument();
     expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
 
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    expect(await screen.findByText("10.000,0000000 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("10.000,00 XLM")).toBeInTheDocument();
     expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
   });
 });

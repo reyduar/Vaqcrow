@@ -139,7 +139,7 @@ describe("CompanyWorkspace", () => {
     const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
     expect(within(card).getByText("STELLAR TESTNET")).toBeInTheDocument();
     expect(within(card).getByText("Saldo disponible")).toBeInTheDocument();
-    expect(within(card).getByText("12,5000000 XLM")).toBeInTheDocument();
+    expect(within(card).getByText("12,50 XLM")).toBeInTheDocument();
     expect(within(card).getByText("Activo de prueba sin valor económico")).toBeInTheDocument();
     expect(within(card).getByText("GBXK…7Q2M")).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: /explorador de Stellar Testnet/i })).toHaveAttribute(
@@ -154,7 +154,7 @@ describe("CompanyWorkspace", () => {
     render(<CompanyWorkspace kyc={new FakeKyc()} connection={connection} myCampaigns={okMyCampaigns()} />);
 
     const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
-    expect(await within(card).findByText("777,0000000 XLM")).toBeInTheDocument();
+    expect(await within(card).findByText("777,00 XLM")).toBeInTheDocument();
     expect(horizonBalance.getBalance).toHaveBeenCalledWith(PUBLIC_KEY);
   });
 
@@ -166,7 +166,7 @@ describe("CompanyWorkspace", () => {
       <CompanyWorkspace kyc={new FakeKyc()} connection={connection} balance={balance} myCampaigns={okMyCampaigns()} />
     );
     const card = await screen.findByRole("region", { name: "Freighter conectada de forma no custodial" });
-    expect(within(card).getByText("0,0000000 XLM")).toBeInTheDocument();
+    expect(within(card).getByText("0,00 XLM")).toBeInTheDocument();
     expect(screen.getByText(/todavía no tiene XLM de Testnet/i)).toBeInTheDocument();
 
     balance.seedBalance("10000.0000000");
@@ -174,7 +174,7 @@ describe("CompanyWorkspace", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    expect(await within(card).findByText("10.000,0000000 XLM")).toBeInTheDocument();
+    expect(await within(card).findByText("10.000,00 XLM")).toBeInTheDocument();
     expect(screen.queryByText(/todavía no tiene XLM de Testnet/i)).not.toBeInTheDocument();
   });
 

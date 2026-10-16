@@ -121,9 +121,9 @@ describe("adminEvidencePath", () => {
 });
 
 describe("formatters", () => {
-  it("renders stroops as XLM with the template's seven decimals", () => {
-    expect(formatEvidenceXlm("2505000000")).toBe("250,5000000 XLM");
-    expect(formatEvidenceXlm("0")).toBe("0,0000000 XLM");
+  it("renders stroops as XLM with 2 decimals (#572)", () => {
+    expect(formatEvidenceXlm("2505000000")).toBe("250,50 XLM");
+    expect(formatEvidenceXlm("0")).toBe("0,00 XLM");
   });
 
   it("renders a timestamp as a deterministic UTC date and time", () => {
@@ -178,8 +178,8 @@ describe("buildAdminEvidenceChain", () => {
       { label: "Hash del despliegue", value: HASH_A, explorerUrl: FULL.vault?.deployExplorerUrl }
     ]);
     expect(fact(deployment, "Estado de la bóveda")).toBe("Fondeo abierto");
-    expect(fact(deployment, "Meta")).toBe("1.000,0000000 XLM");
-    expect(fact(deployment, "Aportado")).toBe("250,5000000 XLM");
+    expect(fact(deployment, "Meta")).toBe("1.000,00 XLM");
+    expect(fact(deployment, "Aportado")).toBe("250,50 XLM");
     expect(fact(deployment, "Plazo")).toBe("30/11/2026 12:00 UTC");
   });
 
@@ -216,7 +216,7 @@ describe("buildAdminEvidenceChain", () => {
     expect(contributions.status).toMatchObject({ label: "1 confirmado en el ledger", tone: "success" });
     expect(contributions.items).toHaveLength(1);
     const [item] = contributions.items!;
-    expect(item!.heading).toBe("250,5000000 XLM");
+    expect(item!.heading).toBe("250,50 XLM");
     expect(item!.facts).toEqual([
       { term: "Inversor", value: INVESTOR, kind: "account" },
       { term: "Observado", value: "08/10/2026 10:05 UTC" }
@@ -230,7 +230,7 @@ describe("buildAdminEvidenceChain", () => {
     const [confirmed, submitted] = distributions.items!;
     expect(confirmed!.heading).toBe("Agosto 2026");
     expect(confirmed!.status).toMatchObject({ label: "Confirmada", tone: "success" });
-    expect(fact(confirmed!, "Total")).toBe("15,0000000 XLM");
+    expect(fact(confirmed!, "Total")).toBe("15,00 XLM");
     expect(fact(confirmed!, "Destinatarios")).toBe("3");
     expect(fact(confirmed!, "Confirmada")).toBe("01/09/2026 09:00 UTC");
     expect(fact(confirmed!, "Ledger")).toBe("123456");
@@ -303,7 +303,8 @@ describe("buildAdminEvidenceChain", () => {
     expect(distributions.empty).toEqual(EVIDENCE_COPY.distributionsEmpty);
 
     const serialized = JSON.stringify(chain);
-    expect(serialized).not.toContain("0,0000000");
+    // A missing amount never renders as a zero XLM amount.
+    expect(serialized).not.toMatch(/(^|[^\d.])0,00 XLM/);
   });
 
   it("marks an approval without a limit as «Sin dato»", () => {

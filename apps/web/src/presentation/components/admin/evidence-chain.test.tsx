@@ -134,7 +134,7 @@ describe("EvidenceChain", () => {
     const contributions = stepNamed("4 · Aportes");
     const rows = within(contributions).getAllByRole("listitem");
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]!).getByRole("heading", { level: 3, name: "250,5000000 XLM" })).toBeTruthy();
+    expect(within(rows[0]!).getByRole("heading", { level: 3, name: "250,50 XLM" })).toBeTruthy();
     expect(within(rows[0]!).queryByRole("link")).toBeNull();
     expect(within(rows[0]!).getByTitle(HASH_CONTRIBUTION)).toBeTruthy();
     expect(within(rows[0]!).getByTitle(INVESTOR)).toBeTruthy();

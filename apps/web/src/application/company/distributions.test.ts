@@ -80,7 +80,7 @@ describe("toDistributionRows", () => {
       distributionId: "11111111-1111-4111-8111-111111111111",
       periodLabel: "Agosto 2026",
       amountArs: "ARS 168.561",
-      amountXlm: "≈ 1,2500000 XLM",
+      amountXlm: "≈ 1,25 XLM",
       stateLabel: "Enviada · pendiente de confirmación",
       tone: "caution",
       transactionHash: "a".repeat(64),

@@ -38,7 +38,7 @@ describe("ReportContributionTransactions (#438/WU5)", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("02/09/2026");
     expect(rows[0]).toHaveTextContent("Café Tostadero del Paraná");
-    expect(rows[0]).toHaveTextContent("100,0000000 XLM");
+    expect(rows[0]).toHaveTextContent("100,00 XLM");
     expect(
       within(rows[0]!).getByRole("link", {
         name: `Ver en el explorador: hash de la transacción ${HASH_A} (abre en una pestaña nueva)`

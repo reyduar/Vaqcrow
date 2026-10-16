@@ -193,7 +193,7 @@ describe("CompanyDashboard", () => {
     renderDashboard({ port: okPort() });
 
     expect(await screen.findByText("ARS 168.561 ·")).toBeInTheDocument();
-    expect(screen.getByText("≈ 1,2500000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("≈ 1,25 XLM")).toBeInTheDocument();
     expect(screen.getByText("Agosto 2026")).toBeInTheDocument();
     expect(screen.getAllByText("Enviada · pendiente de confirmación").length).toBeGreaterThan(0);
   });

@@ -141,6 +141,17 @@ describe("CampaignWithdraw: the review modal", () => {
     expect(within(dialog).getByText(TRUNCATED_VAULT)).toBeInTheDocument();
     expect(within(dialog).getByText(VAULT)).toHaveClass("sr-only");
   });
+
+  it("shows the exact amount to sign, never the 2-decimal display rounding (#572)", async () => {
+    renderWithdraw({
+      gateway: createGateway({ getCampaign: vi.fn().mockResolvedValue(snapshot({ investorContributionStroops: 99_983_398_722n })) })
+    });
+    fireEvent.click(await enabledWithdraw());
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("9998.3398722")).toBeInTheDocument();
+    expect(within(dialog).queryByText(/9\.998,34/)).not.toBeInTheDocument();
+  });
 });
 
 describe("CampaignWithdraw: after signing", () => {

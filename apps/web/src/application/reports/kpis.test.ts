@@ -34,16 +34,16 @@ describe("buildReportKpis", () => {
     expect(kpis.map((kpi) => kpi.source)).toEqual(["TESTNET", "SIMULADO", "TESTNET", "SIMULADO"]);
   });
 
-  it("formats every XLM value with seven decimals", () => {
+  it("formats every XLM value with 2 decimals (#572)", () => {
     const kpis = buildReportKpis(report());
-    expect(kpis[0]!.value).toBe("850,0000000 XLM");
-    expect(kpis[1]!.value).toBe("17,3750000 XLM");
+    expect(kpis[0]!.value).toBe("850,00 XLM");
+    expect(kpis[1]!.value).toBe("17,38 XLM");
   });
 
   it("shows the pending count as the value and its XLM amount in the note", () => {
     const kpis = buildReportKpis(report());
     expect(kpis[2]!.value).toBe("1");
-    expect(kpis[2]!.note).toBe("4,0850000 XLM · enviada");
+    expect(kpis[2]!.note).toBe("4,09 XLM · enviada");
   });
 
   it("never turns a null pending amount into a zero", () => {
@@ -60,7 +60,7 @@ describe("buildReportKpis", () => {
       report({ pendingDistributionsCount: 2, pendingDistributionsXlm: "9.0000000" })
     );
     expect(kpis[2]!.value).toBe("2");
-    expect(kpis[2]!.note).toBe("9,0000000 XLM · enviadas");
+    expect(kpis[2]!.note).toBe("9,00 XLM · enviadas");
   });
 
   it("describes the campaigns count without inventing a breakdown", () => {

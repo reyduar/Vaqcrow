@@ -49,7 +49,7 @@ describe("PortfolioDistributions", () => {
   it("renders a confirmed row with amount, joined detail and state label", () => {
     render(<PortfolioDistributions distributions={[distribution()]} />);
 
-    expect(screen.getByText("4,1200000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("4,12 XLM")).toBeInTheDocument();
     expect(screen.getByText("Café Tostadero del Paraná · 2026-08")).toBeInTheDocument();
     expect(screen.getByText("Confirmada")).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe("PortfolioDistributions", () => {
     render(<PortfolioDistributions distributions={[distribution({ campaignName: null, period: null })]} />);
 
     expect(screen.queryByText(/·/)).not.toBeInTheDocument();
-    expect(screen.getByText("4,1200000 XLM")).toBeInTheDocument();
+    expect(screen.getByText("4,12 XLM")).toBeInTheDocument();
   });
 
   it("renders only the period when the campaign name is absent", () => {

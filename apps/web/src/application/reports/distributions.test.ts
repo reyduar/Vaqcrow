@@ -39,7 +39,7 @@ describe("toDistributionRows", () => {
       date: "26/09/2026",
       pyme: "Café Tostadero del Paraná",
       sales: "ARS 3.870.000",
-      share: "4,0850000 XLM",
+      share: "4,09 XLM",
       state: "Enviada · pendiente",
       tone: "caution"
     });
