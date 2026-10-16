@@ -34,7 +34,7 @@ export const INVESTOR_GUIDE: Guide = Object.freeze({
       headingId: "revenue-t",
       index: "01",
       title: "Qué es el revenue share",
-      body: "Una PyME formal recibe capital y lo devuelve con una participación contractual en sus ingresos: un porcentaje de sus ventas mensuales declaradas, no una cuota fija ni un interés. Si vende más, distribuye más; si vende menos, distribuye menos.",
+      body: "Una PyME formal recibe capital y lo devuelve con una participación contractual en sus ingresos: un porcentaje de sus ventas mensuales declaradas, no una cuota fija ni un interés. Si vende más, distribuye más; si vende menos, distribuye menos. La participación tiene un tope: cada inversor cobra hasta llegar a 1,5 veces lo que aportó, y cuando todos llegan al tope el acuerdo termina.",
       cards: Object.freeze([
         Object.freeze({
           icon: "receipt-outline",
@@ -50,6 +50,21 @@ export const INVESTOR_GUIDE: Guide = Object.freeze({
           icon: "trending-down-outline",
           title: "Sin retorno garantizado",
           body: "Nada asegura que la PyME venda lo suficiente para devolver el capital aportado."
+        }),
+        Object.freeze({
+          icon: "checkmark-circle-outline",
+          title: "Tope de 1,5×",
+          body: "Cada inversor cobra hasta que lo que ya recibió llega a 1,5 veces lo que aportó. Al llegar a su tope deja de cobrar; cuando llegan todos, el acuerdo termina y no queda nada por firmar."
+        }),
+        Object.freeze({
+          icon: "calendar-outline",
+          title: "Plazo de 3 a 5 años",
+          body: "Si las ventas fueran tan bajas que el tope nunca se alcanza, el mercado de este financiamiento prevé un plazo de 3 a 5 años tras el cual el saldo pendiente queda exigible. La demo no cobra ese saldo: es un límite de la demo, no una cobranza real."
+        }),
+        Object.freeze({
+          icon: "information-circle-outline",
+          title: "El tope es el precio, no una tasa",
+          body: "El tope no es una tasa de interés: es el precio del financiamiento. Cuanto más rápido vende la PyME, antes lo alcanza y más caro le sale el dinero por año. Del lado del inversor, lo que recibe se corta en 1,5 veces lo aportado: por eso el revenue share no es una parte de la empresa."
         })
       ])
     }),
@@ -153,7 +168,7 @@ export const INVESTOR_GUIDE: Guide = Object.freeze({
         salesLabel: "Ventas declaradas de agosto",
         salesTag: "SIMULADO",
         salesValue: "ARS 3.745.800,00",
-        ruleLabel: "Participación (regla RS-2026-01)",
+        ruleLabel: "Participación (regla RS-2026-02)",
         ruleValue: "× 4,5 %",
         roundingLabel: "Redondeo",
         roundingValue: "2 decimales, al par",

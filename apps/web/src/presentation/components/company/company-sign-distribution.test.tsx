@@ -50,7 +50,7 @@ const prepared = {
   applicationId: APPLICATION_ID,
   campaignId: CAMPAIGN_ID,
   derivation: {
-    ruleVersion: "RS-2026-01",
+    ruleVersion: "RS-2026-02",
     rateBps: 450,
     period: "2026-08",
     salesArs: "3745800",

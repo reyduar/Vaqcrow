@@ -28,7 +28,7 @@ const EXPLORER_URL = `https://stellar.expert/explorer/testnet/tx/${TRANSACTION_H
 const FIXED_EXPIRES_AT = "2030-01-01T00:00:00.000Z";
 const FIXED_TIMESTAMP = "2026-09-30T12:00:00.000Z";
 
-const RULE_VERSION = "RS-2026-01";
+const RULE_VERSION = "RS-2026-02";
 const RATE_BPS = 450;
 const APPROVED_LIMIT_ARS = 5000000n;
 /** Periods of the demo series that cannot be used, reported rather than hidden. */

@@ -34,7 +34,8 @@ export const DERIVATION_FAILURE_REASONS = [
   "invalid_sales_data",
   "no_contributors",
   "contributions_incomplete",
-  "obligation_rounds_to_zero"
+  "obligation_rounds_to_zero",
+  "obligation_completed"
 ] as const;
 
 export type DerivationFailureReason = (typeof DERIVATION_FAILURE_REASONS)[number];
