@@ -95,6 +95,9 @@ const BLOG_TEXT = collectStrings(BLOG_COPY).join("\n");
  */
 const BLOG_ARTICLE_SOURCE = "vaqcrow-sobre-stellar.md";
 const BLOG_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(BLOG_ARTICLE_SOURCE));
+/** The Freighter + Friendbot walkthrough (#558) is a public Blog article too. */
+const FREIGHTER_ARTICLE_SOURCE = "freighter-y-friendbot-paso-a-paso.md";
+const FREIGHTER_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(FREIGHTER_ARTICLE_SOURCE));
 /**
  * Feature #499: the help assistant's web-side chrome (labels, placeholders and
  * the failure/access strings) is public copy too, so it runs through the same
@@ -111,6 +114,7 @@ const PUBLIC_TEXT = [
   HOW_IT_WORKS_TEXT,
   BLOG_TEXT,
   BLOG_ARTICLE_TEXT,
+  FREIGHTER_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");
 

@@ -14,8 +14,8 @@ Objetivo: publicar una guía paso a paso (post del blog + página de la wiki del
 
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
-| T1 | S3 | inline | pendiente | — |
-| T2 | S1, S4 | inline | pendiente | — |
+| T1 | S3 | inline | hecho | `55de575` — RED 4 tests de `shell-nav.test.ts`; GREEN y `app-header.test.tsx` actualizado (33/33) |
+| T2 | S1, S4 | inline | hecho (remoto pendiente) | ver L3 |
 | T3 | S2, S4 | inline | pendiente | — |
 | T4 | S5 | inline | pendiente | — |
 
@@ -25,3 +25,5 @@ Ruta inline en todas: ningún disparador de writer (no hay unidades paralelas pe
 
 - **L1** (2026-10-15) — Pedido original (hallazgo del segundo test manual), verbatim: «Quiero que me crees un articulo en el blog y tambien para la wiki(para el asistente de chatbot) para para guiar al usuario como tiene que agregar una wallet en Chrome y como crear una cuenta, ademas como usar el saldo de Friendbot, ademas quiero que agregues como un nuevo enlace en el navbar de todos los roles uno nuevo llamada Blog y que este siempre antes de Acerca de.»
 - **L2** (2026-10-15) — Descubrimiento: el `.md` solo no alcanza para publicar el post. La API lista los posts desde `public.blog_post` (`list-blog-posts.ts`) y lee el cuerpo del Markdown que viene empaquetado en su imagen (`apps/api/Dockerfile`, `docs/guides/blog`). Por eso hace falta una migración de seed, como `20261014180000`. Hay un orden que cuidar: si el seed se aplica al remoto antes de que la API se vuelva a desplegar con el `.md` nuevo, `/blog` en producción lista un post que todavía no se puede abrir.
+- **L3** (2026-10-15) — T2: post `docs/guides/blog/freighter-y-friendbot-paso-a-paso.md`, migración `20261015200000_seed_blog_post_freighter_article.sql` y test pgTAP `supabase/tests/blog_post_freighter_seed.sql`. RED web: `public-copy-prohibited-terms.test.ts` falló con `ENOENT` hasta que existió el post; GREEN 21/21 (el post pasa la denylist pública: sin «asegur», «garantiz», «producción», «retorno»). RED pgTAP: 5/6 en rojo (no había fila); `supabase migration up --local` → GREEN 6/6. Fallas de `pnpm run test:db` **ajenas y previas** a la migración (ya estaban en la corrida RED): «one row per contribution», «only the two published campaigns are listed/exposed» y similares, que cuentan campañas y aportes y chocan con los datos de demo que hay en la base local (no hay reset entre ensayos, Opción A). El remoto queda pendiente por el orden descrito en L2.
+- **L4** (2026-10-15) — Advisory (sin cambio): la copy de `/company` dice «Tu wallet necesita XLM de Testnet para crear la bóveda», pero la guía operativa dice que el despliegue lo firma y lo paga la plataforma. El post no repite ninguna de las dos afirmaciones y solo dice para qué usa el saldo cada rol.
