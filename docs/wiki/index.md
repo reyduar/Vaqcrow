@@ -9,6 +9,7 @@ Una línea por página, en el orden en que conviene leerlas. El enlace y el nomb
 - [distribucion-mensual](distribucion-mensual.md): el reparto del revenue share mes a mes y quién firma.
 - [boveda-soroban](boveda-soroban.md): qué es la bóveda, qué garantiza y cómo se despliega.
 - [freighter-y-firmas](freighter-y-firmas.md): quién firma qué y por qué la clave privada nunca sale de la wallet.
+- [freighter-y-friendbot](freighter-y-friendbot.md): cómo instalar Freighter en Chrome, crear la cuenta, pasarla a Testnet y fondearla con Friendbot, y qué hacer si el saldo no aparece.
 - [mi-campana](mi-campana.md): el área de la PyME y lo que puede hacer ahí.
 - [explorar-pymes](explorar-pymes.md): el marketplace público de campañas.
 - [mi-portafolio](mi-portafolio.md): el área del inversor, sus aportes y su evidencia.
