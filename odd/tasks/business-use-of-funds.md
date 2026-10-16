@@ -60,3 +60,13 @@ Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pas�
     - `pnpm run verify` → exit 0: depcruise sin violaciones, contracts 762, api 3237, web 2545, raíz 186.
   - OWASP Top 10:2025: sin hallazgos. A03/A05 (inyección/XSS): el texto del usuario se renderiza solo como nodo de texto de React, sin `dangerouslySetInnerHTML`; hay tests con `<b>` literal en el detalle y en el admin. A01: el draft no lleva owner. LLM Top 10 2026: no aplica, el campo no entra a ningún prompt.
 
+- **L6** (2026-10-16) — Verificador independiente: revisó el candidato `6b4f7f7` en una copia aparte.
+  - **Veredictos:** S2–S5 PASS. S6 PARTIAL, solo por T4 pendiente. **Sin bloqueantes.**
+  - **Suites:** contracts 762, API 3237, web 2545, typecheck limpio, boundaries sin violaciones. `openapi:generate` no genera diff.
+  - **Vista:** el `diff -w` contra `20261008230000` muestra solo `, b.use_of_funds` en el lateral y `company.use_of_funds` como última columna; `security_invoker` y el revoke/grant quedan idénticos.
+  - **API:** `POST /businesses` pasó 11/11 probes. Sin el campo, con `null` o en blanco → 201 sin `useOfFunds`, igual que en la base. Un valor que no es texto → 400 `invalid`. Con 2001 caracteres → `out_of_range`. Una clave desconocida sigue rechazada.
+  - **Contrato:** 21/21 probes. Acepta el payload sin el campo, con `null` y con texto; rechaza las claves desconocidas.
+  - **pgTAP:** `businesses_ownership` 53/53. `marketplace_campaign_detail` 96/98 y `marketplace_campaign` 45/47; lo que falla son conteos afectados por las campañas demo «Panadería Ensayo U9», o sea causas ambientales.
+  - **Advisories:**
+    1. Ningún test de la API sigue `useOfFunds` de punta a punta en el contexto de revisión del admin; hoy funciona porque el record pasa entero.
+    2. El escaneo de términos prohibidos no cubre esta copy; se leyó a mano y no tiene ninguno.
