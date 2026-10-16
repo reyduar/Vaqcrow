@@ -1,6 +1,6 @@
 begin;
 
-select plan(94);
+select plan(98);
 
 -- Account-gated campaign detail read model (Feature #422, WU1).
 --
@@ -51,6 +51,15 @@ select has_column('public', 'marketplace_campaign_detail', 'fx_rate_version', 'h
 select has_column('public', 'marketplace_campaign_detail', 'usd_to_ars', 'has a usd_to_ars column');
 select has_column('public', 'marketplace_campaign_detail', 'stroops_per_usd', 'has a stroops_per_usd column');
 select has_column('public', 'marketplace_campaign_detail', 'sales_months', 'has a sales_months column appended at the end');
+select has_column('public', 'marketplace_campaign_detail', 'use_of_funds', 'has a use_of_funds column (#577)');
+select is(
+  (select attname::text from pg_attribute
+    where attrelid = 'public.marketplace_campaign_detail'::regclass
+      and attnum > 0 and not attisdropped
+    order by attnum desc limit 1),
+  'use_of_funds',
+  'use_of_funds is appended as the last column, after sales_months'
+);
 
 -- The persisted monthly sales series the detail reads (#422/WU2b) -------------
 
@@ -122,6 +131,12 @@ values
   ('72222222-2222-4222-8222-222222222222', 'Panadería Norte', '20222222222', 'Alimentos', 'Córdoba', 'Panadería artesanal', 8000000, 3, timestamptz '2024-04-01 00:00:00+00'),
   ('73333333-3333-4333-8333-333333333333', 'Panadería Oeste', '20333333333', 'Alimentos', 'Mendoza', 'Panadería artesanal', 6000000, 4, timestamptz '2024-05-01 00:00:00+00'),
   ('74444444-4444-4444-8444-444444444444', 'Panadería Sur', '20444444444', 'Alimentos', 'Rosario', 'Panadería artesanal', 7000000, 6, timestamptz '2024-06-01 00:00:00+00');
+
+-- Only company A declares its use of funds (#577); B keeps the NULL of a
+-- business registered before the column existed.
+update public.businesses
+   set use_of_funds = 'Un segundo horno y capital de trabajo para harina'
+ where owner_user_id = '71111111-1111-4111-8111-111111111111';
 
 insert into public.application_review (application_id, state, last_correlation_id)
 values
@@ -290,6 +305,16 @@ select is(
   (select description from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
   'Panadería artesanal con tres locales',
   'the description ("Sobre la PyME") comes from businesses'
+);
+select is(
+  (select use_of_funds from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
+  'Un segundo horno y capital de trabajo para harina',
+  'the use of funds ("Destino de los fondos") comes from businesses'
+);
+select is(
+  (select use_of_funds from public.marketplace_campaign_detail where campaign_id = '72222222-2222-4222-8222-222222222222'),
+  null,
+  'a business without a declared use of funds exposes NULL (the honest "sin dato")'
 );
 select is(
   (select founded_at from public.marketplace_campaign_detail where campaign_id = '71111111-1111-4111-8111-111111111111'),
