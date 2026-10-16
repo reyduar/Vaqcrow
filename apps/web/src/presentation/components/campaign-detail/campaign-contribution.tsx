@@ -166,8 +166,14 @@ export function CampaignContribution({
   const reviewError = review && review.errorBaseline !== error ? error : undefined;
 
   // Close on success: a signing attempt that finished with no error of its own
-  // leaves the updated view on screen. A failure keeps the review open to retry.
-  if (review?.attempted && !isReviewSigning && !reviewError) setReview(null);
+  // leaves the updated view on screen and clears the amount for the next
+  // contribution (#569). A failure keeps the review open and the amount typed,
+  // so a retry needs no retyping.
+  if (review?.attempted && !isReviewSigning && !reviewError) {
+    setReview(null);
+    setAmount("");
+    setAmountError(undefined);
+  }
 
   if (!canContribute) return null;
 
