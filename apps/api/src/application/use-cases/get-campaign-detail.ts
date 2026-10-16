@@ -118,6 +118,8 @@ function toCampaignDetail(record: CampaignDetailRecord, explorerBaseUrl: string 
     sector: record.sector,
     city: record.city,
     description: record.description,
+    // The honest "sin dato" when the PyME declared no use of funds (#577).
+    useOfFunds: record.useOfFunds ?? null,
     foundedAt: record.foundedAt,
     goalArs: Number(record.goalArs),
     raisedArs: toRaisedArs(record.totalStroops, record.rateSnapshot),

@@ -16,7 +16,7 @@ Objetivo: que la PyME cuente en el paso 2 para qué necesita los fondos y que el
 | ID | Specs | Ruta | Estado | Evidencia |
 |---|---|---|---|---|
 | T1 | S3, S4 (DB) | delegada (backstop de contexto) | hecho local (remoto pendiente) | migración + pgTAP |
-| T2 | S3, S4 (API/contrato) | delegada | pendiente | API + contrato |
+| T2 | S3, S4 (API/contrato) | delegada | hecho | API + contrato |
 | T3 | S2, S4, S5 (web) | delegada | pendiente | wizard, detalle, enviado, admin |
 | T4 | S6 | parent + verificador independiente | pendiente | verify, remoto, evidencia |
 
@@ -37,4 +37,12 @@ Ruta: un writer acotado hace T1–T3 en serie, porque la sesión del parent pas�
   - GREEN: `supabase migration up --local` y el mismo comando → `businesses_ownership.sql` 53/53; `marketplace_campaign_detail.sql` 96/98. Fallan solo 51-52 («only the two published campaigns are exposed» / «one row per published campaign…»), los mismos que antes eran 49/50: cuentan filas y la base local tiene campañas demo («Panadería Ensayo U9 …»). No los causa este cambio.
   - OWASP Top 10:2025: sin hallazgos (A01: la columna hereda RLS sin políticas y el grant solo a `service_role`; la vista sigue `security_invoker` y solo `service_role`).
   - El remoto no se tocó; queda para T4.
+- **L4** (2026-10-16) — T1 quedó en el commit `6eb1017`. T2 (API y contrato):
+  - `validateBusinessDraft` suma `useOfFunds` al allow-list `DRAFT_KEYS`. Es opcional: ausente, `null` o en blanco tras el trim → no se guarda (queda `NULL`); un no-string → `invalid`; más de 2000 → `out_of_range`. `description` sigue obligatoria (test que lo fija).
+  - El adapter inserta `use_of_funds` solo si viene y lo lee nullable (se omite en el registro si es `NULL`; un no-texto es fila malformada → `unavailable`), igual que `deadline`.
+  - `campaignDetailSchema.useOfFunds: z.string().trim().min(1).nullable().optional()`. El detalle lo lee con `optionalText` y el caso de uso emite `useOfFunds: record.useOfFunds ?? null`, así que la API nueva siempre lo manda (`null` = «Sin dato»).
+  - Se agregó `supabase-campaign-detail-repository.test.ts`, que no existía, con el mapeo de `use_of_funds`. OpenAPI: el texto de `POST /businesses` y `GET /businesses/mine`; `openapi.json` regenerado (`useOfFunds` en el schema del detalle).
+  - RED: 7 tests de `business.test.ts`, 3 del repositorio de businesses, 2 del contrato, 2 de `get-campaign-detail.test.ts` y 3 del nuevo test del adapter de detalle.
+  - GREEN: `pnpm --filter @vaqcrow/contracts exec vitest run` → 762/762; `pnpm --filter @vaqcrow/api test` → 3237/3237 (164 archivos); `pnpm --filter @vaqcrow/api run typecheck` → limpio.
+  - OWASP Top 10:2025: sin hallazgos. A01: el owner sigue saliendo del principal, nunca del body. A06/A05: clave desconocida → 400, tipo y largo validados, sin eco de texto de Postgres. El texto se guarda tal cual y lo escapa quien lo renderiza (T3).
 

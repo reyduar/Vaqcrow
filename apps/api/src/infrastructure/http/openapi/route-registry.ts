@@ -206,7 +206,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
   "POST /businesses": {
     tag: "PyME",
     summary: "Register (or update) the PyME company",
-    description: "PYME-only. Body validated inline (`name, cuit, sector, city, description, goalArs, revenueShare, deadline?, campaignDurationDays?`).",
+    description: "PYME-only. Body validated inline (`name, cuit, sector, city, description, goalArs, revenueShare, deadline?, campaignDurationDays?, useOfFunds?`). `useOfFunds` is optional free text (trimmed, at most 2000 characters; absent, null or blank stores none).",
     request: INLINE_BODY("Company draft, validated inline."),
     success: { 201: { description: "The stored business." } },
     errors: [400, 401, 503]
@@ -214,7 +214,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, OperationSpec>> = {
   "GET /businesses/mine": {
     tag: "PyME",
     summary: "Read the caller's own company",
-    description: "PYME-only. 404 until a company is registered.",
+    description: "PYME-only. 404 until a company is registered. `useOfFunds` is omitted when the company declared none.",
     success: { 200: { description: "The stored business." } },
     errors: AUTH_READ
   },

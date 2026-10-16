@@ -76,6 +76,35 @@ describe("POST /businesses", () => {
     expect(createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft: { ...draft, deadline } });
   });
 
+  it("accepts an optional use of funds and creates the company with it (#577)", async () => {
+    const useOfFunds = "Un segundo horno y capital de trabajo";
+    const createForOwner = vi.fn().mockResolvedValue({ ok: true, value: { ...record, useOfFunds } });
+
+    const response = await build({ createForOwner }).inject({
+      method: "POST",
+      url: "/businesses",
+      payload: { ...draft, useOfFunds }
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({ business: { ...record, useOfFunds } });
+    expect(createForOwner).toHaveBeenCalledWith({ ownerUserId: OWNER, draft: { ...draft, useOfFunds } });
+  });
+
+  it("answers 400 out_of_range for a use of funds over 2000 characters and never persists (#577)", async () => {
+    const createForOwner = vi.fn();
+
+    const response = await build({ createForOwner }).inject({
+      method: "POST",
+      url: "/businesses",
+      payload: { ...draft, useOfFunds: "a".repeat(2001) }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ errors: [{ field: "useOfFunds", code: "out_of_range" }] });
+    expect(createForOwner).not.toHaveBeenCalled();
+  });
+
   it("answers 400 with the sanitized envelope for a malformed deadline", async () => {
     const createForOwner = vi.fn();
 

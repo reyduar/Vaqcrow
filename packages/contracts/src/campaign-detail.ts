@@ -106,6 +106,13 @@ export const campaignDetailSchema = z
   city: z.string().trim().min(1),
   /** `businesses.description`, the "Sobre la PyME" copy. */
   description: z.string().trim().min(1),
+  /**
+   * `businesses.use_of_funds`, the "Destino de los fondos" copy (#577). `null`
+   * when the PyME declared none (businesses registered before the wizard asked
+   * for it) — the honest "sin dato". Optional so a web that knows the field
+   * still parses the detail of an API deployed before it.
+   */
+  useOfFunds: z.string().trim().min(1).nullable().optional(),
   /** `businesses.created_at`, the "Desde" date. */
   foundedAt: z.iso.datetime({ offset: true }),
   goalArs: z.number().int().nonnegative(),

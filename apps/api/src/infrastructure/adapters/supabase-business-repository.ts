@@ -37,6 +37,7 @@ interface BusinessColumns {
   readonly revenue_share?: unknown;
   readonly deadline?: unknown;
   readonly campaign_duration_days?: unknown;
+  readonly use_of_funds?: unknown;
   readonly created_at?: unknown;
   readonly updated_at?: unknown;
 }
@@ -82,7 +83,10 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
             : { deadline: input.draft.deadline }),
           ...(input.draft.campaignDurationDays === undefined || input.draft.campaignDurationDays === null
             ? {}
-            : { campaign_duration_days: input.draft.campaignDurationDays })
+            : { campaign_duration_days: input.draft.campaignDurationDays }),
+          ...(input.draft.useOfFunds === undefined || input.draft.useOfFunds === null
+            ? {}
+            : { use_of_funds: input.draft.useOfFunds })
         })
         .select()
         .single();
@@ -225,6 +229,13 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       throw new Error("malformed business row");
     }
 
+    // Nullable (#577): a business registered before the wizard asked for it
+    // stores NULL and is read back with the field omitted.
+    const useOfFunds = row.use_of_funds;
+    if (useOfFunds !== undefined && useOfFunds !== null && typeof useOfFunds !== "string") {
+      throw new Error("malformed business row");
+    }
+
     return {
       businessId,
       ownerUserId,
@@ -237,6 +248,7 @@ export class SupabaseBusinessRepository implements BusinessRepositoryPort {
       revenueShare,
       ...(typeof deadline === "string" ? { deadline } : {}),
       ...(campaignDurationDays === undefined ? {} : { campaignDurationDays }),
+      ...(typeof useOfFunds === "string" ? { useOfFunds } : {}),
       createdAt,
       updatedAt
     };

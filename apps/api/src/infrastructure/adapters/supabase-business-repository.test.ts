@@ -196,6 +196,30 @@ describe("SupabaseBusinessRepository.createForOwner", () => {
     expect(result).toEqual({ ok: true, value: { ...EXPECTED, campaignDurationDays: 60 } });
   });
 
+  it("persists and reads the use of funds when the draft carries one (#577)", async () => {
+    const { client, calls } = fakeClient({ data: { ...ROW, use_of_funds: "Un segundo horno" } });
+
+    const result = await new SupabaseBusinessRepository(client).createForOwner({
+      ownerUserId: OWNER,
+      draft: { ...DRAFT, useOfFunds: "Un segundo horno" }
+    });
+
+    expect(calls.insert).toEqual([
+      {
+        owner_user_id: OWNER,
+        name: "Panadería Sol",
+        cuit: "20123456789",
+        sector: "Alimentos",
+        city: "CABA",
+        description: "Panadería artesanal de barrio",
+        goal_ars: 5_000_000,
+        revenue_share: 5,
+        use_of_funds: "Un segundo horno"
+      }
+    ]);
+    expect(result).toEqual({ ok: true, value: { ...EXPECTED, useOfFunds: "Un segundo horno" } });
+  });
+
   it("maps a check violation to invalid_request without leaking Postgres text", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient({ error: pgError("23514") });
@@ -276,6 +300,31 @@ describe("SupabaseBusinessRepository.findByOwner", () => {
   it.each([45, "60", 30.5])("is unavailable when the stored campaign duration is %s", async (stored) => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { client } = fakeClient({ data: { ...ROW, campaign_duration_days: stored } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
+      ok: false,
+      error: { code: "unavailable" }
+    });
+  });
+
+  it("reads a stored use of funds back into the record (#577)", async () => {
+    const { client } = fakeClient({ data: { ...ROW, use_of_funds: "Capital de trabajo" } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
+      ok: true,
+      value: { ...EXPECTED, useOfFunds: "Capital de trabajo" }
+    });
+  });
+
+  it("omits the use of funds when the stored value is NULL (#577)", async () => {
+    const { client } = fakeClient({ data: { ...ROW, use_of_funds: null } });
+
+    expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({ ok: true, value: EXPECTED });
+  });
+
+  it("is unavailable when the stored use of funds is not text (#577)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { client } = fakeClient({ data: { ...ROW, use_of_funds: 42 } });
 
     expect(await new SupabaseBusinessRepository(client).findByOwner(OWNER)).toEqual({
       ok: false,

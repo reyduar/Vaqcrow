@@ -78,6 +78,12 @@ export interface CampaignDetailRecord {
   readonly city: string;
   /** `businesses.description` ("Sobre la PyME"). */
   readonly description: string;
+  /**
+   * `businesses.use_of_funds` ("Destino de los fondos", #577), or `null` when
+   * the PyME declared none. Optional only so a hand-built test fixture can omit
+   * it; absent means the same as `null`.
+   */
+  readonly useOfFunds?: string | null;
   /** `businesses.created_at` ("Desde"). */
   readonly foundedAt: string;
   /** The PyME's goal in whole ARS, from `businesses.goal_ars`. */
