@@ -37,7 +37,7 @@ import type { SmeRequestRepositoryPort } from "../ports/sme-request-repository-p
  *    settled derives, and a chain that cannot be read is `unavailable` rather
  *    than a derivation from a possibly stale state.
  * 2. The obligation is the domain engine's (`demoRevenueShareRule`: 450 bps,
- *    floor, `RS-2026-01`) over **one period**: the latest `reported` period of
+ *    floor, `RS-2026-02`) over **one period**: the latest `reported` period of
  *    the SME's sales feed. The demo story records the next period first, so the
  *    newest reported month is the one being settled. Whole pesos are the
  *    domain's minor unit here; a sales amount that is not an integer is refused
