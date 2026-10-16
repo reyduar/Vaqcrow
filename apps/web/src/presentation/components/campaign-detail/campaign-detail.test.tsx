@@ -158,7 +158,7 @@ describe("CampaignDetail (detail sections)", () => {
     expect(within(aside).getByText("63 % de la meta")).toBeInTheDocument();
     expect(within(aside).getByText("Cierra el 30/11/2026")).toBeInTheDocument();
     expect(within(aside).getByText("4,5 % de ventas")).toBeInTheDocument();
-    expect(within(aside).getByText("RS-2026-01")).toBeInTheDocument();
+    expect(within(aside).getByText("RS-2026-02")).toBeInTheDocument();
     expect(within(aside).getByText("10 XLM de prueba")).toBeInTheDocument();
     expect(within(aside).getByText("Fijado por contrato · inmutable")).toBeInTheDocument();
     expect(

@@ -55,7 +55,7 @@ const prepareBody = {
 };
 
 const derivation: RevenueShareDerivation = {
-  ruleVersion: "RS-2026-01",
+  ruleVersion: "RS-2026-02",
   rateBps: 450,
   period: "2026-08",
   salesArs: "3745800",
@@ -380,6 +380,7 @@ describe("POST /revenue-share-distributions", () => {
     ["campaign_not_settled", 409],
     ["decision_not_approved", 409],
     ["contributions_incomplete", 409],
+    ["obligation_completed", 409],
     ["source_not_sme", 409],
     ["no_eligible_period", 422],
     ["invalid_sales_data", 422],

@@ -123,6 +123,12 @@ const campaign = buildCampaignDependencies(config, {
   applicationReviews: applicationReviewRepository
 });
 
+// The distribution repository, declared before the derivation closure below because the derivation
+// reads the campaign's distributions to derive each contributor's accumulator (#580). Moving it up
+// changes no behaviour: it is still one Supabase-backed instance, shared by the read the
+// derivation performs and the write/confirm surface wired further down.
+const revenueShareDistributionRepository = new SupabaseRevenueShareDistributionRepository(supabase);
+
 // The distribution derivation (T5a): who is paid and how much is a function of
 // the case (settled campaign, approved decision, sales feed), never of the
 // request. Prepare and submit share this one binding.
@@ -143,7 +149,10 @@ const deriveDistribution =
             chain: campaign.chain,
             applicationReviews: applicationReviewRepository,
             smeRequests: smeRequestRepository,
-            salesData: salesDataProvider
+            salesData: salesDataProvider,
+            // The per-contributor accumulator (#580) is derived from the campaign's persisted
+            // confirmed distributions, so the derivation reads them through their repository.
+            distributions: revenueShareDistributionRepository
           },
           input
         );
@@ -155,8 +164,6 @@ const deriveDistribution =
 // block explorer (`StellarConfig`); the route builds a transaction link from it,
 // so the group is omitted there rather than handed a base that would produce a
 // broken link.
-const revenueShareDistributionRepository = new SupabaseRevenueShareDistributionRepository(supabase);
-
 const revenueShareDistribution =
   config.stellar.explorerUrl === undefined || deriveDistribution === undefined
     ? undefined

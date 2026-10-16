@@ -447,7 +447,7 @@ function FundingAside({
     { k: "Distribución", v: "Mensual" },
     { k: "Aporte mínimo", v: "10 XLM de prueba" },
     // The demo has a single fixed rule; the label matches the distribution UI.
-    { k: "Regla de cálculo", v: "RS-2026-01" },
+    { k: "Regla de cálculo", v: "RS-2026-02" },
     { k: "Destino de liquidación", v: "Fijado por contrato · inmutable" }
   ];
 

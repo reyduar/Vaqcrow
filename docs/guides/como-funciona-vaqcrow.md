@@ -66,4 +66,10 @@ El reembolso **no se dispara solo**: alguien tiene que enviar la transacción, y
 
 ## La distribución mensual del revenue share
 
-Una vez que la PyME tiene el capital, devuelve a los inversores una parte de lo que vende. Cada mes la PyME declara sus ventas —en la demo, esas ventas son sintéticas—; el sistema calcula con una **regla versionada** (`RS-2026-01`, en la demo el 4,5 %) y reparte entre los inversores **en proporción a lo que aportó cada uno**. El cálculo es determinístico y la IA no participa. La PyME **firma la transacción en Freighter**; Vaqcrow no la firma ni mueve los fondos. Si la PyME vende menos, se distribuye menos: no hay una cuota fija que se deba pagar igual.
+Una vez que la PyME tiene el capital, devuelve a los inversores una parte de lo que vende. Cada mes la PyME declara sus ventas —en la demo, esas ventas son sintéticas—; el sistema calcula con una **regla versionada** (`RS-2026-02`, en la demo el 4,5 %) y reparte entre los inversores **en proporción a lo que aportó cada uno**. El cálculo es determinístico y la IA no participa. La PyME **firma la transacción en Freighter**; Vaqcrow no la firma ni mueve los fondos. Si la PyME vende menos, se distribuye menos: no hay una cuota fija que se deba pagar igual.
+
+El reparto tiene un **tope**: cada inversor cobra hasta que lo que ya recibió llega a **1,5 veces lo que aportó**. Dicho fácil: si aportaste 100, el acuerdo devuelve hasta 150 —tus 100 de capital y 50 por encima—. Cuando un inversor llega a su tope, ese inversor deja de cobrar; cuando llegan todos, el acuerdo termina y no queda nada por firmar.
+
+El caso inverso también está previsto. Si las ventas son tan bajas que el tope nunca se alcanza, este tipo de financiamiento tiene un **plazo** —de 3 a 5 años— tras el cual el saldo que falta queda exigible. **La demo no lo implementa**: es un límite honesto de la demo, no una cobranza real.
+
+Conviene mirar el tope de frente, porque el mercado lo declara y acá no lo escondemos: el tope **es el precio**, no una tasa de interés. Por eso, cuanto más rápido vende la PyME, antes alcanza su tope y **más caro le sale el dinero por año**. Y del otro lado, lo que recibe el inversor **se corta en 1,5 veces lo aportado**: justamente eso es lo que impide que esto sea una parte de la empresa.

@@ -34,8 +34,16 @@ function period(
   return { period: value, salesMinorUnits, status };
 }
 
-function contributor(contributorId: string, contributionMinorUnits: bigint): RevenueShareContributor {
-  return { contributorId, contributionMinorUnits };
+/**
+ * Builds a contributor; `distributedMinorUnits` defaults to `0n` for the scenarios that predate
+ * the cap. The production field is required on purpose, so only this test helper may default it.
+ */
+function contributor(
+  contributorId: string,
+  contributionMinorUnits: bigint,
+  distributedMinorUnits = 0n
+): RevenueShareContributor {
+  return { contributorId, contributionMinorUnits, distributedMinorUnits };
 }
 
 /** Asserts the exact sanitized failure, so no extra error field can leak. */
@@ -53,26 +61,34 @@ function expectOk<T>(result: RevenueShareResult<T>): T {
 
 describe("rule constants and demo rule", () => {
   it("exposes the canonical rule version, rounding policies and period statuses", () => {
-    expect(REVENUE_SHARE_RULE_VERSION).toBe("RS-2026-01");
+    expect(REVENUE_SHARE_RULE_VERSION).toBe("RS-2026-02");
     expect(revenueShareRoundingPolicies).toEqual(["floor", "half_up"]);
     expect(revenueSharePeriodStatuses).toEqual(["reported", "missing", "anomalous"]);
   });
 
-  it("exposes the frozen demo rule as 4.50% in basis points with floor rounding", () => {
+  it("exposes the frozen demo rule as 4.50% in basis points with floor rounding and a 1.5× cap", () => {
     expect(demoRevenueShareRule).toEqual({
-      version: "RS-2026-01",
+      version: "RS-2026-02",
       rateBps: 450,
-      rounding: "floor"
+      rounding: "floor",
+      capNumerator: 3,
+      capDenominator: 2
     });
     expect(Object.isFrozen(demoRevenueShareRule)).toBe(true);
   });
 
   it("keeps the public types honest at compile time", () => {
-    expectTypeOf<typeof REVENUE_SHARE_RULE_VERSION>().toEqualTypeOf<"RS-2026-01">();
+    expectTypeOf<typeof REVENUE_SHARE_RULE_VERSION>().toEqualTypeOf<"RS-2026-02">();
     expectTypeOf(demoRevenueShareRule).toEqualTypeOf<RevenueShareRule>();
     expectTypeOf(demoRevenueShareRule.rounding).toEqualTypeOf<RevenueShareRoundingPolicy>();
     expectTypeOf<RevenueSharePeriod["salesMinorUnits"]>().toEqualTypeOf<bigint | null>();
     expectTypeOf<RevenueShareError["code"]>().toEqualTypeOf<RevenueShareErrorCode>();
+    expectTypeOf<RevenueShareContributor["distributedMinorUnits"]>().toEqualTypeOf<bigint>();
+    // The accumulator is required: a contributor without it is not a `RevenueShareContributor`.
+    expectTypeOf<{
+      contributorId: string;
+      contributionMinorUnits: bigint;
+    }>().not.toMatchTypeOf<RevenueShareContributor>();
   });
 });
 
@@ -131,7 +147,7 @@ describe("calculateRevenueShareObligation — eligibility (D3)", () => {
       })
     );
 
-    expect(obligation.ruleVersion).toBe("RS-2026-01");
+    expect(obligation.ruleVersion).toBe("RS-2026-02");
     expect(obligation.rateBps).toBe(450);
     expect(obligation.rounding).toBe("floor");
   });
@@ -181,47 +197,53 @@ describe("calculateRevenueShareObligation — amount and rounding (D4)", () => {
 });
 
 describe("allocateRevenueShare — balanced allocations (D5)", () => {
+  // The allocator is cap-aware now (#580), so these cases scale the contributions until the 1.5×
+  // cap no longer binds, which is what isolates the proportional (largest-remainder) rule.
   it("splits 100 across three equal contributions as 34 / 33 / 33 and stays balanced", () => {
-    const allocations = expectOk(
+    const { allocations } = expectOk(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 100n,
-        contributors: [contributor("a", 1n), contributor("b", 1n), contributor("c", 1n)]
+        contributors: [contributor("a", 100n), contributor("b", 100n), contributor("c", 100n)]
       })
     );
 
     expect(allocations).toEqual([
-      { contributorId: "a", contributionMinorUnits: 1n, allocationMinorUnits: 34n },
-      { contributorId: "b", contributionMinorUnits: 1n, allocationMinorUnits: 33n },
-      { contributorId: "c", contributionMinorUnits: 1n, allocationMinorUnits: 33n }
+      { contributorId: "a", contributionMinorUnits: 100n, allocationMinorUnits: 34n },
+      { contributorId: "b", contributionMinorUnits: 100n, allocationMinorUnits: 33n },
+      { contributorId: "c", contributionMinorUnits: 100n, allocationMinorUnits: 33n }
     ]);
     expect(allocations.reduce((sum, entry) => sum + entry.allocationMinorUnits, 0n)).toBe(100n);
   });
 
   it("assigns the residual unit by largest remainder and preserves contributor order", () => {
-    const allocations = expectOk(
+    const { allocations } = expectOk(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
-        contributors: [contributor("second", 1n), contributor("first", 2n)]
+        contributors: [contributor("second", 100n), contributor("first", 200n)]
       })
     );
 
-    // 10 × 1 = 10 / 3 = 3 rem 1; 10 × 2 = 20 / 3 = 6 rem 2 → the larger remainder takes the unit.
+    // 10 × 100 = 1,000 / 300 = 3 rem 100; 10 × 200 = 2,000 / 300 = 6 rem 200 → the larger
+    // remainder takes the unit.
     expect(allocations).toEqual([
-      { contributorId: "second", contributionMinorUnits: 1n, allocationMinorUnits: 3n },
-      { contributorId: "first", contributionMinorUnits: 2n, allocationMinorUnits: 7n }
+      { contributorId: "second", contributionMinorUnits: 100n, allocationMinorUnits: 3n },
+      { contributorId: "first", contributionMinorUnits: 200n, allocationMinorUnits: 7n }
     ]);
     expect(allocations.reduce((sum, entry) => sum + entry.allocationMinorUnits, 0n)).toBe(10n);
   });
 
   it("keeps the balanced total across an uneven contribution set", () => {
-    const allocations = expectOk(
+    const { allocations } = expectOk(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 1_000_000n,
         contributors: [
-          contributor("a", 7n),
-          contributor("b", 11n),
-          contributor("c", 13n),
-          contributor("d", 3n)
+          contributor("a", 7_000_000n),
+          contributor("b", 11_000_000n),
+          contributor("c", 13_000_000n),
+          contributor("d", 3_000_000n)
         ]
       })
     );
@@ -232,40 +254,129 @@ describe("allocateRevenueShare — balanced allocations (D5)", () => {
   });
 
   it("returns one zero allocation per contributor when the obligation is zero", () => {
-    const allocations = expectOk(
+    const outcome = expectOk(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 0n,
         contributors: [contributor("a", 5n), contributor("b", 3n)]
       })
     );
 
-    expect(allocations).toEqual([
+    expect(outcome.allocations).toEqual([
       { contributorId: "a", contributionMinorUnits: 5n, allocationMinorUnits: 0n },
       { contributorId: "b", contributionMinorUnits: 3n, allocationMinorUnits: 0n }
     ]);
+    expect(outcome.totalAllocatedMinorUnits).toBe(0n);
+    // Capacity remains (7 + 4), so a zero obligation does not mean the agreement is finished.
+    expect(outcome.agreementComplete).toBe(false);
   });
 
   it("returns an empty allocation list for a zero obligation with no contributors", () => {
-    const allocations = expectOk(
-      allocateRevenueShare({ obligationMinorUnits: 0n, contributors: [] })
+    const outcome = expectOk(
+      allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits: 0n, contributors: [] })
     );
 
-    expect(allocations).toEqual([]);
+    expect(outcome.allocations).toEqual([]);
+    expect(outcome.totalAllocatedMinorUnits).toBe(0n);
+  });
+});
+
+describe("allocateRevenueShare — cap-aware signature (#580)", () => {
+  it("applies the rule's 1.5× cap through the standalone allocation entry point", () => {
+    // cap = floor(1,000 × 3 / 2) = 1,500, so the whole obligation fits within the cap.
+    const outcome = expectOk(
+      allocateRevenueShare({
+        rule: demoRevenueShareRule,
+        obligationMinorUnits: 100n,
+        contributors: [contributor("a", 1_000n, 0n)]
+      })
+    );
+
+    expect(outcome.totalAllocatedMinorUnits).toBe(100n);
+    expect(outcome.agreementComplete).toBe(false);
+  });
+
+  it("stops allocating once a contributor's confirmed distributions reach the cap", () => {
+    // cap = floor(100 × 3 / 2) = 150 and the accumulator already equals it: no capacity, so
+    // nothing is allocated and the agreement is terminal.
+    const outcome = expectOk(
+      allocateRevenueShare({
+        rule: demoRevenueShareRule,
+        obligationMinorUnits: 100n,
+        contributors: [contributor("capped", 100n, 150n)]
+      })
+    );
+
+    expect(outcome.allocations).toEqual([
+      { contributorId: "capped", contributionMinorUnits: 100n, allocationMinorUnits: 0n }
+    ]);
+    expect(outcome.totalAllocatedMinorUnits).toBe(0n);
+    expect(outcome.agreementComplete).toBe(true);
+  });
+
+  it("pays exactly the remainder of a partially consumed cap", () => {
+    // cap = floor(100 × 3 / 2) = 150, already distributed 140 → 10 left; the pool is 100.
+    const outcome = expectOk(
+      allocateRevenueShare({
+        rule: demoRevenueShareRule,
+        obligationMinorUnits: 100n,
+        contributors: [contributor("partial", 100n, 140n)]
+      })
+    );
+
+    expect(outcome.allocations).toEqual([
+      { contributorId: "partial", contributionMinorUnits: 100n, allocationMinorUnits: 10n }
+    ]);
+    expect(outcome.totalAllocatedMinorUnits).toBe(10n);
+    expect(outcome.agreementComplete).toBe(false);
+  });
+
+  it("holds totalAllocated == min(obligation, sum remaining) and sums the allocations exactly", () => {
+    const outcome = expectOk(
+      allocateRevenueShare({
+        rule: demoRevenueShareRule,
+        obligationMinorUnits: 1_000n,
+        contributors: [contributor("a", 40n, 0n), contributor("b", 60n, 59n)]
+      })
+    );
+
+    // caps: a = 60, b = 90; remaining: a = 60, b = 31 → sum 91 < obligation 1,000.
+    expect(outcome.totalAllocatedMinorUnits).toBe(91n);
+    expect(outcome.totalAllocatedMinorUnits).toBe(
+      outcome.allocations.reduce((sum, entry) => sum + entry.allocationMinorUnits, 0n)
+    );
+  });
+
+  it("rejects an invalid cap rule through the allocation entry point", () => {
+    expectError(
+      allocateRevenueShare({
+        rule: { ...demoRevenueShareRule, capNumerator: 1, capDenominator: 3 },
+        obligationMinorUnits: 100n,
+        contributors: [contributor("a", 10n, 0n)]
+      }),
+      "invalid_rule"
+    );
   });
 });
 
 describe("calculateRevenueShareDistribution", () => {
   it("composes obligation and allocations with a balanced total", () => {
+    // Contributions large enough that the 1.5× cap does not bind, so this still exercises the
+    // untruncated composition: the whole obligation is distributed pro-rata.
     const distribution = expectOk(
       calculateRevenueShareDistribution({
         rule: demoRevenueShareRule,
         periods: [period("2026-08", DEMO_SALES_MINOR_UNITS, "reported")],
-        contributors: [contributor("a", 1n), contributor("b", 1n), contributor("c", 1n)]
+        contributors: [contributor("a", 100_000n), contributor("b", 100_000n), contributor("c", 100_000n)]
       })
     );
 
     expect(distribution.obligation.obligationMinorUnits).toBe(168_561n);
-    expect(distribution.allocations).toHaveLength(3);
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 100_000n, allocationMinorUnits: 56_187n },
+      { contributorId: "b", contributionMinorUnits: 100_000n, allocationMinorUnits: 56_187n },
+      { contributorId: "c", contributionMinorUnits: 100_000n, allocationMinorUnits: 56_187n }
+    ]);
     expect(distribution.totalAllocatedMinorUnits).toBe(168_561n);
     expect(distribution.totalAllocatedMinorUnits).toBe(distribution.obligation.obligationMinorUnits);
   });
@@ -301,6 +412,248 @@ describe("calculateRevenueShareDistribution", () => {
     };
 
     expect(calculateRevenueShareDistribution(input)).toEqual(calculateRevenueShareDistribution(input));
+  });
+});
+
+describe("revenue-share cap — 1.5× per contribution (#580)", () => {
+  const reportedPeriod = [period("2026-08", DEMO_SALES_MINOR_UNITS, "reported")];
+
+  it("stops paying a contributor whose accumulated distributions already reached the cap", () => {
+    // The cap is `floor(100 × 3 / 2) = 150` and this contributor's accumulator already equals it.
+    // Before the cap existed the allocator paid them the whole obligation.
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("capped", 100n, 150n)]
+      })
+    );
+
+    expect(distribution.allocations).toEqual([
+      { contributorId: "capped", contributionMinorUnits: 100n, allocationMinorUnits: 0n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(0n);
+    expect(distribution.agreementComplete).toBe(true);
+  });
+
+  it("clamps the remaining capacity at exactly the cap and past it", () => {
+    // cap = floor(2 × 3 / 2) = 3: at 3 and at 4 there is no capacity left, at 2 there is one unit.
+    const atCap = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 2n, 3n)]
+      })
+    );
+    const pastCap = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 2n, 4n)]
+      })
+    );
+    const oneBelowCap = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 2n, 2n)]
+      })
+    );
+
+    expect(atCap.totalAllocatedMinorUnits).toBe(0n);
+    expect(atCap.agreementComplete).toBe(true);
+    expect(pastCap.totalAllocatedMinorUnits).toBe(0n);
+    expect(pastCap.agreementComplete).toBe(true);
+    expect(oneBelowCap.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 2n, allocationMinorUnits: 1n }
+    ]);
+    // The accumulator describes the state the caller supplied: this run pays the last unit and
+    // completes the agreement, but the flag only turns true on the next (all-capped) call.
+    expect(oneBelowCap.agreementComplete).toBe(false);
+  });
+
+  it("truncates the payment that crosses the cap and redistributes the leftover", () => {
+    // Capacities: a = 15 − 14 = 1, b = floor(1 × 3 / 2) = 1, c = 1, so distributable = 3.
+    // The proportional pass would hand a = 3 (floor(3 × 10 / 12) plus the residual unit) but its
+    // cap cuts it to 1; the 2 leftover units are redistributed to b and c, one each.
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 10n, 14n), contributor("b", 1n, 0n), contributor("c", 1n, 0n)]
+      })
+    );
+
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 10n, allocationMinorUnits: 1n },
+      { contributorId: "b", contributionMinorUnits: 1n, allocationMinorUnits: 1n },
+      { contributorId: "c", contributionMinorUnits: 1n, allocationMinorUnits: 1n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(3n);
+    expect(distribution.agreementComplete).toBe(false);
+  });
+
+  it("pays only the contributors that still have capacity", () => {
+    // a is capped (`floor(100 × 3 / 2) = 150`) and must not even enter the proportional base;
+    // b, with `floor(1 × 3 / 2) = 1` of capacity, is the only one paid.
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 100n, 150n), contributor("b", 1n, 0n)]
+      })
+    );
+
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 100n, allocationMinorUnits: 0n },
+      { contributorId: "b", contributionMinorUnits: 1n, allocationMinorUnits: 1n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(1n);
+  });
+
+  it("redistributes across passes with the largest-remainder criterion", () => {
+    // Capacities: a = 7 − 6 = 1, b = floor(3 × 3 / 2) = 4, c = floor(2 × 3 / 2) = 3; sum = 8.
+    // Pass 1 over {a,b,c} (contribution total 10): bases 4/2/1, the residual unit to c
+    // (remainder 6), so tentatives a=4, b=2, c=2; a is truncated to 1 and 3 units return.
+    // Pass 2 over {b,c} (contribution total 5): bases 1/1, the residual unit to b (remainder 4),
+    // so the pool of 3 lands b=2, c=1 and both hit their caps exactly.
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 5n, 6n), contributor("b", 3n, 0n), contributor("c", 2n, 0n)]
+      })
+    );
+
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 5n, allocationMinorUnits: 1n },
+      { contributorId: "b", contributionMinorUnits: 3n, allocationMinorUnits: 4n },
+      { contributorId: "c", contributionMinorUnits: 2n, allocationMinorUnits: 3n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(8n);
+  });
+
+  it("declares the terminal state when every contributor is already capped", () => {
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 2n, 3n), contributor("b", 2n, 3n)]
+      })
+    );
+
+    expect(distribution.allocations).toEqual([
+      { contributorId: "a", contributionMinorUnits: 2n, allocationMinorUnits: 0n },
+      { contributorId: "b", contributionMinorUnits: 2n, allocationMinorUnits: 0n }
+    ]);
+    expect(distribution.totalAllocatedMinorUnits).toBe(0n);
+    expect(distribution.agreementComplete).toBe(true);
+  });
+
+  it("does not declare completion while capacity is left but the obligation is zero", () => {
+    const distribution = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: [period("2026-07", null, "missing")],
+        contributors: [contributor("a", 2n, 0n)]
+      })
+    );
+
+    expect(distribution.totalAllocatedMinorUnits).toBe(0n);
+    expect(distribution.agreementComplete).toBe(false);
+  });
+
+  it("holds totalAllocated == min(obligation, sum remaining) in both branches", () => {
+    const truncated = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 10n, 14n), contributor("b", 1n, 0n), contributor("c", 1n, 0n)]
+      })
+    );
+    // sum remaining = 3 < obligation 168,561 → the cap is the binding branch.
+    expect(truncated.totalAllocatedMinorUnits).toBe(3n);
+    expect(truncated.totalAllocatedMinorUnits).toBeLessThan(truncated.obligation.obligationMinorUnits);
+
+    const untruncated = expectOk(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 100_000n, 0n), contributor("b", 100_000n, 0n)]
+      })
+    );
+    // sum remaining = 300,000 ≥ obligation 168,561 → no truncation, so it equals the obligation.
+    expect(untruncated.totalAllocatedMinorUnits).toBe(168_561n);
+    expect(untruncated.totalAllocatedMinorUnits).toBe(untruncated.obligation.obligationMinorUnits);
+  });
+});
+
+describe("rejections — cap rule and accumulator (#580)", () => {
+  const reportedPeriod = [period("2026-08", DEMO_SALES_MINOR_UNITS, "reported")];
+
+  it("rejects a cap numerator below its denominator as invalid_rule", () => {
+    expectError(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ capNumerator: 1, capDenominator: 2 }),
+        periods: reportedPeriod
+      }),
+      "invalid_rule"
+    );
+  });
+
+  it("rejects a zero or negative cap denominator as invalid_rule", () => {
+    expectError(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ capNumerator: 3, capDenominator: 0 }),
+        periods: reportedPeriod
+      }),
+      "invalid_rule"
+    );
+    expectError(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ capNumerator: 3, capDenominator: -2 }),
+        periods: reportedPeriod
+      }),
+      "invalid_rule"
+    );
+  });
+
+  it("rejects a non-integer cap numerator as invalid_rule", () => {
+    expectError(
+      calculateRevenueShareObligation({
+        rule: ruleWith({ capNumerator: 1.5 }),
+        periods: reportedPeriod
+      }),
+      "invalid_rule"
+    );
+  });
+
+  it("rejects a negative distributedMinorUnits as invalid_contributor", () => {
+    expectError(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [contributor("a", 1n, -1n)]
+      }),
+      "invalid_contributor"
+    );
+  });
+
+  it("rejects a non-bigint distributedMinorUnits cast at runtime", () => {
+    expectError(
+      calculateRevenueShareDistribution({
+        rule: demoRevenueShareRule,
+        periods: reportedPeriod,
+        contributors: [
+          {
+            contributorId: "a",
+            contributionMinorUnits: 1n,
+            distributedMinorUnits: 5 as unknown as bigint
+          }
+        ]
+      }),
+      "invalid_contributor"
+    );
   });
 });
 
@@ -366,12 +719,16 @@ describe("rejections — sanitized error codes", () => {
   });
 
   it("rejects a positive obligation with no contributors", () => {
-    expectError(allocateRevenueShare({ obligationMinorUnits: 1n, contributors: [] }), "no_contributors");
+    expectError(
+      allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits: 1n, contributors: [] }),
+      "no_contributors"
+    );
   });
 
   it("rejects a zero contribution", () => {
     expectError(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
         contributors: [contributor("a", 0n)]
       }),
@@ -382,6 +739,7 @@ describe("rejections — sanitized error codes", () => {
   it("rejects a negative contribution", () => {
     expectError(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
         contributors: [contributor("a", -1n)]
       }),
@@ -392,6 +750,7 @@ describe("rejections — sanitized error codes", () => {
   it("rejects a duplicate contributor id", () => {
     expectError(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
         contributors: [contributor("a", 1n), contributor("a", 2n)]
       }),
@@ -402,6 +761,7 @@ describe("rejections — sanitized error codes", () => {
   it("rejects an empty contributor id", () => {
     expectError(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
         contributors: [contributor("   ", 1n)]
       }),
@@ -463,6 +823,7 @@ describe("boundary and validation matrix (#87)", () => {
     it("rejects a negative obligation with contributors instead of returning an unbalanced success", () => {
       expectError(
         allocateRevenueShare({
+          rule: demoRevenueShareRule,
           obligationMinorUnits: -1n,
           contributors: [contributor("a", 1n), contributor("b", 1n)]
         }),
@@ -472,7 +833,7 @@ describe("boundary and validation matrix (#87)", () => {
 
     it("rejects a negative obligation with no contributors as invalid_obligation, not no_contributors", () => {
       expectError(
-        allocateRevenueShare({ obligationMinorUnits: -1n, contributors: [] }),
+        allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits: -1n, contributors: [] }),
         "invalid_obligation"
       );
     });
@@ -480,6 +841,7 @@ describe("boundary and validation matrix (#87)", () => {
     it("rejects a non-bigint obligation cast at runtime", () => {
       expectError(
         allocateRevenueShare({
+          rule: demoRevenueShareRule,
           obligationMinorUnits: 100 as unknown as bigint,
           contributors: [contributor("a", 1n)]
         }),
@@ -532,6 +894,8 @@ describe("boundary and validation matrix (#87)", () => {
   });
 
   describe("balanced-total invariant and determinism across a fixed matrix", () => {
+    // Contributions are scaled well above the obligation so the 1.5× cap (#580) never binds and
+    // `total == min(obligation, sum remaining)` collapses to `total == obligation`.
     const allocationMatrix: ReadonlyArray<{
       readonly label: string;
       readonly obligationMinorUnits: bigint;
@@ -540,45 +904,51 @@ describe("boundary and validation matrix (#87)", () => {
       {
         label: "equal contributions",
         obligationMinorUnits: 100n,
-        contributors: [contributor("a", 1n), contributor("b", 1n), contributor("c", 1n)]
+        contributors: [
+          contributor("a", 1_000_000n),
+          contributor("b", 1_000_000n),
+          contributor("c", 1_000_000n)
+        ]
       },
       {
         label: "uneven contributions",
         obligationMinorUnits: 1_000_000n,
         contributors: [
-          contributor("a", 7n),
-          contributor("b", 11n),
-          contributor("c", 13n),
-          contributor("d", 3n)
+          contributor("a", 7_000_000n),
+          contributor("b", 11_000_000n),
+          contributor("c", 13_000_000n),
+          contributor("d", 3_000_000n)
         ]
       },
       {
         label: "single contributor",
         obligationMinorUnits: 168_561n,
-        contributors: [contributor("solo", 5n)]
+        contributors: [contributor("solo", 1_000_000n)]
       },
       {
         label: "obligation smaller than contributor count",
         obligationMinorUnits: 2n,
         contributors: [
-          contributor("a", 1n),
-          contributor("b", 1n),
-          contributor("c", 1n),
-          contributor("d", 1n),
-          contributor("e", 1n)
+          contributor("a", 1_000_000n),
+          contributor("b", 1_000_000n),
+          contributor("c", 1_000_000n),
+          contributor("d", 1_000_000n),
+          contributor("e", 1_000_000n)
         ]
       },
       {
         label: "obligation one unit below contributor count",
         obligationMinorUnits: 1n,
-        contributors: [contributor("a", 1n), contributor("b", 1n)]
+        contributors: [contributor("a", 1_000_000n), contributor("b", 1_000_000n)]
       }
     ];
 
     it.each(allocationMatrix)(
       "balances the total and preserves contributor count: $label",
       ({ obligationMinorUnits, contributors }) => {
-        const allocations = expectOk(allocateRevenueShare({ obligationMinorUnits, contributors }));
+        const { allocations } = expectOk(
+          allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits, contributors })
+        );
         const total = allocations.reduce((sum, entry) => sum + entry.allocationMinorUnits, 0n);
 
         expect(allocations).toHaveLength(contributors.length);
@@ -589,8 +959,8 @@ describe("boundary and validation matrix (#87)", () => {
     it.each(allocationMatrix)(
       "is deterministic: $label yields deep-equal results on repeat calls",
       ({ obligationMinorUnits, contributors }) => {
-        const first = allocateRevenueShare({ obligationMinorUnits, contributors });
-        const second = allocateRevenueShare({ obligationMinorUnits, contributors });
+        const first = allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits, contributors });
+        const second = allocateRevenueShare({ rule: demoRevenueShareRule, obligationMinorUnits, contributors });
 
         expect(first).toEqual(second);
       }
@@ -599,8 +969,11 @@ describe("boundary and validation matrix (#87)", () => {
 
   it("breaks a largest-remainder tie toward the earlier contributor index", () => {
     // 1 × 1 = 1 / 2 = 0 remainder 1 for both contributors: equal remainders must not reorder.
-    const allocations = expectOk(
+    // Contributions of 1 make the cap exactly 1 each (sum 2), so the distributable pool is the
+    // obligation (1) and the tie-break is what decides.
+    const { allocations } = expectOk(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 1n,
         contributors: [contributor("first", 1n), contributor("second", 1n)]
       })
@@ -702,6 +1075,7 @@ describe("boundary and validation matrix (#87)", () => {
   it("rejects contributor ids that collide after trimming surrounding whitespace", () => {
     expectError(
       allocateRevenueShare({
+        rule: demoRevenueShareRule,
         obligationMinorUnits: 10n,
         contributors: [contributor("a", 1n), contributor(" a", 2n)]
       }),

@@ -51,7 +51,7 @@ function prepared(overrides: Partial<PreparedRevenueShareDistribution> = {}): Pr
     applicationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     campaignId: "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10",
     derivation: {
-      ruleVersion: "RS-2026-01",
+      ruleVersion: "RS-2026-02",
       rateBps: 450,
       period: "2026-08",
       salesArs: "3745800",

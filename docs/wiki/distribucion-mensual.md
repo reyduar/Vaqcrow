@@ -21,7 +21,7 @@ Con el capital ya en manos de la PyME, cada mes se reparte a los inversores una 
 
 ## Cómo se calcula
 
-- La regla está versionada: `RS-2026-01`.
+- La regla está versionada: `RS-2026-02`.
 - En la demo aplica un **4,5 %** sobre las ventas declaradas del mes.
 - El reparto es **proporcional a cada aporte**.
 - Si la PyME vende menos, se distribuye menos: no hay una cuota fija que se deba pagar igual.
