@@ -626,6 +626,69 @@ describe("POST /campaigns/:campaignId/invocations", () => {
     expect(chain.readContribution).not.toHaveBeenCalled();
   });
 
+  // #579/S1: the over-funding guardrail. No contribution may exceed what is
+  // left to reach the goal — the excess is rejected, not absorbed.
+  it("refuses a contribution one stroop above the remaining (#579/S1)", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    // goal 10,000,000 with 9,500,000 already raised leaves 500,000.
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: true, value: { ...fundingChainState, totalStroops: 9_500_000n } })
+    });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500001" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "contribution_exceeds_remaining" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+  });
+
+  it("accepts a contribution exactly equal to the remaining (#579/S1)", async () => {
+    const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: true, value: { ...fundingChainState, totalStroops: 9_500_000n } })
+    });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ campaigns, chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500000" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(invocations.prepare).toHaveBeenCalled();
+  });
+
+  it("refuses an over-remaining contribution with no rate snapshot (#579/S1)", async () => {
+    // A campaign opened before the rate snapshot existed skips the
+    // per-investor preflight entirely; the remaining rule needs no rate, so it
+    // must still fire — otherwise this is exactly the campaign that slips
+    // through.
+    const chain = chainDouble({
+      readCampaign: vi.fn().mockResolvedValue({ ok: true, value: { ...fundingChainState, totalStroops: 9_500_000n } })
+    });
+    const invocations = invocationsDouble();
+    app = buildAppAs("ADMIN", { campaign: deps({ chain, invocations }) });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/campaigns/${CAMPAIGN_ID}/invocations`,
+      payload: { ...contributeBody, amountStroops: "500001" }
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({ code: "contribution_exceeds_remaining" });
+    expect(invocations.prepare).not.toHaveBeenCalled();
+    expect(chain.readContribution).not.toHaveBeenCalled();
+  });
+
   it("returns 503 when the investor's existing contribution cannot be read for the preflight", async () => {
     const campaigns = campaignsDouble({ findById: vi.fn().mockResolvedValue({ ok: true, value: campaignRecordWithRate }) });
     const chain = chainDouble({ readContribution: vi.fn().mockResolvedValue({ ok: false, error: { code: "unavailable" } }) });

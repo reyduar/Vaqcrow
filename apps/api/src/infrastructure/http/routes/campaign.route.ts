@@ -357,6 +357,18 @@ export function registerCampaignRoute(app: FastifyInstance, dependencies: Campai
           return reply.code(409).send({ code: "campaign_not_funding" });
         }
 
+        // Over-funding guardrail (#579/S1): no contribution may exceed what is
+        // left to reach the goal — the excess is rejected, not absorbed. This
+        // needs no rate, so it runs for every campaign, including one opened
+        // before the rate snapshot existed (which the per-investor preflight
+        // below has to skip). The chain read already carries `goal`/`total`.
+        if (command.amountStroops !== null) {
+          const remainingStroops = chainState.value.goalStroops - chainState.value.totalStroops;
+          if (command.amountStroops > remainingStroops) {
+            return reply.code(422).send({ code: "contribution_exceeds_remaining" });
+          }
+        }
+
         // Best-effort, non-atomic contribution preflight (#410/T3a) — UX
         // only: the authoritative per-investor cap is enforced atomically by
         // the vault contract (T3b). The mirror supplies the campaign's
