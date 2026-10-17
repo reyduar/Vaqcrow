@@ -74,7 +74,9 @@ describe("PymesEnCampana (Feature #418, WU2)", () => {
   it("renders every published campaign ordered by earliest close, the hero's one included (#533)", async () => {
     renderGrid(okPort([REPUESTOS, FEATURED, CAFE, GOMERIA]));
 
-    await screen.findByRole("heading", { level: 2, name: "PyMEs en campaña" });
+    // The section heading renders while the list is still loading, so waiting on
+    // it proves nothing about the cards. The first card's heading does.
+    await screen.findByRole("heading", { level: 3, name: "Gomería Los Andes" });
     const gridHeadings = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
     // Soonest close first, capped at three — and the featured one is eligible.
     expect(gridHeadings).toEqual(["Gomería Los Andes", "Café Tostadero del Paraná", "Fábrica Destacada SRL"]);
@@ -83,7 +85,8 @@ describe("PymesEnCampana (Feature #418, WU2)", () => {
   it("shows a published campaign in the grid even when it is the one the hero features", async () => {
     renderGrid(okPort([FEATURED]));
 
-    await screen.findByRole("heading", { level: 2, name: "PyMEs en campaña" });
+    // The static section heading is not a readiness signal; the card is.
+    await screen.findByRole("heading", { level: 3, name: "Fábrica Destacada SRL" });
     expect(screen.getByRole("heading", { level: 3, name: "Fábrica Destacada SRL" })).toBeInTheDocument();
     // The empty state means "no published campaign at all", never "the only one
     // is featured above" (#533).

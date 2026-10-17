@@ -94,12 +94,14 @@ describe("CompanySubmittedData", () => {
     expect(within(region()).getByText("Alimentos")).toBeInTheDocument();
     expect(within(region()).getByText("Córdoba")).toBeInTheDocument();
     expect(within(region()).getByText("ARS 15.000.000")).toBeInTheDocument();
-    expect(within(region()).getByText("sme:SYN-1")).toBeInTheDocument();
+    // Company, request/sales and documents are three independent reads: each
+    // new block needs its own awaited anchor before its synchronous siblings.
+    expect(await within(region()).findByText("sme:SYN-1")).toBeInTheDocument();
     expect(within(region()).getByText("ARS 9.700.000")).toBeInTheDocument();
     expect(within(region()).getByText("Enero 2026 – Marzo 2026")).toBeInTheDocument();
     expect(within(region()).getByText("Enero 2026")).toBeInTheDocument();
     expect(within(region()).getByText("ARS 3.200.000")).toBeInTheDocument();
-    expect(within(region()).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(await within(region()).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
   });
 
   it("has no actionable control other than the close button (read-only)", async () => {
@@ -137,7 +139,7 @@ describe("CompanySubmittedData", () => {
     expect(company).not.toHaveTextContent("Panadería Horizonte");
     // The independent reads still render.
     await waitFor(() => expect(within(region()).getByText("sme:SYN-1")).toBeInTheDocument());
-    expect(within(region()).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(await within(region()).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
   });
 
   it("degrades only the documents block when the documents read fails, keeping the rest", async () => {
@@ -146,7 +148,7 @@ describe("CompanySubmittedData", () => {
     expect(await within(region()).findByText("No pudimos leer los documentos cargados.")).toBeInTheDocument();
     expect(within(region()).queryByText("constancia-cuit.pdf · 125,5 KB")).not.toBeInTheDocument();
     await waitFor(() => expect(within(region()).getByText("Panadería Horizonte")).toBeInTheDocument());
-    expect(within(region()).getByText("sme:SYN-1")).toBeInTheDocument();
+    expect(await within(region()).findByText("sme:SYN-1")).toBeInTheDocument();
   });
 
   it("degrades the request and sales blocks when the request read fails, keeping the rest", async () => {
@@ -156,15 +158,15 @@ describe("CompanySubmittedData", () => {
     expect(await within(region()).findByText("No pudimos leer tu solicitud.")).toBeInTheDocument();
     expect(within(region()).getByText("No pudimos leer las ventas declaradas.")).toBeInTheDocument();
     await waitFor(() => expect(within(region()).getByText("Panadería Horizonte")).toBeInTheDocument());
-    expect(within(region()).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(await within(region()).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
   });
 
   it("degrades honestly with no backend configured (null ports)", async () => {
     renderPanel({ business: null, documents: null, smeRequestGateway: null });
 
     expect(await within(region()).findByText("No pudimos leer los datos de tu empresa.")).toBeInTheDocument();
-    expect(within(region()).getByText("No pudimos leer tu solicitud.")).toBeInTheDocument();
-    expect(within(region()).getByText("No pudimos leer los documentos cargados.")).toBeInTheDocument();
+    expect(await within(region()).findByText("No pudimos leer tu solicitud.")).toBeInTheDocument();
+    expect(await within(region()).findByText("No pudimos leer los documentos cargados.")).toBeInTheDocument();
   });
 
   it("closes through the provided handler", async () => {

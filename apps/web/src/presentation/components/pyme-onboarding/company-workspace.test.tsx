@@ -516,7 +516,9 @@ describe("CompanyWorkspace «Ver lo enviado» (#530, T5)", () => {
 
     const panel = screen.getByRole("region", { name: "Datos enviados de tu solicitud" });
     expect(await within(panel).findByText("Panadería Horizonte")).toBeInTheDocument();
-    expect(within(panel).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    // The documents read is independent from the company read: the awaited
+    // company text does not guarantee its block has rendered.
+    expect(await within(panel).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1, name: "Mi campaña" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Volver a Mi campaña" }));
