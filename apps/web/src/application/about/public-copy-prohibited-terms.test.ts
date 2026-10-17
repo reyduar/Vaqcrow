@@ -11,6 +11,7 @@ import { HOW_IT_WORKS_GUIDE, readGuideSource } from "../../infrastructure/guides
 import { BLOG_COPY } from "../blog/copy";
 import { ASSISTANT_COPY } from "../assistant/copy";
 import { ABOUT_COPY } from "./copy";
+import { PUBLIC_COPY_TERMS, RETURN_PROMISE_TERMS } from "../../../../../tests/public-copy-vocabulary";
 
 /**
  * Feature #394 / WU1: the public About page, the two guides and the help
@@ -26,6 +27,10 @@ import { ABOUT_COPY } from "./copy";
  *    garantizado", "Nada asegura…") and as ordinary Spanish ("asegurate",
  *    "Sin garantías"); those exact phrases are declared below and scrubbed
  *    before the denylist runs, so a real claim elsewhere still fails.
+ *
+ * #582: the vocabulary itself now lives in root `tests/public-copy-vocabulary.ts`
+ * so the assistant's wiki corpus can be scanned against the same list without a
+ * cross-app import; this test remains the public-copy consumer.
  */
 
 /** Recursively collect every string value, including nested arrays/objects. */
@@ -147,21 +152,11 @@ const DECLARED_NON_CLAIMS: readonly string[] = [
   "no tiene retorno garantizado"
 ];
 
-/** Mirrors `application/trust/contract-custody.test.ts:45-63`. */
-const PROHIBITED: readonly RegExp[] = [
-  /auditad/i,
-  /producción/i,
-  /listo para/i,
-  /legalidad/i,
-  /solvencia/i,
-  /garantiz/i,
-  /garantía/i,
-  /rentabilidad/i,
-  /asegur/i,
-  /retorno/i,
-  /proveedor(es)? de calidad/i
-];
-
+/**
+ * The vocabulary lives in `tests/public-copy-vocabulary.ts` (#582): one source
+ * of truth shared with the assistant's wiki corpus scan, without an
+ * `apps/web` → `apps/api` import.
+ */
 describe("public copy — prohibited terms (#394)", () => {
   it("carries no prohibited claim outside the owner-mandated non-claim phrases", () => {
     let scrubbed = PUBLIC_TEXT;
@@ -169,7 +164,7 @@ describe("public copy — prohibited terms (#394)", () => {
       expect(PUBLIC_TEXT).toContain(phrase);
       scrubbed = scrubbed.split(phrase).join(" ");
     }
-    for (const pattern of PROHIBITED) {
+    for (const pattern of PUBLIC_COPY_TERMS) {
       expect(scrubbed).not.toMatch(pattern);
     }
   });
@@ -178,7 +173,9 @@ describe("public copy — prohibited terms (#394)", () => {
     // `rendimiento` is deliberately absent: the creator bio legitimately says
     // «sistemas de compliance de alto rendimiento». The financial-return terms
     // are already covered by the denylist above (`retorno`, `rentabilidad`).
-    expect(PUBLIC_TEXT).not.toMatch(/promete|promesa|ganancia/i);
+    for (const pattern of RETURN_PROMISE_TERMS) {
+      expect(PUBLIC_TEXT).not.toMatch(pattern);
+    }
   });
 
   it("does not duplicate a canonical disclosure in full", () => {
