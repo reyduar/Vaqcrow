@@ -90,7 +90,10 @@ describe("Reports container", () => {
         "Actividad de tus aportes y distribuciones. Todas las cifras son simuladas o de Stellar Testnet; no hay proyecciones de retorno."
       )
     ).toBeInTheDocument();
-    expect(screen.getByText("Distribuciones recibidas por mes")).toBeInTheDocument();
+    // The page heading renders before the report's own read settles. Once the
+    // chart mounts, `ReportsView` has rendered every section it owns in that
+    // same commit, so the two below may stay synchronous.
+    expect(await screen.findByText("Distribuciones recibidas por mes")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ventas declaradas por PyME" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Últimas distribuciones" })).toBeInTheDocument();
   });

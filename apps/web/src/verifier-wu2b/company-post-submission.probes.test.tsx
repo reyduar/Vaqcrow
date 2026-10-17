@@ -173,32 +173,32 @@ describe("S4 panel: independent degradation and honesty", () => {
     renderPanel({ business: failBiz() });
     expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.companyFailure)).toBeInTheDocument();
     expect(screen.queryByText("Panadería Horizonte")).not.toBeInTheDocument();
-    expect(within(panel()).getByText("sme:REF-1")).toBeInTheDocument();
-    expect(within(panel()).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(await within(panel()).findByText("sme:REF-1")).toBeInTheDocument();
+    expect(await within(panel()).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
   });
 
   it("documents fail -> only documents degrade, and an empty list is NOT substituted", async () => {
     renderPanel({ documents: resDocs({ ok: false, code: "unavailable" }) });
     expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.documentsFailure)).toBeInTheDocument();
     expect(within(panel()).queryByText(SUBMITTED_DATA_COPY.documentsEmpty)).not.toBeInTheDocument();
-    expect(within(panel()).getByText("Panadería Horizonte")).toBeInTheDocument();
-    expect(within(panel()).getByText("sme:REF-1")).toBeInTheDocument();
+    expect(await within(panel()).findByText("Panadería Horizonte")).toBeInTheDocument();
+    expect(await within(panel()).findByText("sme:REF-1")).toBeInTheDocument();
   });
 
   it("request fails -> request and sales degrade; company/documents render", async () => {
     renderPanel({ smeRequestGateway: failReq() });
     expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.requestFailure)).toBeInTheDocument();
     expect(within(panel()).getByText(SUBMITTED_DATA_COPY.salesFailure)).toBeInTheDocument();
-    expect(within(panel()).getByText("Panadería Horizonte")).toBeInTheDocument();
-    expect(within(panel()).getByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
+    expect(await within(panel()).findByText("Panadería Horizonte")).toBeInTheDocument();
+    expect(await within(panel()).findByText("constancia-cuit.pdf · 125,5 KB")).toBeInTheDocument();
   });
 
   it("all reads fail -> view is not blanked, every honest message shows, close remains", async () => {
     renderPanel({ business: null, documents: null, smeRequestGateway: null });
     expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.companyFailure)).toBeInTheDocument();
-    expect(within(panel()).getByText(SUBMITTED_DATA_COPY.requestFailure)).toBeInTheDocument();
+    expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.requestFailure)).toBeInTheDocument();
     expect(within(panel()).getByText(SUBMITTED_DATA_COPY.salesFailure)).toBeInTheDocument();
-    expect(within(panel()).getByText(SUBMITTED_DATA_COPY.documentsFailure)).toBeInTheDocument();
+    expect(await within(panel()).findByText(SUBMITTED_DATA_COPY.documentsFailure)).toBeInTheDocument();
     expect(within(panel()).getByRole("button", { name: SUBMITTED_DATA_COPY.close })).toBeInTheDocument();
     expect(within(panel()).queryByText("ARS 15.000.000")).not.toBeInTheDocument();
   });
