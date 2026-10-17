@@ -272,8 +272,13 @@ describe("AiStep", () => {
     expect(section).not.toBeNull();
     const findings = within(section as HTMLElement);
 
+    // The section's heading can render one commit before its findings do, so the
+    // first lookup awaits: `getByText` throws immediately and made this test fail
+    // spuriously under CI's timing. The three below are then safe together.
     expect(
-      findings.getByText("El contenido de «Constancia de CUIT» no parece corresponder a ese documento.")
+      await findings.findByText(
+        "El contenido de «Constancia de CUIT» no parece corresponder a ese documento."
+      )
     ).toBeInTheDocument();
     expect(findings.getByText("No pudimos verificar el contenido de «Foto del negocio».")).toBeInTheDocument();
     expect(findings.getByText("Faltante:")).toBeInTheDocument();
