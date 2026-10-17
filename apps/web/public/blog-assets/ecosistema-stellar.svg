@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" role="img" aria-labelledby="title desc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title id="title">Cómo se mueve el dinero en una campaña de Vaqcrow</title>
+  <desc id="desc">Vaqcrow aprueba la solicitud y despliega una bóveda, un contrato en Soroban, una por campaña. Los inversores aportan desde Freighter y la bóveda custodia los aportes. Si se alcanza la meta, todo pasa a la cuenta de la PyME en la misma transacción. Si la campaña vence sin meta, cada aporte se reembolsa a su inversor. Después, cada mes, la PyME declara sus ventas, Vaqcrow calcula el 4,5 por ciento y arma la transacción, la PyME la firma en Freighter y cada inversor cobra su parte, hasta 1,5 veces lo que aportó. Todo corre en Stellar Testnet, sin valor económico.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="640" rx="16" fill="#ffffff"/>
+
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#0f172a">Cómo se mueve el dinero en una campaña de Vaqcrow</text>
+  <rect x="40" y="58" width="420" height="26" rx="13" fill="#eef2ff"/>
+  <text x="54" y="76" font-size="13" font-weight="600" fill="#3730a3">Red: Stellar Testnet · los activos no tienen valor económico</text>
+
+  <!-- Section 1 -->
+  <text x="40" y="120" font-size="15" font-weight="700" fill="#334155">1 · Durante la campaña: todo o nada</text>
+
+  <rect x="40" y="140" width="220" height="84" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="56" y="170" font-size="15" font-weight="700" fill="#0f172a">Vaqcrow (plataforma)</text>
+  <text x="56" y="192" font-size="13" fill="#334155">aprueba la solicitud y</text>
+  <text x="56" y="210" font-size="13" fill="#334155">despliega la bóveda</text>
+
+  <rect x="40" y="262" width="220" height="84" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="56" y="292" font-size="15" font-weight="700" fill="#0f172a">Inversores</text>
+  <text x="56" y="314" font-size="13" fill="#334155">aportan y firman cada</text>
+  <text x="56" y="332" font-size="13" fill="#334155">aporte en Freighter</text>
+
+  <rect x="372" y="160" width="250" height="168" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+  <text x="392" y="192" font-size="17" font-weight="700" fill="#312e81">Bóveda</text>
+  <text x="392" y="216" font-size="13" fill="#3730a3">contrato en Soroban (Rust)</text>
+  <text x="392" y="238" font-size="13" fill="#3730a3">una por campaña</text>
+  <text x="392" y="260" font-size="13" fill="#3730a3">custodia los aportes</text>
+  <text x="392" y="282" font-size="13" fill="#3730a3">destino fijo: la cuenta</text>
+  <text x="392" y="300" font-size="13" fill="#3730a3">de la PyME</text>
+
+  <line x1="260" y1="182" x2="368" y2="214" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="176" font-size="12" fill="#475569">despliega</text>
+  <line x1="260" y1="304" x2="368" y2="274" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="324" font-size="12" fill="#475569">aporte</text>
+
+  <rect x="720" y="140" width="240" height="84" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="736" y="170" font-size="15" font-weight="700" fill="#065f46">Meta alcanzada</text>
+  <text x="736" y="192" font-size="13" fill="#065f46">todo pasa a la PyME en la</text>
+  <text x="736" y="210" font-size="13" fill="#065f46">misma transacción</text>
+
+  <rect x="720" y="262" width="240" height="84" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="736" y="292" font-size="15" font-weight="700" fill="#92400e">Vence sin meta</text>
+  <text x="736" y="314" font-size="13" fill="#92400e">cada aporte vuelve a</text>
+  <text x="736" y="332" font-size="13" fill="#92400e">su inversor (reembolso)</text>
+
+  <line x1="622" y1="214" x2="716" y2="184" stroke="#059669" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="622" y1="274" x2="716" y2="304" stroke="#d97706" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Section 2 -->
+  <text x="40" y="404" font-size="15" font-weight="700" fill="#334155">2 · Con la meta alcanzada: el revenue share, mes a mes</text>
+
+  <rect x="40" y="424" width="205" height="100" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="56" y="454" font-size="15" font-weight="700" fill="#0f172a">PyME</text>
+  <text x="56" y="476" font-size="13" fill="#334155">declara las ventas</text>
+  <text x="56" y="494" font-size="13" fill="#334155">del mes</text>
+
+  <rect x="280" y="424" width="205" height="100" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="296" y="454" font-size="15" font-weight="700" fill="#0f172a">Vaqcrow</text>
+  <text x="296" y="476" font-size="13" fill="#334155">calcula el 4,5 % y arma</text>
+  <text x="296" y="494" font-size="13" fill="#334155">la transacción</text>
+  <text x="296" y="512" font-size="12" fill="#64748b">regla RS-2026-02</text>
+
+  <rect x="520" y="424" width="205" height="100" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="536" y="454" font-size="15" font-weight="700" fill="#0f172a">PyME</text>
+  <text x="536" y="476" font-size="13" fill="#334155">revisa y firma en</text>
+  <text x="536" y="494" font-size="13" fill="#334155">Freighter</text>
+
+  <rect x="760" y="424" width="200" height="100" rx="10" fill="#ecfdf5" stroke="#059669"/>
+  <text x="776" y="454" font-size="15" font-weight="700" fill="#065f46">Cada inversor</text>
+  <text x="776" y="476" font-size="13" fill="#065f46">cobra su parte, hasta</text>
+  <text x="776" y="494" font-size="13" fill="#065f46">1,5 veces lo aportado</text>
+
+  <line x1="245" y1="474" x2="276" y2="474" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="485" y1="474" x2="516" y2="474" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="725" y1="474" x2="756" y2="474" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Footer -->
+  <rect x="40" y="556" width="920" height="56" rx="10" fill="#f1f5f9"/>
+  <text x="58" y="580" font-size="13" font-weight="600" fill="#0f172a">Nadie tiene una llave para mover los aportes de la bóveda: ni la PyME, ni el inversor, ni Vaqcrow.</text>
+  <text x="58" y="600" font-size="13" fill="#334155">Vaqcrow arma las transacciones; las personas las firman en su wallet. La clave privada nunca sale de Freighter.</text>
+</svg>

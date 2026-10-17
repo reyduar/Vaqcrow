@@ -110,6 +110,12 @@ const FREIGHTER_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(FREIGHTER_ARTICL
 const REVENUE_SHARE_ARTICLE_SOURCE = "revenue-share-explicado.md";
 const REVENUE_SHARE_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(REVENUE_SHARE_ARTICLE_SOURCE));
 /**
+ * #599: the article on Vaqcrow's Stellar ecosystem (contracts, custody,
+ * Testnet, Horizon/RPC, Freighter) is a public Blog article too.
+ */
+const STELLAR_ECOSYSTEM_ARTICLE_SOURCE = "ecosistema-stellar-de-vaqcrow.md";
+const STELLAR_ECOSYSTEM_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(STELLAR_ECOSYSTEM_ARTICLE_SOURCE));
+/**
  * Feature #499: the help assistant's web-side chrome (labels, placeholders and
  * the failure/access strings) is public copy too, so it runs through the same
  * denylist as the copy above. The four fixed answers (out-of-scope,
@@ -127,6 +133,7 @@ const PUBLIC_TEXT = [
   BLOG_ARTICLE_TEXT,
   FREIGHTER_ARTICLE_TEXT,
   REVENUE_SHARE_ARTICLE_TEXT,
+  STELLAR_ECOSYSTEM_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");
 
