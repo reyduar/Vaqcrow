@@ -12,6 +12,7 @@
   <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.27.0-8a05be" />
   <img alt="Stellar Testnet" src="https://img.shields.io/badge/Stellar-Testnet-8a05be" />
   <img alt="Demo" src="https://img.shields.io/badge/demo-datos%20simulados-8a05be" />
+  <a href="#construido-con-gentle-ai"><img alt="Construido con gentle-ai y ODD" src="https://img.shields.io/badge/construido%20con-gentle--ai%20%C2%B7%20ODD-8a05be" /></a>
 </p>
 
 Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de cuotas fijas e intereses asfixiantes: quienes aportan capital reciben una participación contractual en las ventas, de modo que la obligación acompaña el desempeño del negocio.
@@ -27,12 +28,13 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 
 - **Repositorio:** monorepo funcional con Fastify API, Next.js 16 web, contratos compartidos, dominio aplicado, `packages/ai`, el workspace Rust `contracts/` (`campaign-vault` y `campaign-factory`) y migraciones Supabase para solicitud de PyME, evaluación, decisiones humanas, distribución de revenue share y persistencia de campañas.
 - **Producto por roles:** la app es un producto con la forma exacta del template de diseño, con tres roles —`PYME`, `INVERSOR` y `ADMIN`— y **autenticación real**: Supabase Auth con email y contraseña, roles verificados en el servidor y RLS por rol. Cada rol tiene su área (ver [Módulos por rol](#módulos-por-rol)); el recorrido vertical (solicitud, evaluación, decisión humana, fondeo, ventas, distribución) queda encadenado por los identificadores que cada paso produce.
-- **El recorrido completo, explicado:** [Cómo funciona Vaqcrow](./docs/guides/como-funciona-vaqcrow.md) recorre una campaña de punta a punta —de la solicitud de la PyME al reparto mensual del revenue share— y aclara en cada tramo qué es real en Stellar Testnet y qué es simulado. Es la fuente única de la sección «Cómo funciona» de la landing y del corpus de ayuda.
-- **Blog público:** «Acerca de» abre un **Blog** cuyos artículos son archivos Markdown en `docs/guides/blog/` —el mismo corpus que alimenta al asistente—, mapeados por la tabla `blog_post` y servidos por la API; la web los renderiza como página propia (`/blog`, `/blog/[slug]`). Nace para difundir, en español, cómo se cruzan las **finanzas y la tecnología** en Vaqcrow: la primera pieza explica el producto y su bóveda en Stellar, y las que sigan se escriben y revisan por PR como cualquier otra fuente.
-- **Asistente de ayuda anclado a una wiki:** un asistente que responde **solo** desde una **wiki compilada** (`docs/wiki/`) —recuperación aumentada **sin embeddings**, con el método *LLM-Wiki* de Karpathy: navega un índice y lee las páginas que ese índice señala—. Está disponible para usuarios logueados (`PYME`/`INVERSOR`) a los que un admin habilita el acceso, **cita** la página de la que sale cada respuesta y no inventa: fuera de alcance declina y, si ninguna página cubre la pregunta, lo dice. La wiki se compila por PR y sus invariantes estructurales están fijados por tests.
+- **El recorrido completo, explicado:** [Cómo funciona Vaqcrow](./docs/guides/como-funciona-vaqcrow.md) recorre una campaña de punta a punta —de la solicitud de la PyME al reparto mensual del revenue share— y aclara en cada tramo qué es real en Stellar Testnet y qué es simulado. La sección «Cómo funciona» de la landing lee su texto de esa guía al compilar, y la guía es además una de las fuentes de la wiki del asistente.
+- **Blog público:** «Blog» está en la barra de navegación de todos los roles, justo antes de «Acerca de». Sus artículos son archivos Markdown en `docs/guides/blog/`, mapeados por la tabla `blog_post` y servidos por la API; la web los renderiza como página propia (`/blog`, `/blog/[slug]`). Difunde, en español, cómo se cruzan las **finanzas y la tecnología** en Vaqcrow, y cada artículo se escribe y se revisa por PR. Hoy son seis (ver [Documentación](#documentación)): el producto y su bóveda, Freighter y Friendbot paso a paso, el revenue share en simple, el ecosistema Stellar completo, el stack gentle-ai con ODD y la wiki de Karpathy detrás del asistente.
+- **Asistente de ayuda anclado a una wiki:** un asistente que responde **solo** desde una **wiki compilada** (`docs/wiki/`) —recuperación aumentada **sin embeddings**, con el método *LLM-Wiki* de Karpathy: navega un índice y lee las páginas que ese índice señala—. Está disponible para usuarios logueados (`PYME`/`INVERSOR`) a los que un admin habilita el acceso —flotante en cada página con sesión y en `/help`—, con un tope de 5 preguntas cada 24 horas. **Cita** la página de la que sale cada respuesta y no inventa: fuera de alcance declina y, si ninguna página cubre la pregunta, lo dice. La wiki se compila por PR, y su estructura y su vocabulario (la misma lista de términos prohibidos que la copy pública) están fijados por tests.
 - **IA real:** la evaluación usa el proveedor `opencode-go` detrás de un adaptador reemplazable en `packages/ai`; sigue siendo asesora y no aprueba, no calcula obligaciones ni mueve fondos.
 - **Stellar y custodia:** Freighter y Stellar Testnet están implementados, y el fondeo se custodia en un contrato Soroban (una bóveda por campaña, liquidación atómica al alcanzar el objetivo y reembolso permissionless al vencer). La plataforma firma `factory.deploy()` y el `CreateAccount` de la PyME; la persona usuaria firma aportes, retiros y reembolsos con Freighter.
-- **Pruebas:** **434 archivos** de test unitarios y de componentes —**6.472 casos**— seleccionados por `pnpm run test` (Vitest + Testing Library; medido el 2026-10-14), además de las suites separadas de integración con Supabase, boundaries y E2E con Playwright.
+- **Reglas del financiamiento:** nadie puede aportar más del 10 % de la meta (lo aplica el contrato), ningún aporte puede superar lo que falta para la meta (lo aplica la API antes de la firma) y el revenue share de cada inversor termina al cobrar **1,5 veces lo que aportó** (regla `RS-2026-02`). Los montos en XLM se muestran con 2 decimales, el saldo de la wallet se lee de Horizon y su equivalente en pesos está **simulado** con la tasa vigente.
+- **Pruebas:** **462 archivos** de test unitarios y de componentes —**6.888 casos**— seleccionados por `pnpm run test` (Vitest + Testing Library; medido el 2026-10-17), además de las suites separadas de pgTAP, integración con Supabase, boundaries y E2E con Playwright.
 - **Notificaciones:** campana in-app y email transaccional por la API de Resend detrás de un puerto y un adaptador, con las pruebas del PR usando un doble.
 - **Diseño (fuente de verdad):** el template de **Claude Design** en `docs/design/template/` —14 pantallas `.dc.html`, cada una con los dos temas en el mismo archivo— reemplazó al proyecto de Google Stitch el 01/10/2026. Se comparte en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. El directorio está fuera del repositorio a propósito (`.gitignore`) y su HTML generado nunca es implementación autoritativa de producción; el detalle está en [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md). El handoff vive en `docs/design/design_handoff_vaqcrow/` (`README.md`, `brief/`, `screens/`): es la fuente visual y de comportamiento del producto por roles, y **lo que el template no diseña se registra como pregunta abierta, no se inventa**. La única excepción acordada es la sección «Cómo funciona» de la landing, rediseñada fuera del template (owner, 13/10/2026) porque sus cuatro pasos no alcanzaban para explicar la operación: el template sigue siendo la fuente de verdad en todo lo demás, y las reglas de confianza de `demo-ui.md` §2 siguen prevaleciendo.
 
@@ -45,14 +47,15 @@ La app tiene tres roles con autenticación real. `PYME` e `INVERSOR` se eligen a
 
 | Rol | Área | Módulos |
 |---|---|---|
-| Público | Sin sesión | Landing (`/`), Explorar PyMEs (`/explore`), Acerca de (con el **Blog**: `/blog`, `/blog/[slug]`), Guía de inversión, Guía para emprendedores, Ayuda (preguntas frecuentes) |
-| **PYME** | `/company` | Onboarding («Registrar mi PyME»), Mi campaña (bóvedas, distribuciones, ventas declaradas, aportantes) y el **asistente de ayuda** (si un admin le habilita el acceso) |
-| **INVERSOR** | `/portfolio`, `/reports` | Detalle de PyME (`/campaigns/[id]`), Mi portafolio, Informes y el **asistente de ayuda** (si un admin le habilita el acceso) |
+| Público | Sin sesión | Landing (`/`), Explorar PyMEs (`/explore`), Detalle de PyME (`/campaigns/[id]`, compartible por link), **Blog** (`/blog`, `/blog/[slug]`), Acerca de, Guía de inversión, Guía para emprendedores, Ayuda (preguntas frecuentes) |
+| **PYME** | `/company` | Onboarding («Registrar mi PyME», con el destino de los fondos), «Ver lo enviado», Mi campaña (bóvedas, distribuciones, ventas declaradas, aportantes) y el **asistente de ayuda** (si un admin le habilita el acceso) |
+| **INVERSOR** | `/portfolio`, `/reports` | Aportar desde el detalle de PyME, Mi portafolio, Informes y el **asistente de ayuda** (si un admin le habilita el acceso) |
 | **ADMIN** | `/admin` | Cola de PyMEs, revisión y decisión humana, evidencia por solicitud, usuarios (roles y **acceso al asistente**) y auditoría |
 
 - **Rutas siempre en inglés**; la UI en español.
 - El ingreso redirige por el **rol verificado**, no por el selector del formulario; el selector «Soy PyME / Soy inversor» debe coincidir con ese rol o el ingreso se rechaza.
-- Explorar, las guías y la ayuda son **públicas**; el detalle de una PyME exige cuenta.
+- Explorar, el detalle de una PyME, el Blog, las guías y la ayuda son **públicos**; aportar exige una cuenta de inversor.
+- El enlace de confirmación del alta lleva a una página propia (`/account-confirmed`).
 
 ## Qué demuestra la demo
 
@@ -63,7 +66,7 @@ La historia vertical implementada sigue un único caso sintético —**Panaderí
 3. Un operador revisa la evidencia y registra la decisión humana; la IA no autoriza el financiamiento.
 4. Un inversor conecta Freighter y firma, de forma no custodial, la invocación del contrato que alimenta la bóveda de la campaña en Stellar Testnet.
 5. La bóveda custodia los aportes: el contrato liquida de forma atómica a la PyME al alcanzar el objetivo y habilita el reembolso permissionless si vence el plazo; la API envía la invocación firmada al Soroban RPC y refleja el estado observado en la cadena.
-6. El sistema calcula la obligación de revenue share con reglas determinísticas y muestra la distribución, que sigue el camino clásico de pagos en Testnet, con sus estados y hashes.
+6. El sistema calcula la obligación de revenue share con reglas determinísticas —4,5 % de las ventas declaradas, en proporción a cada aporte y hasta 1,5 veces lo aportado— y muestra la distribución, que sigue el camino clásico de pagos en Testnet, con sus estados y hashes.
 
 El objetivo de la demo es mostrar este recorrido sin ocultar qué es real, qué está simulado y qué decisiones continúan abiertas para una operación argentina. **No hay un objetivo de duración.** La latencia del proveedor de IA es alta e impredecible —**93,79 s** en la medición del 01/10/2026— y el recorrido completo por navegador contra producción **nunca se cronometró de punta a punta**.
 
@@ -77,7 +80,8 @@ El objetivo de la demo es mostrar este recorrido sin ocultar qué es real, qué 
 | Historial y feed mensual de ventas | **Simulados**, reproducibles y con una anomalía/faltante intencionales |
 | Chequeo de completitud y evaluación de riesgo | **Real**: reglas deterministas sobre datos declarados + relevancia por contenido (visión), y evaluación de riesgo con el proveedor real detrás de un adaptador |
 | Decisión de financiamiento | **Real y humana** sobre el caso sintético |
-| Entrada/cotización ARS | **Simulada**; el corredor de producción continúa sin resolver |
+| Entrada/cotización ARS | **Simulada**; el corredor de producción continúa sin resolver. El equivalente en pesos que acompaña al saldo en XLM también es simulado |
+| Saldo de la wallet | **Real**: se lee de Horizon en Testnet |
 | Wallet y firma | **Reales** con Freighter, de forma no custodial (PyME e inversor) |
 | Notificaciones | **Real**: campana in-app y email por la API de Resend, detrás de un puerto (las pruebas usan un doble) |
 | Fondeo y distribución | **Transacciones reales en Stellar Testnet**, sin valor económico |
@@ -230,10 +234,10 @@ graph LR
     end
 
     subgraph WEB["apps/web — Next.js"]
-        PUBLIC["Público<br/>Landing · Explorar PyMEs · Acerca de + Blog · Guías · Ayuda (FAQ)"]
+        PUBLIC["Público<br/>Landing · Explorar PyMEs · Detalle PyME · Blog · Acerca de · Guías · Ayuda (FAQ)"]
         PYMEAREA["Área PyME<br/>Onboarding PyME · Mi campaña"]
-        INVAREA["Área inversor<br/>Detalle PyME · Mi portafolio · Informes"]
-        CHAT["Asistente de ayuda<br/>flotante + /help<br/>solo logueados habilitados"]
+        INVAREA["Área inversor<br/>Aportar · Mi portafolio · Informes"]
+        CHAT["Asistente de ayuda<br/>flotante en cada página con sesión + /help<br/>solo logueados habilitados · 5 por 24 h"]
         ADMINAREA["/admin<br/>PyMEs · Revisión · Evidencia<br/>Usuarios: roles · acceso al asistente"]
     end
 
@@ -357,7 +361,7 @@ pnpm dev:web:cloud                   # web en http://localhost:3001 contra NEXT_
 > Ambos perfiles publican la API en el puerto `3000` y la web en el `3001`: detené el contenedor (`pnpm env:docker:down`) antes de usar `pnpm dev:api:cloud`.
 
 > [!info] CORS
-> La API habilita CORS vía `CORS_ALLOWED_ORIGINS` (lista de orígenes exactos separados por coma). Sin configurar, el perfil docker (`APP_ENV=local`) permite `http://localhost:3001`/`http://127.0.0.1:3001` por default; el perfil cloud (`APP_ENV=demo`) no permite ningún origen hasta declarar explícitamente el de Vercel. Ver [Perfiles de entorno §8](./docs/architecture/environments.md).
+> La API habilita CORS vía `CORS_ALLOWED_ORIGINS` (lista de orígenes exactos separados por coma). Sin configurar, el perfil docker (`APP_ENV=local`) permite `http://localhost:3001`/`http://127.0.0.1:3001` por default; el perfil cloud (`APP_ENV=demo`) no permite ningún origen hasta declarar explícitamente el origen canónico de la web, `https://www.vaqcrow.com` (los otros dominios redirigen ahí). Ver [Perfiles de entorno §8](./docs/architecture/environments.md).
 
 ## Desarrollo y calidad
 
@@ -414,6 +418,16 @@ Cada Feature o Task de implementación incluye contexto, objetivo, requisitos fu
 - [Storybook y los dos temas](./docs/guides/storybook.md) — taller de componentes, temas claro/oscuro y qué está cubierto.
 - [Evidencia del Blog](./docs/planning/markdown-blog-in-about-evidence.md) — el Blog público, la tabla `blog_post` y el primer artículo, con su verificación.
 - [Esquema de la wiki del asistente](./docs/wiki/schema.md) — el contrato con el que se compila y se mantiene el corpus del asistente.
+- Corpus de evidencia: `docs/planning/*-evidence.md` — qué se verificó de cada Feature, cómo y cuándo.
+
+**Artículos del Blog** (fuente en `docs/guides/blog/`):
+
+- [Vaqcrow: financiar a las PyMEs argentinas con una bóveda en Stellar](./docs/guides/blog/vaqcrow-sobre-stellar.md)
+- [Freighter y Friendbot, paso a paso: tu wallet de Testnet en Chrome](./docs/guides/blog/freighter-y-friendbot-paso-a-paso.md)
+- [El revenue share de Vaqcrow, explicado en simple](./docs/guides/blog/revenue-share-explicado.md)
+- [El ecosistema Stellar de Vaqcrow, de la bóveda a tu wallet](./docs/guides/blog/ecosistema-stellar-de-vaqcrow.md)
+- [Cómo construimos Vaqcrow con gentle-ai y ODD](./docs/guides/blog/vaqcrow-con-gentle-ai-y-odd.md)
+- [La wiki de Karpathy: cómo construimos el asistente de Vaqcrow sin embeddings](./docs/guides/blog/llm-wiki-de-karpathy-en-vaqcrow.md)
 
 ## Límites y decisiones abiertas
 
@@ -424,8 +438,8 @@ Lo que sigue abierto, con honestidad:
 - **Reset de Testnet del 16/12/2026.** Invalida las direcciones de contrato: obliga a redesplegar la fábrica y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`; el procedimiento está documentado y todavía no se ejercitó.
 - **Bordes conocidos:** `contributions_incomplete` tras un retiro total, un id de campaña malformado que responde `503`, el feed de ventas en memoria que se pierde al reiniciar la API y `scripts/` fuera de ESLint.
 - **Diseño pendiente:** las pantallas del template que la app todavía no tiene como ruta y las variantes móviles por ruta.
-- **Blog:** publicar un artículo nuevo es un merge (el cuerpo vive en el repo) seguido de un **redeploy de la API**, que es la que sirve el Markdown; la primera pieza está publicada y el resto se escribe por PR.
-- **Asistente de ayuda:** responde en **turno único** y **sin streaming** (la respuesta completa tarda del orden de 8-10 s, con el indicador mientras tanto); solo lo ven los usuarios logueados a los que un admin habilita el acceso, y solo en el asistente flotante (landing) y en `/help`. La wiki crece por PRs: si ninguna página cubre un tema, el asistente **lo dice** en vez de inventarlo.
+- **Blog:** publicar un artículo nuevo es un merge (el cuerpo vive en el repo), un **redeploy de la API**, que es la que sirve el Markdown, y recién después la fila de `blog_post` en el proyecto remoto; aplicada antes, `/blog` lista un artículo que todavía no abre.
+- **Asistente de ayuda:** responde en **turno único** y **sin streaming** (la respuesta completa tarda del orden de 8-10 s, con el indicador mientras tanto); solo lo ven los usuarios logueados a los que un admin habilita el acceso, en el asistente flotante de cada página con sesión y en `/help`. La wiki crece por PRs: si ninguna página cubre un tema, el asistente **lo dice** en vez de inventarlo.
 - **Decisiones de producción abiertas:** clasificación jurídica del instrumento, cumplimiento regulatorio/AML/KYC real, corredor ARS↔activo Stellar (no validado), privacidad y tratamiento de datos, verificación de ventas y cobranza reales, y auditoría/controles de emergencia del contrato. El detalle está en [el plan del producto real](./docs/planning/product.md).
 
 ## Licencia
@@ -438,3 +452,14 @@ Vaqcrow es un proyecto de **Ariel Duarte** ([@reyduar](https://github.com/reydua
 
 - GitHub: [@reyduar](https://github.com/reyduar)
 - Repositorio: [reyduar/Vaqcrow](https://github.com/reyduar/Vaqcrow)
+
+## Construido con gentle-ai
+
+Vaqcrow se construyó dirigiendo agentes de programación con IA —**Claude Code** y **OpenCode**, sus dos harneses principales— configurados con [**gentle-ai**](https://github.com/Gentleman-Programming/gentle-ai), el ecosistema de código abierto de [Gentleman Programming](https://gentlemanprogramming.com/) creado por Alan Buscaglia. Gracias a ese stack, el proyecto trabajó con:
+
+- **ODD (*Organic Driven Development*)** como flujo de desarrollo: explorar antes de cambiar, tests primero y un documento por feature en `odd/tasks/` que cita textual cada pedido y registra cada commit, ciclo RED→GREEN y decisión. Ese registro es la materia prima del corpus de evidencia.
+- **[Engram](https://github.com/Gentleman-Programming/engram)** como memoria persistente entre sesiones: decisiones, hallazgos y convenciones que sobrevivieron a cada reinicio.
+- **Skills** y su registro (`.atl/skill-registry.md`), para cargar las prácticas de cada tecnología —Supabase, HeroUI, Stellar, OWASP— antes de tocar código.
+- **RDD**, la revisión del trabajo terminado con las lentes de riesgo, resiliencia, legibilidad y confiabilidad.
+
+La historia completa —qué es el stack, cómo funciona ODD y por qué reemplazó a SDD a mitad del proyecto— está en el artículo [Cómo construimos Vaqcrow con gentle-ai y ODD](./docs/guides/blog/vaqcrow-con-gentle-ai-y-odd.md). Gracias a Gentleman Programming y a su comunidad por publicar estas herramientas como software libre.
