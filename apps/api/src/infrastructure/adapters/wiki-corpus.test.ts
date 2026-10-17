@@ -33,6 +33,10 @@ describe("assistant wiki corpus (docs/wiki)", () => {
     expect(indexIds).toContain("freighter-y-friendbot");
   });
 
+  it("indexes the Stellar ecosystem page (#599)", () => {
+    expect(indexIds).toContain("ecosistema-stellar");
+  });
+
   it.each(pageFiles)("%s parses, declares a schema type and cites existing guide sources", (name) => {
     const raw = readFileSync(join(WIKI_ROOT, name), "utf8");
     expect(parseWikiPage(name.replace(/\.md$/, ""), raw)).toBeDefined();
