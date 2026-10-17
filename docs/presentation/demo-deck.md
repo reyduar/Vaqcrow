@@ -83,6 +83,7 @@ style: |
     padding: 16px 20px;
     font-size: 22px;
   }
+  .linkedin p { display: flex; align-items: center; gap: 16px; font-size: 28px; margin-top: 28px; }
   .ok  { color: #137a3f; font-weight: 700; }
   .sim { color: #7a4b00; font-weight: 700; }
   .warn { color: #b00020; font-weight: 700; }
@@ -99,9 +100,50 @@ style: |
 
 **Financiamiento por revenue share para PyMEs argentinas**
 
-Demo · Trabajo Fin de Máster · Máster en Desarrollo con IA
+**Reynaldo Ariel Duarte**
+
+Trabajo Fin de Máster · Máster en Desarrollo con IA E.2 · BIG school
 
 <span class="pill">Stellar Testnet · sin valor económico</span>
+
+---
+
+## Quién soy
+
+### Reynaldo Ariel Duarte
+
+Ingeniero de software con **más de 16 años** de experiencia en desarrollo de software, incluidos **más de 5 años** construyendo **sistemas financieros orientados al cumplimiento normativo** en una fintech regulada de Estados Unidos (*broker-dealer* y *ATS*), en mercados de capital privado.
+
+<div class="linkedin">
+
+![w:44](assets/linkedin.svg) [linkedin.com/in/arielduarte](https://www.linkedin.com/in/arielduarte)
+
+</div>
+
+---
+
+## Un poco de historia
+
+La idea nace de mi paso por una **fintech de Nueva York** que hacía crecer empresas del mercado primario y secundario usando el **crowdfunding** como instrumento financiero. Ahí desarrollé plataformas de inversión con el mecanismo de financiamiento tradicional (dinero *fiat*), hasta que llegó la era de las inversiones con **criptomonedas** y el mercado me llevó a entender y desarrollar en **Web3**.
+
+Descubrí la **tokenización de activos** sobre la red de **Ethereum** y aprendí a llevarla al mundo real. Con ese trabajo vi lo fácil que podía ser **digitalizar activos**, crear campañas para buscar financiamiento **sin tanta burocracia** y, sobre todo, **llegar a inversores** a los que les encantan las criptomonedas.
+
+> Así nace **Vaqcrow**, pensado para **Argentina**.
+
+---
+
+## ¿Por qué Argentina?
+
+<style scoped>
+ol { font-size: 24px; line-height: 1.45; }
+.muted { font-size: 15px; }
+</style>
+
+1. **Burocracia y poco financiamiento.** Entre la alta burocracia de los bancos tradicionales y la falta de crédito, solo entre enero de 2020 y enero de 2023 Argentina perdió **unas 12.000 MiPyMEs registradas**, sin contar los pequeños emprendimientos de barrio.
+2. **Inflación y criptomonedas.** La inflación convirtió a Argentina en uno de los **mercados cripto más importantes de América Latina** —primera de la región por adopción según Chainalysis— y acercó las billeteras virtuales a la sociedad.
+3. **Un marco que avanza.** Con el gobierno actual, la **Ley 27.739** (2024) creó el registro de proveedores de servicios de activos virtuales en la **CNV**, reglamentado en 2025. Más reglas claras dan más libertad para financiarse e invertir, y esperamos que Vaqcrow tenga **un lugarcito** en ese mercado.
+
+<div class="muted">Fuentes: IERAL (Fundación Mediterránea) con datos de AFIP, vía <a href="https://www.elheraldo.com.ar/noticias/economia/cerraron-12000-empresas-en-los-ultimos-tres-anos-con-un-promedio-de-80-por-semana">El Heraldo</a> · Chainalysis, vía <a href="https://www.forbesargentina.com/money/argentina-lider-regional-adopcion-criptomonedas-porque-avanza-revolucion-digital-america-latina-n78387">Forbes Argentina</a> y <a href="https://cointelegraph.com/news/argentina-leads-latin-america-crypto-inflows">Cointelegraph</a> · Ley 27.739 y <a href="https://www.boletinoficial.gob.ar/detalleAviso/primera/322539/20250314">RG CNV 1058/2025</a>.</div>
 
 ---
 
@@ -112,9 +154,11 @@ Demo · Trabajo Fin de Máster · Máster en Desarrollo con IA
 3. **La arquitectura** — web, API, Supabase y Stellar
 4. **Los tres roles** — PyME · inversor · administrador
 5. **Stellar** — la bóveda custodia los aportes
-6. **La IA** — central, explicable y acotada
-7. **Qué se validó** — evidencia y ensayo end-to-end
-8. **Lo que queda abierto** — límites y decisiones de producción
+6. **El revenue share** — cómo vuelve el capital y dónde termina
+7. **La IA** — central, explicable y acotada, y el asistente de ayuda
+8. **Cómo se construyó** — agentes de IA con gentle-ai y ODD
+9. **Qué se validó** — evidencia y ensayo end-to-end
+10. **Lo que queda abierto** — límites y decisiones de producción
 
 <div class="muted">Una demo honesta: muestra el recorrido sin ocultar qué es simulado.</div>
 
@@ -149,6 +193,11 @@ Demo · Trabajo Fin de Máster · Máster en Desarrollo con IA
 
 ## Alcance: qué es real y qué se simula
 
+<style scoped>
+table { font-size: 18px; }
+td, th { padding: 4px 10px; }
+</style>
+
 <table>
 <tr><th>Capacidad</th><th>En la demo</th></tr>
 <tr><td>Cuentas, sesión y roles</td><td><span class="ok">Real</span> — Supabase Auth, roles y RLS</td></tr>
@@ -160,11 +209,18 @@ Demo · Trabajo Fin de Máster · Máster en Desarrollo con IA
 <tr><td>Wallet y firma</td><td><span class="ok">Real</span> — Freighter, no custodial</td></tr>
 <tr><td>Fondeo y distribución</td><td><span class="ok">Real en Testnet</span>, sin valor económico</td></tr>
 <tr><td>Cálculo de revenue share</td><td><span class="ok">Real y determinístico</span> — el LLM no calcula</td></tr>
+<tr><td>Saldo de la wallet</td><td><span class="ok">Real</span> — leído de Horizon · su equivalente en ARS es <span class="sim">simulado</span></td></tr>
+<tr><td>Blog y asistente de ayuda</td><td><span class="ok">Real</span> — artículos por PR y un LLM anclado a una wiki</td></tr>
 </table>
 
 ---
 
 ## Arquitectura
+
+<style scoped>
+.card { font-size: 20px; padding: 12px 18px; }
+ul { font-size: 23px; line-height: 1.4; }
+</style>
 
 **Monorepo** (pnpm + Turborepo) con límites verificados por `dependency-cruiser`:
 
@@ -186,6 +242,8 @@ Dominio, autorización por rol, IA, cálculo, verificación XDR
 
 **Externos** — proveedor LLM · Resend (email)
 
+**`docs/` en la imagen de la API** — Blog y wiki del asistente
+
 </div>
 </div>
 
@@ -197,17 +255,24 @@ Dominio, autorización por rol, IA, cálculo, verificación XDR
 
 ## Los tres roles
 
+<style scoped>
+table { font-size: 19px; }
+td, th { padding: 5px 10px; }
+ul { font-size: 23px; line-height: 1.4; }
+.muted { font-size: 17px; }
+</style>
+
 | Rol | Rutas | Qué hace |
 |---|---|---|
 | **PyME** | `/company` | Registra su empresa, sube documentos, conecta Freighter y declara ventas |
-| **Inversor** | `/explore`, `/campaigns/[id]`, `/portfolio`, `/reports` | Explora PyMEs, aporta firmando en Freighter y retira antes de la meta |
+| **Inversor** | `/explore`, `/campaigns/[id]`, `/portfolio`, `/reports` | Explora PyMEs, aporta firmando en Freighter, retira antes de la meta y cobra el revenue share |
 | **Admin** | `/admin` | Cola de PyMEs, revisión humana con decisión registrada y deploy de la bóveda |
 
 - **Rutas siempre en inglés**; la UI en español.
 - El ingreso redirige por **rol verificado**, no por el selector del formulario.
-- Landing, Explorar, guías y ayuda son **públicas**; el detalle exige cuenta.
+- Landing, Explorar, el **detalle de PyME** (compartible por link), Blog, guías y ayuda son **públicos**; aportar exige cuenta.
 
-<div class="muted">Rutas reales en <code>main</code>: <code>/</code>, <code>/signup</code>, <code>/login</code>, <code>/explore</code>, <code>/campaigns/[id]</code>, <code>/portfolio</code>, <code>/reports</code>, <code>/company</code>, <code>/admin</code>.</div>
+<div class="muted">Rutas reales en <code>main</code>: <code>/</code>, <code>/signup</code>, <code>/login</code>, <code>/explore</code>, <code>/campaigns/[id]</code>, <code>/blog</code>, <code>/help</code>, <code>/portfolio</code>, <code>/reports</code>, <code>/company</code>, <code>/admin</code>.</div>
 
 ---
 
@@ -216,11 +281,11 @@ Dominio, autorización por rol, IA, cálculo, verificación XDR
 Un **panel** (`/company`) más **un único wizard**, con el stepper en el lugar (sin una ruta por paso):
 
 1. **KYC** — simulado.
-2. **Registro PyME** — datos, y **subida real** de 3 documentos obligatorios + hasta 4 fotos, con el motivo del pedido.
+2. **Registro PyME** — datos, **destino de los fondos** y **subida real** de 3 documentos obligatorios + hasta 4 fotos.
 3. **Evaluación AI** — chequeo de **completitud** (reglas deterministas + relevancia por contenido con visión) y banda de riesgo. **Advierte, no bloquea.**
 4. **Revisión humana** — la PyME conecta Freighter (**obligatorio**: su clave pública es el destino de la bóveda) y aprieta **«Enviar a revisión»**.
 
-> Sin wallet, el envío se bloquea (`409`). Con wallet, el admin recibe el aviso por email y campana.
+> Sin wallet, el envío se bloquea (`409`). Con wallet, el admin recibe el aviso por email y campana, y la PyME puede abrir **«Ver lo enviado»**.
 
 ---
 
@@ -247,6 +312,7 @@ Explorar → detalle → **Aportar**.
 - Sin wallet, «Aportar» redirige a `/portfolio` para conectar Freighter
 - Modal **«Revisión antes de firmar»** y firma de la invocación
 - KYC del inversor **simulado y auto-aprobado** en el primer aporte
+- Nadie aporta más del **10 % de la meta** ni más de **lo que falta** para alcanzarla
 - Retiro permitido mientras la campaña siga abierta
 
 </div>
@@ -259,11 +325,28 @@ Explorar → detalle → **Aportar**.
 El fondeo lo **custodia un contrato** (Rust + `soroban-sdk`), una bóveda por campaña.
 
 - **Destino inmutable**: el contrato sólo puede pagar a la cuenta de la PyME fijada al abrir la bóveda.
+- **Tope por inversor**: nadie puede tener más del 10 % de la meta; lo aplica el contrato.
 - **Meta on-chain**: el contrato la evalúa sobre el ledger; al alcanzarla, **liquida en la misma transacción** (atómico, sin recuperación ni clawback).
 - **Reembolso permissionless**: si vence sin alcanzar la meta, cualquiera puede dispararlo — el destino ya está fijado.
 - La **plataforma firma** el deploy y el `CreateAccount`; el **usuario firma** aportes, retiros y reembolsos con Freighter.
 
 > Claimable Balance (CAP‑23) se evaluó y **se descartó**: no puede expresar «objetivo alcanzado» on-chain.
+
+---
+
+## El revenue share: cómo vuelve el capital
+
+Con la meta alcanzada y el capital en la cuenta de la PyME, **cada mes**:
+
+1. La PyME **declara sus ventas** (sintéticas en la demo).
+2. El sistema calcula el **4,5 %** de esas ventas y lo reparte **en proporción a cada aporte** (regla versionada `RS-2026-02`).
+3. La plataforma arma **un pago por inversor** y la PyME lo **firma en Freighter**.
+
+- **El acuerdo tiene un final:** cada inversor cobra hasta **1,5 veces lo que aportó**; cuando todos llegan, termina.
+- Si la PyME vende menos, ese mes se reparte menos: no hay cuota fija.
+- **No está en el contrato:** son pagos clásicos de Stellar. La IA no participa del cálculo.
+
+> El **plazo máximo** del acuerdo (3 a 5 años en este tipo de financiamiento) **no está implementado** en la demo.
 
 ---
 
@@ -278,6 +361,32 @@ La IA trata el contenido subido como **no confiable** y corre en **dos pasos**: 
 - Ante timeout o salida inválida → el caso deriva a **revisión manual**, nunca a aprobación automática.
 
 > Salida con **esquema estricto**: si cita mal o falta evidencia, se rechaza y pasa a revisión manual.
+
+---
+
+## Blog y asistente de ayuda
+
+**Blog** público con seis artículos en `docs/guides/blog/`, escritos y revisados por PR.
+
+**Asistente** anclado a una **wiki compilada** (`docs/wiki/`), con el método *LLM Wiki* de Karpathy y **sin embeddings**:
+
+- Dos pasos: un **router** que sólo ve el índice elige páginas; la **respuesta** sólo ve esas páginas y las cita.
+- **Sin documento, no hay respuesta:** fuera de tema declina y, si ninguna página cubre la pregunta, lo dice.
+- La pregunta y la wiki son **datos no confiables**; el código valida páginas, citas y formato.
+- Sólo PyME e inversor, **habilitados por un admin**, hasta **5 preguntas cada 24 h**; no se guarda el texto.
+
+---
+
+## Cómo se construyó
+
+Vaqcrow se desarrolló **dirigiendo agentes de IA** —Claude Code y OpenCode— configurados con **gentle-ai**:
+
+- **ODD** (*Organic Driven Development*): explorar antes de cambiar, **tests primero** y un documento por feature que cita textual cada pedido. Más de **110** en `odd/tasks/`.
+- **Engram:** memoria persistente entre sesiones.
+- **Skills** por tecnología (Supabase, HeroUI, Stellar, OWASP) antes de tocar código.
+- **Revisión por riesgo** y un **documento de evidencia** por cada Feature cerrada.
+
+> La persona dirige: el agente explora, propone y ejecuta; las decisiones de producto se preguntan de a una.
 
 ---
 
@@ -314,9 +423,9 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 ## Qué se validó
 
 - **Ensayo hosteado end-to-end, 3/3 en verde** contra el stack desplegado (Railway API + Supabase remoto + Testnet): **deploy de bóveda confirmado** + **aporte firmado `success`**.
-- **Corpus de evidencia:** 48 documentos `docs/planning/*-evidence.md` (uno por Feature cerrada).
+- **Corpus de evidencia:** 57 documentos `docs/planning/*-evidence.md` (uno por Feature cerrada).
 - **Gates de CI:** `pnpm run verify` (lint + typecheck + test + build + boundaries), Playwright por rol y compilación/prueba/deploy de los contratos Rust en red local.
-- **403 archivos de test** (6.161 casos) unitarios y de componentes, con dobles locales — sin depender de Testnet, Horizon ni el LLM vivo.
+- **462 archivos de test** (6.888 casos, medido el 2026-10-17) unitarios y de componentes, con dobles locales — sin depender de Testnet, Horizon ni el LLM vivo.
 
 <div class="muted">Los verificadores vivos (ensayo hosteado, e2e en vivo) son <strong>opt-in</strong>: nunca corren en <code>verify</code> ni en CI. Ensayo: <code>scripts/demo/rehearsal/hosted-rehearsal.mjs</code>.</div>
 
@@ -333,7 +442,8 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 | Verificación de ventas y cobranza reales | **Abierta** |
 | Auditoría y controles de emergencia del contrato | La bóveda **no está auditada, no es actualizable y no tiene pausa** |
 | Token propio | **No emitir en el MVP** |
-| Dominio propio para la web | **Diferido** para la demo |
+| Plazo máximo del revenue share | **No implementado** en la demo |
+| Dominio propio para la web | **Resuelto:** `www.vaqcrow.com` |
 
 ---
 
@@ -341,7 +451,8 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 
 - **Sin corrida cronometrada end-to-end.** El recorrido completo por navegador contra producción nunca se cronometró; la latencia del LLM es alta e impredecible (93,79 s medidos). **No hay un objetivo de duración.**
 - **El e2e en vivo no se observó en verde** en la sesión del congelamiento: es un defecto del **entorno local degradado**, no del producto; su historial verde se cita.
-- **Suite web sensible a la carga:** bajo contención, tests que agotan el timeout de 5 s fallan por CPU y pasan en aislamiento.
+- **Asistente:** una pregunta, una respuesta, **sin streaming**; cada cuenta lo habilita un admin.
+- **Tope «lo que falta para la meta»:** lo aplica Vaqcrow antes de la firma, no el contrato.
 - **Reset de Testnet del 2026‑12‑16:** invalida las direcciones de contrato; obliga a redesplegar la fábrica y reapuntar `STELLAR_CAMPAIGN_FACTORY_ID`.
 
 ---
@@ -360,6 +471,12 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 
 > **Custodia por contrato.** Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.
 
+> **Aportes por encima de la meta.** Ningún aporte puede superar lo que falta para alcanzar la meta: si faltan 50 XLM, el formulario no acepta más que eso. El aporte que la superaría se rechaza antes de firmarse y no mueve fondos. Este tope lo aplica Vaqcrow, no el contrato: quien firme directamente contra la bóveda todavía puede exceder la meta.
+
+---
+
+## Disclaimers (cont.)
+
 > **IA con supervisión humana.** La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.
 
 > **No apto para producción.** Esta demo no constituye una oferta de inversión, recomendación financiera, aprobación regulatoria ni prueba de legalidad, rentabilidad, solvencia, custodia, calidad de proveedores u operación en Argentina.
@@ -377,6 +494,6 @@ Los pasos del motor no cambian de naturaleza al pasar a roles:
 
 **Vaqcrow** — _«Juntos podemos hacernos grandes»_
 
-Proyecto final · Máster en Desarrollo con IA
+Reynaldo Ariel Duarte · Trabajo Fin de Máster · Máster en Desarrollo con IA E.2 · BIG school
 
 <span class="pill">Stellar Testnet · sin valor económico</span>
