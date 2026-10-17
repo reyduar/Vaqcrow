@@ -53,7 +53,7 @@ Criterios de aceptación del issue (citados textualmente):
 - [x] **WU1 — Wiki compilada.** `docs/wiki/schema.md` (contrato), 16 páginas por tipo, `index.md`, `log.md` y `tests/wiki-structure.test.ts` (invariantes) — (S9). PR **#523**, mergeado.
 - [x] **WU2 — API.** Contratos, ports (`WikiRepository`, `AssistantRouter`, `AssistantAnswerer`), adaptadores (wiki bundleada en la imagen, cliente OpenCode Go), casos de uso puros con las guardias (fuera de alcance → declinación; sin páginas → «no documentación»; cita fuera → descarta; salida inválida → 1 retry; falla del proveedor → 503), ruta autenticada con el flag de acceso + el tope de 5/24 h, migración (flag + timestamps), config (+ espejo en `scripts/demo/preflight`) y `Dockerfile` que bundlea `docs/wiki/` — (S2, S3, S4, S5, S6, S7, S8, D2–D9).
 - [x] **WU3 — Web + admin.** El mismo componente de chat en el asistente flotante y en `/help`; el anónimo solo FAQ; el toggle de acceso en `/admin` → Usuarios — (S1, S2, D7, D9).
-- [x] **WU4 — Evidencia y cierre.** `docs/planning/<feature-slug>-evidence.md`, sync de `docs/planning/demo-tasks-list.md`, `pnpm run verify` — (S11). [`help-assistant-wiki-evidence.md`](../../docs/planning/help-assistant-wiki-evidence.md), PR **#610**.
+- [x] **WU4 — Evidencia y cierre.** `docs/planning/<feature-slug>-evidence.md`, sync de `docs/planning/demo-tasks-list.md`, `pnpm run verify` — (S11). [`help-assistant-wiki-evidence.md`](../../docs/planning/help-assistant-wiki-evidence.md), PR **#611**.
 
 ## Evaluación de seguridad (`owasp-security`)
 

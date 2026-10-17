@@ -17,7 +17,7 @@ Las diez preguntas abiertas del issue se resolvieron de a una el 2026-10-14 (dec
 | WU2 | API: contratos, ports, adaptadores, casos de uso con las guardias, ruta, flag de acceso, tope, migración, config y `Dockerfile` | [#524](https://github.com/reyduar/Vaqcrow/pull/524) | en `main` |
 | — | La wiki dentro del contexto de build de la API | [#526](https://github.com/reyduar/Vaqcrow/pull/526) | en `main` |
 | WU3 | Web: el mismo chat en el asistente flotante y en `/help`; toggle de acceso en `/admin` → Usuarios | [#525](https://github.com/reyduar/Vaqcrow/pull/525) | en `main` |
-| WU4 | Este documento + sync de `demo-tasks-list.md` + `pnpm run verify` | [#610](https://github.com/reyduar/Vaqcrow/pull/610) | en revisión |
+| WU4 | Este documento + sync de `demo-tasks-list.md` + `pnpm run verify` | [#611](https://github.com/reyduar/Vaqcrow/pull/611) | en revisión |
 
 ## 2. Cómo leer esta evidencia
 
@@ -109,7 +109,7 @@ Tomada de la bitácora, por unidad:
 
 ## 8. Estado de entrega y próximos pasos
 
-- WU1 a WU3 y la corrección de build están en `main`. Este documento y el sync de `docs/planning/demo-tasks-list.md` viajan en [PR #610](https://github.com/reyduar/Vaqcrow/pull/610), junto con el registro del release `v1.2.0`.
+- WU1 a WU3 y la corrección de build están en `main`. Este documento y el sync de `docs/planning/demo-tasks-list.md` viajan en [PR #611](https://github.com/reyduar/Vaqcrow/pull/611); el registro del release `v1.2.0` entró antes, en [PR #610](https://github.com/reyduar/Vaqcrow/pull/610).
 - Con este documento se cierra la issue #499 y su ítem del tablero pasa a `Done`.
 
 > [!todo] Abierto para el owner
