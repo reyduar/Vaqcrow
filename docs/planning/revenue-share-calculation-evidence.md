@@ -14,7 +14,7 @@ La Task [#88](https://github.com/reyduar/Vaqcrow/issues/88) cierra la evidencia:
 ## 2. Cómo leer esta evidencia
 
 - **Hechos verificados:** se derivan de los commits locales, archivos versionados y comandos de §5 ejecutados el 2026-09-29 sobre `e81e8e8`, antes de modificar este documento.
-- **Hechos simulados de la demo:** la regla y la tasa son fijas de la demo (`RS-2026-01`, 450 bps = 4,50 %), no un contrato real negociado. Los montos usados en las pruebas son valores de diseño, no ventas reales.
+- **Hechos simulados de la demo:** la regla y la tasa son fijas de la demo (`RS-2026-02`, 450 bps = 4,50 %), no un contrato real negociado. Los montos usados en las pruebas son valores de diseño, no ventas reales.
 - **Trabajo futuro:** se formula como futuro y no como capacidad entregada. El reemplazo de producción del motor es un motor contractual revisado por legal/contabilidad según [[docs/planning/DEMO|DEMO.md]].
 - **Reproducción local:** los comandos no requieren Supabase, Stellar Testnet, Horizon, proveedor LLM, credenciales ni datos sensibles. `pnpm run verify` usa sus suites determinísticas; no incluye `test:integration`.
 
@@ -22,7 +22,7 @@ La Task [#88](https://github.com/reyduar/Vaqcrow/issues/88) cierra la evidencia:
 
 | Límite entregado | Ruta verificable | Hecho comprobado |
 |---|---|---|
-| Motor determinístico | `packages/domain/src/revenue-share.ts` | Versión `RS-2026-01`; tasa entera en basis points (450 bps = 4,50 %); redondeo explícito y nombrado (`floor` por defecto, `half_up`); dinero en `bigint` sin punto flotante; el resultado es un union sanitizado y nada lanza. |
+| Motor determinístico | `packages/domain/src/revenue-share.ts` | Versión `RS-2026-02`; tasa entera en basis points (450 bps = 4,50 %); redondeo explícito y nombrado (`floor` por defecto, `half_up`); dinero en `bigint` sin punto flotante; el resultado es un union sanitizado y nada lanza. |
 | Superficie pública del dominio | `packages/domain/src/index.ts` | Re-exporta solo los símbolos públicos del motor (funciones, regla demo, arrays de vocabulario y tipos); no agrega lógica propia. |
 | Matriz determinística | `packages/domain/src/revenue-share.test.ts` | 60 pruebas focalizadas que cubren constantes y regla demo, elegibilidad, obligación y redondeo, asignaciones balanceadas, rutas de error sanitizadas, superficie de tipos y la matriz de frontera/validación de #87. |
 | Elegibilidad dura y determinística | `packages/domain/src/revenue-share.ts` (`collectPeriods`) | Solo un período `reported` con monto no nulo se factura; `missing` se excluye con motivo `missing_data`; `anomalous` (etiquetado "Requiere revisión" en la demo) se excluye con motivo `requires_review`. Los períodos excluidos se devuelven con su motivo, nunca se descartan, y se preserva el orden de entrada. |
@@ -40,7 +40,7 @@ Los commits locales de la implementación son `845af3e` (motor y pruebas, #86), 
 
 Las 60 pruebas de `revenue-share.test.ts` demuestran, sin dependencias externas:
 
-- **Constantes y regla demo:** la versión canónica es `RS-2026-01`; la regla demo queda congelada como `450` bps con redondeo `floor`; los arrays de vocabulario exponen `["floor", "half_up"]` y `["reported", "missing", "anomalous"]`.
+- **Constantes y regla demo:** la versión canónica es `RS-2026-02`; la regla demo queda congelada como `450` bps con redondeo `floor`; los arrays de vocabulario exponen `["floor", "half_up"]` y `["reported", "missing", "anomalous"]`.
 - **Elegibilidad:** solo `reported` con monto no nulo se factura; `missing` y `anomalous` se excluyen con su motivo explícito y se devuelven en la obligación.
 - **Obligación y redondeo:** la tasa se aplica **una sola vez** sobre el agregado de ventas elegibles, nunca por período, para que el resultado no derive entre períodos.
 - **Asignaciones balanceadas:** el reparto proporcional entero con residual por mayor resto suma siempre la obligación exacta, incluida la asignación a un único contribuyente y los casos donde la obligación es menor que la cantidad de contribuyentes.
@@ -100,7 +100,7 @@ El comando compuesto terminó con **exit 0**. Las tareas de `turbo` se sirvieron
 
 1. **El motor todavía no está cableado.** No existe una ruta Fastify, una tabla Supabase, una transacción Stellar/Horizon ni una llamada LLM que consuma estas funciones. La Task de distribución [#89](https://github.com/reyduar/Vaqcrow/issues/89) bajo la Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) es quien consumirá el motor. Esta evidencia no afirma integración alguna.
 2. **No se mueven fondos.** El cálculo es un valor de dominio; ninguna operación económica, firma, bóveda ni pago se ejecutó en esta unidad.
-3. **La regla y la tasa son de la demo.** `RS-2026-01` y 450 bps son fijos de la demostración; el motor contractual revisado por legal/contabilidad permanece como reemplazo de producción según [[docs/planning/DEMO|DEMO.md]].
+3. **La regla y la tasa son de la demo.** `RS-2026-02` y 450 bps son fijos de la demostración; el motor contractual revisado por legal/contabilidad permanece como reemplazo de producción según [[docs/planning/DEMO|DEMO.md]].
 4. **Endurecimiento de tests opcional, no entregado.** El review de #87 dejó dos sugerencias opcionales para afinar más adelante: `R3-001` (añadir un monto `reported` de exactamente `0n` para probar el borde que la comparación estricta `< 0n` admite) y `R3-002` (reforzar la prueba de determinismo con un intento de mutación). No forman parte del trabajo entregado por #86/#87.
 
 > [!warning] Alcance de la demo
