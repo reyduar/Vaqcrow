@@ -9,7 +9,7 @@ La Feature [#27](https://github.com/reyduar/Vaqcrow/issues/27) implementa el cá
 La Task [#88](https://github.com/reyduar/Vaqcrow/issues/88) cierra la evidencia: reúne el alcance entregado por [#86](https://github.com/reyduar/Vaqcrow/issues/86), sus pruebas determinísticas de [#87](https://github.com/reyduar/Vaqcrow/issues/87), las rutas de implementación y la reproducción local actual. La implementación llegó por PR [#341](https://github.com/reyduar/Vaqcrow/pull/341), merge local `192b5c1`; las pruebas por PR [#342](https://github.com/reyduar/Vaqcrow/pull/342), merge local `e81e8e8`.
 
 > [!info] Alcance de esta unidad
-> El motor es puro y framework-free: vive en `@vaqcrow/domain` y todavía **no está cableado** a ninguna ruta Fastify, tabla Supabase, transacción Stellar/Horizon ni llamada LLM. Esta evidencia documenta el cálculo, no su distribución.
+> El motor es puro y framework-free: vive en `@vaqcrow/domain` y **cuando se escribió esta evidencia no estaba cableado** a ninguna ruta Fastify, tabla Supabase, transacción Stellar/Horizon ni llamada LLM. Documentaba el cálculo, no su distribución; hoy sí se consume, desde `apps/api/src/application/use-cases/derive-revenue-share-distribution.ts`.
 
 ## 2. Cómo leer esta evidencia
 
@@ -26,10 +26,13 @@ La Task [#88](https://github.com/reyduar/Vaqcrow/issues/88) cierra la evidencia:
 | Superficie pública del dominio | `packages/domain/src/index.ts` | Re-exporta solo los símbolos públicos del motor (funciones, regla demo, arrays de vocabulario y tipos); no agrega lógica propia. |
 | Matriz determinística | `packages/domain/src/revenue-share.test.ts` | 60 pruebas focalizadas que cubren constantes y regla demo, elegibilidad, obligación y redondeo, asignaciones balanceadas, rutas de error sanitizadas, superficie de tipos y la matriz de frontera/validación de #87. |
 | Elegibilidad dura y determinística | `packages/domain/src/revenue-share.ts` (`collectPeriods`) | Solo un período `reported` con monto no nulo se factura; `missing` se excluye con motivo `missing_data`; `anomalous` (etiquetado "Requiere revisión" en la demo) se excluye con motivo `requires_review`. Los períodos excluidos se devuelven con su motivo, nunca se descartan, y se preserva el orden de entrada. |
-| Asignaciones balanceadas | `packages/domain/src/revenue-share.ts` (`buildAllocations`) | Reparto proporcional entero con residual por mayor resto (empates resueltos por orden de contribuyente); la suma de asignaciones iguala exactamente la obligación. |
+| Asignaciones balanceadas | `packages/domain/src/revenue-share.ts` (`buildCappedAllocations`) | Reparto proporcional entero con residual por mayor resto (empates resueltos por orden de contribuyente), truncado en el tope de 1,5× por aporte y redistribuido mientras quede capacidad; el invariante es `totalAllocated == min(obligation, Σ restante_i)`, así que el total asignado puede quedar por debajo de la obligación y sólo la iguala exactamente cuando ningún tope trunca. |
 | Rutas de error sanitizadas | `packages/domain/src/revenue-share.ts` | Códigos `invalid_rule`, `invalid_period`, `invalid_contributor`, `invalid_obligation` y `no_contributors`; `{ ok: false, error }` sin `message`/`details` y sin excepciones. |
 | Endurecimiento de #87 | `packages/domain/src/revenue-share.ts` | `invalid_obligation` para una obligación negativa o no `bigint` (chequeada antes de `no_contributors`); un monto `reported` negativo o no `bigint` se rechaza como `invalid_period`; los arrays de vocabulario exportados quedan congelados en runtime (`Object.freeze`). |
 | Frontera de dependencias | `.dependency-cruiser.cjs` | La regla `domain-stays-framework-free` prohíbe que `packages/domain/src` (código de producción, sin `*.test.ts`) importe cualquier dependencia npm; se verifica en `pnpm run boundaries`. |
+
+> [!info] Corrección de la especificación del invariante (#593, 2026-10-17)
+> Hasta #580, esta evidencia describía la suma de asignaciones como «exactamente igual» a la obligación, repartida por `buildAllocations`. El tope de 1,5× por aporte reemplazó esa función por `buildCappedAllocations` y reescribió el invariante a `totalAllocated == min(obligation, Σ restante_i)`: el total asignado puede quedar **por debajo** de la obligación (truncado por el tope) y sólo la iguala cuando ningún tope trunca. Se corrigieron la fila «Asignaciones balanceadas» de §3 y el punto equivalente de §4; las mediciones de §5 (recuentos, hashes y fechas) no cambian.
 
 Los commits locales de la implementación son `845af3e` (motor y pruebas, #86), con su registro ODD `b57e99e`; y `68f4ff5` (matriz de frontera/validación, #87), con su registro `4e9205d`.
 
@@ -43,7 +46,7 @@ Las 60 pruebas de `revenue-share.test.ts` demuestran, sin dependencias externas:
 - **Constantes y regla demo:** la versión canónica es `RS-2026-02`; la regla demo queda congelada como `450` bps con redondeo `floor`; los arrays de vocabulario exponen `["floor", "half_up"]` y `["reported", "missing", "anomalous"]`.
 - **Elegibilidad:** solo `reported` con monto no nulo se factura; `missing` y `anomalous` se excluyen con su motivo explícito y se devuelven en la obligación.
 - **Obligación y redondeo:** la tasa se aplica **una sola vez** sobre el agregado de ventas elegibles, nunca por período, para que el resultado no derive entre períodos.
-- **Asignaciones balanceadas:** el reparto proporcional entero con residual por mayor resto suma siempre la obligación exacta, incluida la asignación a un único contribuyente y los casos donde la obligación es menor que la cantidad de contribuyentes.
+- **Asignaciones balanceadas:** el reparto proporcional entero con residual por mayor resto (#580) se trunca en el tope de 1,5× por aporte y se redistribuye mientras quede capacidad; el total asignado es `min(obligation, Σ restante_i)` — la obligación exacta sólo cuando ningún tope trunca —, incluida la asignación a un único contribuyente y los casos donde la obligación es menor que la cantidad de contribuyentes.
 - **Rutas de error:** cada entrada inválida produce exactamente su código sanitizado, sin campos extra.
 - **Matriz #87:** pruebas de obligación negativa/no `bigint`, ventas `reported` negativas/no `bigint`, arrays exportados congelados, invariante de total balanceado y determinismo sobre una matriz fija, y el límite exacto de resto `.5` (floor `0` / half_up `1`).
 
@@ -98,7 +101,7 @@ El comando compuesto terminó con **exit 0**. Las tareas de `turbo` se sirvieron
 
 ## 7. Límites conocidos y trabajo futuro
 
-1. **El motor todavía no está cableado.** No existe una ruta Fastify, una tabla Supabase, una transacción Stellar/Horizon ni una llamada LLM que consuma estas funciones. La Task de distribución [#89](https://github.com/reyduar/Vaqcrow/issues/89) bajo la Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) es quien consumirá el motor. Esta evidencia no afirma integración alguna.
+1. **El motor no estaba cableado cuando se escribió esta evidencia.** No existía entonces una ruta Fastify, una tabla Supabase, una transacción Stellar/Horizon ni una llamada LLM que consumiera estas funciones: la Task de distribución [#89](https://github.com/reyduar/Vaqcrow/issues/89) bajo la Feature [#28](https://github.com/reyduar/Vaqcrow/issues/28) fue quien lo consumió después. Esta evidencia no afirma integración alguna.
 2. **No se mueven fondos.** El cálculo es un valor de dominio; ninguna operación económica, firma, bóveda ni pago se ejecutó en esta unidad.
 3. **La regla y la tasa son de la demo.** `RS-2026-02` y 450 bps son fijos de la demostración; el motor contractual revisado por legal/contabilidad permanece como reemplazo de producción según [[docs/planning/DEMO|DEMO.md]].
 4. **Endurecimiento de tests opcional, no entregado.** El review de #87 dejó dos sugerencias opcionales para afinar más adelante: `R3-001` (añadir un monto `reported` de exactamente `0n` para probar el borde que la comparación estricta `< 0n` admite) y `R3-002` (reforzar la prueba de determinismo con un intento de mutación). No forman parte del trabajo entregado por #86/#87.
