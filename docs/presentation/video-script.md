@@ -11,7 +11,7 @@ Plan de grabación (shot list) del recorrido por roles, para la brecha **«video
 - [ ] **Web arriba:** `https://www.vaqcrow.com` (o el perfil docker local). API Railway `https://api-production-c07f.up.railway.app` con `/health` en 200.
 - [ ] **Freighter** instalada, en red **Testnet**, con cuenta para la PyME y para el inversor.
 - [ ] **Admin:** `vaqcrow.admin` (email y contraseña vienen de variables de entorno, nunca del repo).
-- [ ] **Cuentas frescas** para PyME e inversor en la corrida (o reusar las del ensayo).
+- [ ] **Cuentas frescas** para PyME e inversor en la corrida (o reusar las del ensayo), con el **asistente habilitado** para al menos una (escena 9).
 - [ ] **Datos: solo sintéticos.** El banner de demo pide no cargar información real. Nada se resetea (Opción A): cada corrida crea registros frescos.
 - [ ] **Pantalla limpia:** cerrá terminal/consola con `.env`, el panel de Supabase y el inspector. **Nunca** mostrar seeds, claves privadas ni tokens.
 
@@ -30,11 +30,12 @@ Plan de grabación (shot list) del recorrido por roles, para la brecha **«video
 | 2 | **Cuenta e ingreso** | `/signup`, `/login` | Crear una cuenta **PYME** y una **inversor**; mostrar que el toggle «Soy PyME / Soy inversor» **debe coincidir** con el rol (si no, se rechaza) | «Autenticación real (Supabase Auth); el ingreso redirige por rol **verificado**, no por el selector» |
 | 3 | **Onboarding PyME (wizard)** | `/company` | Stepper en el lugar: **KYC** (simulado) → **Registro** (subir 3 documentos obligatorios + fotos) → **Evaluación AI** (completitud + banda) → **Revisión humana**: conectar **Freighter** (obligatoria) y **Enviar a revisión** | «Los documentos **se suben de verdad**; la IA **advierte, no bloquea**; sin wallet el envío se bloquea; la clave pública es el destino de la bóveda» |
 | 4 | **Admin: revisión y deploy** | `/admin` | Cola de PyMEs → abrir la revisión (contexto, evidencia, recomendación de IA, veredictos por documento) → **aprobar** → ver el **deploy de la bóveda en Testnet** | «La decisión es **humana**; la plataforma firma el deploy; la cuenta de la PyME es el **destino inmutable**» |
-| 5 | **Inversor: aporte** | `/explore` → `/campaigns/[id]` → `/portfolio` | Explorar, abrir el detalle, conectar Freighter, modal **«Revisión antes de firmar»** y **firmar el aporte** | «**No custodial**: el inversor firma; Vaqcrow nunca recibe la seed» |
+| 5 | **Inversor: aporte** | `/explore` → `/campaigns/[id]` → `/portfolio` | Explorar, abrir el detalle (público y compartible por link), conectar Freighter, modal **«Revisión antes de firmar»** y **firmar el aporte**; mostrar el saldo con 2 decimales y su equivalente en ARS | «**No custodial**: el inversor firma; Vaqcrow nunca recibe la seed. Nadie aporta más del 10 % de la meta ni más de lo que falta; el equivalente en pesos es **simulado**» |
 | 6 | **Bóveda en Testnet** | detalle de campaña | Mostrar el **`contractAddress`** y el aporte reflejado | «La custodia es del **contrato**, no de una persona» |
-| 7 | **Distribución (revenue share)** | `/company` | Declarar las ventas del mes → ver la **obligación calculada** → **firmar en Freighter** la distribución | «El cálculo es **determinístico** (la IA no calcula); la PyME firma» |
+| 7 | **Distribución (revenue share)** | `/company` | Declarar las ventas del mes → ver la **obligación calculada** → **firmar en Freighter** la distribución | «El cálculo es **determinístico** (la IA no calcula): 4,5 % de las ventas, en proporción a cada aporte y **hasta 1,5 veces lo aportado** (`RS-2026-02`); la PyME firma» |
 | 8 | **Evidencia por rol** | `/portfolio`, `/reports`, `/company` y `/admin/pymes/[applicationId]/evidence` | Mostrar **hashes** y **enlaces al explorador** en cada rol; el admin ve la **cadena completa** | «Cada rol ve su evidencia; el admin ve decisión, deploy, aportes y distribuciones» |
-| 9 | **Cierre** | — | Mostrar el aviso de confianza / los disclaimers | Recitar el encuadre: demo, simulado, Testnet, IA asesora, no apto para producción |
+| 9 | **Blog y asistente de ayuda** | `/blog`, `/help` | Abrir un artículo del Blog; con una cuenta habilitada, preguntarle al asistente «¿Qué pasa si la campaña no llega a la meta?» y mostrar la página citada | «El asistente responde **sólo** desde la wiki compilada y cita la página; si no hay documentación, lo dice» |
+| 10 | **Cierre** | — | Mostrar el aviso de confianza / los disclaimers | Recitar el encuadre: demo, simulado, Testnet, IA asesora, no apto para producción |
 
 ## Cómo se ve «bien» cada escena
 
@@ -42,6 +43,7 @@ Plan de grabación (shot list) del recorrido por roles, para la brecha **«video
 - **Escena 4:** la aprobación dispara el deploy; el estado del despliegue llega a **`confirmed`** y aparece el `campaignId`.
 - **Escena 5:** tras firmar, el estado honesto es **«Enviada · pendiente de confirmación»** (la confirmación es asíncrona; no es instantánea).
 - **Escena 8:** guardá una captura de los hashes y del contrato para el paquete (…y una nota de los links al explorador Testnet).
+- **Escena 9:** la respuesta llega completa, sin *streaming*, y muestra el enlace a la página de la wiki que cita. La cuenta tiene que tener el asistente habilitado por un admin (`/admin`, Usuarios).
 
 ## Al terminar
 
