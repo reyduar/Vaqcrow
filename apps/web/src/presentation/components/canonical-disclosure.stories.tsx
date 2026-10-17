@@ -3,7 +3,7 @@ import { disclosures, type DisclosureId } from "@/application/trust/disclosures"
 import { CanonicalDisclosure } from "./canonical-disclosure";
 
 /**
- * The six canonical disclosures, rendered verbatim. A consistency test asserts
+ * The seven canonical disclosures, rendered verbatim. A consistency test asserts
  * the same texts appear verbatim in `DEMO.md`, `demo-ui.md` and the design
  * brief, so this story doubles as the visual read of that invariant.
  */

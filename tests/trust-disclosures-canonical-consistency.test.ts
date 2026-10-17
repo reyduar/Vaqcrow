@@ -40,7 +40,7 @@ const DOCUMENTS = [
 ] as const;
 
 /** How many canonical disclosures the record is expected to carry. */
-const CANONICAL_DISCLOSURE_COUNT = 6;
+const CANONICAL_DISCLOSURE_COUNT = 7;
 
 const read = (relativePath: string) => readFileSync(join(REPO_ROOT, relativePath), "utf8");
 

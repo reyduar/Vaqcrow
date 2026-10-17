@@ -3,8 +3,8 @@ import { TrustBanner } from "./trust-banner";
 
 /**
  * CanonicalDisclosure (Feature #17 / Task #53): the ONLY render path for the
- * five canonical DEMO.md §12 disclosure texts. No other component may inline
- * this copy — every route renders one of these five texts by importing this
+ * seven canonical DEMO.md §12 disclosure texts. No other component may inline
+ * this copy — every route renders one of these seven texts by importing this
  * component with a `disclosureId`, never by writing the sentence itself.
  */
 export interface CanonicalDisclosureProps {
