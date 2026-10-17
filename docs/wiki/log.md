@@ -2,6 +2,13 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-16 — lint: lista de copy pública y tope de aportes (#582, #590)
+
+- `index.md`: se reescribió la línea de `boveda-soroban` para no usar un término prohibido de la copy pública; sigue siendo una sola línea de router con el mismo sentido.
+- Lint nuevo en `tests/`: el corpus completo (`docs/wiki/`, páginas e `index.md`) se escanea contra la misma lista de términos prohibidos que la copy pública. Las negaciones legítimas y el encabezado descriptivo de `boveda-soroban.md` quedan declarados y verificados por archivo.
+- `todo-o-nada.md`: se corrigió la frase que atribuía al contrato todas las reglas de aportes. El cierre por «Meta alcanzada» lo aplica el contrato; el tope que impide aportar más de lo que falta lo aplica Vaqcrow antes de firmar, como dice la divulgación `contribution-over-goal`. Se actualizó `updated`.
+- Alcance del lint: `apps/web/src/application/trust/disclosures.ts` queda fuera. Sus siete textos son las divulgaciones canónicas aprobadas y ya están fijados literalmente por `tests/trust-disclosures-canonical-consistency.test.ts`; sus términos aparecen sólo en negaciones, así que pasarlos por la lista obligaría a una exención grande que debilitaría el guard.
+
 ## 2026-10-16 — ingest: tope del revenue share a 1,5× (#580)
 
 - Fuente citada: `blog/revenue-share-explicado.md` (Blog), junto con `como-funciona-vaqcrow.md`.
