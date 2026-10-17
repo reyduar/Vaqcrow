@@ -23,6 +23,7 @@ import { formatShortAddress } from "@/application/company/format";
 import { microcopy } from "@/application/trust/disclosures";
 import { Badge, type BadgeTone } from "../badge";
 import { BarChart, type BarChartPoint } from "../bar-chart";
+import { CanonicalDisclosure } from "../canonical-disclosure";
 import { ExplorerProof } from "../explorer-proof";
 import { ProgressBar } from "../progress-bar";
 import { CampaignContribution, type CampaignContributionInjection } from "./campaign-contribution";
@@ -507,6 +508,12 @@ function FundingAside({
             </dd>
           </div>
         </dl>
+
+        {/* #579/S1: the over-goal limit is stated beside the form, for every
+            viewer — including one with no session, whose contribution box never
+            mounts — because the limit is a property of the campaign, not of the
+            viewer's ability to contribute. */}
+        <CanonicalDisclosure id="contribution-over-goal" />
 
         {contribution}
 

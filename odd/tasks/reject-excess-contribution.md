@@ -28,9 +28,9 @@ Objetivo: cerrar la regla de sobrefinanciación (ningún aporte puede exceder lo
 - **T1** | S2 | inline | Bitácora de la Feature (`odd/tasks/reject-excess-contribution.md`) y su espejo en Engram — **hecho**.
 - **T2** | S2,S3,S4,S5 | delegated | Artículo de blog del mecanismo de revenue share: `docs/guides/blog/revenue-share-explicado.md` («El revenue share de Vaqcrow, explicado en simple»), alta en el test de denylist, `supabase/migrations/20261016180000_seed_blog_post_revenue_share.sql` (posición 51/51) y `supabase/tests/blog_post_revenue_share_seed.sql` — **hecho**. Denylist 21/21; pgTAP 6/6. El padre corrigió la copy: ver L12.
 - **T3** | S2,S3,S4,S5 | delegated | Expansión de `docs/wiki/revenue-share.md` en lenguaje llano (analogía del kiosco, glosario, el mes paso a paso), más `index.md` y `log.md` — **hecho**. Lint de corpus 19/19. El padre corrigió la copy: ver L12.
-- **T4** | S2,S3,S4 | inline | Copy de la estación «La distribución mensual del revenue share» en `docs/guides/como-funciona-vaqcrow.md` — **pendiente** (aterriza con el código de T5).
-- **T5** | S1 | pendiente | Guardrail: preflight de API, regla de UI, disclosure canónica y tests.
-- **T6** | S3,S4 | inline | Verificación (lint de corpus, denylist, `pnpm run verify`) y commits por unidad de trabajo — **pendiente**.
+- **T4** | S2,S3,S4 | inline | Copy de la estación «La distribución mensual del revenue share» en `docs/guides/como-funciona-vaqcrow.md`: la parte del tope (1,5×) aterrizó con #580; la frase sobre el rechazo del excedente aterriza ahora, junto con el código de T5, en la misma unidad — **en curso**.
+- **T5** | S1 | delegated + verificador | Guardrail: preflight de API contra `goal - total` con código saneado, regla de UI con el mínimo relajado a `min(10 XLM, remanente)`, y la disclosure canónica con la redacción aprobada por el owner — **en curso**.
+- **T6** | S3,S4 | inline | Verificación (lint de corpus, denylist, `pnpm run verify`), verificador independiente y commits por unidad de trabajo — **pendiente**.
 
 ## Log
 
@@ -62,4 +62,10 @@ Objetivo: cerrar la regla de sobrefinanciación (ningún aporte puede exceder lo
 
 **L14 (hallazgo de paso, no corregido, de la wiki).** `docs/wiki/index.md:10` (la línea de `boveda-soroban`) contiene el término prohibido «garantiza», y el lint de corpus no escanea la copy de la wiki contra el denylist. Como el asistente **redacta** sus respuestas a partir de esa copy, el término puede llegar al usuario. Candidato a issue propio, junto con L10.
 
-**Próximo paso.** Commitear las unidades de trabajo (blog, wiki, bitácora), ampliar el cuerpo de #579 con el alcance de documentación, y dejar T4/T5 (la copy de la estación de «Cómo funciona» y el guardrail) para la unidad donde aterrice el código de S1.
+**L15 (entrega mergeada).** Los cuatro PRs de la sesión quedaron en `main`: #585 (docs de #579), #586 (#580 sobre la rama de #579), #587 (la rama de #579 → main, `Closes #580`). `main = eeec2bf`. #580 cerrado; #579 reabierto porque su núcleo —este guardrail— no estaba implementado. Dos trampas de GitHub mordieron en el proceso y quedaron registradas en Engram: un keyword de cierre **negado** igual cierra el issue, y un PR encadenado mergeado **no llega a `main`** ni auto-cierra el issue.
+
+**L16 (owner, 2026-10-17, decisión).** «metele con todo»: aprueba el borrador de la disclosure y ordena implementar el guardrail completo. La redacción aprobada, textual: título «Aportes por encima de la meta»; cuerpo «Ningún aporte puede superar lo que falta para alcanzar la meta: si faltan 50 XLM, el formulario no acepta más que eso. El aporte que la superaría se rechaza antes de firmarse y no mueve fondos. Este tope lo aplica Vaqcrow, no el contrato: quien firme directamente contra la bóveda todavía puede exceder la meta.» Verificada contra el denylist de copy pública: sin coincidencias. **La última oración es la que el owner aprobó de verdad**: declara que el tope tiene un agujero, en lugar de prometer uno que la cadena no hace cumplir.
+
+**L17 (decisión de rama).** La rama original de #579 ya está mergeada, así que el guardrail va en una rama nueva desde `eeec2bf`: `…-02-guardrail`, con el sufijo que la convención del repo pide para un PR encadenado.
+
+**Próximo paso.** Implementar T5 (preflight de API, regla de UI y disclosure), la frase de T4 en la estación de «Cómo funciona», y verificar con el gate completo más un verificador independiente.

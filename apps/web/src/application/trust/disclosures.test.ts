@@ -12,6 +12,8 @@ const CANONICAL_TEXTS: Record<string, string> = {
     "Firma no custodial. Freighter es la wallet e interfaz de firma. La persona usuaria conserva sus claves; Vaqcrow construye y verifica la transacción y nunca recibe su seed.",
   "contract-custody":
     "Custodia por contrato. Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.",
+  "contribution-over-goal":
+    "Aportes por encima de la meta. Ningún aporte puede superar lo que falta para alcanzar la meta: si faltan 50 XLM, el formulario no acepta más que eso. El aporte que la superaría se rechaza antes de firmarse y no mueve fondos. Este tope lo aplica Vaqcrow, no el contrato: quien firme directamente contra la bóveda todavía puede exceder la meta.",
   "human-ai":
     "IA con supervisión humana. La IA organiza evidencia, identifica anomalías y propone una evaluación explicable. No inventa datos, no toma la decisión final, no calcula obligaciones financieras y no transfiere fondos.",
   "no-production":
@@ -19,7 +21,7 @@ const CANONICAL_TEXTS: Record<string, string> = {
 };
 
 describe("disclosures", () => {
-  it("holds exactly the six canonical disclosure ids", () => {
+  it("holds exactly the seven canonical disclosure ids", () => {
     expect(Object.keys(disclosures).sort()).toEqual(Object.keys(CANONICAL_TEXTS).sort());
   });
 

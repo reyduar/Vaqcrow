@@ -5,10 +5,12 @@ import { useMemo, useState } from "react";
 import {
   contributionAmountMessage,
   contributionPreSignError,
+  minimumContributionStroops,
   MIN_CONTRIBUTION_XLM,
   validateContributionAmount
 } from "@/application/campaign/campaign-contribution";
 import type { CampaignVaultError } from "@/application/campaign/campaign-vault-errors";
+import { formatStroopsAsXlm } from "@/application/format/stroops";
 import type { PrincipalRole } from "@/application/ports/auth-session-port";
 import type { CampaignDetail } from "@/application/ports/campaign-detail-port";
 import type { CampaignGateway } from "@/application/ports/campaign-gateway";
@@ -38,8 +40,14 @@ const defaultGateway = createCampaignGateway(process.env["NEXT_PUBLIC_API_BASE_U
 
 const PORTFOLIO_HREF = "/portfolio";
 
-/** The template's helper text under the amount field (`Vaqcrow Detalle PyME.dc.html:196`). */
-const MIN_AMOUNT_HELPER = `Activo de prueba sin valor económico · mínimo ${MIN_CONTRIBUTION_XLM} XLM`;
+/**
+ * The template's helper text under the amount field
+ * (`Vaqcrow Detalle PyME.dc.html:196`). The minimum shown is the effective one:
+ * 10 XLM, relaxed to what is left when the remainder is smaller (#579/S1).
+ */
+function amountHelperText(minimumXlm: string): string {
+  return `Activo de prueba sin valor económico · mínimo ${minimumXlm} XLM`;
+}
 
 /**
  * Maps a contribute failure to the review modal's signing state (D5, the
@@ -175,6 +183,22 @@ export function CampaignContribution({
     setAmountError(undefined);
   }
 
+  // What is left to reach the goal, from the chain snapshot the engine loaded
+  // (#579/S1). `null` until it arrives — the bound is only enforced once a
+  // number is known, never guessed from the ARS figures the detail carries.
+  // Negative cannot happen in a funding vault; clamped at 0 for safety.
+  const remainingStroops =
+    campaign === undefined
+      ? null
+      : campaign.goalStroops > campaign.totalStroops
+        ? campaign.goalStroops - campaign.totalStroops
+        : 0n;
+  const remainingArg = remainingStroops === null ? null : remainingStroops.toString();
+  const minimumXlm =
+    remainingStroops === null
+      ? MIN_CONTRIBUTION_XLM
+      : formatStroopsAsXlm(minimumContributionStroops(remainingArg));
+
   if (!canContribute) return null;
 
   const openPortfolio = onConnectWallet ?? (() => router.push(PORTFOLIO_HREF));
@@ -182,9 +206,9 @@ export function CampaignContribution({
   // The final step shared by an already-approved investor and the one-shot KYC
   // confirm: validate the amount, ensure a signing account, then open the review.
   const openReview = async () => {
-    const parsed = validateContributionAmount(amount);
+    const parsed = validateContributionAmount(amount, remainingArg);
     if (!parsed.ok) {
-      setAmountError(contributionAmountMessage(parsed.error));
+      setAmountError(contributionAmountMessage(parsed.error, remainingArg));
       return;
     }
 
@@ -199,7 +223,8 @@ export function CampaignContribution({
     const reason = contributionPreSignError({
       amountInput: amount,
       vaultAddress,
-      network: campaign?.network ?? null
+      network: campaign?.network ?? null,
+      remainingStroops: remainingArg
     });
     if (reason) {
       setAmountError(reason);
@@ -255,13 +280,22 @@ export function CampaignContribution({
         label="Monto del aporte (XLM)"
         inputMode="decimal"
         value={amount}
-        helperText={MIN_AMOUNT_HELPER}
+        helperText={amountHelperText(minimumXlm)}
         {...(amountError ? { error: amountError } : {})}
         onChange={(value) => {
           setAmount(value);
           setAmountError(undefined);
         }}
       />
+
+      {/* What is left to reach the goal, shown before the person signs
+          (#579/S1). Only rendered once the chain snapshot carries the number:
+          an unknown remainder means no number, never a fabricated one. */}
+      {remainingStroops !== null && remainingStroops > 0n ? (
+        <p className="m-0 text-[13px] text-text-secondary">
+          {`Faltan ${formatStroopsAsXlm(remainingStroops)} XLM para alcanzar la meta.`}
+        </p>
+      ) : null}
 
       <Button
         type="button"
@@ -295,7 +329,7 @@ export function CampaignContribution({
           { label: "Contrato", value: vaultAddress ?? "", mono: true },
           { label: "Función", value: "contribute" },
           { label: "Custodia", value: "El contrato de la bóveda, no una persona" },
-          { label: "Aporte mínimo", value: `${MIN_CONTRIBUTION_XLM} XLM de prueba` }
+          { label: "Aporte mínimo", value: `${minimumXlm} XLM de prueba` }
         ]}
         {...networkProps}
         {...signingProps}

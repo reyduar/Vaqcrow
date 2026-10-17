@@ -12,15 +12,20 @@ import { WalletError } from "@/application/ports/wallet-port";
  * is its own kind too, because it is a blocked pre-condition before the
  * vault ever opens — the PyME's Stellar account could not be created or
  * verified, so nothing was deployed and no funds moved — and must never read
- * like a failed payout. `refused` covers every other 409/422 the backend can
- * answer (`application_not_approved`, `vault_state_mismatch`, a signature
- * the chain rejected, or a submitted transaction that settled `failed`).
+ * like a failed payout. `exceeds_remaining` is its own kind too, because the
+ * rejection carries an instruction the generic `refused` cannot give: the
+ * aporte is above what is left to reach the goal, and the person can fix it by
+ * contributing at most the remaining. `refused` covers every other 409/422 the
+ * backend can answer (`application_not_approved`, `vault_state_mismatch`, a
+ * signature the chain rejected, or a submitted transaction that settled
+ * `failed`).
  */
 export type CampaignVaultErrorKind =
   | "validation"
   | "not_found"
   | "not_funding"
   | "sme_account_unavailable"
+  | "exceeds_remaining"
   | "refused"
   | "unavailable"
   | "network"
@@ -44,6 +49,8 @@ const MESSAGES: Readonly<Record<CampaignVaultErrorKind, string>> = {
     "La bóveda ya no acepta aportes: la cadena confirma que salió del estado de fondeo. Actualizá la vista.",
   sme_account_unavailable:
     "No se pudo crear ni verificar la cuenta de la PyME en Stellar: la bóveda no se abrió, no se desplegó nada y no se movieron fondos. Podés reintentar.",
+  exceeds_remaining:
+    "El aporte supera lo que falta para alcanzar la meta: el máximo que podés aportar es el remanente. No se movió nada; corregí el monto y volvé a intentar.",
   refused:
     "El servicio rechazó la operación. No se registró nada; revisá el estado de la campaña y volvé a intentar.",
   unavailable: "El servicio no está disponible en este momento. No se registró nada; podés reintentar.",
@@ -84,7 +91,11 @@ export function toCampaignVaultError(error: unknown): CampaignVaultError {
       return campaignVaultErrorOfKind(error.errorCode === "campaign_not_funding" ? "not_funding" : "refused");
     case 422:
       return campaignVaultErrorOfKind(
-        error.errorCode === "sme_account_unavailable" ? "sme_account_unavailable" : "refused"
+        error.errorCode === "sme_account_unavailable"
+          ? "sme_account_unavailable"
+          : error.errorCode === "contribution_exceeds_remaining"
+            ? "exceeds_remaining"
+            : "refused"
       );
     case 503:
       return campaignVaultErrorOfKind("unavailable");

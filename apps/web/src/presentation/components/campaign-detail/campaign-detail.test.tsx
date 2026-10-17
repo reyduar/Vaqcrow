@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 import type { CampaignDetail, CampaignDetailPort } from "@/application/ports/campaign-detail-port";
+import { disclosures } from "@/application/trust/disclosures";
 import { CampaignDetail as CampaignDetailController } from "./campaign-detail";
 
 const CAMPAIGN_ID = "3f0c1d52-7a4b-4c1e-9d3a-2b6e8f4a9c10";
@@ -77,6 +78,30 @@ describe("CampaignDetail (public read)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Ingresá para ver esta campaña" })).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  // #579/S1: the over-goal limit is stated on the detail itself — and not only
+  // for an investor who can contribute. It is ungated: a viewer with no session
+  // sees it even though no contribution box mounts for them, and it sits exactly
+  // where that box would be: after the terms list and before the withdraw note
+  // that follows the contribution slot.
+  it("states the over-goal limit before the contribution box, even with no session (#579/S1)", async () => {
+    renderDetail({ get: vi.fn().mockResolvedValue({ ok: true, detail: detail() }) });
+
+    await screen.findByRole("heading", { level: 1, name: "Panadería Horizonte SRL" });
+    const aside = screen.getByRole("complementary", { name: "Aportar a la campaña" });
+
+    const disclosure = within(aside).getByText(disclosures["contribution-over-goal"].text);
+    expect(disclosure).toBeInTheDocument();
+    // No session: the contribution box never mounts...
+    expect(within(aside).queryByRole("button", { name: "Aportar a la campaña" })).not.toBeInTheDocument();
+    // ...yet the disclosure sits right where that box belongs.
+    const terms = within(aside).getByText("Bóveda");
+    const withdrawNote = within(aside).getByText(
+      "Podés retirar tu aporte mientras el fondeo siga abierto. Freighter firma; Vaqcrow nunca recibe tu seed."
+    );
+    expect(terms.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(disclosure.compareDocumentPosition(withdrawNote) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 

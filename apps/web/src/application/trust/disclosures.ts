@@ -2,7 +2,7 @@
  * Canonical trust-disclosure copy for the demo (Feature #17 / Task #53;
  * reconciled with contract custody in Feature #240).
  *
- * These six texts are quoted verbatim from `docs/planning/DEMO.md` §12
+ * These seven texts are quoted verbatim from `docs/planning/DEMO.md` §12
  * "Claims y disclaimers exactos" and `docs/design/demo-ui.md` §2 "Reglas de
  * confianza no negociables". No route may paraphrase, abbreviate, or
  * duplicate this copy — every consumer imports these constants.
@@ -21,6 +21,7 @@ export type DisclosureId =
   | "testnet"
   | "non-custody"
   | "contract-custody"
+  | "contribution-over-goal"
   | "human-ai"
   | "no-production";
 
@@ -66,6 +67,12 @@ export const disclosures: Readonly<Record<DisclosureId, Disclosure>> = Object.fr
     "contract-custody",
     "Custodia por contrato",
     "Durante la campaña, los aportes los custodia el contrato, no una persona: nadie tiene una clave para moverlos. El contrato sólo puede pagar al destino fijo definido al abrir la bóveda, y ese destino es inmutable. La meta la evalúa el contrato sobre el ledger y, al alcanzarla, liquida a la PyME en la misma transacción. No hay recuperación ni clawback: no existe forma de revertir un pago ya liquidado, y los fondos que nadie reclame sólo pueden salir por el barrido; si no, pueden quedarse en el contrato. El reembolso por vencimiento no se dispara solo: exige que alguien envíe la transacción, y es permissionless porque el destino ya está fijado.",
+    "simulation"
+  ),
+  "contribution-over-goal": disclosure(
+    "contribution-over-goal",
+    "Aportes por encima de la meta",
+    "Ningún aporte puede superar lo que falta para alcanzar la meta: si faltan 50 XLM, el formulario no acepta más que eso. El aporte que la superaría se rechaza antes de firmarse y no mueve fondos. Este tope lo aplica Vaqcrow, no el contrato: quien firme directamente contra la bóveda todavía puede exceder la meta.",
     "simulation"
   ),
   "human-ai": disclosure(
