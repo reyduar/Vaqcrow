@@ -4,14 +4,14 @@ type: tecnologia
 sources:
   - como-funciona-vaqcrow.md
   - blog/vaqcrow-sobre-stellar.md
-updated: 2026-10-14
+updated: 2026-10-17
 ---
 
 # La bóveda en Soroban
 
 El corazón de una campaña es una **bóveda**: un contrato inteligente en Stellar (Soroban), uno por campaña.
 
-## Qué garantiza
+## Qué reglas ejecuta la bóveda
 
 - La bóveda tiene como **destino inmutable** la cuenta de la PyME.
 - El contrato es el **único** que puede mover los aportes, y solo puede pagarlos al destino fijo definido al abrirlo.

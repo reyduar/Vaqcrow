@@ -49,16 +49,17 @@ function corpusFiles(): readonly string[] {
 }
 
 /**
- * Legitimate uses of a denylisted stem in the corpus: explicit denials and one
- * descriptive section heading. Each is declared with the file it lives in and
- * asserted there, so the exemption cannot silently outlive or drift away from
- * the text. Phrases are case-sensitive and keep their Markdown prefix where
- * needed: `## Qué garantiza` scrubs the bóveda heading, never the lowercase
- * index line this task fixes.
+ * Legitimate uses of a denylisted stem in the corpus: explicit denials only.
+ * Each is declared with the file it lives in and asserted there, so the
+ * exemption cannot silently outlive or drift away from the text. Phrases are
+ * case-sensitive and keep their Markdown prefix where needed.
+ *
+ * `boveda-soroban.md` is deliberately absent: its section heading was a
+ * descriptive use rather than a denial (#594), so the heading was rewritten to
+ * drop the stem instead of being exempted. Exempting a heading leaves the
+ * assistant free to restate the claim in its own words.
  */
 const DECLARED_NON_CLAIMS = [
-  // A descriptive section heading, not a claim about the product.
-  { file: "boveda-soroban.md", phrase: "## Qué garantiza" },
   // An explicit denial: the contribution has no guaranteed return.
   { file: "guia-del-inversor.md", phrase: "no tiene retorno garantizado" },
   // An explicit denial: no production availability is claimed.
