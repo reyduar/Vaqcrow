@@ -122,6 +122,12 @@ const STELLAR_ECOSYSTEM_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(STELLAR_
 const GENTLE_AI_ARTICLE_SOURCE = "vaqcrow-con-gentle-ai-y-odd.md";
 const GENTLE_AI_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(GENTLE_AI_ARTICLE_SOURCE));
 /**
+ * #601: the article on Karpathy's LLM Wiki method and how Vaqcrow built its
+ * help assistant is a public Blog article too (Blog only, not in the wiki).
+ */
+const LLM_WIKI_ARTICLE_SOURCE = "llm-wiki-de-karpathy-en-vaqcrow.md";
+const LLM_WIKI_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(LLM_WIKI_ARTICLE_SOURCE));
+/**
  * Feature #499: the help assistant's web-side chrome (labels, placeholders and
  * the failure/access strings) is public copy too, so it runs through the same
  * denylist as the copy above. The four fixed answers (out-of-scope,
@@ -141,6 +147,7 @@ const PUBLIC_TEXT = [
   REVENUE_SHARE_ARTICLE_TEXT,
   STELLAR_ECOSYSTEM_ARTICLE_TEXT,
   GENTLE_AI_ARTICLE_TEXT,
+  LLM_WIKI_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");
 
