@@ -2,6 +2,12 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-17 — ingest: el ecosistema Stellar de Vaqcrow (#599)
+
+- Fuente nueva citada: `blog/ecosistema-stellar-de-vaqcrow.md` (Blog).
+- Página nueva `ecosistema-stellar.md` (tecnologia): las piezas (Stellar, Testnet, XLM, Soroban, bóveda, fábrica, Freighter, Horizon y RPC, explorador), la custodia del contrato, las reglas del aporte, los dos caminos de la meta, el revenue share y una capa para developers (Rust, funciones de los contratos, despliegue y el recorrido contracts → API → web).
+- `index.md`: alta de la línea de `ecosistema-stellar`, antes de `boveda-soroban`.
+
 ## 2026-10-17 — lint: encabezado de bóveda sin término prohibido (#594)
 
 - `boveda-soroban.md`: el encabezado «## Qué garantiza» se reescribió como «## Qué reglas ejecuta la bóveda». El contenido de la sección no cambió: sigue describiendo el destino inmutable, que sólo el contrato mueve los aportes, que nadie tiene la clave durante la campaña y que el todo o nada lo ejecuta el contrato. Se actualizó `updated`.
