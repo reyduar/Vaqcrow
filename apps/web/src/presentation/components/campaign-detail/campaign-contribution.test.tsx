@@ -65,8 +65,11 @@ function snapshot(overrides: Partial<CampaignSnapshot> = {}): CampaignSnapshot {
     contractAddress: VAULT,
     network: "TESTNET",
     state: "funding",
-    goalStroops: 50000000n,
-    totalStroops: 15000000n,
+    // 50 XLM goal with 1.5 XLM raised leaves 48.5 XLM to reach it (#579/S1):
+    // comfortably above the 15 XLM the flow cases type, so an ordinary amount
+    // stays within the remaining. 1 stroop = 1e-7 XLM.
+    goalStroops: 500_000_000n,
+    totalStroops: 15_000_000n,
     deadline: "2026-12-01T00:00:00.000Z",
     smeAccountId: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     reconciliationStatus: "in_sync",
@@ -240,6 +243,31 @@ describe("CampaignContribution: the review modal", () => {
     fireEvent.click(cta);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("El aporte mínimo es 10 XLM.");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("CampaignContribution: the remaining bound (#579/S1)", () => {
+  it("shows what is left to reach the goal before signing", async () => {
+    renderFlow();
+    await loadedHeading();
+
+    // 50 XLM goal − 1.5 XLM raised = 48.5 XLM left, displayed from the chain snapshot.
+    expect(await screen.findByText("Faltan 48.5 XLM para alcanzar la meta.")).toBeInTheDocument();
+  });
+
+  it("refuses an amount above the remaining before opening the review", async () => {
+    renderFlow();
+    await loadedHeading();
+    const cta = await enabledCta();
+
+    // 49 XLM is one XLM above the 48.5 XLM that is left.
+    fireEvent.change(screen.getByLabelText(/Monto del aporte/), { target: { value: "49" } });
+    fireEvent.click(cta);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "El aporte no puede superar lo que falta para alcanzar la meta: 48.5 XLM."
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

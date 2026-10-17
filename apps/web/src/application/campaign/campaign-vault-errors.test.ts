@@ -45,6 +45,12 @@ describe("toCampaignVaultError", () => {
     );
   });
 
+  it("maps a 422 contribution_exceeds_remaining to its own kind, not refused (#579/S1)", () => {
+    expect(
+      toCampaignVaultError(new HttpClientError("http", 422, undefined, "contribution_exceeds_remaining")).kind
+    ).toBe("exceeds_remaining");
+  });
+
   it("maps 503 to unavailable", () => {
     expect(toCampaignVaultError(new HttpClientError("http", 503)).kind).toBe("unavailable");
   });
@@ -67,5 +73,12 @@ describe("toCampaignVaultError", () => {
     const error = campaignVaultErrorOfKind("sme_account_unavailable");
     expect(error.message).toMatch(/no se abrió/i);
     expect(error.message).not.toMatch(/pago|payout|rechazó la operación/i);
+  });
+
+  it("names the maximum the person may contribute when an over-goal aporte is rejected (#579/S1)", () => {
+    const error = campaignVaultErrorOfKind("exceeds_remaining");
+    expect(error.message).toMatch(/máximo/i);
+    expect(error.message).toMatch(/remanente/i);
+    expect(error.message).not.toMatch(/rechazó la operación/i);
   });
 });
