@@ -12,7 +12,6 @@
   <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.27.0-8a05be" />
   <img alt="Stellar Testnet" src="https://img.shields.io/badge/Stellar-Testnet-8a05be" />
   <img alt="Demo" src="https://img.shields.io/badge/demo-datos%20simulados-8a05be" />
-  <a href="#construido-con-gentle-ai"><img alt="Construido con gentle-ai y ODD" src="https://img.shields.io/badge/construido%20con-gentle--ai%20%C2%B7%20ODD-8a05be" /></a>
 </p>
 
 Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de cuotas fijas e intereses asfixiantes: quienes aportan capital reciben una participación contractual en las ventas, de modo que la obligación acompaña el desempeño del negocio.
@@ -39,7 +38,7 @@ Vaqcrow busca que comercios de barrio y PyMEs puedan financiarse sin depender de
 - **Diseño (fuente de verdad):** el template de **Claude Design** en `docs/design/template/` —14 pantallas `.dc.html`, cada una con los dos temas en el mismo archivo— reemplazó al proyecto de Google Stitch el 01/10/2026. Se comparte en <https://claude.ai/design/p/d16823bf-de57-404f-a94b-6a3ad638a770?file=Vaqcrow+Landing.html&via=share>. El directorio está fuera del repositorio a propósito (`.gitignore`) y su HTML generado nunca es implementación autoritativa de producción; el detalle está en [Diseño UI/UX y fuente de verdad visual](./docs/design/demo-ui.md). El handoff vive en `docs/design/design_handoff_vaqcrow/` (`README.md`, `brief/`, `screens/`): es la fuente visual y de comportamiento del producto por roles, y **lo que el template no diseña se registra como pregunta abierta, no se inventa**. La única excepción acordada es la sección «Cómo funciona» de la landing, rediseñada fuera del template (owner, 13/10/2026) porque sus cuatro pasos no alcanzaban para explicar la operación: el template sigue siendo la fuente de verdad en todo lo demás, y las reglas de confianza de `demo-ui.md` §2 siguen prevaleciendo.
 
 > [!info] Estado de la entrega
-> Este repositorio es la **demo del TFM** (Máster en Desarrollo con IA). El estado de cada unidad de trabajo —qué está planificado, en curso o entregado— se sigue en el **tablero Vaqcrow-TFM**, que es la fuente de verdad; este README describe el **producto y la arquitectura**, no el estado de los issues. La planificación ejecutable está en [la hoja de ruta](./docs/planning/demo-tasks-list.md).
+> Este repositorio es la **demo del TFM** (Máster en Desarrollo con IA E.2, BIG school). El estado de cada unidad de trabajo —qué está planificado, en curso o entregado— se sigue en el **tablero Vaqcrow-TFM**, que es la fuente de verdad; este README describe el **producto y la arquitectura**, no el estado de los issues. La planificación ejecutable está en [la hoja de ruta](./docs/planning/demo-tasks-list.md).
 
 ## Módulos por rol
 
@@ -448,18 +447,6 @@ Este repositorio se distribuye bajo la [licencia MIT](./LICENSE).
 
 ## Autor
 
-Vaqcrow es un proyecto de **Ariel Duarte** ([@reyduar](https://github.com/reyduar)), desarrollado como Trabajo de Fin de Máster (TFM) del **Máster en Desarrollo con IA**.
+Vaqcrow es un proyecto de **Reynaldo Ariel Duarte**, desarrollado como Trabajo Fin de Máster (TFM) del **Máster en Desarrollo con IA E.2** de **BIG school**.
 
-- GitHub: [@reyduar](https://github.com/reyduar)
-- Repositorio: [reyduar/Vaqcrow](https://github.com/reyduar/Vaqcrow)
-
-## Construido con gentle-ai
-
-Vaqcrow se construyó dirigiendo agentes de programación con IA —**Claude Code** y **OpenCode**, sus dos harneses principales— configurados con [**gentle-ai**](https://github.com/Gentleman-Programming/gentle-ai), el ecosistema de código abierto de [Gentleman Programming](https://gentlemanprogramming.com/) creado por Alan Buscaglia. Gracias a ese stack, el proyecto trabajó con:
-
-- **ODD (*Organic Driven Development*)** como flujo de desarrollo: explorar antes de cambiar, tests primero y un documento por feature en `odd/tasks/` que cita textual cada pedido y registra cada commit, ciclo RED→GREEN y decisión. Ese registro es la materia prima del corpus de evidencia.
-- **[Engram](https://github.com/Gentleman-Programming/engram)** como memoria persistente entre sesiones: decisiones, hallazgos y convenciones que sobrevivieron a cada reinicio.
-- **Skills** y su registro (`.atl/skill-registry.md`), para cargar las prácticas de cada tecnología —Supabase, HeroUI, Stellar, OWASP— antes de tocar código.
-- **RDD**, la revisión del trabajo terminado con las lentes de riesgo, resiliencia, legibilidad y confiabilidad.
-
-La historia completa —qué es el stack, cómo funciona ODD y por qué reemplazó a SDD a mitad del proyecto— está en el artículo [Cómo construimos Vaqcrow con gentle-ai y ODD](./docs/guides/blog/vaqcrow-con-gentle-ai-y-odd.md). Gracias a Gentleman Programming y a su comunidad por publicar estas herramientas como software libre.
+- LinkedIn: [linkedin.com/in/arielduarte](https://www.linkedin.com/in/arielduarte)
