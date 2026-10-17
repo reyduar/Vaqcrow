@@ -2,6 +2,11 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-17 — lint: encabezado de bóveda sin término prohibido (#594)
+
+- `boveda-soroban.md`: el encabezado «## Qué garantiza» se reescribió como «## Qué reglas ejecuta la bóveda». El contenido de la sección no cambió: sigue describiendo el destino inmutable, que sólo el contrato mueve los aportes, que nadie tiene la clave durante la campaña y que el todo o nada lo ejecuta el contrato. Se actualizó `updated`.
+- Lint: se retiró la exención declarada de ese encabezado en `tests/wiki-public-copy.test.ts`, así que el corpus escanea la página entera sin excepción. Una exención de encabezado dejaba al asistente libre de reformular la afirmación con sus propias palabras; reescribirlo elimina el término prohibido en origen, no en la exención.
+
 ## 2026-10-16 — lint: lista de copy pública y tope de aportes (#582, #590)
 
 - `index.md`: se reescribió la línea de `boveda-soroban` para no usar un término prohibido de la copy pública; sigue siendo una sola línea de router con el mismo sentido.
