@@ -110,6 +110,12 @@ const FREIGHTER_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(FREIGHTER_ARTICL
 const REVENUE_SHARE_ARTICLE_SOURCE = "revenue-share-explicado.md";
 const REVENUE_SHARE_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(REVENUE_SHARE_ARTICLE_SOURCE));
 /**
+ * #599: the article on Vaqcrow's Stellar ecosystem (contracts, custody,
+ * Testnet, Horizon/RPC, Freighter) is a public Blog article too.
+ */
+const STELLAR_ECOSYSTEM_ARTICLE_SOURCE = "ecosistema-stellar-de-vaqcrow.md";
+const STELLAR_ECOSYSTEM_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(STELLAR_ECOSYSTEM_ARTICLE_SOURCE));
+/**
  * #600: the article on the gentle-ai stack and its ODD workflow is a public
  * Blog article too (Blog only: it is not compiled into the assistant's wiki).
  */
@@ -133,6 +139,7 @@ const PUBLIC_TEXT = [
   BLOG_ARTICLE_TEXT,
   FREIGHTER_ARTICLE_TEXT,
   REVENUE_SHARE_ARTICLE_TEXT,
+  STELLAR_ECOSYSTEM_ARTICLE_TEXT,
   GENTLE_AI_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");

@@ -7,6 +7,7 @@ Una línea por página, en el orden en que conviene leerlas. El enlace y el nomb
 - [alta-de-pyme](alta-de-pyme.md): el recorrido de la PyME desde crear su cuenta hasta enviar a revisión.
 - [aporte-del-inversor](aporte-del-inversor.md): cómo el inversor conecta su wallet y aporta, y cómo retira o reembolsa.
 - [distribucion-mensual](distribucion-mensual.md): el reparto del revenue share mes a mes y quién firma.
+- [ecosistema-stellar](ecosistema-stellar.md): las piezas de Stellar que usa Vaqcrow (Testnet, Soroban, Horizon, Freighter), quién custodia los aportes y cómo están hechos los contratos en Rust.
 - [boveda-soroban](boveda-soroban.md): qué es la bóveda, qué reglas ejecuta sobre los aportes y cómo se despliega.
 - [freighter-y-firmas](freighter-y-firmas.md): quién firma qué y por qué la clave privada nunca sale de la wallet.
 - [freighter-y-friendbot](freighter-y-friendbot.md): cómo instalar Freighter en Chrome, crear la cuenta, pasarla a Testnet y fondearla con Friendbot, y qué hacer si el saldo no aparece.
