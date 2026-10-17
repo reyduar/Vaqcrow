@@ -73,3 +73,5 @@ El reparto tiene un **tope**: cada inversor cobra hasta que lo que ya recibió l
 El caso inverso también está previsto. Si las ventas son tan bajas que el tope nunca se alcanza, este tipo de financiamiento tiene un **plazo** —de 3 a 5 años— tras el cual el saldo que falta queda exigible. **La demo no lo implementa**: es un límite honesto de la demo, no una cobranza real.
 
 Conviene mirar el tope de frente, porque el mercado lo declara y acá no lo escondemos: el tope **es el precio**, no una tasa de interés. Por eso, cuanto más rápido vende la PyME, antes alcanza su tope y **más caro le sale el dinero por año**. Y del otro lado, lo que recibe el inversor **se corta en 1,5 veces lo aportado**: justamente eso es lo que impide que esto sea una parte de la empresa.
+
+Los aportes tienen un límite más, que se aplica al momento de aportar: nadie puede aportar más de lo que falta para alcanzar la meta. La plataforma rechaza ese excedente antes de que se firme y no mueve fondos; el formulario tampoco deja escribir un monto mayor que el remanente.
