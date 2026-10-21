@@ -143,8 +143,8 @@ Hay casos en los que el modelo **no redacta**: el asistente devuelve un texto fi
 | Caso | Respuesta |
 |---|---|
 | Fuera de tema | «Puedo ayudarte solo con Vaqcrow: qué es, cómo funciona y su tecnología. Para otros temas no soy de utilidad.» |
-| Sin página que lo cubra | «No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte.» |
-| Sobre la cuenta propia | «La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte.» |
+| Sin página que lo cubra | «No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte: contact@vaqcrow.com.» |
+| Sobre la cuenta propia | «La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte: contact@vaqcrow.com.» |
 | Límite de preguntas alcanzado | «Te sugiero leer los artículos del Blog: ahí cubrimos Vaqcrow con más detalle.» |
 
 La segunda es la más importante: **sin documento, no hay respuesta**. El asistente nunca contesta desde lo que el modelo «sabe» por su cuenta.

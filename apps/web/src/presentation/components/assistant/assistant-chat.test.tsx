@@ -94,9 +94,9 @@ describe("AssistantChat", () => {
   it("shows each fixed answer (declined / no-documentation / cap / account) verbatim", async () => {
     for (const answer of [
       "Puedo ayudarte solo con Vaqcrow: qué es, cómo funciona y su tecnología. Para otros temas no soy de utilidad.",
-      "No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte.",
+      "No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte: contact@vaqcrow.com.",
       "Te sugiero leer los artículos del Blog: ahí cubrimos Vaqcrow con más detalle.",
-      "La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte."
+      "La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte: contact@vaqcrow.com."
     ]) {
       const port = fakePort({ ok: true, answer: { answer, citations: [] } });
       const { unmount } = render(<AssistantChat port={port} />);
