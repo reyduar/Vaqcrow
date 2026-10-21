@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" role="img" aria-labelledby="title desc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title id="title">Las fronteras de dependencias de Vaqcrow</title>
+  <desc id="desc">El monorepo tiene dos aplicaciones y tres paquetes. La web, apps/web, se organiza en presentation, state, infrastructure y application. La API, apps/api, se organiza en infrastructure, donde viven Fastify, Supabase, el SDK de Stellar y los proveedores de IA, y application, con los casos de uso y los puertos. La infraestructura de la API implementa los puertos de application. La web y la API nunca se importan entre sí. La web consume solo packages/contracts y nunca importa packages/domain ni packages/ai. La API usa domain, contracts y ai. dependency-cruiser hace fallar la verificación ante cualquier import prohibido.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#15803d"/>
+    </marker>
+    <marker id="no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="680" rx="16" fill="#ffffff"/>
+
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#0f172a">Las fronteras de dependencias de Vaqcrow</text>
+  <rect x="40" y="58" width="470" height="26" rx="13" fill="#eef2ff"/>
+  <text x="54" y="76" font-size="13" font-weight="600" fill="#3730a3">Reglas en .dependency-cruiser.cjs · se revisan en cada pnpm run verify</text>
+
+  <!-- apps/web -->
+  <rect x="40" y="110" width="420" height="300" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="60" y="138" font-size="16" font-weight="700" fill="#0f172a">apps/web · Next.js</text>
+  <rect x="60" y="152" width="380" height="50" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="76" y="174" font-size="14" font-weight="600" fill="#0f172a">presentation/ · componentes</text>
+  <text x="76" y="193" font-size="12" fill="#b91c1c">✕ contracts en runtime (solo tipos)</text>
+  <rect x="60" y="210" width="380" height="40" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="76" y="235" font-size="14" font-weight="600" fill="#0f172a">state/ · stores de Zustand</text>
+  <rect x="60" y="258" width="380" height="50" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="76" y="280" font-size="14" font-weight="600" fill="#0f172a">infrastructure/ · HTTP, Supabase, Freighter</text>
+  <text x="76" y="299" font-size="12" fill="#b91c1c">✕ SDK de Stellar en runtime (no llega al navegador)</text>
+  <rect x="60" y="316" width="380" height="50" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="76" y="338" font-size="14" font-weight="600" fill="#0f172a">application/ · datos puros y selectores</text>
+  <text x="76" y="357" font-size="12" fill="#b91c1c">✕ React</text>
+  <text x="60" y="394" font-size="12" fill="#475569">Firma siempre con Freighter, en el navegador</text>
+
+  <!-- apps/api -->
+  <rect x="540" y="110" width="420" height="300" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="560" y="138" font-size="16" font-weight="700" fill="#0f172a">apps/api · Fastify</text>
+  <rect x="560" y="152" width="380" height="88" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="576" y="176" font-size="14" font-weight="600" fill="#0f172a">infrastructure/ · adaptadores</text>
+  <text x="576" y="198" font-size="12" fill="#334155">Fastify · Supabase · SDK de Stellar · proveedores de IA</text>
+  <text x="576" y="222" font-size="12" fill="#b91c1c">✕ SDK de Freighter (la API no tiene wallet)</text>
+  <line x1="750" y1="240" x2="750" y2="276" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <text x="760" y="263" font-size="12" fill="#15803d">implementa los puertos</text>
+  <rect x="560" y="280" width="380" height="88" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="576" y="304" font-size="14" font-weight="600" fill="#0f172a">application/ · casos de uso y puertos</text>
+  <text x="576" y="326" font-size="12" fill="#b91c1c">✕ Fastify, Supabase, Stellar o IA en runtime</text>
+  <text x="576" y="346" font-size="12" fill="#475569">(los imports de solo tipos están permitidos)</text>
+  <text x="560" y="394" font-size="12" fill="#475569">Construye y verifica las transacciones; no firma</text>
+
+  <!-- web ✕ api -->
+  <line x1="462" y1="250" x2="536" y2="250" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#no)"/>
+  <line x1="536" y1="250" x2="462" y2="250" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#no)"/>
+  <circle cx="500" cy="250" r="12" fill="#ffffff" stroke="#b91c1c" stroke-width="2"/>
+  <text x="500" y="255" font-size="14" font-weight="700" fill="#b91c1c" text-anchor="middle">✕</text>
+
+  <!-- packages -->
+  <rect x="40" y="480" width="280" height="84" rx="12" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="60" y="508" font-size="16" font-weight="700" fill="#0f172a">packages/contracts</text>
+  <text x="60" y="530" font-size="12" fill="#334155">Tipos y esquemas compartidos</text>
+  <text x="60" y="549" font-size="12" fill="#334155">Sin Node ni Fastify: corre en ambos lados</text>
+
+  <rect x="360" y="480" width="280" height="84" rx="12" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="380" y="508" font-size="16" font-weight="700" fill="#0f172a">packages/domain</text>
+  <text x="380" y="530" font-size="12" fill="#334155">Reglas del negocio</text>
+  <text x="380" y="549" font-size="12" fill="#334155">Sin ninguna dependencia npm</text>
+
+  <rect x="680" y="480" width="280" height="84" rx="12" fill="#ecfdf5" stroke="#86efac" stroke-width="1.5"/>
+  <text x="700" y="508" font-size="16" font-weight="700" fill="#0f172a">packages/ai</text>
+  <text x="700" y="530" font-size="12" fill="#334155">Contrato y guardas de la evaluación</text>
+  <text x="700" y="549" font-size="12" fill="#334155">Solo del lado de la API</text>
+
+  <!-- arrows to packages -->
+  <line x1="180" y1="410" x2="180" y2="476" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <line x1="400" y1="410" x2="470" y2="476" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#no)"/>
+  <text x="446" y="440" font-size="12" font-weight="600" fill="#b91c1c">✕ domain y ai</text>
+  <line x1="620" y1="410" x2="560" y2="476" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <line x1="820" y1="410" x2="820" y2="476" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <line x1="580" y1="410" x2="320" y2="492" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <text x="40" y="592" font-size="12" fill="#475569">Ningún paquete importa una aplicación, y no hay imports circulares en ningún lado.</text>
+
+  <!-- legend -->
+  <line x1="40" y1="630" x2="90" y2="630" stroke="#15803d" stroke-width="2" marker-end="url(#ok)"/>
+  <text x="100" y="635" font-size="13" fill="#0f172a">dependencia permitida</text>
+  <line x1="300" y1="630" x2="350" y2="630" stroke="#b91c1c" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#no)"/>
+  <text x="360" y="635" font-size="13" fill="#0f172a">dependencia prohibida: la verificación falla</text>
+</svg>
