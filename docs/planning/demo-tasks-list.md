@@ -2899,6 +2899,34 @@ Seis issues abiertas por el owner el 2026-10-13, posteriores al release [`v1.1.0
 
 **Rama propuesta.** `Vaqcrow#514_Task_Highlight_the_Como_funciona_nav_item_when_its_section_is_selected`.
 
+## Notificaciones del ciclo de la bóveda
+
+Dos issues abiertas por el owner el 2026-10-19. No cuelgan de un Epic y la prioridad `Medium` la eligió el owner. Las dos parten del mismo hallazgo: [#382](#^issue-382) entregó la infraestructura y el catálogo de eventos, pero solo se publican cinco (`admin.new_application`, `pyme.changes_requested`, `pyme.rejected`, `pyme.approved_published` y `admin.operator_invited`); `pyme.goal_reached`, `investor.goal_reached` e `investor.refund_available` están en el catálogo sin nadie que los emita. Comparten los puntos de detección: la meta, cuando se confirma el aporte que deja la bóveda `Settled`; el deadline, que no es un evento on-chain, comparando el `deadline` persistido con la hora actual desde el scheduler de la API.
+
+### #612 — Notificar a la PyME al alcanzar la meta y al cerrar la campaña por deadline
+
+^issue-612
+
+- **Título original:** `Feature: Notify the PyME when its campaign reaches the goal or closes at the deadline`
+- **GitHub y estado:** [issue #612](https://github.com/reyduar/Vaqcrow/issues/612) · Tipo `Feature` · Área `backend` · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos nativos; requiere [#382](#^issue-382) (cerrado). Relacionada con [#613](#^issue-613).
+- **Objetivo:** campana y email a la PyME cuando su bóveda alcanza la meta (`pyme.goal_reached`) y cuando la campaña cierra por deadline sin alcanzarla. Ese segundo evento no existe en el catálogo y su texto en español queda como pregunta abierta para el owner.
+- **Orden:** independiente; se coordina con [#613](#^issue-613) para compartir la detección.
+
+**Rama propuesta.** `Vaqcrow#612_Feat_Notify_the_PyME_when_its_campaign_reaches_the_goal_or_closes_at_the_deadline`.
+
+### #613 — Notificar a los inversores al alcanzar la meta o al habilitarse el reembolso
+
+^issue-613
+
+- **Título original:** `Feature: Notify investors when a campaign reaches the goal or a refund is available`
+- **GitHub y estado:** [issue #613](https://github.com/reyduar/Vaqcrow/issues/613) · Tipo `Feature` · Área `backend` · Prioridad `Medium` · Workflow `Backlog`.
+- **Jerarquía y bloqueos:** sin padre ni bloqueos nativos; requiere [#382](#^issue-382) (cerrado). Relacionada con [#612](#^issue-612).
+- **Objetivo:** campana y email a cada inversor de la campaña cuando la PyME alcanza la meta (`investor.goal_reached`) y cuando pasa el deadline sin alcanzarla, para que reclame su aporte (`investor.refund_available`). Los reembolsos los pide cada inversor (`refund`), así que sin este aviso quien no entra a `/portfolio` no se entera; el inversor que retiró todo antes del deadline no recibe el aviso.
+- **Orden:** independiente; se coordina con [#612](#^issue-612) para compartir la detección.
+
+**Rama propuesta.** `Vaqcrow#613_Feat_Notify_investors_when_a_campaign_reaches_the_goal_or_a_refund_is_available`.
+
 ## Discrepancias y exclusiones
 
 ### Relación discrepante
