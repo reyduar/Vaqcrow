@@ -128,6 +128,12 @@ const GENTLE_AI_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(GENTLE_AI_ARTICL
 const LLM_WIKI_ARTICLE_SOURCE = "llm-wiki-de-karpathy-en-vaqcrow.md";
 const LLM_WIKI_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(LLM_WIKI_ARTICLE_SOURCE));
 /**
+ * The article on dependency-cruiser and Vaqcrow's dependency boundaries is a
+ * public Blog article too (Blog only, not in the wiki).
+ */
+const DEPENDENCY_CRUISER_ARTICLE_SOURCE = "dependency-cruiser-en-vaqcrow.md";
+const DEPENDENCY_CRUISER_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(DEPENDENCY_CRUISER_ARTICLE_SOURCE));
+/**
  * Feature #499: the help assistant's web-side chrome (labels, placeholders and
  * the failure/access strings) is public copy too, so it runs through the same
  * denylist as the copy above. The four fixed answers (out-of-scope,
@@ -148,6 +154,7 @@ const PUBLIC_TEXT = [
   STELLAR_ECOSYSTEM_ARTICLE_TEXT,
   GENTLE_AI_ARTICLE_TEXT,
   LLM_WIKI_ARTICLE_TEXT,
+  DEPENDENCY_CRUISER_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");
 
