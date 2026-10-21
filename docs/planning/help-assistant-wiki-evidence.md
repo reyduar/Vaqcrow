@@ -79,7 +79,7 @@ test:boundaries      Test Files 11 passed (11) · Tests 189 passed (189)
 ## 5. Límites y brechas vigentes
 
 1. **S7 se prueba en la construcción del prompt, no contra el modelo.** Los tests fijan que la pregunta y las páginas viajan delimitadas como datos y que el sistema declara las reglas; la defensa de fondo son las guardias deterministas (cita fuera de lo ruteado → «no documentación»). Ningún test del gate llama al modelo real, por diseño (S10), así que la resistencia del modelo a una inyección no está medida.
-2. **El canal de «soporte» (resuelto, owner 2026-10-17).** La copy fija de D8 dice «escribí a soporte», y D8 pedía verificar el canal real. El owner lo confirmó: es **`contact@vaqcrow.com`**, el mismo que ya publican «Acerca de» (`apps/web/src/application/about/copy.ts`), el centro de ayuda («Escribir al equipo», `apps/web/src/application/help/faq.ts`) y los Términos (`apps/web/src/application/legal/terms.ts`). La copy fija del asistente no incluye la dirección; sumarla sería un cambio de la copy aprobada en D8.
+2. **El canal de «soporte» (resuelto, owner 2026-10-17).** La copy fija de D8 dice «escribí a soporte», y D8 pedía verificar el canal real. El owner lo confirmó: es **`contact@vaqcrow.com`**, el mismo que ya publican «Acerca de» (`apps/web/src/application/about/copy.ts`), el centro de ayuda («Escribir al equipo», `apps/web/src/application/help/faq.ts`) y los Términos (`apps/web/src/application/legal/terms.ts`). El mismo día, a pedido del owner, las dos respuestas fijas que dicen «soporte» (sin documentación y cuenta) pasaron a nombrar la dirección: «…o escribir a soporte: contact@vaqcrow.com.» y «…escribí a soporte: contact@vaqcrow.com.» (`apps/api/src/application/assistant/fixed-copy.ts`, fijado por `fixed-copy.test.ts`). Es un cambio registrado de la copy de D8.
 3. **Advisory abierto:** el `screen` de una cita (`assistantCitationSchema`) está tipado como string, no restringido a una ruta interna. Hoy su valor sale del front matter de la wiki, que es del repo, y el test estructural lo fija a rutas reales; restringirlo a un prefijo `/` en el contrato es un endurecimiento barato, no un hallazgo.
 4. **Sin streaming.** La respuesta llega en un único JSON (decisión del owner en WU2).
 5. **El pgTAP no se re-ejecutó aquí** (§4.2): su resultado viene de la bitácora de WU2.
@@ -113,5 +113,4 @@ Tomada de la bitácora, por unidad:
 - Con este documento se cierra la issue #499 y su ítem del tablero pasa a `Done`.
 
 > [!todo] Abierto para el owner
-> 1. Opcional: sumar `contact@vaqcrow.com` a las dos respuestas fijas que dicen «soporte» (§5.2).
-> 2. Opcional: restringir el `screen` de una cita a rutas internas en el contrato (§5.3).
+> 1. Opcional: restringir el `screen` de una cita a rutas internas en el contrato (§5.3).

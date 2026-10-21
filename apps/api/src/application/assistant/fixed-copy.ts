@@ -1,5 +1,6 @@
 /**
- * The fixed assistant answers (#499/WU2, owner decision D8, verbatim).
+ * The fixed assistant answers (#499/WU2, owner decision D8, verbatim; the
+ * support address was added by the owner on 2026-10-17).
  *
  * These are the only strings the assistant says that are **not** produced by
  * the model: the out-of-scope decline, the no-documentation answer, the account
@@ -13,11 +14,11 @@ export const ASSISTANT_OUT_OF_SCOPE_COPY =
 
 /** No page covers the question (also the end of a failed retry). */
 export const ASSISTANT_NO_DOCUMENTATION_COPY =
-  "No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte.";
+  "No tengo documentación sobre eso. Podés leer las guías y el Blog, o escribir a soporte: contact@vaqcrow.com.";
 
 /** An account question (D3): point to the reports, then to support. */
 export const ASSISTANT_ACCOUNT_COPY =
-  "La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte.";
+  "La información de tu cuenta está en tus informes. Si no lo encontrás ahí, escribí a soporte: contact@vaqcrow.com.";
 
 /** Over the rolling cap (D6): suggest the Blog, never mention the limit. */
 export const ASSISTANT_CAP_COPY =
