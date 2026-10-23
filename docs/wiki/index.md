@@ -20,3 +20,4 @@ Una línea por página, en el orden en que conviene leerlas. El enlace y el nomb
 - [guia-del-inversor](guia-del-inversor.md): la guía educativa pública para quien va a aportar.
 - [guia-para-emprendedores](guia-para-emprendedores.md): la guía educativa pública para la PyME que busca financiarse.
 - [que-es-real-y-que-es-simulado](que-es-real-y-que-es-simulado.md): las reglas de honestidad de la demo, en un solo lugar.
+- [react](react.md): qué es React, cómo actualiza la interfaz, dónde vive el estado y qué cambió en React 19.
