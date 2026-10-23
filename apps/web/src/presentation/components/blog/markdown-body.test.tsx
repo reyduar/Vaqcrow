@@ -70,4 +70,43 @@ describe("MarkdownBody", () => {
     expect(container.innerHTML).not.toContain("<script");
     expect(screen.getByText("Texto visible")).toBeInTheDocument();
   });
+
+  it("gives every heading a GitHub-style id so an in-article index resolves", () => {
+    const markdown = [
+      "## Índice",
+      "",
+      "- [¿Por qué React?](#por-qué-react)",
+      "",
+      "## ¿Por qué React?",
+      "",
+      "## ReactNode, ReactElement y JSX.Element"
+    ].join("\n");
+
+    const { container } = render(<MarkdownBody markdown={markdown} />);
+
+    // Accents survive the slug; punctuation such as `¿` and `.` is dropped.
+    expect(screen.getByRole("heading", { level: 3, name: "¿Por qué React?" })).toHaveAttribute(
+      "id",
+      "por-qué-react"
+    );
+    expect(screen.getByRole("heading", { level: 3, name: "ReactNode, ReactElement y JSX.Element" })).toHaveAttribute(
+      "id",
+      "reactnode-reactelement-y-jsxelement"
+    );
+
+    // The index link actually points at a node that exists on the page.
+    // `react-markdown` keeps the default URL transform, which percent-encodes
+    // the fragment (`#por-qu%C3%A9-react`); that is a valid URL and the browser
+    // decodes it before matching the target `id`.
+    const tocLink = screen.getByRole("link", { name: "¿Por qué React?" });
+    expect(decodeURIComponent(tocLink.getAttribute("href") ?? "")).toBe("#por-qué-react");
+    expect(container.querySelector("#por-qué-react")).not.toBeNull();
+  });
+
+  it("does not duplicate ids when two headings share the same text", () => {
+    const { container } = render(<MarkdownBody markdown={"## Context\n\n## Context"} />);
+
+    const ids = Array.from(container.querySelectorAll("h3")).map((node) => node.id);
+    expect(ids).toEqual(["context", "context-1"]);
+  });
 });

@@ -428,6 +428,7 @@ Cada Feature o Task de implementación incluye contexto, objetivo, requisitos fu
 - [Cómo construimos Vaqcrow con gentle-ai y ODD](./docs/guides/blog/vaqcrow-con-gentle-ai-y-odd.md)
 - [La wiki de Karpathy: cómo construimos el asistente de Vaqcrow sin embeddings](./docs/guides/blog/llm-wiki-de-karpathy-en-vaqcrow.md)
 - [dependency-cruiser: la arquitectura de Vaqcrow, revisada en cada cambio](./docs/guides/blog/dependency-cruiser-en-vaqcrow.md)
+- [React Essentials: fundamentos, hooks y ecosistema](./docs/guides/blog/react-essentials.md)
 
 ## Límites y decisiones abiertas
 
