@@ -53,7 +53,9 @@ function headingSlugs(markdown: string): Map<string, string> {
     if (inFence) continue;
     const match = /^(#{2,3})\s+(.+?)\s*$/.exec(line);
     if (match === null) continue;
-    const title = match[2].replace(/`/g, "");
+    const rawTitle = match[2];
+    if (rawTitle === undefined) continue;
+    const title = rawTitle.replace(/`/g, "");
     slugs.set(slugger.slug(title), title);
   }
   return slugs;
@@ -61,10 +63,11 @@ function headingSlugs(markdown: string): Map<string, string> {
 
 /** Every `- [texto](#ancla)` index entry. */
 function indexAnchors(markdown: string): { readonly text: string; readonly anchor: string }[] {
-  return [...markdown.matchAll(/^\s*- \[(.+?)\]\(#(.+?)\)$/gm)].map((match) => ({
-    text: match[1],
-    anchor: match[2]
-  }));
+  return [...markdown.matchAll(/^\s*- \[(.+?)\]\(#(.+?)\)$/gm)].flatMap((match) => {
+    const [, text, anchor] = match;
+    if (text === undefined || anchor === undefined) return [];
+    return [{ text, anchor }];
+  });
 }
 
 describe("React Essentials in-article index", () => {
