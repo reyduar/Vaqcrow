@@ -119,3 +119,21 @@ Hallazgos que corrigen el documento original:
 - Wiki: `docs/wiki/react.md` (`type: tecnologia`, source `blog/react-essentials.md`), línea en `index.md`, entrada `ingest` en `log.md`. `tests/wiki-structure.test.ts` y `tests/wiki-public-copy.test.ts` verdes.
 - Atribución: sección final `## Autoría` con «Pensado por Ariel Duarte. Redactado y mejorado con AI.»
 - Observación para el owner: la primera versión de la página de wiki decía «no una garantía de velocidad» y el gate de copy público la rechazó dos veces (por `garantía` y luego por `promesa`). Se reescribió en origen; no se agregó ninguna excepción.
+
+### L12 — `test:db` ejecutado (Docker levantado por el owner)
+
+Procedimiento usado, sin destruir la base local: `npx supabase migration up --local` (aplicó `20261023120000_seed_blog_post_react_essentials.sql`) y luego `npx supabase test db --local supabase/tests/blog_post_react_essentials_seed.sql`.
+
+**Resultado del test de esta unidad: PASS, 6/6.**
+
+La suite completa (`pnpm run test:db`, 34 archivos / 1.007 tests) **falla**, pero por estado previo del stack local, no por este cambio:
+
+| Archivo | Falla | Causa observable |
+|---|---|---|
+| `pyme_documents_bucket.sql` | 3 (9, 16, 18) | espera 3 objetos en el bucket y encuentra **26** |
+| `investor_report.sql` | 1 (38) | datos de corridas anteriores |
+| `marketplace_campaign.sql` | 2 (24-25) | ídem |
+| `marketplace_campaign_detail.sql` | 2 (51-52) | ídem |
+| `portfolio.sql` | 1 (49) | ídem |
+
+La migración de esta unidad sólo inserta una fila en `public.blog_post`; no toca `storage.objects` ni las tablas de campañas, aportes o reportes que esas aserciones cuentan. Para una corrida verde de la suite completa hace falta `supabase db reset` (destructivo para los datos locales), que quedó **pendiente de decisión del owner**.
