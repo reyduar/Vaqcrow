@@ -15,7 +15,15 @@
 set -euo pipefail
 
 CONTAINER="${CONTAINER:-vaqcrow-local}"
-IMAGE="${IMAGE:-stellar/quickstart:testing}"
+# Pinned to the same digest CI uses (#619). `stellar/quickstart:testing` is
+# republished continuously, and the build published on 2026-10-23 rejects
+# `stellar contract upload` with `HostError: Error(Context, InternalError)` while
+# the contracts, the CLI and the protocol stay the same. Keeping local and CI on
+# one digest is what makes a local green mean a CI green.
+#
+# To move it: run `campaign-smoke.sh` against the candidate digest first, then
+# update this line and `.github/workflows/ci.yml` together.
+IMAGE="${IMAGE:-stellar/quickstart@sha256:042cdfe06bd60c42f0ba5310936b48a3efbd1d0a870ce0cb24f8e9e5964d8d98}"
 PORT="${PORT:-8000}"
 PASSPHRASE="Standalone Network ; February 2017"
 
