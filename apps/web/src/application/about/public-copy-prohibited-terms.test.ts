@@ -134,6 +134,12 @@ const LLM_WIKI_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(LLM_WIKI_ARTICLE_
 const DEPENDENCY_CRUISER_ARTICLE_SOURCE = "dependency-cruiser-en-vaqcrow.md";
 const DEPENDENCY_CRUISER_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(DEPENDENCY_CRUISER_ARTICLE_SOURCE));
 /**
+ * #617: the React Essentials study guide is a public Blog article too (Blog
+ * only, not compiled into the assistant's wiki corpus).
+ */
+const REACT_ESSENTIALS_ARTICLE_SOURCE = "react-essentials.md";
+const REACT_ESSENTIALS_ARTICLE_TEXT = stripFrontMatter(readBlogArticle(REACT_ESSENTIALS_ARTICLE_SOURCE));
+/**
  * Feature #499: the help assistant's web-side chrome (labels, placeholders and
  * the failure/access strings) is public copy too, so it runs through the same
  * denylist as the copy above. The four fixed answers (out-of-scope,
@@ -155,6 +161,7 @@ const PUBLIC_TEXT = [
   GENTLE_AI_ARTICLE_TEXT,
   LLM_WIKI_ARTICLE_TEXT,
   DEPENDENCY_CRUISER_ARTICLE_TEXT,
+  REACT_ESSENTIALS_ARTICLE_TEXT,
   ASSISTANT_TEXT
 ].join("\n");
 

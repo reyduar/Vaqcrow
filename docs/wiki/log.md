@@ -2,6 +2,12 @@
 
 En orden cronológico inverso. Una entrada por corrida. Prefijos: `ingest`, `lint`, `human`.
 
+## 2026-10-23 — ingest: React Essentials (#617)
+
+- Fuente nueva citada: `blog/react-essentials.md` (Blog).
+- Página nueva `react.md` (tecnologia): qué es React y qué no resuelve, cómo actualiza la interfaz y el rol de `key`, los hooks y para qué sirve cada uno, los cinco tipos de estado y la regla de usar el más cercano, el ecosistema de estado con la advertencia de store por montaje en Zustand, el enrutamiento con React Router 8 y las dos APIs eliminadas, y los cambios de React 19.
+- `index.md`: alta de la línea de `react`, al final del índice.
+
 ## 2026-10-17 — ingest: el ecosistema Stellar de Vaqcrow (#599)
 
 - Fuente nueva citada: `blog/ecosistema-stellar-de-vaqcrow.md` (Blog).

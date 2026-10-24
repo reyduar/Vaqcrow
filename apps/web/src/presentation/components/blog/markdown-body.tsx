@@ -2,6 +2,7 @@
 
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
+import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 
 /**
@@ -19,6 +20,12 @@ import remarkGfm from "remark-gfm";
  * line-heights and weights). Heading levels are shifted one down so an
  * article's own `<h1>` is the page title and the body never introduces a second
  * one.
+ *
+ * `rehype-slug` assigns each heading the GitHub-style `id` its text slugifies
+ * to, which is what makes an in-article table of contents (`[Título](#titulo)`)
+ * resolve on the rendered page and not only in an editor. It only adds `id`
+ * attributes: it does not allow raw HTML, so the no-`rehype-raw` guarantee
+ * above is unchanged.
  */
 
 const H = "m-0 mt-8 mb-1 font-bold tracking-[-0.02em] text-balance text-text-primary first:mt-0";
@@ -128,7 +135,7 @@ export interface MarkdownBodyProps {
 export function MarkdownBody({ markdown }: MarkdownBodyProps) {
   return (
     <div data-blog-body="" className={BODY_CLASS}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]} components={COMPONENTS}>
         {markdown}
       </ReactMarkdown>
     </div>
