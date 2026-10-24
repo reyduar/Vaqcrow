@@ -137,3 +137,19 @@ La suite completa (`pnpm run test:db`, 34 archivos / 1.007 tests) **falla**, per
 | `portfolio.sql` | 1 (49) | ídem |
 
 La migración de esta unidad sólo inserta una fila en `public.blog_post`; no toca `storage.objects` ni las tablas de campañas, aportes o reportes que esas aserciones cuentan. Para una corrida verde de la suite completa hace falta `supabase db reset` (destructivo para los datos locales), que quedó **pendiente de decisión del owner**.
+
+### L13 — Publicado y verificado en el entorno desplegado
+
+- PR #618 mergeado (`92c4451`, 2026-10-24T21:25:27Z). Railway redesplegó la API a las 21:25:29Z y la deployment terminó en `SUCCESS`.
+- Seed aplicada al proyecto remoto: `blog_post` gana la fila `react-essentials`. El historial de `supabase_migrations.schema_migrations` quedó con `20261023120000 — seed_blog_post_react_essentials` como última versión, alineado con el archivo del repo. No se tocó esquema, grants ni RLS.
+- Verificación contra el entorno desplegado (`https://api-production-c07f.up.railway.app`):
+  - `GET /blog` → 8 posts, `react-essentials` primero.
+  - `GET /blog/react-essentials` → 200, 154 KB; título y resumen desde la fila, `tags` desde el archivo de la imagen, índice y sección de autoría presentes en el cuerpo.
+  - `https://www.vaqcrow.com/blog/react-essentials` → 200 (la página renderiza en el cliente, así que el HTML no trae el texto; la fuente verificada es la API).
+- El CI de #618 quedó verde con el pin de #619: `Contracts` pasó en 4m12s, el mismo job que había fallado el 24-10.
+
+### L14 — Cabos sueltos al cierre
+
+- `opencode.json`: el arreglo del MCP de Railway sigue sin commitear, ajeno a esta feature.
+- Mirror a Engram pendiente: `mem_save` falló durante toda la sesión con `could not confirm Engram session registration`.
+- Issues #617 y #619 no están en el board Vaqcrow-TFM.
