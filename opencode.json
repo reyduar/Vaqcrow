@@ -184,9 +184,12 @@
       "url": "https://api.githubcopilot.com/mcp/"
     },
     "railway": {
+      "command": [
+        "railway",
+        "mcp"
+      ],
       "enabled": true,
-      "type": "remote",
-      "url": "https://mcp.railway.com"
+      "type": "local"
     },
     "supabase": {
       "enabled": true,
